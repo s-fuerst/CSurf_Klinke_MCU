@@ -43,6 +43,11 @@ void ReceiveMode::setSendInfo(ESendInfo sendInfo, int iTrack, void* pValue, int 
   UndoEnd::instance()->callUndoEnd("Receive Status changed (via Surface)", UNDO_STATE_TRACKCFG, wait);
 }
 
+int ReceiveMode::calcSendIdx(int sendNr) {
+	return -sendNr - 1;
+}
+
+
 const char* ReceiveMode::stringForESendInfo(ESendInfo sendInfo) {
   switch (sendInfo) {
     case TRACK:

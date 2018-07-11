@@ -26,5 +26,7 @@ public SendReceiveModeBase
   void* getSendInfo(ESendInfo sendInfo, int iTrack);
   void setSendInfo(ESendInfo sendInfo, int iTrack, void* pValue, int wait);
 
+  int calcSendIdx(int sendNr);
+  
   const char* stringForESendInfo(ESendInfo sendInfo);
 };

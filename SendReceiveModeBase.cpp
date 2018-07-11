@@ -231,7 +231,10 @@ bool SendReceiveModeBase::fader(int channel, int value) {
       setSendInfo(PAN, sendNr, (void*) &newVal, WAIT_FOR_MORE_MOVEMENT);    
     } else {
       double newVal = int14ToVol(value);
+	  int sendIdx = calcSendIdx(sendNr);
       setSendInfo(VOL, sendNr, (void*) &newVal, WAIT_FOR_MORE_MOVEMENT);
+	  // CSurf_OnSendVolumeChange()
+	  //SetTrackSendUIVol(selectedTrack(), calcSendIdx(sendNr), newVal, 1);
     }
   }
   m_pCCSManager->setFader(this, channel, value);

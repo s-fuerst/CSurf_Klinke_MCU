@@ -16,6 +16,8 @@ extern double (*DB2SLIDER)(double x);
 extern double (*SLIDER2DB)(double y);
 extern int (*GetNumMIDIInputs)(); 
 extern int (*GetNumMIDIOutputs)();
+extern int (*GetNumAudioInputs)(); 
+extern int (*GetNumAudioOutputs)();
 extern midi_Input *(*CreateMIDIInput)(int dev);
 extern midi_Output *(*CreateMIDIOutput)(int dev, bool streamMode, int *msoffset100); 
 extern bool (*GetMIDIOutputName)(int dev, char *nameout, int nameoutlen);
@@ -41,6 +43,7 @@ extern void (*CSurf_SetPlayState)(bool play, bool pause, bool rec, IReaperContro
 extern void (*CSurf_SetRepeatState)(bool rep, IReaperControlSurface *ignoresurf);
 
 // these are called by our surfaces, and actually update the project
+extern double (*CSurf_OnSendVolumeChange)(MediaTrack* trackid, int send_index, double volume, bool relative);
 extern double (*CSurf_OnVolumeChange)(MediaTrack *trackid, double volume, bool relative);
 extern double (*CSurf_OnPanChange)(MediaTrack *trackid, double pan, bool relative);
 extern bool (*CSurf_OnMuteChange)(MediaTrack *trackid, int mute);
@@ -82,6 +85,8 @@ extern void (*UpdateTimeline)(void);
 
 extern int (*GetSetRepeat)(int val);
 
+
+
 extern void (*SetAutomationMode)(int mode, bool onlySel);
 extern void (*Main_UpdateLoopInfo)(int ignoremask);
 
@@ -109,6 +114,7 @@ extern int __g_projectconfig_timeoffs;
 extern int __g_projectconfig_measoffs;
 
 // needed for additional MCU support (Klinke)
+extern bool (*SetTrackSendUIVol)(MediaTrack* track, int send_idx, double vol, int isend);
 extern void *(*GetSetTrackSendInfo)(MediaTrack *tr, int category, int sendidx, const char *parmname, void *setNewValue);
 extern void *(*GetSetMediaTrackInfo)(MediaTrack *tr, const char *parmname, void *setNewValue);
 extern int (*EnumProjectMarkers)(int idx, bool *isrgn, double *pos, double *rgnend, 

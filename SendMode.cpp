@@ -43,6 +43,10 @@ void SendMode::setSendInfo(ESendInfo sendInfo, int iTrack, void* pValue, int wai
   UndoEnd::instance()->callUndoEnd("Send Status changed (via Surface)",UNDO_STATE_TRACKCFG, wait);
 }
 
+int SendMode::calcSendIdx(int sendNr) {
+	return sendNr + GetNumAudioOutputs() + 1;
+}
+
 const char* SendMode::stringForESendInfo(ESendInfo sendInfo) {
   switch (sendInfo) {
     case TRACK:

@@ -19,6 +19,8 @@ double (*DB2SLIDER)(double x);
 double (*SLIDER2DB)(double y);
 int (*GetNumMIDIInputs)(); 
 int (*GetNumMIDIOutputs)();
+int (*GetNumAudioInputs)(); 
+int (*GetNumAudioOutputs)();
 midi_Input *(*CreateMIDIInput)(int dev);
 midi_Output *(*CreateMIDIOutput)(int dev, bool streamMode, int *msoffset100); 
 bool (*GetMIDIOutputName)(int dev, char *nameout, int nameoutlen);
@@ -43,6 +45,7 @@ void (*CSurf_SetPlayState)(bool play, bool pause, bool rec, IReaperControlSurfac
 void (*CSurf_SetRepeatState)(bool rep, IReaperControlSurface *ignoresurf);
 
 // these are called by our surfaces, and actually update the project
+double (*CSurf_OnSendVolumeChange)(MediaTrack* trackid, int send_index, double volume, bool relative);
 double (*CSurf_OnVolumeChange)(MediaTrack *trackid, double volume, bool relative);
 double (*CSurf_OnPanChange)(MediaTrack *trackid, double pan, bool relative);
 bool (*CSurf_OnMuteChange)(MediaTrack *trackid, int mute);
@@ -110,6 +113,7 @@ GUID *(*GetTrackGUID)(MediaTrack *tr);
 int *g_config_csurf_rate,*g_config_zoommode;
 
 // needed for additional MCU support (Klinke)
+bool (*SetTrackSendUIVol)(MediaTrack* track, int send_idx, double vol, int isend);
 void *(*GetSetTrackSendInfo)(MediaTrack *tr, int category, int sendidx, const char *parmname, void *setNewValue);
 void *(*GetSetMediaTrackInfo)(MediaTrack *tr, const char *parmname, void *setNewValue);
 int (*EnumProjectMarkers)(int idx, bool *isrgn, double *pos, double *rgnend, 
@@ -175,6 +179,8 @@ REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hI
   IMPAPI(SLIDER2DB)
   IMPAPI(GetNumMIDIInputs)
   IMPAPI(GetNumMIDIOutputs)
+  IMPAPI(GetNumAudioInputs)
+  IMPAPI(GetNumAudioOutputs)
   IMPAPI(CreateMIDIInput)
   IMPAPI(CreateMIDIOutput)
   IMPAPI(GetMIDIOutputName)
@@ -193,6 +199,7 @@ REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hI
   IMPAPI(CSurf_SetAutoMode)
   IMPAPI(CSurf_SetPlayState)
   IMPAPI(CSurf_SetRepeatState)
+  IMPAPI(CSurf_OnSendVolumeChange)
   IMPAPI(CSurf_OnVolumeChange)
   IMPAPI(CSurf_OnPanChange)
   IMPAPI(CSurf_OnMuteChange)
@@ -251,6 +258,7 @@ REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hI
   IMPAPI(GetTrackGUID)
 
   // needed for additional MCU support (Klinke)
+  IMPAPI(SetTrackSendUIVol)
   IMPAPI(GetSetTrackSendInfo)
   IMPAPI(GetSetMediaTrackInfo)
   IMPAPI(EnumProjectMarkers)

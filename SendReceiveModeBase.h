@@ -79,6 +79,8 @@ public CCSMode
   virtual void* getSendInfo(ESendInfo sendInfo, int iTrack) = 0;
   virtual void setSendInfo(ESendInfo sendInfo, int iTrack, void* pValue, int wait = 0) = 0;
 
+  virtual int calcSendIdx(int sendNr) = 0;
+  
   virtual const char* stringForESendInfo(ESendInfo sendInfo);
 
   virtual void writeTrackName( int startPos );
