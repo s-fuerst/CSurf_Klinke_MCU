@@ -216,7 +216,7 @@ bool SendReceiveModeBase::buttonSolo(int channel, bool pressed) {
 
       m_pCCSManager->setSoloLED(this, channel, newState ? LED_ON : LED_OFF);
     }
-  }
+  } 
 
   return true;
 }
@@ -233,8 +233,11 @@ bool SendReceiveModeBase::fader(int channel, int value) {
       double newVal = int14ToVol(value);
 	  int sendIdx = calcSendIdx(sendNr);
       setSendInfo(VOL, sendNr, (void*) &newVal, WAIT_FOR_MORE_MOVEMENT);
-	  // CSurf_OnSendVolumeChange()
-	  //SetTrackSendUIVol(selectedTrack(), calcSendIdx(sendNr), newVal, 1);
+	  //CSurf_OnSendVolumeChange(selectedTrack(), sendNr + 1, newVal, false);
+	  SetTrackSendUIVol(selectedTrack(), sendNr + 1, newVal, 0);
+	  // for (int i = 0; i < 3; i++) {
+	  // 	  SetTrackSendUIVol(selectedTrack(), i, newVal, 0);
+	  // }
     }
   }
   m_pCCSManager->setFader(this, channel, value);

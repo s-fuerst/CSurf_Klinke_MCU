@@ -115,6 +115,8 @@ extern int __g_projectconfig_measoffs;
 
 // needed for additional MCU support (Klinke)
 extern bool (*SetTrackSendUIVol)(MediaTrack* track, int send_idx, double vol, int isend);
+extern bool (*GetTrackSendUIVol)(MediaTrack* track, int send_idx, double vol, int isend);
+extern int (*GetTrackNumSends)(MediaTrack* tr, int category);
 extern void *(*GetSetTrackSendInfo)(MediaTrack *tr, int category, int sendidx, const char *parmname, void *setNewValue);
 extern void *(*GetSetMediaTrackInfo)(MediaTrack *tr, const char *parmname, void *setNewValue);
 extern int (*EnumProjectMarkers)(int idx, bool *isrgn, double *pos, double *rgnend, 
