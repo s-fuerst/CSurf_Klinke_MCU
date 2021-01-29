@@ -113,12 +113,18 @@ class CCSManager
   // getter/setter
   CSurf_MCU* getMCU() {return m_pMCU;} 
   DisplayHandler* getDisplayHandler();
-  VPOT_LED* getVPOT(int channel) { return &m_pVPOTS[channel]; } // channel is also 1 based, modification of VPOT of channel 0 doesn't do anything
+  // channel is also 1 based, modification of VPOT of channel 0 doesn't do anything
+  VPOT_LED* getVPOT(int channel) { return &m_pVPOTS[channel]; }
+  // getFaderPos this is the last pos send to Reaper, if the fader is updated from Reaper,
+  // the new value is not reflected here 
+  int getFaderPos(int channel) { return m_faderPos[channel]; } 
   void setMode(CCSManager::EMode mode);
   CCSMode* getActualMode(){return m_pActualMode;}
   DWORD getLastTime(){return m_lastTime;}
   CCSModesEditor* getEditor(){return m_pEditor;}
+  
 
+  
   // helper
   void switchToDisplay(CCSMode* pMode, Display* pDisplay);
   void setVPOTMode(VPOT_LED::MODE mode); // set all VPOTs to the same mode

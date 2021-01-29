@@ -114,7 +114,8 @@ int *g_config_csurf_rate,*g_config_zoommode;
 
 // needed for additional MCU support (Klinke)
 bool (*SetTrackSendUIVol)(MediaTrack* track, int send_idx, double vol, int isend);
-bool (*GetTrackSendUIVol)(MediaTrack* track, int send_idx, double vol, int isend);
+bool (*SetTrackSendUIPan)(MediaTrack* track, int send_idx, double vol, int isend);
+bool (*GetTrackSendUIVolPan)(MediaTrack* track, int send_index, double* volumeOut, double* panOut);
 int (*GetTrackNumSends)(MediaTrack* tr, int category);
 void *(*GetSetTrackSendInfo)(MediaTrack *tr, int category, int sendidx, const char *parmname, void *setNewValue);
 void *(*GetSetMediaTrackInfo)(MediaTrack *tr, const char *parmname, void *setNewValue);
@@ -261,7 +262,8 @@ REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hI
 
   // needed for additional MCU support (Klinke)
   IMPAPI(SetTrackSendUIVol)
-  IMPAPI(GetTrackSendUIVol)
+  IMPAPI(SetTrackSendUIPan)
+  IMPAPI(GetTrackSendUIVolPan)
   IMPAPI(GetTrackNumSends)
   IMPAPI(GetSetTrackSendInfo)
   IMPAPI(GetSetMediaTrackInfo)

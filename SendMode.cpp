@@ -44,7 +44,7 @@ void SendMode::setSendInfo(ESendInfo sendInfo, int iTrack, void* pValue, int wai
 }
 
 int SendMode::calcSendIdx(int sendNr) {
-	return sendNr + GetTrackNumSends(selectedTrack(), 1) + 1;
+	return sendNr + GetTrackNumSends(selectedTrack(), 1);
 }
 
 const char* SendMode::stringForESendInfo(ESendInfo sendInfo) {

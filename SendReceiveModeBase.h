@@ -54,7 +54,8 @@ public CCSMode
   virtual bool buttonSolo(int channel, bool pressed);
 
   virtual bool fader(int channel, int value);
-
+  virtual bool faderTouched(int channel, bool touched);
+  
   virtual bool vpotMoved(int channel, int numSteps); // numSteps are negativ for left rotation
 
   virtual void updateSoloLEDs();
