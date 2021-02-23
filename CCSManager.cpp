@@ -449,17 +449,12 @@ void CCSManager::setFader(CCSMode* pCaller, int channel, int value) {
   CHECKMODEANDCHANNEL
 
   if (m_faderPos[channel] != value) {
-	m_faderPos[channel] = value;
-	if (!m_faderTouched[channel]) {
-	  if (channel == 0) {
-		m_pMCU->SendMidi(0xe8,value&0x7f,(value>>7)&0x7f,-1);
-	  } else {
-		m_pMCU->SendMidi(0xdf + channel,value&0x7f,(value>>7)&0x7f,-1);
-	  }
-	  DBOUT("SendMidi m_faderPos[" << channel << "] = " << int14ToVol(value) << "\n");
-	} else {
-	  DBOUT("!SendMidi m_faderPos[" << channel << "] = " << int14ToVol(value) << "\n");
-	}
+    m_faderPos[channel] = value;
+    if (channel == 0) {
+      m_pMCU->SendMidi(0xe8, value & 0x7f, (value >> 7) & 0x7f, -1);
+    } else {
+      m_pMCU->SendMidi(0xdf + channel, value & 0x7f, (value >> 7) & 0x7f, -1);
+    }
   }
 }
 
