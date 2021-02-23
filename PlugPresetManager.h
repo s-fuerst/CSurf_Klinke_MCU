@@ -14,37 +14,39 @@
 
 class MediaTrack;
 
-class PlugPresetManager
-{
- public:
-  PlugPresetManager(CSurf_MCU*  pMCU);
+class PlugPresetManager {
+public:
+  PlugPresetManager(CSurf_MCU *pMCU);
   ~PlugPresetManager(void);
 
   typedef boost::tuple<int, double> tPlugValue;
   typedef std::list<tPlugValue> tPreset;
-  void storePreset(MediaTrack* pTrack, int slot, int presetNr, PlugAccess* pAccess);
-  bool presetMatchState(MediaTrack* pTrack, int slot, int presetNr);
+  void storePreset(MediaTrack *pTrack, int slot, int presetNr,
+                   PlugAccess *pAccess);
+  bool presetMatchState(MediaTrack *pTrack, int slot, int presetNr);
 
-  bool hasPreset(String& fxGUID, int presetNr);
-  bool recallPreset(MediaTrack* pTrack, int slot, int presetNr);
-  bool deletePreset(String& fxGUID, int presetNr);
-  void deleteAllPresets(String& fxGUID);
+  bool hasPreset(String &fxGUID, int presetNr);
+  bool recallPreset(MediaTrack *pTrack, int slot, int presetNr);
+  bool deletePreset(String &fxGUID, int presetNr);
+  void deleteAllPresets(String &fxGUID);
 
-  void projectChanged(XmlElement* pXmlElement, ProjectConfig::EAction action);
+  void projectChanged(XmlElement *pXmlElement, ProjectConfig::EAction action);
 
- private:
-  void addParam2Preset( PlugAccess* pAccess, PlugAccess::ElementDesc ed, MediaTrack* pTrack, int slot, tPreset &newPreset );
+private:
+  void addParam2Preset(PlugAccess *pAccess, PlugAccess::ElementDesc ed,
+                       MediaTrack *pTrack, int slot, tPreset &newPreset);
 
-  void writePresetsToProjectConfig(XmlElement* pNode);
-  void readPresetsFromProjectConfig(XmlElement* pNode);
+  void writePresetsToProjectConfig(XmlElement *pNode);
+  void readPresetsFromProjectConfig(XmlElement *pNode);
 
   void deletePresetsWherePluginsAreRemoved();
 
-  typedef boost::tuple<String, int, tPreset> tPresetWithPos; // FX GUID, presetNr, time
+  typedef boost::tuple<String, int, tPreset>
+      tPresetWithPos; // FX GUID, presetNr, time
   typedef std::list<tPresetWithPos> tPresetStorage;
   tPresetStorage m_presetStorage;
 
   int m_projectChangedConnectionId;
 
-  CSurf_MCU* m_pMCU;
+  CSurf_MCU *m_pMCU;
 };

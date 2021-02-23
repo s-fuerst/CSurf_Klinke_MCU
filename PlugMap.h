@@ -18,52 +18,57 @@
 //////////////////////////////////////////////////
 
 class PMParam {
- public:
+public:
   virtual void initValues();
 
-  virtual void writeToXml(XmlElement* pElement);
-  virtual bool readFromXml(XmlElement* pElement);
+  virtual void writeToXml(XmlElement *pElement);
+  virtual bool readFromXml(XmlElement *pElement);
 
-  virtual String getNameShort(){return m_nameShort;}
-  virtual String getNameLong(){return m_nameLong;}
+  virtual String getNameShort() { return m_nameShort; }
+  virtual String getNameLong() { return m_nameLong; }
 
-  virtual int getParamID(){return m_paramID;} // Reaper id for parameter (called param in function signatures), can be NOT_ASSIGNED
+  virtual int getParamID() {
+    return m_paramID;
+  } // Reaper id for parameter (called param in function signatures), can be
+    // NOT_ASSIGNED
 
-  virtual void setNameShort(String newName){m_nameShort = newName;}
-  virtual void setNameLong(String newName){m_nameLong = newName;}
+  virtual void setNameShort(String newName) { m_nameShort = newName; }
+  virtual void setNameLong(String newName) { m_nameLong = newName; }
 
-  virtual void setParamID(int newID){m_paramID = newID;}
+  virtual void setParamID(int newID) { m_paramID = newID; }
 
- protected:
+protected:
   String m_nameShort;
   String m_nameLong;
 
-  int m_paramID; // is NOT_ASSIGNED if no parameter is controlled via this element 
+  int m_paramID; // is NOT_ASSIGNED if no parameter is controlled via this
+                 // element
 };
 
 class PMFader : public PMParam {
- public:
-  void writeToXml(XmlElement* pElement);
-  bool readFromXml(XmlElement* pElement);
+public:
+  void writeToXml(XmlElement *pElement);
+  bool readFromXml(XmlElement *pElement);
 };
 
 class PMVPot : public PMParam {
- public:
+public:
   PMVPot();
   virtual ~PMVPot();
 
   void initValues();
 
-  void writeToXml(XmlElement* pElement);
-  bool readFromXml(XmlElement* pElement);
+  void writeToXml(XmlElement *pElement);
+  bool readFromXml(XmlElement *pElement);
 
   typedef boost::tuple<String, String> tStepsValue;
-  typedef std::map<double, tStepsValue> tSteps; 
-  tSteps* getStepsMap() {return m_pStepsMap;}     
+  typedef std::map<double, tStepsValue> tSteps;
+  tSteps *getStepsMap() { return m_pStepsMap; }
 
   void setParamID(int newID);
- private:
-  tSteps* m_pStepsMap;
+
+private:
+  tSteps *m_pStepsMap;
 };
 
 //////////////////////////////////////////////////
@@ -71,30 +76,39 @@ class PMVPot : public PMParam {
 //////////////////////////////////////////////////
 
 class PMPage {
- public:
+public:
   void initValues(int id);
-  int getId(){return m_id;}
+  int getId() { return m_id; }
 
-  void writeToXml(XmlElement* pElement);
-  bool readFromXml(XmlElement* pElement);
+  void writeToXml(XmlElement *pElement);
+  bool readFromXml(XmlElement *pElement);
 
-  String getNameShort(){return m_nameShort;}
-  String getNameLong(){return m_nameLong;}
+  String getNameShort() { return m_nameShort; }
+  String getNameLong() { return m_nameLong; }
 
-  void setNameShort(String newName){m_nameShort = newName;}
-  void setNameLong(String newName){m_nameLong = newName;}
+  void setNameShort(String newName) { m_nameShort = newName; }
+  void setNameLong(String newName) { m_nameLong = newName; }
 
-  bool isUsed(); // the page is used if a fader or vpot have an assigned parameter
-  bool doesRefer(){return m_referTo != DOESNT_REFER;}
-  int referTo(){return m_referTo;} // can be DOESNT_REFER, if page doesn't refer to another page
-  void setReferTo(int referTo){m_referTo = (referTo == m_id) ? DOESNT_REFER : referTo;}
+  bool
+  isUsed(); // the page is used if a fader or vpot have an assigned parameter
+  bool doesRefer() { return m_referTo != DOESNT_REFER; }
+  int referTo() {
+    return m_referTo;
+  } // can be DOESNT_REFER, if page doesn't refer to another page
+  void setReferTo(int referTo) {
+    m_referTo = (referTo == m_id) ? DOESNT_REFER : referTo;
+  }
 
-  int getParamIDOffset(){ASSERT(doesRefer()); return m_offset;} // call this only, if doesRefer() is true
-  void setParamIDOffset(int offset){m_offset = offset;}
+  int getParamIDOffset() {
+    ASSERT(doesRefer());
+    return m_offset;
+  } // call this only, if doesRefer() is true
+  void setParamIDOffset(int offset) { m_offset = offset; }
 
-  PMFader* getFader(int channel){return &m_faders[channel];}
-  PMVPot* getVPot(int channel){return &m_vpots[channel];}
- private:
+  PMFader *getFader(int channel) { return &m_faders[channel]; }
+  PMVPot *getVPot(int channel) { return &m_vpots[channel]; }
+
+private:
   String m_nameShort;
   String m_nameLong;
 
@@ -112,31 +126,38 @@ class PMPage {
 //////////////////////////////////////////////////
 
 class PMBank {
- public:
+public:
   void initValues(int id);
-  int getId(){return m_id;}
+  int getId() { return m_id; }
 
-  void writeToXml(XmlElement* pElement);
-  bool readFromXml(XmlElement* pElement);
+  void writeToXml(XmlElement *pElement);
+  bool readFromXml(XmlElement *pElement);
 
-  String getNameShort(){return m_nameShort;}
-  String getNameLong(){return m_nameLong;}
+  String getNameShort() { return m_nameShort; }
+  String getNameLong() { return m_nameLong; }
 
-  void setNameShort(String newName){m_nameShort = newName;}
-  void setNameLong(String newName){m_nameLong = newName;}
+  void setNameShort(String newName) { m_nameShort = newName; }
+  void setNameLong(String newName) { m_nameLong = newName; }
 
   bool isUsed(); // the bank is used if one or more pages are used
 
-  bool doesRefer(){return m_referTo != DOESNT_REFER;}
-  int referTo(){return m_referTo;} // can be DOESNT_REFER, if bank doesn't refer to another ban
-  void setReferTo(int referTo){m_referTo = (referTo == m_id) ? DOESNT_REFER : referTo;}
-        
-  int getParamIDOffset(){ASSERT(doesRefer()); return m_offset;} // call this only, if doesRefer() is true
-  void setParamIDOffset(int offset){m_offset = offset;}
+  bool doesRefer() { return m_referTo != DOESNT_REFER; }
+  int referTo() {
+    return m_referTo;
+  } // can be DOESNT_REFER, if bank doesn't refer to another ban
+  void setReferTo(int referTo) {
+    m_referTo = (referTo == m_id) ? DOESNT_REFER : referTo;
+  }
 
-  PMPage* getPage(int page){return &m_pages[page];}
+  int getParamIDOffset() {
+    ASSERT(doesRefer());
+    return m_offset;
+  } // call this only, if doesRefer() is true
+  void setParamIDOffset(int offset) { m_offset = offset; }
 
- private:
+  PMPage *getPage(int page) { return &m_pages[page]; }
+
+private:
   String m_nameShort;
   String m_nameLong;
 
@@ -152,27 +173,26 @@ class PMBank {
 // PlugMap
 //////////////////////////////////////////////////
 
-class PlugMap
-{
- public:
+class PlugMap {
+public:
   PlugMap(void);
   ~PlugMap(void);
 
   void initValues();
 
-  String getCreator(){return m_creator;}
-  void setCreator(String creator){m_creator = creator;}
+  String getCreator() { return m_creator; }
+  void setCreator(String creator) { m_creator = creator; }
 
-  String getInfo(){return m_info;}
-  void setInfo(String info){m_info = info;}
+  String getInfo() { return m_info; }
+  void setInfo(String info) { m_info = info; }
 
-  void writeToXml(XmlElement* pElement);
-  bool readFromXml(XmlElement* pElement);
+  void writeToXml(XmlElement *pElement);
+  bool readFromXml(XmlElement *pElement);
 
-  PMBank* getBank(int bank){return &m_banks[bank];}
- private:
+  PMBank *getBank(int bank) { return &m_banks[bank]; }
+
+private:
   PMBank m_banks[8];
   String m_creator;
   String m_info;
 };
-

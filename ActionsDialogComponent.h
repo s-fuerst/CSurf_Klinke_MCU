@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 /*
   ==============================================================================
@@ -28,56 +28,51 @@
 #define __JUCER_HEADER_ACTIONSDIALOGCOMPONENT_ACTIONSDIALOGCOMPONENT_722363D1__
 
 //[Headers]     -- You can add your own extra header files here --
-#include <src/juce_WithoutMacros.h> 
+#include <src/juce_WithoutMacros.h>
 class ActionsDisplay;
 //[/Headers]
 
-
-
 //==============================================================================
 /**
-                                                                    //[Comments]
-    An auto-generated component, created by the Jucer.
+ //[Comments]
+ An auto-generated component, created by the Jucer.
 
-    Describe your class and how it works here!
-                                                                    //[/Comments]
-*/
-class ActionsDialogComponent  : public Component,
-                                public LabelListener,
-                                public ButtonListener
-{
+ Describe your class and how it works here!
+ //[/Comments]
+ */
+class ActionsDialogComponent : public Component,
+                               public LabelListener,
+                               public ButtonListener {
 public:
-    //==============================================================================
-    ActionsDialogComponent(ActionsDisplay* pAD);
-    ~ActionsDialogComponent();
+  //==============================================================================
+  ActionsDialogComponent(ActionsDisplay *pAD);
+  ~ActionsDialogComponent();
 
-    //==============================================================================
-    void paint (Graphics& g);
-    void resized();
-    void labelTextChanged (Label* labelThatHasChanged);
-    void buttonClicked (Button* buttonThatWasClicked);
+  //==============================================================================
+  void paint(Graphics &g);
+  void resized();
+  void labelTextChanged(Label *labelThatHasChanged);
+  void buttonClicked(Button *buttonThatWasClicked);
 
+  //==============================================================================
+  juce_UseDebuggingNewOperator
 
-    //==============================================================================
-    juce_UseDebuggingNewOperator
+      private : void
+                fillActionLabels();
 
-private:
-                void fillActionLabels(); 
+  //==============================================================================
+  ToggleButton *m_shift;
+  ToggleButton *m_option;
+  ToggleButton *m_control;
+  ToggleButton *m_alt;
+  Label *m_labelAction[8];
 
-    //==============================================================================
-    ToggleButton* m_shift;
-    ToggleButton* m_option;
-    ToggleButton* m_control;
-    ToggleButton* m_alt;
-                Label* m_labelAction[8];
+  ActionsDisplay *m_pActionDisplay;
 
-                ActionsDisplay* m_pActionDisplay;
-
-    //==============================================================================
-    // (prevent copy constructor and operator= being generated..)
-    ActionsDialogComponent (const ActionsDialogComponent&);
-    const ActionsDialogComponent& operator= (const ActionsDialogComponent&);
+  //==============================================================================
+  // (prevent copy constructor and operator= being generated..)
+  ActionsDialogComponent(const ActionsDialogComponent &);
+  const ActionsDialogComponent &operator=(const ActionsDialogComponent &);
 };
 
-
-#endif   // __JUCER_HEADER_ACTIONSDIALOGCOMPONENT_ACTIONSDIALOGCOMPONENT_722363D1__
+#endif // __JUCER_HEADER_ACTIONSDIALOGCOMPONENT_ACTIONSDIALOGCOMPONENT_722363D1__

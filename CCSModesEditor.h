@@ -14,45 +14,41 @@ class CCSModesEditorWindow;
 class CCSMode;
 class CommandMode;
 
-class CCSModesEditor 
-{
- public:
-  CCSModesEditor(CCSManager* pManager);
- public:
+class CCSModesEditor {
+public:
+  CCSModesEditor(CCSManager *pManager);
+
+public:
   virtual ~CCSModesEditor(void);
 
-  void setMainComponent(Component** ppComponent, bool visible);
-  void setMainComponent(CCSMode* pCommandMode, bool visible);
-  void closeWindowAndRemoveComponent(Component* pComponent);
+  void setMainComponent(Component **ppComponent, bool visible);
+  void setMainComponent(CCSMode *pCommandMode, bool visible);
+  void closeWindowAndRemoveComponent(Component *pComponent);
   void deleteWindow();
 
-  void projectChanged(XmlElement* pXmlElement, ProjectConfig::EAction action);
+  void projectChanged(XmlElement *pXmlElement, ProjectConfig::EAction action);
 
- private:
-  CCSManager* m_pManager;
-  CCSModesEditorWindow* m_pWindow;
-  CCSMode* m_pComponentsCommandMode;
-  TooltipWindow* m_pTooltipWindow;
-  Component* m_pActiveComponent;
+private:
+  CCSManager *m_pManager;
+  CCSModesEditorWindow *m_pWindow;
+  CCSMode *m_pComponentsCommandMode;
+  TooltipWindow *m_pTooltipWindow;
+  Component *m_pActiveComponent;
   int m_projectChangedConnectionId;
 };
 
-
-class CCSModesEditorWindow :
-public DialogWindow
-{
- public:
- CCSModesEditorWindow(   const String& name,
-                         const Colour& backgroundColour,
-                         const bool escapeKeyTriggersCloseButton,
-                         const bool addToDesktop,
-                         CCSManager* pManager) : DialogWindow(name, backgroundColour, escapeKeyTriggersCloseButton, addToDesktop){
+class CCSModesEditorWindow : public DialogWindow {
+public:
+  CCSModesEditorWindow(const String &name, const Colour &backgroundColour,
+                       const bool escapeKeyTriggersCloseButton,
+                       const bool addToDesktop, CCSManager *pManager)
+      : DialogWindow(name, backgroundColour, escapeKeyTriggersCloseButton,
+                     addToDesktop) {
     m_ppLastUsedComponent = NULL;
     m_pManager = pManager;
   };
 
-  ~CCSModesEditorWindow() {
-  }
+  ~CCSModesEditorWindow() {}
 
   void closeButtonPressed() {
     setVisible(false);
@@ -61,7 +57,7 @@ public DialogWindow
     m_pManager->getEditor()->deleteWindow();
   }
 
-  void setMainComponent(Component** ppComponent) {
+  void setMainComponent(Component **ppComponent) {
     removeComponent();
     m_ppLastUsedComponent = ppComponent;
   }
@@ -72,10 +68,9 @@ public DialogWindow
     setContentComponent(NULL, false, false);
   }
 
-  Component** getLastUsedComponent(){return m_ppLastUsedComponent;}
+  Component **getLastUsedComponent() { return m_ppLastUsedComponent; }
 
- private:
-  Component** m_ppLastUsedComponent;
-  CCSManager* m_pManager;
+private:
+  Component **m_ppLastUsedComponent;
+  CCSManager *m_pManager;
 };
-

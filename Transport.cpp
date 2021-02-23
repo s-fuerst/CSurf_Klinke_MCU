@@ -1,14 +1,14 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 #include "Transport.h"
 #include "csurf_mcu.h" 
 
 class CSurf_MCU;
 
-Transport::Transport(CSurf_MCU* p_mcu) {
+Transport::Transport(CSurf_MCU *p_mcu) {
   m_client = POSITION;
   m_clientButtonPressed = POSITION;
   m_direction = NO_REEL;
@@ -23,16 +23,16 @@ void Transport::setClient(Client new_client) {
 }
 
 void Transport::handleButton(Client button, bool buttonDown) {
-  if (buttonDown) 
+  if (buttonDown)
     m_clientButtonPressed = button;
   else {
-      m_clientButtonPressed = POSITION;
+    m_clientButtonPressed = POSITION;
     if (m_pMCU->IsLastButton(B_MARKER) || m_pMCU->IsLastButton(B_NUDGE))
       if (button != m_client)
         setClient(button);
       else
         setClient(POSITION);
-  } 
+  }
 }
 
 void Transport::updateLeds() {
@@ -70,7 +70,7 @@ void Transport::rewind() {
       m_pMCU->GetRegion()->GetFromActualRegion(true);
       SetEditCurPos(m_pMCU->GetRegion()->GetStart(), true, false);
       return;
-    } else if (m_pMCU->IsModifierPressed(VK_CONTROL)){
+    } else if (m_pMCU->IsModifierPressed(VK_CONTROL)) {
       SetEditCurPos(0, true, false);
       return;
     }
@@ -82,7 +82,8 @@ void Transport::rewind() {
     else
       SetEditCurPos(m_pMCU->MoveInBars(GetCursorPosition(), -1), true, false);
 
-    m_pMCU->ScheduleAction( timeGetTime() + (DWORD) m_repeatTime,  &CSurf_MCU::CallTransportRewind );
+    m_pMCU->ScheduleAction(timeGetTime() + (DWORD)m_repeatTime,
+                           &CSurf_MCU::CallTransportRewind);
     m_repeatTime = calcNextRepeatTime(m_repeatTime);
   }
 }
@@ -110,9 +111,9 @@ void Transport::forward() {
       SetEditCurPos(m_pMCU->GetRegion()->GetEnd(), true, false);
       return;
     } else if (m_pMCU->IsModifierPressed(VK_CONTROL)) {
-      SendMessage(g_hwnd,WM_COMMAND,ID_GOTO_PROJECT_END,0);
+      SendMessage(g_hwnd, WM_COMMAND, ID_GOTO_PROJECT_END, 0);
       return;
-    } 
+    }
   }
 
   if (m_direction == FORWARD) {
@@ -121,46 +122,44 @@ void Transport::forward() {
     else
       SetEditCurPos(m_pMCU->MoveInBars(GetCursorPosition(), 1), true, false);
 
-    m_pMCU->ScheduleAction( timeGetTime() + (DWORD) m_repeatTime,  &CSurf_MCU::CallTransportForward );
+    m_pMCU->ScheduleAction(timeGetTime() + (DWORD)m_repeatTime,
+                           &CSurf_MCU::CallTransportForward);
     m_repeatTime = calcNextRepeatTime(m_repeatTime);
   }
 }
-
 
 void Transport::rewindButton(bool down) {
   if (down)
     m_rewindPressTime = timeGetTime();
 
-  switch (getActualClient())
-  {
-    case POSITION:
-      if (down) {
-        startReel(REWIND);
-        rewind();
+  switch (getActualClient()) {
+  case POSITION:
+    if (down) {
+      startReel(REWIND);
+      rewind();
+    } else {
+      endReel();
+    }
+    break;
+  case MARKER:
+    if (down) {
+      if (m_pMCU->IsModifierPressed(VK_OPTION)) {
+        if (m_pMCU->IsModifierPressed(VK_SHIFT))
+          m_pMCU->GetRegion()->SwapRegionBackward(false);
+        else
+          m_pMCU->GetRegion()->PreviousRegion(false);
+      } else if (m_pMCU->IsModifierPressed(VK_ALT)) {
+        if (m_pMCU->IsModifierPressed(VK_CONTROL))
+          m_pMCU->GetRegion()->SwapRegionBackward(true);
+        else
+          m_pMCU->GetRegion()->PreviousRegion(true);
+      } else if (m_pMCU->IsModifierPressed(VK_CONTROL)) {
+        SetEditCurPos(0, true, false);
+      } else {
+        SendMessage(g_hwnd, WM_COMMAND, ID_MARKER_PREV, 0);
       }
-      else {
-        endReel();
-      }
-      break;
-    case MARKER:
-      if (down) {
-        if (m_pMCU->IsModifierPressed(VK_OPTION)) {
-          if (m_pMCU->IsModifierPressed(VK_SHIFT)) 
-            m_pMCU->GetRegion()->SwapRegionBackward(false);
-          else
-            m_pMCU->GetRegion()->PreviousRegion(false);
-        } else if (m_pMCU->IsModifierPressed(VK_ALT)) {
-          if (m_pMCU->IsModifierPressed(VK_CONTROL)) 
-            m_pMCU->GetRegion()->SwapRegionBackward(true);
-          else
-            m_pMCU->GetRegion()->PreviousRegion(true);
-        } else if (m_pMCU->IsModifierPressed(VK_CONTROL)) {
-          SetEditCurPos(0, true, false);
-        } else {
-          SendMessage(g_hwnd,WM_COMMAND,ID_MARKER_PREV,0);
-        }
-      }
-      break;
+    }
+    break;
   }
 }
 
@@ -168,51 +167,50 @@ void Transport::forwardButton(bool down) {
   if (down)
     m_ffwdPressTime = timeGetTime();
 
-  switch (getActualClient())
-  {
-    case POSITION:
-      if (down) {
-        startReel(FORWARD);
-        forward();
+  switch (getActualClient()) {
+  case POSITION:
+    if (down) {
+      startReel(FORWARD);
+      forward();
+    } else {
+      endReel();
+    }
+    break;
+  case MARKER:
+    if (down) {
+      if (m_pMCU->IsModifierPressed(VK_OPTION)) {
+        if (m_pMCU->IsModifierPressed(VK_SHIFT))
+          m_pMCU->GetRegion()->SwapRegionForward(false);
+        else
+          m_pMCU->GetRegion()->NextRegion(false);
+      } else if (m_pMCU->IsModifierPressed(VK_ALT)) {
+        if (m_pMCU->IsModifierPressed(VK_CONTROL))
+          m_pMCU->GetRegion()->SwapRegionForward(true);
+        else
+          m_pMCU->GetRegion()->NextRegion(true);
+      } else if (m_pMCU->IsModifierPressed(VK_CONTROL)) {
+        SendMessage(g_hwnd, WM_COMMAND, ID_GOTO_PROJECT_END, 0);
+      } else {
+        SendMessage(g_hwnd, WM_COMMAND, ID_MARKER_NEXT, 0);
       }
-      else {
-        endReel();
-      }
-      break;
-    case MARKER:
-      if (down) {
-        if (m_pMCU->IsModifierPressed(VK_OPTION)) {
-          if (m_pMCU->IsModifierPressed(VK_SHIFT)) 
-            m_pMCU->GetRegion()->SwapRegionForward(false);
-          else
-            m_pMCU->GetRegion()->NextRegion(false);
-        } else if (m_pMCU->IsModifierPressed(VK_ALT)) {
-          if (m_pMCU->IsModifierPressed(VK_CONTROL)) 
-            m_pMCU->GetRegion()->SwapRegionForward(true);
-          else
-            m_pMCU->GetRegion()->NextRegion(true);
-        } else if (m_pMCU->IsModifierPressed(VK_CONTROL)) {
-          SendMessage(g_hwnd,WM_COMMAND,ID_GOTO_PROJECT_END,0);
-        } else {
-          SendMessage(g_hwnd,WM_COMMAND,ID_MARKER_NEXT,0);
-        }
-      }
-      break;
+    }
+    break;
   }
 }
 
-void Transport::playButton(bool down)
-{
+void Transport::playButton(bool down) {
   if (down) {
     if (m_pMCU->IsModifierPressed(VK_ALT)) {
-      Region* pRegion;
+      Region *pRegion;
       if (m_pMCU->IsModifierPressed(VK_SHIFT))
-        pRegion = new Region(m_pMCU->MoveInBeats(GetCursorPosition(), -.5), m_pMCU->MoveInBeats(GetCursorPosition(),  .5));
+        pRegion = new Region(m_pMCU->MoveInBeats(GetCursorPosition(), -.5),
+                             m_pMCU->MoveInBeats(GetCursorPosition(), .5));
       else
-        pRegion = new Region(m_pMCU->MoveInBars(GetCursorPosition(), -.5), m_pMCU->MoveInBars(GetCursorPosition(),  .5));
+        pRegion = new Region(m_pMCU->MoveInBars(GetCursorPosition(), -.5),
+                             m_pMCU->MoveInBars(GetCursorPosition(), .5));
       pRegion->Set(true);
       if (m_pMCU->GetRepeatState() == false) {
-        SendMessage(g_hwnd,WM_COMMAND,IDC_REPEAT,0);
+        SendMessage(g_hwnd, WM_COMMAND, IDC_REPEAT, 0);
       }
       CSurf_OnPlay();
     } else {
@@ -238,17 +236,17 @@ void Transport::endReel() {
   }
 }
 
-void Transport::recordButton(bool down)
-{
+void Transport::recordButton(bool down) {
   if (down)
     CSurf_OnRecord();
 }
 
-void Transport::stopButton(bool down)
-{
-  if (down)
-  {
-    if (m_pMCU->IsModifierPressed(VK_CONTROL) || m_pMCU->IsModifierPressed(VK_ALT) || m_pMCU->IsModifierPressed(VK_OPTION) || m_pMCU->IsModifierPressed(VK_SHIFT))
+void Transport::stopButton(bool down) {
+  if (down) {
+    if (m_pMCU->IsModifierPressed(VK_CONTROL) ||
+        m_pMCU->IsModifierPressed(VK_ALT) ||
+        m_pMCU->IsModifierPressed(VK_OPTION) ||
+        m_pMCU->IsModifierPressed(VK_SHIFT))
       CSurf_OnStop();
     else
       SendMessage(g_hwnd, WM_COMMAND, ID_STOP_AND_SAVE_MEDIA, 0);

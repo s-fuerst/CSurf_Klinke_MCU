@@ -1,18 +1,18 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 #include "PlugModeOptions.h"
 
-PlugModeOptions::PlugModeOptions(DisplayHandler* pDH) : Options(pDH),
-m_bMCUFollowModified(false),
-m_iLastMCUFollowOption(-1)
-{
+PlugModeOptions::PlugModeOptions(DisplayHandler *pDH)
+    : Options(pDH), m_bMCUFollowModified(false), m_iLastMCUFollowOption(-1) {
   addOption(PMO_MCU_FOLLOW);
   addAttribute(PMO_MCU_FOLLOW, PMOA_OFF);
   addAttribute(PMO_MCU_FOLLOW, PMOA_SAME_TRACK, true);
-  addAttribute(PMO_MCU_FOLLOW, PMOA_ALWAYS); // if ALWAYS change the place, checkAndModifyOptions must be adjusted too
+  addAttribute(PMO_MCU_FOLLOW,
+               PMOA_ALWAYS); // if ALWAYS change the place,
+                             // checkAndModifyOptions must be adjusted too
 
   addOption(PMO_GUI_FOLLOW);
   addAttribute(PMO_GUI_FOLLOW, PMOA_OFF);
@@ -34,18 +34,13 @@ m_iLastMCUFollowOption(-1)
   readConfigFile();
 }
 
-PlugModeOptions::~PlugModeOptions(void)
-{
-  writeConfigFile();
-}
+PlugModeOptions::~PlugModeOptions(void) { writeConfigFile(); }
 
-String PlugModeOptions::getConfigFileName()
-{
+String PlugModeOptions::getConfigFileName() {
   return String("PlugModeOptions1");
 }
 
-void PlugModeOptions::checkAndModifyOptions()
-{
+void PlugModeOptions::checkAndModifyOptions() {
   if (isOptionSetTo(PMO_LIMIT_FLOATING, PMOA_ONLY_ONE_GLOBAL)) {
     setOptionTo(PMO_MCU_FOLLOW, 2 /*PMOA_ALWAYS*/);
     m_bMCUFollowModified = true;

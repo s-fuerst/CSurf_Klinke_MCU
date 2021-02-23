@@ -7,11 +7,9 @@
 #include "csurf_mcu.h"
 #include "sendreceivemodebase.h"
 
-class ReceiveMode :
-public SendReceiveModeBase
-{
- public:
-  ReceiveMode(CCSManager* pManager);
+class ReceiveMode : public SendReceiveModeBase {
+public:
+  ReceiveMode(CCSManager *pManager);
   virtual ~ReceiveMode(void);
 
   void activate();
@@ -20,12 +18,12 @@ public SendReceiveModeBase
 
   void updateAssignmentDisplay();
 
- protected:
-  void getSendInfos(std::vector<void*>* pResult, ESendInfo sendInfo);
-  void* getSendInfo(ESendInfo sendInfo, int iTrack);
-  void setSendInfo(ESendInfo sendInfo, int iTrack, void* pValue, int wait);
+protected:
+  void getSendInfos(std::vector<void *> *pResult, ESendInfo sendInfo);
+  void *getSendInfo(ESendInfo sendInfo, int iTrack);
+  void setSendInfo(ESendInfo sendInfo, int iTrack, void *pValue, int wait);
 
   int calcSendIdx(int sendNr);
-  
-  const char* stringForESendInfo(ESendInfo sendInfo);
+
+  const char *stringForESendInfo(ESendInfo sendInfo);
 };

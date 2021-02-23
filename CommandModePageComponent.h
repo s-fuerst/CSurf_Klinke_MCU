@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 /*
   ==============================================================================
@@ -39,47 +39,45 @@
 
 //==============================================================================
 /**
-                                                                    //[Comments]
-    An auto-generated component, created by the Jucer.
+ //[Comments]
+ An auto-generated component, created by the Jucer.
 
-    Describe your class and how it works here!
-                                                                    //[/Comments]
-*/
-class CommandModePageComponent  : public Component,
-                                  public LabelListener
-{
+ Describe your class and how it works here!
+ //[/Comments]
+ */
+class CommandModePageComponent : public Component, public LabelListener {
 public:
-    //==============================================================================
-    CommandModePageComponent (CommandMode::Page* pPage, CommandModeMainComponent* pMain);
-    ~CommandModePageComponent();
+  //==============================================================================
+  CommandModePageComponent(CommandMode::Page *pPage,
+                           CommandModeMainComponent *pMain);
+  ~CommandModePageComponent();
 
-    //==============================================================================
-    //[UserMethods]     -- You can add your own custom methods in this section.
-    //[/UserMethods]
+  //==============================================================================
+  //[UserMethods]     -- You can add your own custom methods in this section.
+  //[/UserMethods]
 
-    void paint (Graphics& g);
-    void resized();
-    void labelTextChanged (Label* labelThatHasChanged);
+  void paint(Graphics &g);
+  void resized();
+  void labelTextChanged(Label *labelThatHasChanged);
 
+  //==============================================================================
+  juce_UseDebuggingNewOperator
 
-    //==============================================================================
-    juce_UseDebuggingNewOperator
+      private :
+      //[UserVariables]   -- You can add your own custom variables in this
+      //section.
+      CommandModeVPOTComponent *vpotComponent[2][8];
+  CommandMode::Page *m_pPage;
+  CommandModeMainComponent *m_pMain;
+  //[/UserVariables]
 
-private:
-    //[UserVariables]   -- You can add your own custom variables in this section.
-                CommandModeVPOTComponent* vpotComponent[2][8];
-                CommandMode::Page* m_pPage;
-                CommandModeMainComponent* m_pMain;
-    //[/UserVariables]
+  //==============================================================================
+  Label *pageNameLabel;
 
-    //==============================================================================
-    Label* pageNameLabel;
-
-    //==============================================================================
-    // (prevent copy constructor and operator= being generated..)
-    CommandModePageComponent (const CommandModePageComponent&);
-    const CommandModePageComponent& operator= (const CommandModePageComponent&);
+  //==============================================================================
+  // (prevent copy constructor and operator= being generated..)
+  CommandModePageComponent(const CommandModePageComponent &);
+  const CommandModePageComponent &operator=(const CommandModePageComponent &);
 };
 
-
-#endif   // __JUCER_HEADER_COMMANDMODEPAGECOMPONENT_COMMANDMODEPAGECOMPONENT_AF13CAB8__
+#endif // __JUCER_HEADER_COMMANDMODEPAGECOMPONENT_COMMANDMODEPAGECOMPONENT_AF13CAB8__

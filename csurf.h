@@ -121,7 +121,7 @@ extern int (*GetTrackNumSends)(MediaTrack* tr, int category);
 extern void *(*GetSetTrackSendInfo)(MediaTrack *tr, int category, int sendidx, const char *parmname, void *setNewValue);
 extern void *(*GetSetMediaTrackInfo)(MediaTrack *tr, const char *parmname, void *setNewValue);
 extern int (*EnumProjectMarkers)(int idx, bool *isrgn, double *pos, double *rgnend, 
-                          char **name, int *markrgnindexnumber);
+				 char **name, int *markrgnindexnumber);
 extern void (*GetSet_LoopTimeRange)(bool isSet, bool isLoop, double *start, double *end, bool allowautoseek);
 extern void (*SetEditCurPos)(double time, bool moveview, bool seekplay);
 extern void (*Undo_OnStateChangeEx)(const char *descchange, int whichStates, int trackparm); // trackparm=-1 by default, or if updating one fx chain, you can specify track index

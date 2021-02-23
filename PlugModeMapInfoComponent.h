@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 /*
   ==============================================================================
@@ -34,57 +34,52 @@ class PlugModeComponent;
 class PlugMap;
 //[/Headers]
 
-
-
 //==============================================================================
 /**
-                                                                    //[Comments]
-    An auto-generated component, created by the Jucer.
+ //[Comments]
+ An auto-generated component, created by the Jucer.
 
-    Describe your class and how it works here!
-                                                                    //[/Comments]
-*/
-class PlugModeMapInfoComponent  : public Component,
-                                  public TextEditorListener
-{
+ Describe your class and how it works here!
+ //[/Comments]
+ */
+class PlugModeMapInfoComponent : public Component, public TextEditorListener {
 public:
-    //==============================================================================
-    PlugModeMapInfoComponent (PlugModeComponent* pMC, PlugMap* pMap);
-    ~PlugModeMapInfoComponent();
+  //==============================================================================
+  PlugModeMapInfoComponent(PlugModeComponent *pMC, PlugMap *pMap);
+  ~PlugModeMapInfoComponent();
 
-    //==============================================================================
-    //[UserMethods]     -- You can add your own custom methods in this section.
-                void updateEverything();
-                /** TextEditorListener callbacks */
-                void textEditorTextChanged (TextEditor& editor);
-                void textEditorReturnKeyPressed (TextEditor& editor){};
-                void textEditorEscapeKeyPressed (TextEditor& editor){};
-                void textEditorFocusLost (TextEditor& editor){};
-    //[/UserMethods]
+  //==============================================================================
+  //[UserMethods]     -- You can add your own custom methods in this section.
+  void updateEverything();
+  /** TextEditorListener callbacks */
+  void textEditorTextChanged(TextEditor &editor);
+  void textEditorReturnKeyPressed(TextEditor &editor){};
+  void textEditorEscapeKeyPressed(TextEditor &editor){};
+  void textEditorFocusLost(TextEditor &editor){};
+  //[/UserMethods]
 
-    void paint (Graphics& g);
-    void resized();
+  void paint(Graphics &g);
+  void resized();
 
+  //==============================================================================
+  juce_UseDebuggingNewOperator
 
-    //==============================================================================
-    juce_UseDebuggingNewOperator
+      private :
+      //[UserVariables]   -- You can add your own custom variables in this
+      //section.
+      PlugMap *m_pPlugMap;
+  //[/UserVariables]
 
-private:
-    //[UserVariables]   -- You can add your own custom variables in this section.
-                PlugMap* m_pPlugMap;
-    //[/UserVariables]
+  //==============================================================================
+  TextEditor *m_textCreator;
+  Label *m_labelCreator;
+  TextEditor *m_textNotes;
+  Label *m_labelNotes;
 
-    //==============================================================================
-    TextEditor* m_textCreator;
-    Label* m_labelCreator;
-    TextEditor* m_textNotes;
-    Label* m_labelNotes;
-
-    //==============================================================================
-    // (prevent copy constructor and operator= being generated..)
-    PlugModeMapInfoComponent (const PlugModeMapInfoComponent&);
-    const PlugModeMapInfoComponent& operator= (const PlugModeMapInfoComponent&);
+  //==============================================================================
+  // (prevent copy constructor and operator= being generated..)
+  PlugModeMapInfoComponent(const PlugModeMapInfoComponent &);
+  const PlugModeMapInfoComponent &operator=(const PlugModeMapInfoComponent &);
 };
 
-
-#endif   // __JUCER_HEADER_PLUGMODEMAPINFOCOMPONENT_PLUGMODEMAPINFOCOMPONENT_6D9C6790__
+#endif // __JUCER_HEADER_PLUGMODEMAPINFOCOMPONENT_PLUGMODEMAPINFOCOMPONENT_6D9C6790__

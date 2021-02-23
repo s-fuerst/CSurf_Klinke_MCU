@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 #include "boost\foreach.hpp"
 #include "PlugMap.h"
@@ -21,7 +21,7 @@ void PMParam::initValues() {
   m_paramID = NOT_ASSIGNED;
 }
 
-void PMParam::writeToXml(XmlElement* pElement) {
+void PMParam::writeToXml(XmlElement *pElement) {
   if (m_nameShort.containsNonWhitespaceChars()) {
     pElement->setAttribute(PMAP_ATT_SNAME, m_nameShort);
   }
@@ -31,7 +31,7 @@ void PMParam::writeToXml(XmlElement* pElement) {
   pElement->setAttribute(PMAP_ATT_PARAMID, m_paramID);
 }
 
-bool PMParam::readFromXml(XmlElement* pElement) {
+bool PMParam::readFromXml(XmlElement *pElement) {
   if (!pElement)
     return false;
 
@@ -39,7 +39,7 @@ bool PMParam::readFromXml(XmlElement* pElement) {
   m_nameLong = pElement->getStringAttribute(PMAP_ATT_LNAME);
   m_paramID = pElement->getIntAttribute(PMAP_ATT_PARAMID);
 
-  return true;  
+  return true;
 }
 
 //////////////////////////////////////////////////
@@ -48,13 +48,13 @@ bool PMParam::readFromXml(XmlElement* pElement) {
 
 #define PMAP_NODE_FADER JUCE_T("FADER")
 
-void PMFader::writeToXml(XmlElement* pElement) {
-  XmlElement* pFaderNode = new XmlElement(PMAP_NODE_FADER);
+void PMFader::writeToXml(XmlElement *pElement) {
+  XmlElement *pFaderNode = new XmlElement(PMAP_NODE_FADER);
   pElement->addChildElement(pFaderNode);
   PMParam::writeToXml(pFaderNode);
 }
 
-bool PMFader::readFromXml(XmlElement* pElement) {
+bool PMFader::readFromXml(XmlElement *pElement) {
   return PMParam::readFromXml(pElement);
 }
 
@@ -66,13 +66,9 @@ bool PMFader::readFromXml(XmlElement* pElement) {
 #define PMAP_NODE_STEP JUCE_T("STEP")
 #define PMAP_ATT_STEPVALUE JUCE_T("value")
 
-PMVPot::PMVPot() {
-  m_pStepsMap = new tSteps();
-}
+PMVPot::PMVPot() { m_pStepsMap = new tSteps(); }
 
-PMVPot::~PMVPot() {
-  safe_delete(m_pStepsMap);
-}
+PMVPot::~PMVPot() { safe_delete(m_pStepsMap); }
 
 void PMVPot::setParamID(int newID) {
   if (newID != m_paramID) {
@@ -81,13 +77,14 @@ void PMVPot::setParamID(int newID) {
   PMParam::setParamID(newID);
 }
 
-void PMVPot::writeToXml(XmlElement* pElement) {
-  XmlElement* pVPotNode = new XmlElement(PMAP_NODE_VPOT);
+void PMVPot::writeToXml(XmlElement *pElement) {
+  XmlElement *pVPotNode = new XmlElement(PMAP_NODE_VPOT);
   pElement->addChildElement(pVPotNode);
   PMParam::writeToXml(pVPotNode);
 
-  for (tSteps::const_iterator iterSteps = m_pStepsMap->begin(); iterSteps != m_pStepsMap->end(); ++iterSteps) {
-    XmlElement* pStepNode = new XmlElement(PMAP_NODE_STEP);
+  for (tSteps::const_iterator iterSteps = m_pStepsMap->begin();
+       iterSteps != m_pStepsMap->end(); ++iterSteps) {
+    XmlElement *pStepNode = new XmlElement(PMAP_NODE_STEP);
     pVPotNode->addChildElement(pStepNode);
     pStepNode->setAttribute(PMAP_ATT_STEPVALUE, (*iterSteps).first);
     pStepNode->setAttribute(PMAP_ATT_SNAME, (*iterSteps).second.get<0>());
@@ -95,19 +92,20 @@ void PMVPot::writeToXml(XmlElement* pElement) {
   }
 }
 
-bool PMVPot::readFromXml(XmlElement* pElement) {
+bool PMVPot::readFromXml(XmlElement *pElement) {
   if (!pElement)
     return false;
 
   if (!PMParam::readFromXml(pElement))
     return false;
 
-  forEachXmlChildElement (*pElement, pStep) {
+  forEachXmlChildElement(*pElement, pStep) {
     double val = pStep->getDoubleAttribute(PMAP_ATT_STEPVALUE);
     String shortName = pStep->getStringAttribute(PMAP_ATT_SNAME);
     String longName = pStep->getStringAttribute(PMAP_ATT_LNAME);
-    m_pStepsMap->insert(tSteps::value_type(val, tStepsValue(shortName, longName)));
-  } 
+    m_pStepsMap->insert(
+        tSteps::value_type(val, tStepsValue(shortName, longName)));
+  }
 
   return true;
 }
@@ -132,13 +130,9 @@ void PMPage::initValues(int id) {
   m_referTo = DOESNT_REFER;
   m_offset = 0;
 
-  BOOST_FOREACH(PMFader& fader, m_faders) {
-    fader.initValues();
-  }
+  BOOST_FOREACH (PMFader &fader, m_faders) { fader.initValues(); }
 
-  BOOST_FOREACH(PMVPot& vpot, m_vpots) {
-    vpot.initValues();
-  }
+  BOOST_FOREACH (PMVPot &vpot, m_vpots) { vpot.initValues(); }
 }
 
 bool PMPage::isUsed() {
@@ -155,8 +149,8 @@ bool PMPage::isUsed() {
   return false;
 }
 
-void PMPage::writeToXml(XmlElement* pElement) {
-  XmlElement* pPageNode = new XmlElement(PMAP_NODE_PAGE);
+void PMPage::writeToXml(XmlElement *pElement) {
+  XmlElement *pPageNode = new XmlElement(PMAP_NODE_PAGE);
   pElement->addChildElement(pPageNode);
   pPageNode->setAttribute(PMAP_ATT_ID, m_id);
   pPageNode->setAttribute(PMAP_ATT_SNAME, m_nameShort);
@@ -164,15 +158,15 @@ void PMPage::writeToXml(XmlElement* pElement) {
   pPageNode->setAttribute(PMAP_ATT_REFER_TO, m_referTo);
   pPageNode->setAttribute(PMAP_ATT_OFFSET, m_offset);
 
-  BOOST_FOREACH(PMFader& fader, m_faders) 
+  BOOST_FOREACH (PMFader &fader, m_faders)
     fader.writeToXml(pPageNode);
 
-  BOOST_FOREACH(PMVPot& vpot, m_vpots) 
+  BOOST_FOREACH (PMVPot &vpot, m_vpots)
     vpot.writeToXml(pPageNode);
 }
 
-bool PMPage::readFromXml(XmlElement* pPageNode) {
-  if (!pPageNode || pPageNode->getTagName() != PMAP_NODE_PAGE) 
+bool PMPage::readFromXml(XmlElement *pPageNode) {
+  if (!pPageNode || pPageNode->getTagName() != PMAP_NODE_PAGE)
     return false;
 
   m_nameShort = pPageNode->getStringAttribute(PMAP_ATT_SNAME);
@@ -180,15 +174,15 @@ bool PMPage::readFromXml(XmlElement* pPageNode) {
   m_referTo = pPageNode->getIntAttribute(PMAP_ATT_REFER_TO);
   m_offset = pPageNode->getIntAttribute(PMAP_ATT_OFFSET);
 
-  XmlElement* pChild = pPageNode->getFirstChildElement();
-  BOOST_FOREACH(PMFader& fader, m_faders) {
+  XmlElement *pChild = pPageNode->getFirstChildElement();
+  BOOST_FOREACH (PMFader &fader, m_faders) {
     if (!fader.readFromXml(pChild)) {
       return false;
     }
     pChild = pChild->getNextElement();
   }
 
-  BOOST_FOREACH(PMVPot& vpot, m_vpots) {
+  BOOST_FOREACH (PMVPot &vpot, m_vpots) {
     if (!vpot.readFromXml(pChild)) {
       return false;
     }
@@ -210,7 +204,6 @@ void PMBank::initValues(int id) {
   m_referTo = DOESNT_REFER;
   m_offset = 0;
 
-
   for (int i = 0; i < 8; i++) {
     m_pages[i].initValues(i);
   }
@@ -221,16 +214,16 @@ bool PMBank::isUsed() {
     return true;
   }
 
-  BOOST_FOREACH(PMPage& page, m_pages) {
+  BOOST_FOREACH (PMPage &page, m_pages) {
     if (page.isUsed())
       return true;
   }
-  
+
   return false;
 }
 
-void PMBank::writeToXml(XmlElement* pElement) {
-  XmlElement* pBankNode = new XmlElement(PMAP_NODE_BANK);
+void PMBank::writeToXml(XmlElement *pElement) {
+  XmlElement *pBankNode = new XmlElement(PMAP_NODE_BANK);
   pElement->addChildElement(pBankNode);
   pBankNode->setAttribute(PMAP_ATT_ID, m_id);
   pBankNode->setAttribute(PMAP_ATT_SNAME, m_nameShort);
@@ -238,15 +231,15 @@ void PMBank::writeToXml(XmlElement* pElement) {
   pBankNode->setAttribute(PMAP_ATT_REFER_TO, m_referTo);
   pBankNode->setAttribute(PMAP_ATT_OFFSET, m_offset);
 
-  BOOST_FOREACH(PMPage& page, m_pages) {
-    if(page.isUsed()) {
+  BOOST_FOREACH (PMPage &page, m_pages) {
+    if (page.isUsed()) {
       page.writeToXml(pBankNode);
     }
   }
 }
 
-bool PMBank::readFromXml(XmlElement* pBankNode) {
-  if (!pBankNode || pBankNode->getTagName() != PMAP_NODE_BANK) 
+bool PMBank::readFromXml(XmlElement *pBankNode) {
+  if (!pBankNode || pBankNode->getTagName() != PMAP_NODE_BANK)
     return false;
 
   m_nameShort = pBankNode->getStringAttribute(PMAP_ATT_SNAME);
@@ -254,12 +247,12 @@ bool PMBank::readFromXml(XmlElement* pBankNode) {
   m_referTo = pBankNode->getIntAttribute(PMAP_ATT_REFER_TO);
   m_offset = pBankNode->getIntAttribute(PMAP_ATT_OFFSET);
 
-  forEachXmlChildElement (*pBankNode, pPage) {
+  forEachXmlChildElement(*pBankNode, pPage) {
     int id = pPage->getIntAttribute(PMAP_ATT_ID);
     if (!m_pages[id].readFromXml(pPage)) {
-      return false;     
+      return false;
     }
-  }  
+  }
   return true;
 }
 
@@ -268,7 +261,7 @@ bool PMBank::readFromXml(XmlElement* pBankNode) {
 //////////////////////////////////////////////////
 
 PlugMap::PlugMap(void)
-//m_formatValues(true)
+// m_formatValues(true)
 {
   initValues();
 }
@@ -282,28 +275,26 @@ void PlugMap::initValues() {
   }
 }
 
-PlugMap::~PlugMap(void)
-{
-}
+PlugMap::~PlugMap(void) {}
 
 #define PMAP_NODE_MAPINFO JUCE_T("MAPINFO")
 #define PMAP_ATT_CREATOR JUCE_T("creator")
 
-void PlugMap::writeToXml(XmlElement* pElement) {
-  XmlElement* pInfoNode = new XmlElement(PMAP_NODE_MAPINFO);
+void PlugMap::writeToXml(XmlElement *pElement) {
+  XmlElement *pInfoNode = new XmlElement(PMAP_NODE_MAPINFO);
   pElement->addChildElement(pInfoNode);
   pInfoNode->setAttribute(PMAP_ATT_CREATOR, m_creator);
   pInfoNode->addTextElement(m_info);
 
-  BOOST_FOREACH(PMBank& bank, m_banks) {
+  BOOST_FOREACH (PMBank &bank, m_banks) {
     if (bank.isUsed()) {
       bank.writeToXml(pElement);
     }
   }
 }
 
-bool PlugMap::readFromXml(XmlElement* pRootElement) {
-  forEachXmlChildElement (*pRootElement, pChild) {
+bool PlugMap::readFromXml(XmlElement *pRootElement) {
+  forEachXmlChildElement(*pRootElement, pChild) {
     if (pChild->getTagName() == PMAP_NODE_MAPINFO) {
       m_creator = pChild->getStringAttribute(PMAP_ATT_CREATOR);
       m_info = pChild->getAllSubText();
@@ -311,11 +302,10 @@ bool PlugMap::readFromXml(XmlElement* pRootElement) {
     } else {
       int id = pChild->getIntAttribute(PMAP_ATT_ID);
       if (!m_banks[id].readFromXml(pChild)) {
-        return false;     
+        return false;
       }
     }
-  }  
+  }
 
   return true;
 }
-

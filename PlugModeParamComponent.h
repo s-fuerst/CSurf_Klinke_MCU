@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 /*
   ==============================================================================
@@ -37,57 +37,56 @@ class PlugModeComponent;
 
 //==============================================================================
 /**
-                                                                    //[Comments]
-    An auto-generated component, created by the Jucer.
+ //[Comments]
+ An auto-generated component, created by the Jucer.
 
-    Describe your class and how it works here!
-                                                                    //[/Comments]
-*/
-class PlugModeParamComponent  : public Component,
-                                public LabelListener,
-                                public ComboBoxListener
-{
+ Describe your class and how it works here!
+ //[/Comments]
+ */
+class PlugModeParamComponent : public Component,
+                               public LabelListener,
+                               public ComboBoxListener {
 public:
-    //==============================================================================
-    PlugModeParamComponent (PlugModeComponent* pMC, PMParam* pParam);
-    ~PlugModeParamComponent();
+  //==============================================================================
+  PlugModeParamComponent(PlugModeComponent *pMC, PMParam *pParam);
+  ~PlugModeParamComponent();
 
-    //==============================================================================
-    //[UserMethods]     -- You can add your own custom methods in this section.
-                void updateEverything();
-                void changeParamId(int paramId);
-                void setLearn(bool learn);
-    //[/UserMethods]
+  //==============================================================================
+  //[UserMethods]     -- You can add your own custom methods in this section.
+  void updateEverything();
+  void changeParamId(int paramId);
+  void setLearn(bool learn);
+  //[/UserMethods]
 
-    void paint (Graphics& g);
-    void resized();
-    void labelTextChanged (Label* labelThatHasChanged);
-    void comboBoxChanged (ComboBox* comboBoxThatHasChanged);
-    void mouseDown (const MouseEvent& e);
+  void paint(Graphics &g);
+  void resized();
+  void labelTextChanged(Label *labelThatHasChanged);
+  void comboBoxChanged(ComboBox *comboBoxThatHasChanged);
+  void mouseDown(const MouseEvent &e);
 
+  //==============================================================================
+  juce_UseDebuggingNewOperator
 
-    //==============================================================================
-    juce_UseDebuggingNewOperator
+      private :
+      //[UserVariables]   -- You can add your own custom variables in this
+      //section.
+      void
+      updateParameterList();
 
-private:
-    //[UserVariables]   -- You can add your own custom variables in this section.
-                void updateParameterList();
+  PMParam *m_pParam;
 
-                PMParam* m_pParam;
+  PlugModeComponent *m_pMainComponent;
+  //[/UserVariables]
 
-                PlugModeComponent* m_pMainComponent;
-    //[/UserVariables]
+  //==============================================================================
+  Label *m_nameShort;
+  ComboBox *m_parameter;
+  Label *m_nameLong;
 
-    //==============================================================================
-    Label* m_nameShort;
-    ComboBox* m_parameter;
-    Label* m_nameLong;
-
-    //==============================================================================
-    // (prevent copy constructor and operator= being generated..)
-    PlugModeParamComponent (const PlugModeParamComponent&);
-    const PlugModeParamComponent& operator= (const PlugModeParamComponent&);
+  //==============================================================================
+  // (prevent copy constructor and operator= being generated..)
+  PlugModeParamComponent(const PlugModeParamComponent &);
+  const PlugModeParamComponent &operator=(const PlugModeParamComponent &);
 };
 
-
-#endif   // __JUCER_HEADER_PLUGMODEPARAMCOMPONENT_PLUGMODEPARAMCOMPONENT_5238419A__
+#endif // __JUCER_HEADER_PLUGMODEPARAMCOMPONENT_PLUGMODEPARAMCOMPONENT_5238419A__

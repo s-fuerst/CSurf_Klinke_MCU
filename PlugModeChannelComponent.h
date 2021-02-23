@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 /*
   ==============================================================================
@@ -39,48 +39,51 @@ class PlugModeComponent;
 
 //==============================================================================
 /**
-                                                                    //[Comments]
-    An auto-generated component, created by the Jucer.
+ //[Comments]
+ An auto-generated component, created by the Jucer.
 
-    Describe your class and how it works here!
-                                                                    //[/Comments]
-*/
-class PlugModeChannelComponent  : public Component, TabbedCallback
-{
+ Describe your class and how it works here!
+ //[/Comments]
+ */
+class PlugModeChannelComponent : public Component, TabbedCallback {
 public:
-    //==============================================================================
-    PlugModeChannelComponent (PlugModeComponent* pMC, PMPage* pPage);
-    ~PlugModeChannelComponent();
+  //==============================================================================
+  PlugModeChannelComponent(PlugModeComponent *pMC, PMPage *pPage);
+  ~PlugModeChannelComponent();
 
-    //==============================================================================
-    //[UserMethods]     -- You can add your own custom methods in this section.
-                PlugModeSingleChannelComponent* getSingleChannelComponent(int iChannel){return static_cast<PlugModeSingleChannelComponent*>(m_tabbedChannels->getTabContentComponent(iChannel));}
-                PlugModeSingleChannelComponent* getSelectedChannelComponent(){return getSingleChannelComponent(m_tabbedChannels->getCurrentTabIndex());}
-                void selectedChannelChanged(int iChannel);
-                void selectedTabHasChanged(){updateEverything();}
-                void updateEverything();
-    //[/UserMethods]
+  //==============================================================================
+  //[UserMethods]     -- You can add your own custom methods in this section.
+  PlugModeSingleChannelComponent *getSingleChannelComponent(int iChannel) {
+    return static_cast<PlugModeSingleChannelComponent *>(
+        m_tabbedChannels->getTabContentComponent(iChannel));
+  }
+  PlugModeSingleChannelComponent *getSelectedChannelComponent() {
+    return getSingleChannelComponent(m_tabbedChannels->getCurrentTabIndex());
+  }
+  void selectedChannelChanged(int iChannel);
+  void selectedTabHasChanged() { updateEverything(); }
+  void updateEverything();
+  //[/UserMethods]
 
-    void paint (Graphics& g);
-    void resized();
+  void paint(Graphics &g);
+  void resized();
 
+  //==============================================================================
+  juce_UseDebuggingNewOperator
 
-    //==============================================================================
-    juce_UseDebuggingNewOperator
+      private :
+      //[UserVariables]   -- You can add your own custom variables in this
+      //section.
+      PlugModeComponent *m_pMainComponent;
+  //[/UserVariables]
 
-private:
-    //[UserVariables]   -- You can add your own custom variables in this section.
-                PlugModeComponent* m_pMainComponent;
-    //[/UserVariables]
+  //==============================================================================
+  TabbedComponentWithCallback *m_tabbedChannels;
 
-    //==============================================================================
-    TabbedComponentWithCallback* m_tabbedChannels;
-
-    //==============================================================================
-    // (prevent copy constructor and operator= being generated..)
-    PlugModeChannelComponent (const PlugModeChannelComponent&);
-    const PlugModeChannelComponent& operator= (const PlugModeChannelComponent&);
+  //==============================================================================
+  // (prevent copy constructor and operator= being generated..)
+  PlugModeChannelComponent(const PlugModeChannelComponent &);
+  const PlugModeChannelComponent &operator=(const PlugModeChannelComponent &);
 };
 
-
-#endif   // __JUCER_HEADER_PLUGMODECHANNELCOMPONENT_PLUGMODECHANNELCOMPONENT_FAA54147__
+#endif // __JUCER_HEADER_PLUGMODECHANNELCOMPONENT_PLUGMODECHANNELCOMPONENT_FAA54147__

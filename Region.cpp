@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 #include "Region.h"
 #include <windows.h>
@@ -19,7 +19,7 @@ Region::Region(double start, double end) {
   m_end = end;
 }
 
-bool Region::FindRegion(int searchedIndex ) {
+bool Region::FindRegion(int searchedIndex) {
   bool isrgn;
   int lIndex;
 
@@ -33,7 +33,7 @@ bool Region::FindRegion(int searchedIndex ) {
   return false;
 }
 
-double Region::MarkerPos(int markerID ) {
+double Region::MarkerPos(int markerID) {
   bool isrgn;
   int lIndex;
   double start, end;
@@ -48,22 +48,21 @@ double Region::MarkerPos(int markerID ) {
   return -1;
 }
 
-void Region::DeleteRegion(int index ) {
+void Region::DeleteRegion(int index) {
   /*
-  double originalStart = m_start;
-  double originalEnd = m_end;
-  if (FindRegion(index)) {
+                double originalStart = m_start;
+                double originalEnd = m_end;
+                if (FindRegion(index)) {
     SetEditCurPos(m_start, false, false);
     SendMessage(g_hwnd, WM_COMMAND, 40615, 0); // Delete region
-  }
-  m_start = originalStart;
-  m_end = originalEnd;
+                }
+                m_start = originalStart;
+                m_end = originalEnd;
   */
   DeleteProjectMarker(NULL, index, true);
 }
 
-void Region::DeleteRegionStartWithPos( double pos )
-{
+void Region::DeleteRegionStartWithPos(double pos) {
   double start, end;
   int lIndex;
   bool isrgn;
@@ -78,7 +77,7 @@ void Region::DeleteRegionStartWithPos( double pos )
   } while (idx > 0);
 }
 
-bool Region::FindRegionBefore( double pos ) {
+bool Region::FindRegionBefore(double pos) {
   bool isrgn;
   int lIndex;
   int foundIndex = -1;
@@ -94,7 +93,7 @@ bool Region::FindRegionBefore( double pos ) {
   return FindRegion(foundIndex);
 }
 
-bool Region::FindRegionBehind( double pos ) {
+bool Region::FindRegionBehind(double pos) {
   bool isrgn;
   int lIndex;
 
@@ -108,60 +107,60 @@ bool Region::FindRegionBehind( double pos ) {
   return false;
 }
 
-void Region::SwapRegionForward( bool asLoop ) {
+void Region::SwapRegionForward(bool asLoop) {
   double start, end;
   GetSet_LoopTimeRange(false, asLoop, &start, &end, false);
   m_start = end;
   m_end = end + (end - start);
-  Set( asLoop ); 
+  Set(asLoop);
 }
 
-void Region::SwapRegionBackward( bool asLoop ) {
+void Region::SwapRegionBackward(bool asLoop) {
   double start, end;
   GetSet_LoopTimeRange(false, asLoop, &start, &end, false);
   m_end = start;
   m_start = start - (end - start);
-  Set( asLoop ); 
+  Set(asLoop);
 }
 
-void Region::NextRegion ( bool asLoop ) {
+void Region::NextRegion(bool asLoop) {
   double start, end;
   GetSet_LoopTimeRange(false, asLoop, &start, &end, false);
   if (FindRegionBehind(start))
     Set(asLoop);
 }
 
-void Region::GetFromActualRegion( bool asLoop ) {
+void Region::GetFromActualRegion(bool asLoop) {
   GetSet_LoopTimeRange(false, asLoop, &m_start, &m_end, false);
 }
 
-/*static*/ double Region::GetRegionStart( bool asLoop ) {
+/*static*/ double Region::GetRegionStart(bool asLoop) {
   double start, end;
   GetSet_LoopTimeRange(false, asLoop, &start, &end, false);
   return start;
 }
 
-/*static*/ double Region::GetRegionEnd( bool asLoop ) {
+/*static*/ double Region::GetRegionEnd(bool asLoop) {
   double start, end;
   GetSet_LoopTimeRange(false, asLoop, &start, &end, false);
   return end;
 }
 
-/*static*/ bool Region::IsActive( bool asLoop ) {
+/*static*/ bool Region::IsActive(bool asLoop) {
   double start, end;
   GetSet_LoopTimeRange(false, asLoop, &start, &end, false);
   return (start == end == 0.);
 }
 
-void Region::PreviousRegion ( bool asLoop ) {
+void Region::PreviousRegion(bool asLoop) {
   double start, end;
   GetSet_LoopTimeRange(false, asLoop, &start, &end, false);
   if (FindRegionBefore(end))
     Set(asLoop);
 }
 
-void Region::Set( bool asLoop ) {
-  if (m_start < 0) 
+void Region::Set(bool asLoop) {
+  if (m_start < 0)
     m_start = 0;
   if (m_end < 0)
     m_end = 0;
@@ -174,68 +173,66 @@ void Region::Set( bool asLoop ) {
     m_start = m_end;
     m_end = swap;
   }
-  
+
   GetSet_LoopTimeRange(true, asLoop, &m_start, &m_end, false);
 
-//  if (asLoop) {
-//    SetEditCurPos(m_start, true, false);
-//  }
+  //  if (asLoop) {
+  //    SetEditCurPos(m_start, true, false);
+  //  }
 }
 
 /*
-// Code to edit regions 
+// Code to edit regions
 // Based on code from SWS marker list plugin, many thanks to him
 BOOL CALLBACK FindWindow(HWND hwnd, LPARAM lParam)
 {
-  char str[100];
-  HWND* dlg = (HWND*) lParam;
+char str[100];
+HWND* dlg = (HWND*) lParam;
 
-  GetWindowText(hwnd, str, 100);
-  if (strcmp(str, "Edit Region") == 0)
-  {
-    *dlg = hwnd;
-    return false; // This stops the search, since we've found our child
-  }
-  *dlg = 0;
-  return true;
+GetWindowText(hwnd, str, 100);
+if (strcmp(str, "Edit Region") == 0)
+{
+*dlg = hwnd;
+return false; // This stops the search, since we've found our child
+}
+*dlg = 0;
+return true;
 }
 
 
 void MarkerTextThread(void* param)
 {
-  int id = *((int*) param);
-  DWORD startTicks = GetTickCount();
-  HWND dlg;
-  do
-  {
-    // Don't stick around too long, must have been an error otherwise
-    if (GetTickCount()-startTicks > 1000)
-      return;
-    Sleep(1);
-    EnumWindows(FindWindow, (LPARAM)&dlg);
-  }
-  while (dlg == 0);
-  // Setting text in marker dlg
-  // We have a handle to the marker dialog.
-  char str[100];
-  sprintf(str, "%d", id);
-  SendMessage(GetDlgItem(dlg, 1009), WM_SETTEXT, 0, (LPARAM)str);
-  SendMessage(dlg, WM_COMMAND, IDOK, 0);
+int id = *((int*) param);
+DWORD startTicks = GetTickCount();
+HWND dlg;
+do
+{
+// Don't stick around too long, must have been an error otherwise
+if (GetTickCount()-startTicks > 1000)
+return;
+Sleep(1);
+EnumWindows(FindWindow, (LPARAM)&dlg);
+}
+while (dlg == 0);
+// Setting text in marker dlg
+// We have a handle to the marker dialog.
+char str[100];
+sprintf(str, "%d", id);
+SendMessage(GetDlgItem(dlg, 1009), WM_SETTEXT, 0, (LPARAM)str);
+SendMessage(dlg, WM_COMMAND, IDOK, 0);
 }
 */
 
-void Region::Store(int id, bool bLoop)
-{
+void Region::Store(int id, bool bLoop) {
   Undo_BeginBlock();
-//  double originalCurPos = GetCursorPosition();
+  //  double originalCurPos = GetCursorPosition();
 
   DeleteRegion(id);
-//  DeleteRegionStartWithPos(m_start);
+  //  DeleteRegionStartWithPos(m_start);
   AddProjectMarker(NULL, true, m_start, m_end, NULL, id);
   UpdateTimeline();
 
-
-  Undo_EndBlock("Add Region (via Surface)",UNDO_STATE_MISCCFG);
-//  adjustZoom(prevZoom, 1, false, -1);
-//  prevZoom = -1.0;
+  Undo_EndBlock("Add Region (via Surface)", UNDO_STATE_MISCCFG);
+  //  adjustZoom(prevZoom, 1, false, -1);
+  //  prevZoom = -1.0;
 }

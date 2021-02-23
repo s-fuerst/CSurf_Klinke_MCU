@@ -1,23 +1,17 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 #include "CCSMode.h"
 #include "csurf_mcu.h"
 #include "tracks.h"
 
-CCSMode::CCSMode(CCSManager* pManager) {
-  m_pCCSManager = pManager;
-}
+CCSMode::CCSMode(CCSManager *pManager) { m_pCCSManager = pManager; }
 
-CCSMode::~CCSMode(void) {
-}
+CCSMode::~CCSMode(void) {}
 
-void CCSMode::activate() {
-  updateEverything();
-}
-
+void CCSMode::activate() { updateEverything(); }
 
 void CCSMode::updateRecLEDs() {
   for (int i = 1; i < 9; i++) {
@@ -43,9 +37,7 @@ void CCSMode::updateMuteLEDs() {
   }
 }
 
-void CCSMode::updateFlipLED() {
-  m_pCCSManager->setFlipLED(this, false);
-}
+void CCSMode::updateFlipLED() { m_pCCSManager->setFlipLED(this, false); }
 
 void CCSMode::updateGlobalViewLED() {
   m_pCCSManager->setGlobalViewLED(this, false);
@@ -56,7 +48,7 @@ void CCSMode::updateAssignmentDisplay() {
 }
 
 bool CCSMode::isModifierPressed(int modifier) {
-  return m_pCCSManager->getMCU()->IsModifierPressed(modifier); 
+  return m_pCCSManager->getMCU()->IsModifierPressed(modifier);
 }
 
 void CCSMode::updateEverything() {
@@ -86,6 +78,6 @@ void CCSMode::updateVPOTs() {
   }
 }
 
-MediaTrack* CCSMode::selectedTrack() {
+MediaTrack *CCSMode::selectedTrack() {
   return Tracks::instance()->getSelectedSingleTrack();
 }

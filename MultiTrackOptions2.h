@@ -25,20 +25,19 @@
 #define MTO2A_AUTO_TOUCH_OFF JUCE_T("no")
 #define MTO2A_AUTO_TOUCH_ON JUCE_T("yes")
 
-  class MultiTrackOptions2 :
-  public Options
-  {
-  public:
-    MultiTrackOptions2(DisplayHandler* pDH);
-  public:
-    virtual ~MultiTrackOptions2(void);
+class MultiTrackOptions2 : public Options {
+public:
+  MultiTrackOptions2(DisplayHandler *pDH);
 
-  protected:
-    String getConfigFileName();
-        
-    void activateSelector();
-    void checkAndModifyOptions();
+public:
+  virtual ~MultiTrackOptions2(void);
 
-    bool m_tcpNotAdjust;
-    bool m_mcpNotAdjust;
-  };
+protected:
+  String getConfigFileName();
+
+  void activateSelector();
+  void checkAndModifyOptions();
+
+  bool m_tcpNotAdjust;
+  bool m_mcpNotAdjust;
+};

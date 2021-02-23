@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 /*
   ==============================================================================
@@ -37,46 +37,46 @@
 
 //==============================================================================
 /**
-                                                                    //[Comments]
-    An auto-generated component, created by the Jucer.
+ //[Comments]
+ An auto-generated component, created by the Jucer.
 
-    Describe your class and how it works here!
-                                                                    //[/Comments]
-*/
-class PlugModeSingleChannelComponent  : public Component
-{
+ Describe your class and how it works here!
+ //[/Comments]
+ */
+class PlugModeSingleChannelComponent : public Component {
 public:
-    //==============================================================================
-    PlugModeSingleChannelComponent (PlugModeComponent* pMC, PMFader* pFader, PMVPot* pVPot);
-    ~PlugModeSingleChannelComponent();
+  //==============================================================================
+  PlugModeSingleChannelComponent(PlugModeComponent *pMC, PMFader *pFader,
+                                 PMVPot *pVPot);
+  ~PlugModeSingleChannelComponent();
 
-    //==============================================================================
-    //[UserMethods]     -- You can add your own custom methods in this section.
-                PlugModeVPOTComponent* getVPOT() {return m_vpot;}
-                PlugModeFaderComponent* getFader() {return m_fader;}
-                void updateEverything();
-    //[/UserMethods]
+  //==============================================================================
+  //[UserMethods]     -- You can add your own custom methods in this section.
+  PlugModeVPOTComponent *getVPOT() { return m_vpot; }
+  PlugModeFaderComponent *getFader() { return m_fader; }
+  void updateEverything();
+  //[/UserMethods]
 
-    void paint (Graphics& g);
-    void resized();
+  void paint(Graphics &g);
+  void resized();
 
+  //==============================================================================
+  juce_UseDebuggingNewOperator
 
-    //==============================================================================
-    juce_UseDebuggingNewOperator
+      private :
+      //[UserVariables]   -- You can add your own custom variables in this
+      //section.
+      //[/UserVariables]
 
-private:
-    //[UserVariables]   -- You can add your own custom variables in this section.
-    //[/UserVariables]
+      //==============================================================================
+      PlugModeVPOTComponent *m_vpot;
+  PlugModeFaderComponent *m_fader;
 
-    //==============================================================================
-    PlugModeVPOTComponent* m_vpot;
-    PlugModeFaderComponent* m_fader;
-
-    //==============================================================================
-    // (prevent copy constructor and operator= being generated..)
-    PlugModeSingleChannelComponent (const PlugModeSingleChannelComponent&);
-    const PlugModeSingleChannelComponent& operator= (const PlugModeSingleChannelComponent&);
+  //==============================================================================
+  // (prevent copy constructor and operator= being generated..)
+  PlugModeSingleChannelComponent(const PlugModeSingleChannelComponent &);
+  const PlugModeSingleChannelComponent &
+  operator=(const PlugModeSingleChannelComponent &);
 };
 
-
-#endif   // __JUCER_HEADER_PLUGMODESINGLECHANNELCOMPONENT_PLUGMODESINGLECHANNELCOMPONENT_2C59FFEA__
+#endif // __JUCER_HEADER_PLUGMODESINGLECHANNELCOMPONENT_PLUGMODESINGLECHANNELCOMPONENT_2C59FFEA__

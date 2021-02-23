@@ -32,20 +32,19 @@
 #define PMOA_ONLY_ONE_GLOBAL JUCE_T("only selected")
 #define PMOA_ONLY_CHAIN JUCE_T("only chain")
 
-class PlugModeOptions :
-  public Options
-{
- public:
-  PlugModeOptions(DisplayHandler* pDH);
- public:
+class PlugModeOptions : public Options {
+public:
+  PlugModeOptions(DisplayHandler *pDH);
+
+public:
   virtual ~PlugModeOptions(void);
 
- protected:
+protected:
   String getConfigFileName();
 
   void checkAndModifyOptions();
 
- private:
+private:
   bool m_bMCUFollowModified;
   int m_iLastMCUFollowOption;
 };

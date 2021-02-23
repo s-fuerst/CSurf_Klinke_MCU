@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 /*
   ==============================================================================
@@ -40,66 +40,65 @@
 //[/MiscUserDefs]
 
 //==============================================================================
-PlugModeBankComponent::PlugModeBankComponent (PlugMap* pMap, PlugModeComponent* pMC)
-    : m_tabbedBanks (0), m_pMap(NULL), m_pMainComponent(NULL)
-{
-    addAndMakeVisible (m_tabbedBanks = new TabbedComponentWithCallback (TabbedButtonBar::TabsAtTop, this));
-    m_tabbedBanks->setTabBarDepth (30);
-    m_tabbedBanks->setCurrentTabIndex (-1);
+PlugModeBankComponent::PlugModeBankComponent(PlugMap *pMap,
+                                             PlugModeComponent *pMC)
+    : m_tabbedBanks(0), m_pMap(NULL), m_pMainComponent(NULL) {
+  addAndMakeVisible(m_tabbedBanks = new TabbedComponentWithCallback(
+                        TabbedButtonBar::TabsAtTop, this));
+  m_tabbedBanks->setTabBarDepth(30);
+  m_tabbedBanks->setCurrentTabIndex(-1);
 
-
-    //[UserPreSize]
-    for (int i = 0; i < 8; i++) {
-      String tabName = pMap->getBank(i)->getNameShort();
-      if (tabName.isEmpty()) {
-        tabName = String::formatted(T("Bank %d"), i + 1);
-      }
-      m_tabbedBanks->addTab (tabName, Colours::white, new PlugModeSingleBankComponent (pMC, this, pMap->getBank(i)), true);
+  //[UserPreSize]
+  for (int i = 0; i < 8; i++) {
+    String tabName = pMap->getBank(i)->getNameShort();
+    if (tabName.isEmpty()) {
+      tabName = String::formatted(T("Bank %d"), i + 1);
     }
-    m_tabbedBanks->addTab(JUCE_T("Map Info"), Colours::white, new PlugModeMapInfoComponent(pMC, pMap), true);
-    //[/UserPreSize]
+    m_tabbedBanks->addTab(
+        tabName, Colours::white,
+        new PlugModeSingleBankComponent(pMC, this, pMap->getBank(i)), true);
+  }
+  m_tabbedBanks->addTab(JUCE_T("Map Info"), Colours::white,
+                        new PlugModeMapInfoComponent(pMC, pMap), true);
+  //[/UserPreSize]
 
-    setSize (618, 453);
+  setSize(618, 453);
 
-    //[Constructor] You can add your own custom stuff here..
-    m_pMap = pMap;
-    m_pMainComponent = pMC;
-    //[/Constructor]
+  //[Constructor] You can add your own custom stuff here..
+  m_pMap = pMap;
+  m_pMainComponent = pMC;
+  //[/Constructor]
 }
 
-PlugModeBankComponent::~PlugModeBankComponent()
-{
-    //[Destructor_pre]. You can add your own custom destruction code here..
-    //[/Destructor_pre]
+PlugModeBankComponent::~PlugModeBankComponent() {
+  //[Destructor_pre]. You can add your own custom destruction code here..
+  //[/Destructor_pre]
 
-    deleteAndZero (m_tabbedBanks);
+  deleteAndZero(m_tabbedBanks);
 
-    //[Destructor]. You can add your own custom destruction code here..
-    //[/Destructor]
+  //[Destructor]. You can add your own custom destruction code here..
+  //[/Destructor]
 }
 
 //==============================================================================
-void PlugModeBankComponent::paint (Graphics& g)
-{
-    //[UserPrePaint] Add your own custom painting code here..
-    //[/UserPrePaint]
+void PlugModeBankComponent::paint(Graphics &g) {
+  //[UserPrePaint] Add your own custom painting code here..
+  //[/UserPrePaint]
 
-    g.fillAll (Colours::white);
+  g.fillAll(Colours::white);
 
-    //[UserPaint] Add your own custom painting code here..
-    //[/UserPaint]
+  //[UserPaint] Add your own custom painting code here..
+  //[/UserPaint]
 }
 
-void PlugModeBankComponent::resized()
-{
-    m_tabbedBanks->setBounds (2, 0, 616, 453);
-    //[UserResized] Add your own custom resize handling here..
-    //[/UserResized]
+void PlugModeBankComponent::resized() {
+  m_tabbedBanks->setBounds(2, 0, 616, 453);
+  //[UserResized] Add your own custom resize handling here..
+  //[/UserResized]
 }
 
-
-
-//[MiscUserCode] You can add your own definitions of your custom methods or any other code here...
+//[MiscUserCode] You can add your own definitions of your custom methods or any
+//other code here...
 void PlugModeBankComponent::updateBankNames() {
   if (m_pMap) {
     for (int i = 0; i < 8; i++) {
@@ -110,28 +109,33 @@ void PlugModeBankComponent::updateBankNames() {
 
 void PlugModeBankComponent::updateEverything() {
   updateBankNames();
-  safe_call(getSelectedBankComponent(),updateEverything());
-  safe_call(static_cast<PlugModeMapInfoComponent*>(m_tabbedBanks->getTabContentComponent(8)),updateEverything())
+  safe_call(getSelectedBankComponent(), updateEverything());
+  safe_call(static_cast<PlugModeMapInfoComponent *>(
+                m_tabbedBanks->getTabContentComponent(8)),
+            updateEverything())
 }
 
 void PlugModeBankComponent::selectedTabHasChanged() {
   updateEverything();
 
   if (m_pMainComponent && m_tabbedBanks->getCurrentTabIndex() < 8) {
-    safe_call(m_pMainComponent->getPlugAccess(),setSelectedBank(m_tabbedBanks->getCurrentTabIndex()))
-    safe_call(m_pMainComponent, updateLearnStatus())
+    safe_call(m_pMainComponent->getPlugAccess(),
+              setSelectedBank(m_tabbedBanks->getCurrentTabIndex()))
+        safe_call(m_pMainComponent, updateLearnStatus())
   }
 }
 
-PlugModeSingleBankComponent* PlugModeBankComponent::getSingleBankComponent(int iBank) {
-  return static_cast<PlugModeSingleBankComponent*>(m_tabbedBanks->getTabContentComponent(iBank));
+PlugModeSingleBankComponent *
+PlugModeBankComponent::getSingleBankComponent(int iBank) {
+  return static_cast<PlugModeSingleBankComponent *>(
+      m_tabbedBanks->getTabContentComponent(iBank));
 }
 
-void PlugModeBankComponent::setTabVisible(bool shouldBeVisible) {
-  safe_call(getSelectedBankComponent(), makePageComponentVisible(shouldBeVisible))
-}
+void PlugModeBankComponent::setTabVisible(bool shouldBeVisible){
+    safe_call(getSelectedBankComponent(),
+              makePageComponentVisible(shouldBeVisible))}
 
-PlugModeSingleBankComponent* PlugModeBankComponent::getSelectedBankComponent() {
+PlugModeSingleBankComponent *PlugModeBankComponent::getSelectedBankComponent() {
   if (m_tabbedBanks->getCurrentTabIndex() < 8)
     return getSingleBankComponent(m_tabbedBanks->getCurrentTabIndex());
 
@@ -139,26 +143,25 @@ PlugModeSingleBankComponent* PlugModeBankComponent::getSelectedBankComponent() {
 }
 //[/MiscUserCode]
 
-
 //==============================================================================
 #if 0
 /*  -- Jucer information section --
 
     This is where the Jucer puts all of its metadata, so don't change anything in here!
 
-BEGIN_JUCER_METADATA
+		BEGIN_JUCER_METADATA
 
-<JUCER_COMPONENT documentType="Component" className="PlugModeBankComponent" componentName=""
-                 parentClasses="public Component" constructorParams="PlugMap* pMap, PlugModeComponent* pMC"
-                 variableInitialisers="" snapPixels="8" snapActive="1" snapShown="1"
-                 overlayOpacity="0.330000013" fixedSize="1" initialWidth="618"
-                 initialHeight="453">
-  <BACKGROUND backgroundColour="ffffffff"/>
-  <TABBEDCOMPONENT name="Tabbed Banks" id="1206c291312b441" memberName="m_tabbedBanks"
-                   virtualName="" explicitFocusOrder="0" pos="2 0 616 453" orientation="top"
-                   tabBarDepth="30" initialTab="-1"/>
-</JUCER_COMPONENT>
+		<JUCER_COMPONENT documentType="Component" className="PlugModeBankComponent" componentName=""
+		parentClasses="public Component" constructorParams="PlugMap* pMap, PlugModeComponent* pMC"
+		variableInitialisers="" snapPixels="8" snapActive="1" snapShown="1"
+		overlayOpacity="0.330000013" fixedSize="1" initialWidth="618"
+		initialHeight="453">
+		<BACKGROUND backgroundColour="ffffffff"/>
+		<TABBEDCOMPONENT name="Tabbed Banks" id="1206c291312b441" memberName="m_tabbedBanks"
+		virtualName="" explicitFocusOrder="0" pos="2 0 616 453" orientation="top"
+		tabBarDepth="30" initialTab="-1"/>
+		</JUCER_COMPONENT>
 
-END_JUCER_METADATA
+		END_JUCER_METADATA
 */
 #endif

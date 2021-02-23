@@ -14,31 +14,23 @@ class CSurf_MCU;
 #define REPEAT_TIME_REDUCING_FACTOR 0.8
 
 class Transport {
- public:
-  enum Client {
-    POSITION,
-    MARKER,
-    NUDGE
-  };
+public:
+  enum Client { POSITION, MARKER, NUDGE };
 
-  enum Direction {
-    REWIND,
-    NO_REEL,
-    FORWARD
-  };
+  enum Direction { REWIND, NO_REEL, FORWARD };
 
- private:
+private:
   Client m_client;
   Direction m_direction;
   int m_playStateBeforeReel;
-  CSurf_MCU* m_pMCU;
+  CSurf_MCU *m_pMCU;
   Client m_clientButtonPressed; // Marker or Nudge button is pressed down
   DWORD m_ffwdPressTime;
   DWORD m_rewindPressTime;
   double m_repeatTime;
 
- public:
-  Transport::Transport(CSurf_MCU* p_mcu);
+public:
+  Transport::Transport(CSurf_MCU *p_mcu);
 
   void handleButton(Client button, bool buttonDown);
   void updateLeds();
@@ -56,10 +48,10 @@ class Transport {
   DWORD getFfwdPressTime() { return m_ffwdPressTime; }
   DWORD getRewindPressTime() { return m_rewindPressTime; }
 
- private:
+private:
   void Transport::setClient(Client new_client);
 
- private:
+private:
   void Transport::startReel(Direction dir);
   void Transport::endReel();
 };

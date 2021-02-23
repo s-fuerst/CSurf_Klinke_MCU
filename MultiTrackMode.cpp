@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 #include "MultiTrackMode.h"
 #include "ccsmanager.h"
@@ -16,11 +16,9 @@
 
 bool MultiTrackMode::s_flipmode = false;
 bool MultiTrackMode::s_mcpmode = false;
- 
-MultiTrackMode::MultiTrackMode(CCSManager* pManager) : CCSMode(pManager),
-m_pTrackStatesEditor(NULL),
-m_lastSelectedTrackNr(-1)
-{
+
+MultiTrackMode::MultiTrackMode(CCSManager *pManager)
+    : CCSMode(pManager), m_pTrackStatesEditor(NULL), m_lastSelectedTrackNr(-1) {
   m_pDisplay = new DisplayTrackMeter(pManager->getDisplayHandler(), 2);
   m_pSelector = new MultiTrackSelector(pManager->getDisplayHandler());
   s_mcpmode = CSurf_MCU::IsFlagSet(CONFIG_FLAG_STARTGLOBALVIEW);
@@ -28,19 +26,17 @@ m_lastSelectedTrackNr(-1)
   Tracks::instance()->setDisplayHandler(pManager->getDisplayHandler());
 }
 
-MultiTrackMode::~MultiTrackMode(void)
-{
+MultiTrackMode::~MultiTrackMode(void) {
   safe_delete(m_pSelector);
   safe_delete(m_pDisplay);
 }
 
-MediaTrack* MultiTrackMode::getMediaTrackForChannel(int channel) {
+MediaTrack *MultiTrackMode::getMediaTrackForChannel(int channel) {
   return Tracks::instance()->getMediaTrackForChannel(channel);
 }
 
-void MultiTrackMode::frameUpdate(){
-  if (GetPlayState()&1)
-  {
+void MultiTrackMode::frameUpdate() {
+  if (GetPlayState() & 1) {
     m_pDisplay->updateTrackMeter(m_pCCSManager->getMCU()->GetActualFrameTime());
   }
 
@@ -48,8 +44,9 @@ void MultiTrackMode::frameUpdate(){
 
   int msize = Tracks::instance()->getNumMediaTracksOnMCU();
 
-  if (Tracks::instance()->getGlobalOffset() >= msize && Tracks::instance()->getGlobalOffset() > 0) {
-    Tracks::instance()->setGlobalOffset(max(msize-8, 0));
+  if (Tracks::instance()->getGlobalOffset() >= msize &&
+      Tracks::instance()->getGlobalOffset() > 0) {
+    Tracks::instance()->setGlobalOffset(max(msize - 8, 0));
     // update all of the sliders
     TrackList_UpdateAllExternalSurfaces();
 
@@ -65,16 +62,17 @@ void MultiTrackMode::activate() {
 
 void MultiTrackMode::updateRecLEDs() {
   for (int channel = 1; channel < 9; channel++) {
-    if (MediaTrack*  tr = getMediaTrackForChannel(channel)) {
-      int* pRecArm = (int*) GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
+    if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
+      int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
       if (isModifierPressed(VK_SHIFT)) {
         if (*pRecArm) {
-          int* pMonStatus = (int*) GetSetMediaTrackInfo(tr, "I_RECMON", NULL);
-          m_pCCSManager->setRecLED(this, channel, *pMonStatus ? LED_ON : LED_OFF);
+          int *pMonStatus = (int *)GetSetMediaTrackInfo(tr, "I_RECMON", NULL);
+          m_pCCSManager->setRecLED(this, channel,
+                                   *pMonStatus ? LED_ON : LED_OFF);
         }
       } else if (isModifierPressed(VK_OPTION)) {
         if (*pRecArm) {
-          int* pRecMode = (int*) GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
+          int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
           m_pCCSManager->setRecLED(this, channel, *pRecMode ? LED_OFF : LED_ON);
         }
       } else {
@@ -86,11 +84,10 @@ void MultiTrackMode::updateRecLEDs() {
   }
 }
 
-
 void MultiTrackMode::updateSoloLEDs() {
   for (int channel = 1; channel < 9; channel++) {
-    if (MediaTrack*  tr = getMediaTrackForChannel(channel)) {
-      int* pSolo = (int*) GetSetMediaTrackInfo(tr, "I_SOLO", NULL);
+    if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
+      int *pSolo = (int *)GetSetMediaTrackInfo(tr, "I_SOLO", NULL);
       m_pCCSManager->setSoloLED(this, channel, *pSolo ? LED_ON : LED_OFF);
     } else {
       m_pCCSManager->setSoloLED(this, channel, LED_OFF);
@@ -100,8 +97,8 @@ void MultiTrackMode::updateSoloLEDs() {
 
 void MultiTrackMode::updateMuteLEDs() {
   for (int channel = 1; channel < 9; channel++) {
-    if (MediaTrack*  tr = getMediaTrackForChannel(channel)) {
-      bool* pMute = (bool*) GetSetMediaTrackInfo(tr, "B_MUTE", NULL);
+    if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
+      bool *pMute = (bool *)GetSetMediaTrackInfo(tr, "B_MUTE", NULL);
       m_pCCSManager->setMuteLED(this, channel, *pMute ? LED_ON : LED_OFF);
     } else {
       m_pCCSManager->setMuteLED(this, channel, LED_OFF);
@@ -111,8 +108,8 @@ void MultiTrackMode::updateMuteLEDs() {
 
 void MultiTrackMode::updateSelectLEDs() {
   for (int channel = 1; channel < 9; channel++) {
-    if (MediaTrack*  tr = getMediaTrackForChannel(channel)) {
-      int* pSelect = (int*) GetSetMediaTrackInfo(tr, "I_SELECTED", NULL);
+    if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
+      int *pSelect = (int *)GetSetMediaTrackInfo(tr, "I_SELECTED", NULL);
       m_pCCSManager->setSelectLED(this, channel, *pSelect ? LED_ON : LED_OFF);
     } else {
       m_pCCSManager->setSelectLED(this, channel, LED_OFF);
@@ -125,14 +122,16 @@ void MultiTrackMode::updateFlipLED() {
 }
 
 void MultiTrackMode::updateGlobalViewLED() {
-  m_pCCSManager->setGlobalViewLED(this, Tracks::instance()->baseTrackHasParent());
+  m_pCCSManager->setGlobalViewLED(this,
+                                  Tracks::instance()->baseTrackHasParent());
 }
 
 void MultiTrackMode::updateFaders() {
   for (int channel = 1; channel < 9; channel++) {
-    if (MediaTrack*  tr = getMediaTrackForChannel(channel)) {
+    if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
       if (!s_flipmode)
-        trackVolume(channel, m_pCCSManager->getMCU()->GetSurfaceVolume(channel));
+        trackVolume(channel,
+                    m_pCCSManager->getMCU()->GetSurfaceVolume(channel));
       else
         trackPan(channel, m_pCCSManager->getMCU()->GetSurfacePan(channel));
     } else {
@@ -140,16 +139,20 @@ void MultiTrackMode::updateFaders() {
     }
   }
   // master fader (doesn't flip)
-  m_pCCSManager->setFader(this, 0, volToInt14(*((double*) GetSetMediaTrackInfo(getMediaTrackForChannel(0), "D_VOL", 0))));
+  m_pCCSManager->setFader(this, 0,
+                          volToInt14(*((double *)GetSetMediaTrackInfo(
+                              getMediaTrackForChannel(0), "D_VOL", 0))));
 }
 
 void MultiTrackMode::updateVPOTs() {
   for (int channel = 1; channel < 9; channel++) {
-    if (MediaTrack*  tr = getMediaTrackForChannel(channel)) {
+    if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
       m_pCCSManager->getVPOT(channel)->setMode(VPOT_LED::SINGLE);
-      m_pCCSManager->getVPOT(channel)->setBottom(Tracks::instance()->hasChilds(tr));
+      m_pCCSManager->getVPOT(channel)->setBottom(
+          Tracks::instance()->hasChilds(tr));
       if (s_flipmode)
-        trackVolume(channel, m_pCCSManager->getMCU()->GetSurfaceVolume(channel));
+        trackVolume(channel,
+                    m_pCCSManager->getMCU()->GetSurfaceVolume(channel));
       else
         trackPan(channel, m_pCCSManager->getMCU()->GetSurfacePan(channel));
     } else {
@@ -161,13 +164,13 @@ void MultiTrackMode::updateVPOTs() {
 
 void MultiTrackMode::updateAssignmentDisplay() {
   int nr;
-  MediaTrack* pMT = Tracks::instance()->getSelectedSingleTrack();
+  MediaTrack *pMT = Tracks::instance()->getSelectedSingleTrack();
   if (pMT) {
-    nr = (int) GetSetMediaTrackInfo(pMT, "IP_TRACKNUMBER", NULL);
+    nr = (int)GetSetMediaTrackInfo(pMT, "IP_TRACKNUMBER", NULL);
 
     char display[2];
-    display[0] = '0'+((nr/10)%10);
-    display[1] = '0'+(nr%10);
+    display[0] = '0' + ((nr / 10) % 10);
+    display[1] = '0' + (nr % 10);
 
     m_pCCSManager->setAssignmentDisplay(this, display);
   } else {
@@ -177,12 +180,13 @@ void MultiTrackMode::updateAssignmentDisplay() {
 
 bool MultiTrackMode::fader(int channel, int value) {
   MediaTrack *tr = getMediaTrackForChannel(channel);
-  if (tr)
-  {
-    if (channel > 0 /*master fader doesn't flip */ && s_flipmode) 
-      CSurf_SetSurfacePan(tr,CSurf_OnPanChange(tr,int14ToPan(value),false),NULL);
+  if (tr) {
+    if (channel > 0 /*master fader doesn't flip */ && s_flipmode)
+      CSurf_SetSurfacePan(tr, CSurf_OnPanChange(tr, int14ToPan(value), false),
+                          NULL);
     else
-      CSurf_SetSurfaceVolume(tr,CSurf_OnVolumeChange(tr,int14ToVol(value),false),NULL);
+      CSurf_SetSurfaceVolume(
+          tr, CSurf_OnVolumeChange(tr, int14ToVol(value), false), NULL);
 
     return true;
   }
@@ -195,105 +199,110 @@ bool MultiTrackMode::buttonFaderBanks(int button, bool pressed) {
     return false;
 
   int movesize;
-  switch(button) {
-    case B_BANK_DOWN:
-      if (isModifierPressed(VK_SHIFT)) 
-        movesize = -8;
-      else
-        movesize = -m_pCCSManager->getMCU()->GetSize();
-      movesize += Tracks::instance()->getNumberOfAnchors();
-      break;
-    case B_CHANNEL_DOWN:
-      movesize = -1;
-      break;
-    case B_CHANNEL_UP:
-      movesize = 1;
-      break;
-    case B_BANK_UP:
-      if (isModifierPressed(VK_SHIFT)) 
-        movesize = 8;
-      else
-        movesize = m_pCCSManager->getMCU()->GetSize();
-      movesize -=  Tracks::instance()->getNumberOfAnchors();
-      break;
-    default:
-      ASSERT_M(true, "unknown button");
-      break;
+  switch (button) {
+  case B_BANK_DOWN:
+    if (isModifierPressed(VK_SHIFT))
+      movesize = -8;
+    else
+      movesize = -m_pCCSManager->getMCU()->GetSize();
+    movesize += Tracks::instance()->getNumberOfAnchors();
+    break;
+  case B_CHANNEL_DOWN:
+    movesize = -1;
+    break;
+  case B_CHANNEL_UP:
+    movesize = 1;
+    break;
+  case B_BANK_UP:
+    if (isModifierPressed(VK_SHIFT))
+      movesize = 8;
+    else
+      movesize = m_pCCSManager->getMCU()->GetSize();
+    movesize -= Tracks::instance()->getNumberOfAnchors();
+    break;
+  default:
+    ASSERT_M(true, "unknown button");
+    break;
   }
 
-  // TODO: check this (g_mcu_list is always empty so maxfaderpos is zero, but what should this code do anyway?)
-  int maxfaderpos=0;
+  // TODO: check this (g_mcu_list is always empty so maxfaderpos is zero, but
+  // what should this code do anyway?)
+  int maxfaderpos = 0;
   for (int x = 0; x < g_mcu_list.GetSize(); x++) {
-    CSurf_MCU *item=g_mcu_list.Get(x);
-    if (item)
-    {
-      if (item->GetOffset()+8 > maxfaderpos)
-        maxfaderpos=item->GetOffset()+8;
+    CSurf_MCU *item = g_mcu_list.Get(x);
+    if (item) {
+      if (item->GetOffset() + 8 > maxfaderpos)
+        maxfaderpos = item->GetOffset() + 8;
     }
   }
 
   int msize = Tracks::instance()->getNumMediaTracksOnMCU();
-  if (movesize>1 && (Tracks::instance()->getGlobalOffset()+maxfaderpos >= msize))
+  if (movesize > 1 &&
+      (Tracks::instance()->getGlobalOffset() + maxfaderpos >= msize))
     return true;
 
-  if (movesize>1 && (Tracks::instance()->getGlobalOffset()+movesize+1 > msize))
+  if (movesize > 1 &&
+      (Tracks::instance()->getGlobalOffset() + movesize + 1 > msize))
     return true;
 
-  Tracks::instance()->setGlobalOffset(movesize + Tracks::instance()->getGlobalOffset());
+  Tracks::instance()->setGlobalOffset(movesize +
+                                      Tracks::instance()->getGlobalOffset());
 
-  if (Tracks::instance()->getGlobalOffset() >= msize) Tracks::instance()->setGlobalOffset(msize-1);
-  if (Tracks::instance()->getGlobalOffset()<0) Tracks::instance()->setGlobalOffset(0);
+  if (Tracks::instance()->getGlobalOffset() >= msize)
+    Tracks::instance()->setGlobalOffset(msize - 1);
+  if (Tracks::instance()->getGlobalOffset() < 0)
+    Tracks::instance()->setGlobalOffset(0);
 
   // update all of the sliders
   TrackList_UpdateAllExternalSurfaces();
 
-//  updateAssignmentDisplay();
+  //  updateAssignmentDisplay();
 
   return true;
 }
 
 bool MultiTrackMode::buttonRec(int channel, bool pressed) {
-  if (!pressed) 
+  if (!pressed)
     return false;
 
-  MediaTrack *tr=getMediaTrackForChannel(channel);
+  MediaTrack *tr = getMediaTrackForChannel(channel);
   if (tr) {
     if (isModifierPressed(VK_SHIFT)) {
-      int* pRecArm = (int*) GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
+      int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
       if (*pRecArm) {
-        int* pMonStatus = (int*) GetSetMediaTrackInfo(tr, "I_RECMON", NULL);
+        int *pMonStatus = (int *)GetSetMediaTrackInfo(tr, "I_RECMON", NULL);
         *pMonStatus = *pMonStatus ? 0 : 1;
-        GetSetMediaTrackInfo(tr, "I_RECMON", (bool*) pMonStatus);
-        CSurf_OnRecArmChange(tr,-1); // workaround for missing gui update
-        CSurf_OnRecArmChange(tr,-1);
+        GetSetMediaTrackInfo(tr, "I_RECMON", (bool *)pMonStatus);
+        CSurf_OnRecArmChange(tr, -1); // workaround for missing gui update
+        CSurf_OnRecArmChange(tr, -1);
       }
     } else if (isModifierPressed(VK_OPTION)) {
-      int* pRecArm = (int*) GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
+      int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
       if (*pRecArm) {
-        int* pRecMode = (int*) GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
+        int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
         *pRecMode = *pRecMode ? 0 : 2;
-        GetSetMediaTrackInfo(tr, "I_RECMODE", (bool*) pRecMode);
-        CSurf_OnRecArmChange(tr,-1); // workaround for missing gui update
-        CSurf_OnRecArmChange(tr,-1);
+        GetSetMediaTrackInfo(tr, "I_RECMODE", (bool *)pRecMode);
+        CSurf_OnRecArmChange(tr, -1); // workaround for missing gui update
+        CSurf_OnRecArmChange(tr, -1);
       }
     } else {
-      CSurf_OnRecArmChange(tr,-1);
+      CSurf_OnRecArmChange(tr, -1);
     }
     updateRecLEDs();
 
     return true;
-  } 
+  }
 
   return false;
 }
 
 bool MultiTrackMode::buttonMute(int channel, bool pressed) {
-  if (!pressed) 
+  if (!pressed)
     return false;
 
-  MediaTrack *tr=getMediaTrackForChannel(channel);
+  MediaTrack *tr = getMediaTrackForChannel(channel);
   if (tr) {
-    CSurf_SetSurfaceMute(tr,CSurf_OnMuteChange(tr,-1),NULL);    
+    CSurf_SetSurfaceMute(tr, CSurf_OnMuteChange(tr, -1), NULL);
     updateMuteLEDs();
     return true;
   }
@@ -302,12 +311,12 @@ bool MultiTrackMode::buttonMute(int channel, bool pressed) {
 }
 
 bool MultiTrackMode::buttonSolo(int channel, bool pressed) {
-  if (!pressed) 
+  if (!pressed)
     return false;
 
-  MediaTrack *tr=getMediaTrackForChannel(channel);
+  MediaTrack *tr = getMediaTrackForChannel(channel);
   if (tr) {
-    CSurf_SetSurfaceSolo(tr,CSurf_OnSoloChange(tr,-1),NULL);
+    CSurf_SetSurfaceSolo(tr, CSurf_OnSoloChange(tr, -1), NULL);
     updateSoloLEDs();
     return true;
   }
@@ -316,10 +325,10 @@ bool MultiTrackMode::buttonSolo(int channel, bool pressed) {
 }
 
 bool MultiTrackMode::buttonSoloDC(int channel) {
-  MediaTrack *tr=getMediaTrackForChannel(channel);
+  MediaTrack *tr = getMediaTrackForChannel(channel);
   if (tr) {
     SoloAllTracks(0);
-    CSurf_SetSurfaceSolo(tr,CSurf_OnSoloChange(tr,1),NULL);
+    CSurf_SetSurfaceSolo(tr, CSurf_OnSoloChange(tr, 1), NULL);
     updateSoloLEDs();
     return true;
   }
@@ -328,55 +337,60 @@ bool MultiTrackMode::buttonSoloDC(int channel) {
 }
 
 bool MultiTrackMode::buttonSelect(int channel, bool pressed) {
-  if (pressed) 
+  if (pressed)
     return false;
 
-  MediaTrack *tr=getMediaTrackForChannel(channel);
+  MediaTrack *tr = getMediaTrackForChannel(channel);
   if (tr) {
-    if (isModifierPressed(VK_SHIFT)  || isModifierPressed(VK_ALT)) {
+    if (isModifierPressed(VK_SHIFT) || isModifierPressed(VK_ALT)) {
       if (m_lastSelectedTrackNr >= 0) {
         m_pCCSManager->getMCU()->UnselectAllTracks();
         int m_toTrackNr = MediaTrackInfo::getTrackNr(tr);
         if (m_toTrackNr < m_lastSelectedTrackNr) {
-          for (int trackNr = m_toTrackNr; trackNr <= m_lastSelectedTrackNr; trackNr++) {
+          for (int trackNr = m_toTrackNr; trackNr <= m_lastSelectedTrackNr;
+               trackNr++) {
             MediaTrack *track = CSurf_TrackFromID(trackNr, false);
-            if (isModifierPressed(VK_SHIFT) || Tracks::instance()->isTrackInFilter(track))
-              CSurf_OnSelectedChange( track, 1 );
+            if (isModifierPressed(VK_SHIFT) ||
+                Tracks::instance()->isTrackInFilter(track))
+              CSurf_OnSelectedChange(track, 1);
           }
         } else if (m_toTrackNr > m_lastSelectedTrackNr) {
-          for (int trackNr = m_lastSelectedTrackNr; trackNr <= m_toTrackNr; trackNr++) {
+          for (int trackNr = m_lastSelectedTrackNr; trackNr <= m_toTrackNr;
+               trackNr++) {
             MediaTrack *track = CSurf_TrackFromID(trackNr, false);
-            if (isModifierPressed(VK_SHIFT) || Tracks::instance()->isTrackInFilter(track))
-              CSurf_OnSelectedChange( track, 1 );
+            if (isModifierPressed(VK_SHIFT) ||
+                Tracks::instance()->isTrackInFilter(track))
+              CSurf_OnSelectedChange(track, 1);
           }
         }
       }
 
     } else if (isModifierPressed(VK_CONTROL)) {
-      CSurf_OnSelectedChange(tr,-1);
+      CSurf_OnSelectedChange(tr, -1);
       m_lastSelectedTrackNr = MediaTrackInfo::getTrackNr(tr);
     } else {
       m_lastSelectedTrackNr = MediaTrackInfo::getTrackNr(tr);
       m_pCCSManager->getMCU()->UnselectAllTracks();
 
       // Select this track
-      CSurf_OnSelectedChange( tr, 1 );
+      CSurf_OnSelectedChange(tr, 1);
     }
 
-    if (Tracks::instance()->get2ndOptions()->isOptionSetTo(MTO2_AUTO_TOUCH, MTO2A_AUTO_TOUCH_ON)){
-      SendMessage(g_hwnd,WM_COMMAND,ID_TOUCH_SELECTED_TRACK,0);
+    if (Tracks::instance()->get2ndOptions()->isOptionSetTo(
+            MTO2_AUTO_TOUCH, MTO2A_AUTO_TOUCH_ON)) {
+      SendMessage(g_hwnd, WM_COMMAND, ID_TOUCH_SELECTED_TRACK, 0);
     }
 
-
-    return true; 
+    return true;
   }
 
   return false;
 }
 
 bool MultiTrackMode::buttonSelectLong(int channel) {
-  MediaTrack* pMT = getMediaTrackForChannel(channel);
-  if (pMT && !getOptions()->isOptionSetTo(MTO_REFLECT_FOLDER, MTOA_REFLECT_NO)) {
+  MediaTrack *pMT = getMediaTrackForChannel(channel);
+  if (pMT &&
+      !getOptions()->isOptionSetTo(MTO_REFLECT_FOLDER, MTOA_REFLECT_NO)) {
     if (Tracks::instance()->moveBaseTrack(getMediaTrackForChannel(channel))) {
       Tracks::instance()->setGlobalOffset(0);
       return true;
@@ -404,29 +418,23 @@ bool MultiTrackMode::buttonGView(bool pressed) {
   Tracks::instance()->moveBaseTrackToParent();
   Tracks::instance()->setGlobalOffset(0);
   return true;
-} 
-
-void MultiTrackMode::trackListChange() {
-  updateEverything();
 }
+
+void MultiTrackMode::trackListChange() { updateEverything(); }
 
 void MultiTrackMode::trackVolume(int id, double volume) {
   MIDIOUT
-  if (id >= 0 && id < 9)
-  {
-    if (s_flipmode)
-    {
-      unsigned char volch=volToChar(volume);
-      m_pCCSManager->getVPOT(id)->setValue(1+((volch*11)>>7));
-    }
-    else
-    {
-      int volint=volToInt14(volume);
+  if (id >= 0 && id < 9) {
+    if (s_flipmode) {
+      unsigned char volch = volToChar(volume);
+      m_pCCSManager->getVPOT(id)->setValue(1 + ((volch * 11) >> 7));
+    } else {
+      int volint = volToInt14(volume);
       m_pCCSManager->setFader(this, id, volint);
       if (m_pCCSManager->getFaderTouched(id)) {
-//        if (m_pCCSManager->getNumFadersTouched() > 1) {
-//          m_pCCSManager->getDisplayHandler()->waitForMoreChanges(true);
-//        }
+        //        if (m_pCCSManager->getNumFadersTouched() > 1) {
+        //          m_pCCSManager->getDisplayHandler()->waitForMoreChanges(true);
+        //        }
         showDB(id, volume);
       }
     }
@@ -439,7 +447,7 @@ void MultiTrackMode::showDB(int id, double volume) {
   if (id > 0) {
     if (asDB > -100)
       sprintf(text, "%6.1f", VAL2DB(volume));
-    else 
+    else
       sprintf(text, "  -inf");
     m_pDisplay->changeField(1, id, text);
   }
@@ -447,54 +455,48 @@ void MultiTrackMode::showDB(int id, double volume) {
 
 void MultiTrackMode::trackPan(int id, double pan) {
   MIDIOUT
-  if (id >= 0 && id < 9)
-  {
-    if (!s_flipmode)
-    {
-      unsigned char volch=panToChar(pan);
-      m_pCCSManager->getVPOT(id)->setValue(1+((volch*11)>>7));
-    }
-    else
-    {
-      int volint=panToInt14(pan);
+  if (id >= 0 && id < 9) {
+    if (!s_flipmode) {
+      unsigned char volch = panToChar(pan);
+      m_pCCSManager->getVPOT(id)->setValue(1 + ((volch * 11) >> 7));
+    } else {
+      int volint = panToInt14(pan);
       m_pCCSManager->setFader(this, id, volint);
     }
   }
 }
 
 void MultiTrackMode::updateDisplay() {
-  for (int x = 1; x < 9; x++)
-  {
-    MediaTrack* tr = getMediaTrackForChannel(x); 
-    if (tr)
-    {
-      TrackState* pTS = Tracks::instance()->getTrackStateForMediaTrack(tr);
+  for (int x = 1; x < 9; x++) {
+    MediaTrack *tr = getMediaTrackForChannel(x);
+    if (tr) {
+      TrackState *pTS = Tracks::instance()->getTrackStateForMediaTrack(tr);
       if (pTS) {
         m_pDisplay->changeField(0, x, pTS->showInDisplay().toCString());
       }
-    }
-    else {
+    } else {
       m_pDisplay->changeField(0, x, "");
     }
   }
 }
 
-void MultiTrackMode::toggleShowInMixer(MediaTrack * tr) {
+void MultiTrackMode::toggleShowInMixer(MediaTrack *tr) {
   // TODO: Add Implementation
-  bool* shown = (bool*) GetSetMediaTrackInfo(tr, "B_SHOWINMIXER", NULL);
+  bool *shown = (bool *)GetSetMediaTrackInfo(tr, "B_SHOWINMIXER", NULL);
   *shown = !*shown;
   Undo_BeginBlock();
   GetSetMediaTrackInfo(tr, "B_SHOWINMIXER", shown);
-  Undo_EndBlock("Toggle track Shown In Mixer (via Surface)",UNDO_STATE_TRACKCFG);
+  Undo_EndBlock("Toggle track Shown In Mixer (via Surface)",
+                UNDO_STATE_TRACKCFG);
   TrackList_AdjustWindows(false);
   UpdateTimeline();
 }
 
-Component** MultiTrackMode::createEditorComponent() {
+Component **MultiTrackMode::createEditorComponent() {
   if (!m_pTrackStatesEditor)
     m_pTrackStatesEditor = new TrackStatesEditorComponent();
 
-  return reinterpret_cast<Component**>(&m_pTrackStatesEditor);
+  return reinterpret_cast<Component **>(&m_pTrackStatesEditor);
 }
 
 void MultiTrackMode::deleteEditorComponent() {

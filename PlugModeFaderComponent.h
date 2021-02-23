@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 /*
   ==============================================================================
@@ -36,45 +36,43 @@
 
 //==============================================================================
 /**
-                                                                    //[Comments]
-    An auto-generated component, created by the Jucer.
+ //[Comments]
+ An auto-generated component, created by the Jucer.
 
-    Describe your class and how it works here!
-                                                                    //[/Comments]
-*/
-class PlugModeFaderComponent  : public Component
-{
+ Describe your class and how it works here!
+ //[/Comments]
+ */
+class PlugModeFaderComponent : public Component {
 public:
-    //==============================================================================
-    PlugModeFaderComponent (PlugModeComponent* pMC, PMFader* pFader);
-    ~PlugModeFaderComponent();
+  //==============================================================================
+  PlugModeFaderComponent(PlugModeComponent *pMC, PMFader *pFader);
+  ~PlugModeFaderComponent();
 
-    //==============================================================================
-    //[UserMethods]     -- You can add your own custom methods in this section.
-                void updateEverything(){m_params->updateEverything();}
-                PlugModeParamComponent* getParamComponent(){return m_params;}
-    //[/UserMethods]
+  //==============================================================================
+  //[UserMethods]     -- You can add your own custom methods in this section.
+  void updateEverything() { m_params->updateEverything(); }
+  PlugModeParamComponent *getParamComponent() { return m_params; }
+  //[/UserMethods]
 
-    void paint (Graphics& g);
-    void resized();
+  void paint(Graphics &g);
+  void resized();
 
+  //==============================================================================
+  juce_UseDebuggingNewOperator
 
-    //==============================================================================
-    juce_UseDebuggingNewOperator
+      private :
+      //[UserVariables]   -- You can add your own custom variables in this
+      //section.
+      //[/UserVariables]
 
-private:
-    //[UserVariables]   -- You can add your own custom variables in this section.
-    //[/UserVariables]
+      //==============================================================================
+      GroupComponent *m_faderGroup;
+  PlugModeParamComponent *m_params;
 
-    //==============================================================================
-    GroupComponent* m_faderGroup;
-    PlugModeParamComponent* m_params;
-
-    //==============================================================================
-    // (prevent copy constructor and operator= being generated..)
-    PlugModeFaderComponent (const PlugModeFaderComponent&);
-    const PlugModeFaderComponent& operator= (const PlugModeFaderComponent&);
+  //==============================================================================
+  // (prevent copy constructor and operator= being generated..)
+  PlugModeFaderComponent(const PlugModeFaderComponent &);
+  const PlugModeFaderComponent &operator=(const PlugModeFaderComponent &);
 };
 
-
-#endif   // __JUCER_HEADER_PLUGMODEFADERCOMPONENT_PLUGMODEFADERCOMPONENT_4644A0B1__
+#endif // __JUCER_HEADER_PLUGMODEFADERCOMPONENT_PLUGMODEFADERCOMPONENT_4644A0B1__

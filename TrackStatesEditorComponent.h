@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 /*
   ==============================================================================
@@ -32,46 +32,43 @@
 class TrackStatesTableComponent;
 //[/Headers]
 
-
-
 //==============================================================================
 /**
-                                                                    //[Comments]
-    An auto-generated component, created by the Jucer.
+ //[Comments]
+ An auto-generated component, created by the Jucer.
 
-    Describe your class and how it works here!
-                                                                    //[/Comments]
-*/
-class TrackStatesEditorComponent  : public Component
-{
+ Describe your class and how it works here!
+ //[/Comments]
+ */
+class TrackStatesEditorComponent : public Component {
 public:
-    //==============================================================================
-    TrackStatesEditorComponent ();
-    ~TrackStatesEditorComponent();
+  //==============================================================================
+  TrackStatesEditorComponent();
+  ~TrackStatesEditorComponent();
 
-    //==============================================================================
-    //[UserMethods]     -- You can add your own custom methods in this section.
-    //[/UserMethods]
+  //==============================================================================
+  //[UserMethods]     -- You can add your own custom methods in this section.
+  //[/UserMethods]
 
-    void paint (Graphics& g);
-    void resized();
+  void paint(Graphics &g);
+  void resized();
 
+  //==============================================================================
+  juce_UseDebuggingNewOperator
 
-    //==============================================================================
-    juce_UseDebuggingNewOperator
+      private :
+      //[UserVariables]   -- You can add your own custom variables in this
+      //section.
+      //[/UserVariables]
 
-private:
-    //[UserVariables]   -- You can add your own custom variables in this section.
-    //[/UserVariables]
+      //==============================================================================
+      TrackStatesTableComponent *component;
 
-    //==============================================================================
-    TrackStatesTableComponent* component;
-
-    //==============================================================================
-    // (prevent copy constructor and operator= being generated..)
-    TrackStatesEditorComponent (const TrackStatesEditorComponent&);
-    const TrackStatesEditorComponent& operator= (const TrackStatesEditorComponent&);
+  //==============================================================================
+  // (prevent copy constructor and operator= being generated..)
+  TrackStatesEditorComponent(const TrackStatesEditorComponent &);
+  const TrackStatesEditorComponent &
+  operator=(const TrackStatesEditorComponent &);
 };
 
-
-#endif   // __JUCER_HEADER_TRACKSTATESEDITORCOMPONENT_TRACKSTATESEDITORCOMPONENT_2F1DDE68__
+#endif // __JUCER_HEADER_TRACKSTATESEDITORCOMPONENT_TRACKSTATESEDITORCOMPONENT_2F1DDE68__

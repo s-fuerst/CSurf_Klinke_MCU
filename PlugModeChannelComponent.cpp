@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 /*
   ==============================================================================
@@ -37,59 +37,59 @@
 //[/MiscUserDefs]
 
 //==============================================================================
-PlugModeChannelComponent::PlugModeChannelComponent (PlugModeComponent* pMC, PMPage* pPage)
-    : m_tabbedChannels (0), m_pMainComponent(pMC)
-{
-    addAndMakeVisible (m_tabbedChannels = new TabbedComponentWithCallback (TabbedButtonBar::TabsAtTop, this));
-    m_tabbedChannels->setTabBarDepth (30);
-    m_tabbedChannels->setCurrentTabIndex (-1);
+PlugModeChannelComponent::PlugModeChannelComponent(PlugModeComponent *pMC,
+                                                   PMPage *pPage)
+    : m_tabbedChannels(0), m_pMainComponent(pMC) {
+  addAndMakeVisible(m_tabbedChannels = new TabbedComponentWithCallback(
+                        TabbedButtonBar::TabsAtTop, this));
+  m_tabbedChannels->setTabBarDepth(30);
+  m_tabbedChannels->setCurrentTabIndex(-1);
 
+  //[UserPreSize]
+  for (int i = 0; i < 8; i++) {
+    m_tabbedChannels->addTab(String::formatted(T("Channel %d"), i + 1),
+                             Colours::white,
+                             new PlugModeSingleChannelComponent(
+                                 pMC, pPage->getFader(i), pPage->getVPot(i)),
+                             true);
+  }
+  //[/UserPreSize]
 
-    //[UserPreSize]
-    for (int i = 0; i < 8; i++) {
-      m_tabbedChannels->addTab ( String::formatted(T("Channel %d"), i + 1), Colours::white, new PlugModeSingleChannelComponent (pMC, pPage->getFader(i), pPage->getVPot(i)), true);
-    }
-    //[/UserPreSize]
+  setSize(604, 284);
 
-    setSize (604, 284);
-
-    //[Constructor] You can add your own custom stuff here..
-    //[/Constructor]
+  //[Constructor] You can add your own custom stuff here..
+  //[/Constructor]
 }
 
-PlugModeChannelComponent::~PlugModeChannelComponent()
-{
-    //[Destructor_pre]. You can add your own custom destruction code here..
-    //[/Destructor_pre]
+PlugModeChannelComponent::~PlugModeChannelComponent() {
+  //[Destructor_pre]. You can add your own custom destruction code here..
+  //[/Destructor_pre]
 
-    deleteAndZero (m_tabbedChannels);
+  deleteAndZero(m_tabbedChannels);
 
-    //[Destructor]. You can add your own custom destruction code here..
-    //[/Destructor]
+  //[Destructor]. You can add your own custom destruction code here..
+  //[/Destructor]
 }
 
 //==============================================================================
-void PlugModeChannelComponent::paint (Graphics& g)
-{
-    //[UserPrePaint] Add your own custom painting code here..
-    //[/UserPrePaint]
+void PlugModeChannelComponent::paint(Graphics &g) {
+  //[UserPrePaint] Add your own custom painting code here..
+  //[/UserPrePaint]
 
-    g.fillAll (Colours::white);
+  g.fillAll(Colours::white);
 
-    //[UserPaint] Add your own custom painting code here..
-    //[/UserPaint]
+  //[UserPaint] Add your own custom painting code here..
+  //[/UserPaint]
 }
 
-void PlugModeChannelComponent::resized()
-{
-    m_tabbedChannels->setBounds (0, 0, 604, 284);
-    //[UserResized] Add your own custom resize handling here..
-    //[/UserResized]
+void PlugModeChannelComponent::resized() {
+  m_tabbedChannels->setBounds(0, 0, 604, 284);
+  //[UserResized] Add your own custom resize handling here..
+  //[/UserResized]
 }
 
-
-
-//[MiscUserCode] You can add your own definitions of your custom methods or any other code here...
+//[MiscUserCode] You can add your own definitions of your custom methods or any
+//other code here...
 void PlugModeChannelComponent::updateEverything() {
   getSelectedChannelComponent()->updateEverything();
 }
@@ -104,26 +104,25 @@ void PlugModeChannelComponent::selectedChannelChanged(int iChannel) {
 }
 //[/MiscUserCode]
 
-
 //==============================================================================
 #if 0
 /*  -- Jucer information section --
 
     This is where the Jucer puts all of its metadata, so don't change anything in here!
 
-BEGIN_JUCER_METADATA
+		BEGIN_JUCER_METADATA
 
-<JUCER_COMPONENT documentType="Component" className="PlugModeChannelComponent"
-                 componentName="" parentClasses="public Component" constructorParams="PlugModeComponent* pMC, PMPage* pPage"
-                 variableInitialisers="" snapPixels="8" snapActive="1" snapShown="1"
-                 overlayOpacity="0.330000013" fixedSize="1" initialWidth="604"
-                 initialHeight="284">
-  <BACKGROUND backgroundColour="ffffffff"/>
-  <TABBEDCOMPONENT name="Tabbed Channels" id="1206c291312b441" memberName="m_tabbedChannels"
-                   virtualName="" explicitFocusOrder="0" pos="0 0 604 284" orientation="top"
-                   tabBarDepth="30" initialTab="-1"/>
-</JUCER_COMPONENT>
+		<JUCER_COMPONENT documentType="Component" className="PlugModeChannelComponent"
+		componentName="" parentClasses="public Component" constructorParams="PlugModeComponent* pMC, PMPage* pPage"
+		variableInitialisers="" snapPixels="8" snapActive="1" snapShown="1"
+		overlayOpacity="0.330000013" fixedSize="1" initialWidth="604"
+		initialHeight="284">
+		<BACKGROUND backgroundColour="ffffffff"/>
+		<TABBEDCOMPONENT name="Tabbed Channels" id="1206c291312b441" memberName="m_tabbedChannels"
+		virtualName="" explicitFocusOrder="0" pos="0 0 604 284" orientation="top"
+		tabBarDepth="30" initialTab="-1"/>
+		</JUCER_COMPONENT>
 
-END_JUCER_METADATA
+		END_JUCER_METADATA
 */
 #endif

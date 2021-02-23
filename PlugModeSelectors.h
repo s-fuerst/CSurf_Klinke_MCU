@@ -8,12 +8,9 @@
 
 class PlugMode;
 
-class PlugModeSelector :
-public Selector {
- public:
- PlugModeSelector(DisplayHandler *pDH, PlugMode* pCM) :
-  Selector(pDH)
-  {
+class PlugModeSelector : public Selector {
+public:
+  PlugModeSelector(DisplayHandler *pDH, PlugMode *pCM) : Selector(pDH) {
     m_pPlugMode = pCM;
   }
 
@@ -21,41 +18,33 @@ public Selector {
 
   bool select(int index) = 0;
 
- protected:
+protected:
   void writeTrackPlugTopLine();
   void writePlugBankPageTopLine();
 
-  PlugMode* m_pPlugMode;
+  PlugMode *m_pPlugMode;
 };
 
+class PlugSelector : public PlugModeSelector {
 
-class PlugSelector :
-public PlugModeSelector {
-        
- public:
- PlugSelector(DisplayHandler* pDH, PlugMode* pPM) :
-  PlugModeSelector(pDH, pPM){}
+public:
+  PlugSelector(DisplayHandler *pDH, PlugMode *pPM)
+      : PlugModeSelector(pDH, pPM) {}
 
   void activateSelector();
 
   bool select(int index);
 
- private:
+private:
   int m_startWith;
-  void fillPlugNames(); 
+  void fillPlugNames();
 };
 
-class BankPagePlugSelector :
-public PlugModeSelector {
- public:
-  enum eSelect {
-    NOTHING = 0,
-    BANK,
-    PAGE,
-    PLUG
-  };
+class BankPagePlugSelector : public PlugModeSelector {
+public:
+  enum eSelect { NOTHING = 0, BANK, PAGE, PLUG };
 
-  BankPagePlugSelector(DisplayHandler* pDH, PlugMode* pPM);
+  BankPagePlugSelector(DisplayHandler *pDH, PlugMode *pPM);
 
   // from Selector
   void activateSelector();
@@ -63,11 +52,11 @@ public PlugModeSelector {
 
   void activateSelector(eSelect newSelect);
 
-  eSelect getWhatToSelect(){return m_selectWhat;}
+  eSelect getWhatToSelect() { return m_selectWhat; }
 
   void updateDisplay();
-  void clearDisplay(){m_pDisplay->clear();}
- private:
+  void clearDisplay() { m_pDisplay->clear(); }
 
+private:
   eSelect m_selectWhat;
 };

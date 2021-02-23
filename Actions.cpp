@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2013 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2013 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 #ifdef _WIN32
 #include <windows.h>
@@ -18,24 +18,25 @@ bool hookCommandProc(int command, int flag) {
   return Actions::instance()->commandCallback(command, flag);
 }
 
-Actions* Actions::s_instance = NULL;
+Actions *Actions::s_instance = NULL;
 
-Actions::Actions() {
-}
+Actions::Actions() {}
 
-Actions::Action::Action(const char* description, const char* id, int buttonId, bool isButtonAction) {
+Actions::Action::Action(const char *description, const char *id, int buttonId,
+                        bool isButtonAction) {
   m_isButtonAction = isButtonAction;
   m_buttonId = buttonId;
-  // if (! g_rec->Register("command_id_lookup",(void*)id)){ 
-    gaccel_register_t acreg = {{0,0,0},description};
-    memcpy(&m_acreg, &acreg, sizeof(gaccel_register_t));
-    m_acreg.accel.cmd = m_registered_command = g_rec->Register("command_id",(void*)id);
-    g_rec->Register("gaccel",&m_acreg);
-    //}
+  // if (! g_rec->Register("command_id_lookup",(void*)id)){
+  gaccel_register_t acreg = {{0, 0, 0}, description};
+  memcpy(&m_acreg, &acreg, sizeof(gaccel_register_t));
+  m_acreg.accel.cmd = m_registered_command =
+      g_rec->Register("command_id", (void *)id);
+  g_rec->Register("gaccel", &m_acreg);
+  //}
   m_buttonIsPressed = false;
 }
 
-Actions* Actions::instance() {
+Actions *Actions::instance() {
   if (s_instance == NULL) {
     s_instance = new Actions();
     s_instance->addActions();
@@ -43,19 +44,19 @@ Actions* Actions::instance() {
   return s_instance;
 }
 
-Actions::~Actions(){
-  BOOST_FOREACH(char* pLit, m_literals) 
-    delete(pLit);
+Actions::~Actions() {
+  BOOST_FOREACH (char *pLit, m_literals)
+    delete (pLit);
 
-  BOOST_FOREACH(Action* pAction, m_actions)
-    delete(pAction);
+  BOOST_FOREACH (Action *pAction, m_actions)
+    delete (pAction);
 
   s_instance = NULL;
 }
 
-void Actions::init(CSurf_MCU* pMCU) {
+void Actions::init(CSurf_MCU *pMCU) {
   m_pMCU = pMCU;
-  g_rec->Register("hookcommand",(void*)hookCommandProc);
+  g_rec->Register("hookcommand", (void *)hookCommandProc);
 }
 
 void Actions::addActions() {
@@ -84,7 +85,7 @@ void Actions::addActions() {
   addButtonAction("Option modifier", 0x47);
   addButtonAction("Control modifier", 0x48);
   addButtonAction("Alt modifier", 0x49);
-  addKeyAction("Automation Read",  0x4a);
+  addKeyAction("Automation Read", 0x4a);
   addKeyAction("Automation Write", 0x4b);
   addKeyAction("Automation Trim", 0x4c);
   addKeyAction("Automation Touch", 0x4d);
@@ -112,13 +113,14 @@ void Actions::addActions() {
 }
 
 bool Actions::commandCallback(int command, int flag) {
-  BOOST_FOREACH(Action* pAction, m_actions) {
+  BOOST_FOREACH (Action *pAction, m_actions) {
     if (command == pAction->getCommand()) {
-      MIDI_event_t evt_down = { 0, 3, { 0x90, pAction->getButtonId(), 0x7F } }; 
-      MIDI_event_t evt_up = { 0, 3, { 0x90, pAction->getButtonId(), 0x00 } }; 
+      MIDI_event_t evt_down = {0, 3, {0x90, pAction->getButtonId(), 0x7F}};
+      MIDI_event_t evt_up = {0, 3, {0x90, pAction->getButtonId(), 0x00}};
       if (pAction->isButtonAction()) {
         pAction->setButtonPressed(!pAction->isButtonPressed());
-        m_pMCU->GetButtonManager()->dispatchMidiEvent(pAction->isButtonPressed() ? &evt_down : &evt_up);
+        m_pMCU->GetButtonManager()->dispatchMidiEvent(
+            pAction->isButtonPressed() ? &evt_down : &evt_up);
       } else {
         m_pMCU->GetButtonManager()->dispatchMidiEvent(&evt_down);
         m_pMCU->GetButtonManager()->dispatchMidiEvent(&evt_up);
@@ -129,18 +131,17 @@ bool Actions::commandCallback(int command, int flag) {
   return false;
 }
 
-//int Actions::toggleCallback(int command_id) {
-  // if (command_id && command_id==g_registered_command02)
-  //   return g_togglestate;
-  // // -1 if action not provided by this extension or is not togglable
+// int Actions::toggleCallback(int command_id) {
+// if (command_id && command_id==g_registered_command02)
+//   return g_togglestate;
+// // -1 if action not provided by this extension or is not togglable
 //  return -1;
 //}
 
-void Actions::addKeyAction(const char* description, int buttonId)
-{
+void Actions::addKeyAction(const char *description, int buttonId) {
   // the description and id literals must created on the heap
-  char* _description = new char[200];
-  char* _id = new char[100];
+  char *_description = new char[200];
+  char *_id = new char[100];
 #ifdef EXT_B
   sprintf(_description, "Mackie Control Klinke B: %s (key)", description);
   sprintf(_id, "MCUKLINKE%ikeyB", buttonId);
@@ -155,11 +156,10 @@ void Actions::addKeyAction(const char* description, int buttonId)
   addButtonAction(description, buttonId);
 }
 
-void Actions::addButtonAction(const char* description, int buttonId)
-{
+void Actions::addButtonAction(const char *description, int buttonId) {
   // the description and id literals must created on the heap
-  char* _description = new char[200];
-  char* _id = new char[100];
+  char *_description = new char[200];
+  char *_id = new char[100];
 #ifdef EXT_B
   sprintf(_description, "Mackie Control Klinke B: %s (button)", description);
   sprintf(_id, "MCUKLINKE%ibuttonB", buttonId);
@@ -172,18 +172,18 @@ void Actions::addButtonAction(const char* description, int buttonId)
   m_actions.push_front(new Actions::Action(_description, _id, buttonId, true));
 }
 
-void Actions::add8KeyActions(const char* description, int buttonId) {
-  for (int i=0; i<8; i++) {    
-    char* _description = new char[80];
-    sprintf(_description, description, i+1);
+void Actions::add8KeyActions(const char *description, int buttonId) {
+  for (int i = 0; i < 8; i++) {
+    char *_description = new char[80];
+    sprintf(_description, description, i + 1);
     addKeyAction(_description, buttonId + i);
   }
 }
 
-void Actions::add8ButtonActions(const char* description, int buttonId) {
-  for (int i=0; i<8; i++) {    
-    char* _description = new char[80];
-    sprintf(_description, description, i+1);
+void Actions::add8ButtonActions(const char *description, int buttonId) {
+  for (int i = 0; i < 8; i++) {
+    char *_description = new char[80];
+    sprintf(_description, description, i + 1);
     addButtonAction(_description, buttonId + i);
   }
 }

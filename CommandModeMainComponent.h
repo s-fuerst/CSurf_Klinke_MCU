@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 /*
   ==============================================================================
@@ -38,45 +38,43 @@
 
 //==============================================================================
 /**
-                                                                    //[Comments]
-    An auto-generated component, created by the Jucer.
+ //[Comments]
+ An auto-generated component, created by the Jucer.
 
-    Describe your class and how it works here!
-                                                                    //[/Comments]
-*/
-class CommandModeMainComponent  : public Component
-{
+ Describe your class and how it works here!
+ //[/Comments]
+ */
+class CommandModeMainComponent : public Component {
 public:
-    //==============================================================================
-    CommandModeMainComponent (CommandMode* pCommandMode);
-    ~CommandModeMainComponent();
+  //==============================================================================
+  CommandModeMainComponent(CommandMode *pCommandMode);
+  ~CommandModeMainComponent();
 
-    //==============================================================================
-    //[UserMethods]     -- You can add your own custom methods in this section.
-                void updateTabNames();
-    //[/UserMethods]
+  //==============================================================================
+  //[UserMethods]     -- You can add your own custom methods in this section.
+  void updateTabNames();
+  //[/UserMethods]
 
-    void paint (Graphics& g);
-    void resized();
-    void focusLost (FocusChangeType cause);
+  void paint(Graphics &g);
+  void resized();
+  void focusLost(FocusChangeType cause);
 
+  //==============================================================================
+  juce_UseDebuggingNewOperator
 
-    //==============================================================================
-    juce_UseDebuggingNewOperator
+      private :
+      //[UserVariables]   -- You can add your own custom variables in this
+      //section.
+      CommandMode *m_pCommandMode;
+  //[/UserVariables]
 
-private:
-    //[UserVariables]   -- You can add your own custom variables in this section.
-        CommandMode* m_pCommandMode;
-    //[/UserVariables]
+  //==============================================================================
+  TabbedComponent *tabbedPages;
 
-    //==============================================================================
-    TabbedComponent* tabbedPages;
-
-    //==============================================================================
-    // (prevent copy constructor and operator= being generated..)
-    CommandModeMainComponent (const CommandModeMainComponent&);
-    const CommandModeMainComponent& operator= (const CommandModeMainComponent&);
+  //==============================================================================
+  // (prevent copy constructor and operator= being generated..)
+  CommandModeMainComponent(const CommandModeMainComponent &);
+  const CommandModeMainComponent &operator=(const CommandModeMainComponent &);
 };
 
-
-#endif   // __JUCER_HEADER_COMMANDMODEMAINCOMPONENT_COMMANDMODEMAINCOMPONENT_FA758AC3__
+#endif // __JUCER_HEADER_COMMANDMODEMAINCOMPONENT_COMMANDMODEMAINCOMPONENT_FA758AC3__

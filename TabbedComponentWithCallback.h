@@ -8,17 +8,17 @@
 #include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
 
 class TabbedCallback {
- public:
+public:
   virtual void selectedTabHasChanged() = 0;
 };
 
-class TabbedComponentWithCallback :
-public juce::TabbedComponent
-{
- public:
-  TabbedComponentWithCallback(const TabbedButtonBar::Orientation orientation, TabbedCallback* pCB);
+class TabbedComponentWithCallback : public juce::TabbedComponent {
+public:
+  TabbedComponentWithCallback(const TabbedButtonBar::Orientation orientation,
+                              TabbedCallback *pCB);
   ~TabbedComponentWithCallback(void);
- private:
-  TabbedCallback* m_pCallback;
-  void currentTabChanged (int newCurrentTabIndex, const String& newTabName);
+
+private:
+  TabbedCallback *m_pCallback;
+  void currentTabChanged(int newCurrentTabIndex, const String &newTabName);
 };

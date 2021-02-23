@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 /*
   ==============================================================================
@@ -38,65 +38,63 @@
 //[/MiscUserDefs]
 
 //==============================================================================
-PlugModePageComponent::PlugModePageComponent (PlugModeComponent* pMC, PMBank* pBank)
-    : m_tabbedPages (0), m_pBank(NULL), m_pMainComponent(NULL)
-{
-    addAndMakeVisible (m_tabbedPages = new TabbedComponentWithCallback (TabbedButtonBar::TabsAtTop, this));
-    m_tabbedPages->setTabBarDepth (30);
-    m_tabbedPages->setCurrentTabIndex (-1);
+PlugModePageComponent::PlugModePageComponent(PlugModeComponent *pMC,
+                                             PMBank *pBank)
+    : m_tabbedPages(0), m_pBank(NULL), m_pMainComponent(NULL) {
+  addAndMakeVisible(m_tabbedPages = new TabbedComponentWithCallback(
+                        TabbedButtonBar::TabsAtTop, this));
+  m_tabbedPages->setTabBarDepth(30);
+  m_tabbedPages->setCurrentTabIndex(-1);
 
-
-    //[UserPreSize]
-    for (int i = 0; i < 8; i++) {
-      String tabName = pBank->getPage(i)->getNameShort();
-      if (tabName.isEmpty()) {
-        tabName = String::formatted(T("Page %d"), i + 1);
-      }
-      m_tabbedPages->addTab (tabName, Colours::white, new PlugModeSinglePageComponent (pMC, this, pBank->getPage(i)), true);
+  //[UserPreSize]
+  for (int i = 0; i < 8; i++) {
+    String tabName = pBank->getPage(i)->getNameShort();
+    if (tabName.isEmpty()) {
+      tabName = String::formatted(T("Page %d"), i + 1);
     }
-    //[/UserPreSize]
+    m_tabbedPages->addTab(
+        tabName, Colours::white,
+        new PlugModeSinglePageComponent(pMC, this, pBank->getPage(i)), true);
+  }
+  //[/UserPreSize]
 
-    setSize (610, 368);
+  setSize(610, 368);
 
-    //[Constructor] You can add your own custom stuff here..
-    m_pBank = pBank;
-    m_pMainComponent = pMC;
-    //[/Constructor]
+  //[Constructor] You can add your own custom stuff here..
+  m_pBank = pBank;
+  m_pMainComponent = pMC;
+  //[/Constructor]
 }
 
-PlugModePageComponent::~PlugModePageComponent()
-{
-    //[Destructor_pre]. You can add your own custom destruction code here..
-    //[/Destructor_pre]
+PlugModePageComponent::~PlugModePageComponent() {
+  //[Destructor_pre]. You can add your own custom destruction code here..
+  //[/Destructor_pre]
 
-    deleteAndZero (m_tabbedPages);
+  deleteAndZero(m_tabbedPages);
 
-    //[Destructor]. You can add your own custom destruction code here..
-    //[/Destructor]
+  //[Destructor]. You can add your own custom destruction code here..
+  //[/Destructor]
 }
 
 //==============================================================================
-void PlugModePageComponent::paint (Graphics& g)
-{
-    //[UserPrePaint] Add your own custom painting code here..
-    //[/UserPrePaint]
+void PlugModePageComponent::paint(Graphics &g) {
+  //[UserPrePaint] Add your own custom painting code here..
+  //[/UserPrePaint]
 
-    g.fillAll (Colours::white);
+  g.fillAll(Colours::white);
 
-    //[UserPaint] Add your own custom painting code here..
-    //[/UserPaint]
+  //[UserPaint] Add your own custom painting code here..
+  //[/UserPaint]
 }
 
-void PlugModePageComponent::resized()
-{
-    m_tabbedPages->setBounds (0, 0, 610, 368);
-    //[UserResized] Add your own custom resize handling here..
-    //[/UserResized]
+void PlugModePageComponent::resized() {
+  m_tabbedPages->setBounds(0, 0, 610, 368);
+  //[UserResized] Add your own custom resize handling here..
+  //[/UserResized]
 }
 
-
-
-//[MiscUserCode] You can add your own definitions of your custom methods or any other code here...
+//[MiscUserCode] You can add your own definitions of your custom methods or any
+//other code here...
 void PlugModePageComponent::updatePageNames() {
   if (m_pBank) {
     for (int i = 0; i < 8; i++) {
@@ -109,23 +107,25 @@ void PlugModePageComponent::updatePageNames() {
 
 void PlugModePageComponent::updateEverything() {
   updatePageNames();
-  safe_call(getSelectedPageComponent(),updateEverything())
+  safe_call(getSelectedPageComponent(), updateEverything())
 }
 
 void PlugModePageComponent::selectedTabHasChanged() {
   updateEverything();
 
   if (m_pMainComponent) {
-    safe_call(m_pMainComponent->getPlugAccess(),setSelectedPageInSelectedBank(m_tabbedPages->getCurrentTabIndex()))
-    safe_call(m_pMainComponent, updateLearnStatus())
+    safe_call(
+        m_pMainComponent->getPlugAccess(),
+        setSelectedPageInSelectedBank(m_tabbedPages->getCurrentTabIndex()))
+        safe_call(m_pMainComponent, updateLearnStatus())
   }
 }
 
 void PlugModePageComponent::setTabVisible(bool shouldBeVisible) {
-  safe_call(getSelectedPageComponent(), makeChannelComponentVisible(shouldBeVisible))
+  safe_call(getSelectedPageComponent(),
+            makeChannelComponentVisible(shouldBeVisible))
 }
 //[/MiscUserCode]
-
 
 //==============================================================================
 #if 0
@@ -133,19 +133,19 @@ void PlugModePageComponent::setTabVisible(bool shouldBeVisible) {
 
     This is where the Jucer puts all of its metadata, so don't change anything in here!
 
-BEGIN_JUCER_METADATA
+		BEGIN_JUCER_METADATA
 
-<JUCER_COMPONENT documentType="Component" className="PlugModePageComponent" componentName=""
-                 parentClasses="public Component" constructorParams="PlugModeComponent* pMC, PMBank* pBank"
-                 variableInitialisers="" snapPixels="8" snapActive="1" snapShown="1"
-                 overlayOpacity="0.330000013" fixedSize="1" initialWidth="610"
-                 initialHeight="368">
-  <BACKGROUND backgroundColour="ffffffff"/>
-  <TABBEDCOMPONENT name="Tabbed Pages" id="1206c291312b441" memberName="m_tabbedPages"
-                   virtualName="" explicitFocusOrder="0" pos="0 0 610 368" orientation="top"
-                   tabBarDepth="30" initialTab="-1"/>
-</JUCER_COMPONENT>
+		<JUCER_COMPONENT documentType="Component" className="PlugModePageComponent" componentName=""
+		parentClasses="public Component" constructorParams="PlugModeComponent* pMC, PMBank* pBank"
+		variableInitialisers="" snapPixels="8" snapActive="1" snapShown="1"
+		overlayOpacity="0.330000013" fixedSize="1" initialWidth="610"
+		initialHeight="368">
+		<BACKGROUND backgroundColour="ffffffff"/>
+		<TABBEDCOMPONENT name="Tabbed Pages" id="1206c291312b441" memberName="m_tabbedPages"
+		virtualName="" explicitFocusOrder="0" pos="0 0 610 368" orientation="top"
+		tabBarDepth="30" initialTab="-1"/>
+		</JUCER_COMPONENT>
 
-END_JUCER_METADATA
+		END_JUCER_METADATA
 */
 #endif

@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 /*
   ==============================================================================
@@ -38,52 +38,57 @@ class PlugModeVPOTComponent;
 #include "PlugModeChannelComponent.h"
 #include "PlugModePageReferenceComponent.h"
 
-
 //==============================================================================
 /**
-                                                                    //[Comments]
-    An auto-generated component, created by the Jucer.
+ //[Comments]
+ An auto-generated component, created by the Jucer.
 
-    Describe your class and how it works here!
-                                                                    //[/Comments]
-*/
-class PlugModeSinglePageComponent  : public Component
-{
+ Describe your class and how it works here!
+ //[/Comments]
+ */
+class PlugModeSinglePageComponent : public Component {
 public:
-    //==============================================================================
-    PlugModeSinglePageComponent (PlugModeComponent* pMC, PlugModePageComponent* pPMPC, PMPage* pPage);
-    ~PlugModeSinglePageComponent();
+  //==============================================================================
+  PlugModeSinglePageComponent(PlugModeComponent *pMC,
+                              PlugModePageComponent *pPMPC, PMPage *pPage);
+  ~PlugModeSinglePageComponent();
 
-    //==============================================================================
-    //[UserMethods]     -- You can add your own custom methods in this section.
-                PlugModeChannelComponent* getChannelComponent(){return m_channelComponent;}
-                PlugModeSingleChannelComponent* getSelectedChannelComponent(){return m_channelComponent->getSelectedChannelComponent();}
-                PlugModeFaderComponent* getFaderComponent(int iFader){return m_channelComponent->getSingleChannelComponent(iFader)->getFader();}
-                PlugModeVPOTComponent* getVPOTComponent(int iFader){return m_channelComponent->getSingleChannelComponent(iFader)->getVPOT();}
-                void updateEverything();
-                void makeChannelComponentVisible(bool shouldBeVisible);
-    //[/UserMethods]
+  //==============================================================================
+  //[UserMethods]     -- You can add your own custom methods in this section.
+  PlugModeChannelComponent *getChannelComponent() { return m_channelComponent; }
+  PlugModeSingleChannelComponent *getSelectedChannelComponent() {
+    return m_channelComponent->getSelectedChannelComponent();
+  }
+  PlugModeFaderComponent *getFaderComponent(int iFader) {
+    return m_channelComponent->getSingleChannelComponent(iFader)->getFader();
+  }
+  PlugModeVPOTComponent *getVPOTComponent(int iFader) {
+    return m_channelComponent->getSingleChannelComponent(iFader)->getVPOT();
+  }
+  void updateEverything();
+  void makeChannelComponentVisible(bool shouldBeVisible);
+  //[/UserMethods]
 
-    void paint (Graphics& g);
-    void resized();
+  void paint(Graphics &g);
+  void resized();
 
+  //==============================================================================
+  juce_UseDebuggingNewOperator
 
-    //==============================================================================
-    juce_UseDebuggingNewOperator
+      private :
+      //[UserVariables]   -- You can add your own custom variables in this
+      //section.
+      //[/UserVariables]
 
-private:
-    //[UserVariables]   -- You can add your own custom variables in this section.
-    //[/UserVariables]
+      //==============================================================================
+      PlugModeChannelComponent *m_channelComponent;
+  PlugModePageReferenceComponent *m_nameAndReference;
 
-    //==============================================================================
-    PlugModeChannelComponent* m_channelComponent;
-    PlugModePageReferenceComponent* m_nameAndReference;
-
-    //==============================================================================
-    // (prevent copy constructor and operator= being generated..)
-    PlugModeSinglePageComponent (const PlugModeSinglePageComponent&);
-    const PlugModeSinglePageComponent& operator= (const PlugModeSinglePageComponent&);
+  //==============================================================================
+  // (prevent copy constructor and operator= being generated..)
+  PlugModeSinglePageComponent(const PlugModeSinglePageComponent &);
+  const PlugModeSinglePageComponent &
+  operator=(const PlugModeSinglePageComponent &);
 };
 
-
-#endif   // __JUCER_HEADER_PLUGMODESINGLEPAGECOMPONENT_PLUGMODESINGLEPAGECOMPONENT_B9F0057B__
+#endif // __JUCER_HEADER_PLUGMODESINGLEPAGECOMPONENT_PLUGMODESINGLEPAGECOMPONENT_B9F0057B__

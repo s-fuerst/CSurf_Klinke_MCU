@@ -23,20 +23,32 @@
 
 using namespace boost::signals2;
 
-static const GUID GUID_NOT_ACTIVE = 
-  { 0x00000000, 0x0000, 0x0000, { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
+static const GUID GUID_NOT_ACTIVE = {
+    0x00000000,
+    0x0000,
+    0x0000,
+    {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
 
+#define safe_call(p, f)                                                        \
+  if (p != NULL) {                                                             \
+    p->f;                                                                      \
+  }
 
-#define safe_call(p, f) if (p != NULL) {p->f;}
-
-#define safe_delete(x) if (x != NULL) {delete(x); x = NULL;}
-#define safe_delete_array(x) if (x != NULL) {delete[](x); x = NULL;}
+#define safe_delete(x)                                                         \
+  if (x != NULL) {                                                             \
+    delete (x);                                                                \
+    x = NULL;                                                                  \
+  }
+#define safe_delete_array(x)                                                   \
+  if (x != NULL) {                                                             \
+    delete[](x);                                                               \
+    x = NULL;                                                                  \
+  }
 
 #define VK_OPTION 2
 #define VK_ALT VK_MENU
 
 #define NUM_DLG_PARAMS 5
-
 
 class CSurf_MCU;
 class Transport;
@@ -50,12 +62,12 @@ static WDL_PtrList<CSurf_MCU> g_mcu_list;
 typedef void (CSurf_MCU::*ScheduleFunc)();
 
 struct ScheduledAction {
-  ScheduledAction( DWORD time, ScheduleFunc func ) {
+  ScheduledAction(DWORD time, ScheduleFunc func) {
     this->next = NULL;
     this->time = time;
     this->func = func;
   }
-  
+
   ScheduledAction *next;
   DWORD time;
   ScheduleFunc func;
@@ -71,27 +83,32 @@ struct ScheduledAction {
 #define DOUBLE_CLICK_INTERVAL 200 /* ms */
 
 #define ARROW_STATE_SCRUB 0x80
-#define ARROW_STATE_ZOOM  0x40
+#define ARROW_STATE_ZOOM 0x40
 
 // todo: move this to MultiTrackMode.h
-#define FIXID(id) int id=CSurf_TrackToID(trackid, MultiTrackMode::getMCPMode()); int oid=id; \
-  if (id>0) { id -= m_offset+Tracks::instance()->getGlobalOffset()+1; if (id==8) id=-1; } else if (id==0) id=8; 
-
+#define FIXID(id)                                                              \
+  int id = CSurf_TrackToID(trackid, MultiTrackMode::getMCPMode());             \
+  int oid = id;                                                                \
+  if (id > 0) {                                                                \
+    id -= m_offset + Tracks::instance()->getGlobalOffset() + 1;                \
+    if (id == 8)                                                               \
+      id = -1;                                                                 \
+  } else if (id == 0)                                                          \
+    id = 8;
 
 static double charToVol(unsigned char val) {
-  double pos=((double)val*1000.0)/127.0;
-  pos=SLIDER2DB(pos);
+  double pos = ((double)val * 1000.0) / 127.0;
+  pos = SLIDER2DB(pos);
   return DB2VAL(pos);
-
 }
 
 static int msbLsbToInt(unsigned char msb, unsigned char lsb) {
-  return (lsb | (msb<<7));
+  return (lsb | (msb << 7));
 }
 
 static double int14ToVol(int val) {
-  double pos=((double)val*1000.0)/16383.0;
-  pos=SLIDER2DB(pos);
+  double pos = ((double)val * 1000.0) / 16383.0;
+  pos = SLIDER2DB(pos);
   return DB2VAL(pos);
 }
 
@@ -99,73 +116,80 @@ static double int14ToVol(unsigned char msb, unsigned char lsb) {
   return int14ToVol(msbLsbToInt(msb, lsb));
 }
 
-static double int14ToPan(int val) {
-  return 1.0 - (val/(16383.0*0.5));
-}
+static double int14ToPan(int val) { return 1.0 - (val / (16383.0 * 0.5)); }
 
 static double int14ToPan(unsigned char msb, unsigned char lsb) {
   return int14ToPan(msbLsbToInt(msb, lsb));
 }
 
 static int volToInt14(double vol) {
-  double d=(DB2SLIDER(VAL2DB(vol))*16383.0/1000.0);
-  if (d<0.0)d=0.0;
-  else if (d>16383.0)d=16383.0;
+  double d = (DB2SLIDER(VAL2DB(vol)) * 16383.0 / 1000.0);
+  if (d < 0.0)
+    d = 0.0;
+  else if (d > 16383.0)
+    d = 16383.0;
 
-  return (int)(d+0.5);
+  return (int)(d + 0.5);
 }
 
-static  int panToInt14(double pan) {
-  double d=((1.0-pan)*16383.0*0.5);
-  if (d<0.0)d=0.0;
-  else if (d>16383.0)d=16383.0;
+static int panToInt14(double pan) {
+  double d = ((1.0 - pan) * 16383.0 * 0.5);
+  if (d < 0.0)
+    d = 0.0;
+  else if (d > 16383.0)
+    d = 16383.0;
 
-  return (int)(d+0.5);
+  return (int)(d + 0.5);
 }
 
-static  unsigned char volToChar(double vol) {
-  double d=(DB2SLIDER(VAL2DB(vol))*127.0/1000.0);
-  if (d<0.0)d=0.0;
-  else if (d>127.0)d=127.0;
+static unsigned char volToChar(double vol) {
+  double d = (DB2SLIDER(VAL2DB(vol)) * 127.0 / 1000.0);
+  if (d < 0.0)
+    d = 0.0;
+  else if (d > 127.0)
+    d = 127.0;
 
-  return (unsigned char)(d+0.5);
+  return (unsigned char)(d + 0.5);
 }
 
 static double charToPan(unsigned char val) {
-  double pos=((double)val*1000.0+0.5)/127.0;
+  double pos = ((double)val * 1000.0 + 0.5) / 127.0;
 
-  pos=(pos-500.0)/500.0;
-  if (fabs(pos) < 0.08) pos=0.0;
+  pos = (pos - 500.0) / 500.0;
+  if (fabs(pos) < 0.08)
+    pos = 0.0;
 
   return pos;
 }
 
 static unsigned char panToChar(double pan) {
-  pan = (pan+1.0)*63.5;
+  pan = (pan + 1.0) * 63.5;
 
-  if (pan<0.0)pan=0.0;
-  else if (pan>127.0)pan=127.0;
+  if (pan < 0.0)
+    pan = 0.0;
+  else if (pan > 127.0)
+    pan = 127.0;
 
-  return (unsigned char)(pan+0.5);
+  return (unsigned char)(pan + 0.5);
 }
 
-static void GUID2String(GUID* guid, String& str){
+static void GUID2String(GUID *guid, String &str) {
   char guidcstr[64];
   guidToString(guid, guidcstr);
   str = guidcstr;
 }
 
-static String GUID2String(GUID* guid) {
+static String GUID2String(GUID *guid) {
   char guidcstr[64];
   guidToString(guid, guidcstr);
   return String(guidcstr);
 }
 
-static void String2GUID(String& str, GUID* guid) {
+static void String2GUID(String &str, GUID *guid) {
   stringToGuid(str.toCString(), guid);
 }
 
-static String GetPlugName(MediaTrack* pMediaTrack, int slot) {
+static String GetPlugName(MediaTrack *pMediaTrack, int slot) {
   char paramName[80];
   bool valid = TrackFX_GetFXName(pMediaTrack, slot, paramName, 79);
   if (!valid) {
@@ -175,25 +199,22 @@ static String GetPlugName(MediaTrack* pMediaTrack, int slot) {
   return String(paramName);
 }
 
-
 class TrackIterator {
   int m_index;
   int m_len;
- public:
+
+public:
   TrackIterator() {
     m_index = 1;
     m_len = CSurf_NumTracks(false);
   }
-  MediaTrack* operator*() {
-    return CSurf_TrackFromID(m_index,false);
-  }
+  MediaTrack *operator*() { return CSurf_TrackFromID(m_index, false); }
   TrackIterator &operator++() {
-    if ( m_index <= m_len ) ++m_index;
+    if (m_index <= m_len)
+      ++m_index;
     return *this;
   }
-  bool end() {
-    return m_index > m_len;
-  }
+  bool end() { return m_index > m_len; }
 };
 
 class DropState {
@@ -205,7 +226,7 @@ class DropState {
   int m_current_state;
   bool m_led_on;
 
- public:
+public:
   DropState() {
     m_current_state = DROP_NORMAL;
     m_led_on = false;
@@ -219,20 +240,20 @@ class DropState {
 
   void toggleState() {
     m_current_state++;
-    if (m_current_state == DROP_NUM_STATES) 
+    if (m_current_state == DROP_NUM_STATES)
       m_current_state = 0;
-  } 
+  }
 
   void updateReaper() {
     switch (m_current_state) {
     case DROP_NORMAL:
-      SendMessage(g_hwnd,WM_COMMAND,ID_RECORD_MODE_NORMAL,0);
+      SendMessage(g_hwnd, WM_COMMAND, ID_RECORD_MODE_NORMAL, 0);
       break;
     case DROP_TIME:
-      SendMessage(g_hwnd,WM_COMMAND,ID_RECORD_MODE_TIME,0);
+      SendMessage(g_hwnd, WM_COMMAND, ID_RECORD_MODE_TIME, 0);
       break;
     case DROP_ITEM:
-      SendMessage(g_hwnd,WM_COMMAND,ID_RECORD_MODE_ITEM,0);
+      SendMessage(g_hwnd, WM_COMMAND, ID_RECORD_MODE_ITEM, 0);
       break;
     }
   }
@@ -256,31 +277,31 @@ class DropState {
 
 class SelectedTrack;
 
-
-
 class CSurf_MCU : public IReaperControlSurface {
- private:
-  Transport* m_pTransport;
-  DisplayHandler* m_pDisplayHandler;
-  Display* m_pSplashDisplay;
-  CCSManager* m_pCCSManager;
+private:
+  Transport *m_pTransport;
+  DisplayHandler *m_pDisplayHandler;
+  Display *m_pSplashDisplay;
+  CCSManager *m_pCCSManager;
   DropState m_dropstate;
   int m_metronom_offset;
   bool m_repeatState;
   Region m_region;
   bool m_is_mcuex;
-  int m_midi_in_dev,m_midi_out_dev;
+  int m_midi_in_dev, m_midi_out_dev;
   int m_offset, m_size;
   midi_Output *m_midiout;
   midi_Input *m_midiin;
 
   char m_mackie_lasttime[10];
   int m_mackie_lasttime_mode;
-  static int s_mackie_modifiers; // don't use this direcly, only via IsModifierPressed etc.. (todo: create a Modifiers class)
-  static int s_cfg_flags;  //CONFIG_FLAG_FADER_TOUCH_MODE etc
+  static int
+      s_mackie_modifiers; // don't use this direcly, only via IsModifierPressed
+                          // etc.. (todo: create a Modifiers class)
+  static int s_cfg_flags; // CONFIG_FLAG_FADER_TOUCH_MODE etc
 
-  std::map<MediaTrack*, bool> m_fader_touchstate;
-  std::map<MediaTrack*, unsigned int> m_pan_lasttouch;
+  std::map<MediaTrack *, bool> m_fader_touchstate;
+  std::map<MediaTrack *, unsigned int> m_pan_lasttouch;
 
   WDL_String m_descspace;
   char m_configtmp[1024];
@@ -293,80 +314,83 @@ class CSurf_MCU : public IReaperControlSurface {
   ScheduledAction *m_schedule;
 
   int m_led_state[128];
-  std::map<MediaTrack*, double> m_surface_volume;
-  std::map<MediaTrack*, double> m_surface_pan;
+  std::map<MediaTrack *, double> m_surface_volume;
+  std::map<MediaTrack *, double> m_surface_pan;
 
-  SelectedTrack* m_selected_tracks;
+  SelectedTrack *m_selected_tracks;
 
+  ButtonManager *m_pButtonManager;
 
-  ButtonManager* m_pButtonManager;
+  ActionsDisplay *m_pActionDisplay;
+  Component *m_pActionsDialogComponent;
 
-  ActionsDisplay* m_pActionDisplay;
-  Component* m_pActionsDialogComponent;
-
- public:
-  typedef signal<void (DWORD)> tFrameSignal;
+public:
+  typedef signal<void(DWORD)> tFrameSignal;
   typedef tFrameSignal::slot_type tFrameSignalSlot;
 
   static int s_iNumInstances;
 
- private:
+private:
   tFrameSignal signalFrame;
- public:
-  connection connect2FrameSignal(const tFrameSignalSlot& slot) {return signalFrame.connect(slot);}
 
- public:
-  CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev, int cfgflags, int *errStats);
+public:
+  connection connect2FrameSignal(const tFrameSignalSlot &slot) {
+    return signalFrame.connect(slot);
+  }
+
+public:
+  CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
+            int cfgflags, int *errStats);
   virtual ~CSurf_MCU();
 
-  void ScheduleAction( DWORD time, ScheduleFunc func );
+  void ScheduleAction(DWORD time, ScheduleFunc func);
   void MCUReset();
   void UpdateMackieDisplay(int pos, const char *text, int pad);
   bool OnMCUReset(MIDI_event_t *evt);
   bool OnFaderMove(MIDI_event_t *evt);
-  bool OnRotaryEncoder( MIDI_event_t *evt );
-  bool OnJogWheel( MIDI_event_t *evt );
-  bool OnAutoMode( MIDI_event_t *evt );
-  bool OnBankChannel( MIDI_event_t *evt );
-  bool OnSMPTEBeats( MIDI_event_t *evt );
-  bool OnRotaryEncoderPush( MIDI_event_t *evt );
-  bool OnVPOTAssign( MIDI_event_t *evt );
-  bool OnRecArm( MIDI_event_t *evt );
-  bool OnRecArmDC( MIDI_event_t *evt );
-  bool OnMute( MIDI_event_t *evt );
-  bool OnSolo( MIDI_event_t *evt );
-  bool OnSoloDC( MIDI_event_t *evt );
-  bool OnChannelSelect( MIDI_event_t *evt );
-  bool OnChannelSelectDC( MIDI_event_t *evt );
-  bool OnChannelSelectLong(int channel );
-  bool OnTransport( MIDI_event_t *evt );
-  bool OnTransportDC( MIDI_event_t *evt );
-  bool OnMarker( MIDI_event_t *evt );
-  bool OnNudge( MIDI_event_t *evt );
-  bool OnCycle( MIDI_event_t *evt );
-  bool OnClick( MIDI_event_t *evt );
+  bool OnRotaryEncoder(MIDI_event_t *evt);
+  bool OnJogWheel(MIDI_event_t *evt);
+  bool OnAutoMode(MIDI_event_t *evt);
+  bool OnBankChannel(MIDI_event_t *evt);
+  bool OnSMPTEBeats(MIDI_event_t *evt);
+  bool OnRotaryEncoderPush(MIDI_event_t *evt);
+  bool OnVPOTAssign(MIDI_event_t *evt);
+  bool OnRecArm(MIDI_event_t *evt);
+  bool OnRecArmDC(MIDI_event_t *evt);
+  bool OnMute(MIDI_event_t *evt);
+  bool OnSolo(MIDI_event_t *evt);
+  bool OnSoloDC(MIDI_event_t *evt);
+  bool OnChannelSelect(MIDI_event_t *evt);
+  bool OnChannelSelectDC(MIDI_event_t *evt);
+  bool OnChannelSelectLong(int channel);
+  bool OnTransport(MIDI_event_t *evt);
+  bool OnTransportDC(MIDI_event_t *evt);
+  bool OnMarker(MIDI_event_t *evt);
+  bool OnNudge(MIDI_event_t *evt);
+  bool OnCycle(MIDI_event_t *evt);
+  bool OnClick(MIDI_event_t *evt);
   void ClearSaveLed();
-  bool OnSave( MIDI_event_t *evt );
+  bool OnSave(MIDI_event_t *evt);
   void ClearUndoLed();
-  bool OnUndo( MIDI_event_t *evt );
-  bool OnCancel( MIDI_event_t *evt );
-  bool OnZoom( MIDI_event_t *evt );
-  bool OnScrub( MIDI_event_t *evt );
-  bool OnFlip( MIDI_event_t *evt );
-  bool OnNameValue( MIDI_event_t *evt );
-  bool OnNameValueDC( MIDI_event_t *evt );
-  bool OnGlobal( MIDI_event_t *evt );
-  bool OnKeyModifier( MIDI_event_t *evt );
-  bool OnScroll( MIDI_event_t *evt );
-  bool OnTouch( MIDI_event_t *evt );
-  bool OnFunctionKey( MIDI_event_t *evt );
+  bool OnUndo(MIDI_event_t *evt);
+  bool OnCancel(MIDI_event_t *evt);
+  bool OnZoom(MIDI_event_t *evt);
+  bool OnScrub(MIDI_event_t *evt);
+  bool OnFlip(MIDI_event_t *evt);
+  bool OnNameValue(MIDI_event_t *evt);
+  bool OnNameValueDC(MIDI_event_t *evt);
+  bool OnGlobal(MIDI_event_t *evt);
+  bool OnKeyModifier(MIDI_event_t *evt);
+  bool OnScroll(MIDI_event_t *evt);
+  bool OnTouch(MIDI_event_t *evt);
+  bool OnFunctionKey(MIDI_event_t *evt);
 
-  void HandleFunctionKeyForRegionsOrLoops( int fkey, bool loop );
-  bool OnGlobalViewKeys( MIDI_event_t *evt );
-  bool OnGlobalSoloButton( MIDI_event_t *evt );
-  bool OnDropButton( MIDI_event_t *evt );
-  bool OnButtonPress( MIDI_event_t *evt );
-  bool OnPedalMove( MIDI_event_t *evt );
+  void HandleFunctionKeyForRegionsOrLoops(int fkey, bool loop);
+  bool OnGlobalViewKeys(MIDI_event_t *evt);
+  bool OnGlobalSoloButton(MIDI_event_t *evt);
+  bool OnDropButton(MIDI_event_t *evt);
+  bool OnButtonPress(MIDI_event_t *evt);
+  bool OnPedalMove(MIDI_event_t *evt);
   void OnMIDIEvent(MIDI_event_t *evt);
   void CloseNoReset();
   void Run();
@@ -377,12 +401,13 @@ class CSurf_MCU : public IReaperControlSurface {
   void OnTrackSelection(MediaTrack *trackid);
   bool IsModifierPressed(int key);
   bool IsNoModifierPressed() {
-    return !IsModifierPressed(VK_SHIFT) && !IsModifierPressed(VK_OPTION) && !IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_ALT);
+    return !IsModifierPressed(VK_SHIFT) && !IsModifierPressed(VK_OPTION) &&
+           !IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_ALT);
   }
   void CallTransportForward();
   void CallTransportRewind();
 
-  Region* GetRegion() { return &m_region; }
+  Region *GetRegion() { return &m_region; }
   bool GetRepeatState() { return m_repeatState; }
   bool IsExtender() { return m_is_mcuex; }
   bool IsButtonPressed(int i);
@@ -391,15 +416,18 @@ class CSurf_MCU : public IReaperControlSurface {
   int GetOffset() { return m_offset; }
   int GetSize() { return m_size; }
   static int GetNumMCUs() { return g_mcu_list.GetSize(); }
-  SelectedTrack* GetSelectedTracks() { return m_selected_tracks; }
-  void SetSelectedTracks(SelectedTrack* pTracks) { m_selected_tracks = pTracks; }
+  SelectedTrack *GetSelectedTracks() { return m_selected_tracks; }
+  void SetSelectedTracks(SelectedTrack *pTracks) {
+    m_selected_tracks = pTracks;
+  }
   void UnselectAllTracks();
-  midi_Output* GetMidiOutput() { return m_midiout; }
-  DisplayHandler* GetDisplayHandler() {return m_pDisplayHandler;}
+  midi_Output *GetMidiOutput() { return m_midiout; }
+  DisplayHandler *GetDisplayHandler() { return m_pDisplayHandler; }
 
   // these will be called by the host when states change etc
   void SetTrackListChange();
-  void SetSurfaceVolume(MediaTrack *trackid, double volume); // will be stored in m_surface_volume
+  void SetSurfaceVolume(MediaTrack *trackid,
+                        double volume); // will be stored in m_surface_volume
   void SetSurfacePan(MediaTrack *trackid, double pan);
   void SetSurfaceMute(MediaTrack *trackid, bool mute);
   void SetSurfaceSelected(MediaTrack *trackid, bool selected);
@@ -408,57 +436,57 @@ class CSurf_MCU : public IReaperControlSurface {
   void SetPlayState(bool play, bool pause, bool rec);
   void SetRepeatState(bool rep);
   void SetTrackTitle(MediaTrack *trackid, const char *title);
-  bool GetTouchState(MediaTrack *trackid, int isPan=0);
-  void SetAutoMode(int mode);// automation mode for current track 
-  void SendMidi(unsigned char status, unsigned char d1, unsigned char d2, int frame_offset);
-  void SendMsg(MIDI_event_t *message, int frame_offset); 
+  bool GetTouchState(MediaTrack *trackid, int isPan = 0);
+  void SetAutoMode(int mode); // automation mode for current track
+  void SendMidi(unsigned char status, unsigned char d1, unsigned char d2,
+                int frame_offset);
+  void SendMsg(MIDI_event_t *message, int frame_offset);
 
-  double GetSurfaceVolume(MediaTrack* pMT);
+  double GetSurfaceVolume(MediaTrack *pMT);
   double GetSurfaceVolume(int channel);
-  double GetSurfacePan(MediaTrack* pMT);
+  double GetSurfacePan(MediaTrack *pMT);
   double GetSurfacePan(int channel);
 
-  static bool IsFlagSet(int flag) {return (flag & s_cfg_flags) != 0;}
+  static bool IsFlagSet(int flag) { return (flag & s_cfg_flags) != 0; }
 
-  const char* CSurf_MCU::GetTypeString() { return m_is_mcuex ? EXT_ID : MAIN_ID; }
+  const char *CSurf_MCU::GetTypeString() {
+    return m_is_mcuex ? EXT_ID : MAIN_ID;
+  }
 
-  const char* CSurf_MCU::GetDescString()
-  {
+  const char *CSurf_MCU::GetDescString() {
 #ifdef EXT_B
     m_descspace.Set("Mackie Control B (Klinke v0.8.3.6)");
 #else
     m_descspace.Set("Mackie Control (Klinke v0.8.3.6)");
 #endif
     char tmp[512];
-    sprintf(tmp," (dev %d,%d)",m_midi_in_dev,m_midi_out_dev);
+    sprintf(tmp, " (dev %d,%d)", m_midi_in_dev, m_midi_out_dev);
     m_descspace.Append(tmp);
-    return m_descspace.Get();     
+    return m_descspace.Get();
   }
-  const char* CSurf_MCU::GetConfigString() // string of configuration data
+  const char *CSurf_MCU::GetConfigString() // string of configuration data
   {
-    sprintf(m_configtmp,"%d %d %d %d %d",m_offset,m_size,m_midi_in_dev,m_midi_out_dev,s_cfg_flags);      
+    sprintf(m_configtmp, "%d %d %d %d %d", m_offset, m_size, m_midi_in_dev,
+            m_midi_out_dev, s_cfg_flags);
     return m_configtmp;
-  }
-  
-  // returns pos in sec
-  static double QuantizeTimeToBeat(double pos) 
-  {
-    double qn = TimeMap_timeToQN(pos);
-    return TimeMap_QNToTime(floor(qn + 0.5));       
   }
 
   // returns pos in sec
-  static double QuantizeTimeToBar(double pos) 
-  {
+  static double QuantizeTimeToBeat(double pos) {
+    double qn = TimeMap_timeToQN(pos);
+    return TimeMap_QNToTime(floor(qn + 0.5));
+  }
+
+  // returns pos in sec
+  static double QuantizeTimeToBar(double pos) {
     double bpm, bpi;
     GetProjectTimeSignature(&bpm, &bpi);
     double qn = TimeMap_timeToQN(pos) / bpi;
-    return TimeMap_QNToTime(floor(qn + 0.5) * bpi); 
+    return TimeMap_QNToTime(floor(qn + 0.5) * bpi);
   }
 
   // return pos in sec
-  static double MoveInBeats(double pos, double moveInBeats) 
-  {
+  static double MoveInBeats(double pos, double moveInBeats) {
     double qn = TimeMap_timeToQN(pos);
     double newTime = TimeMap_QNToTime(qn + moveInBeats);
     if (newTime > 0)
@@ -466,8 +494,7 @@ class CSurf_MCU : public IReaperControlSurface {
     return 0;
   }
 
-  static double MoveInBars(double pos, double moveInBars)
-  {
+  static double MoveInBars(double pos, double moveInBars) {
     double bpm, bpi;
     GetProjectTimeSignature(&bpm, &bpi);
     double qn = TimeMap_timeToQN(pos);
@@ -479,36 +506,33 @@ class CSurf_MCU : public IReaperControlSurface {
 
   void UpdateRecArmLEDs();
   double CalcMovement(double oldPos, int dir);
-  int FindTrackNr( MediaTrack* tr );
-  static MediaTrack* TrackFromGUID( const GUID &guid );
+  int FindTrackNr(MediaTrack *tr);
+  static MediaTrack *TrackFromGUID(const GUID &guid);
   bool SomethingSoloed();
-  const char* GetTrackName( MediaTrack* tr); char trackName[4];
+  const char *GetTrackName(MediaTrack *tr);
+  char trackName[4];
   bool IsKeyboardPressed(int key);
   void UpdateMetronomLED();
-  unsigned int GetActualFrameTime(){ return m_frameupd_lastrun;}
+  unsigned int GetActualFrameTime() { return m_frameupd_lastrun; }
 
-  ButtonManager* GetButtonManager(){ return m_pButtonManager;}
+  ButtonManager *GetButtonManager() { return m_pButtonManager; }
 };
 
-
 class SelectedTrack {
- public:
+public:
   GUID guid;
   SelectedTrack *next;
 
-  SelectedTrack( MediaTrack *tr ) {
+  SelectedTrack(MediaTrack *tr) {
     next = NULL;
     guid = *GetTrackGUID(tr);
   }
 
-  MediaTrack* track() {
-    return CSurf_MCU::TrackFromGUID( guid );
-  }
+  MediaTrack *track() { return CSurf_MCU::TrackFromGUID(guid); }
 
-
-  static void FreeTrackList(SelectedTrack* tracks) {
+  static void FreeTrackList(SelectedTrack *tracks) {
     while (tracks != NULL) {
-      SelectedTrack* del = tracks;
+      SelectedTrack *del = tracks;
       tracks = tracks->next;
       delete (del);
     }

@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 /*
   ==============================================================================
@@ -38,73 +38,75 @@ class PluginWatcher;
 
 //==============================================================================
 /**
-                                                                    //[Comments]
-    An auto-generated component, created by the Jucer.
+ //[Comments]
+ An auto-generated component, created by the Jucer.
 
-    Describe your class and how it works here!
-                                                                    //[/Comments]
-*/
-class PlugModeComponent  : public Component,
-                           public ButtonListener
-{
+ Describe your class and how it works here!
+ //[/Comments]
+ */
+class PlugModeComponent : public Component, public ButtonListener {
 public:
-    //==============================================================================
-    PlugModeComponent (PlugAccess* pPA);
-    ~PlugModeComponent();
+  //==============================================================================
+  PlugModeComponent(PlugAccess *pPA);
+  ~PlugModeComponent();
 
-    //==============================================================================
-    //[UserMethods]     -- You can add your own custom methods in this section.
-                void selectedBankChanged(int iBank);
-                void selectedPageChanged(int iPage);
-                void selectedChannelChanged(int iChannel, bool fader);
-                void updateEverything();
-                void updateLearnStatus();
-                PlugAccess* getPlugAccess(){return m_pPlugAccess;}
-                bool isUseParamName(){return m_useParamName->getToggleState();}
+  //==============================================================================
+  //[UserMethods]     -- You can add your own custom methods in this section.
+  void selectedBankChanged(int iBank);
+  void selectedPageChanged(int iPage);
+  void selectedChannelChanged(int iChannel, bool fader);
+  void updateEverything();
+  void updateLearnStatus();
+  PlugAccess *getPlugAccess() { return m_pPlugAccess; }
+  bool isUseParamName() { return m_useParamName->getToggleState(); }
 
-                void selectedPluginChanged(MediaTrack* pMediaTrack, int iSlot);
+  void selectedPluginChanged(MediaTrack *pMediaTrack, int iSlot);
 
-                void watchedPluginParameterChanged(MediaTrack* pMediaTrack, int iSlot, int iParameter, double dValue, String strValue);
+  void watchedPluginParameterChanged(MediaTrack *pMediaTrack, int iSlot,
+                                     int iParameter, double dValue,
+                                     String strValue);
 
-                void paramComponentPressed(PlugModeParamComponent* pPC);
+  void paramComponentPressed(PlugModeParamComponent *pPC);
 
-                PMVPot::tSteps* getStepTableClipBoard(){return &m_stepTableClipBoard;}
-    //[/UserMethods]
+  PMVPot::tSteps *getStepTableClipBoard() { return &m_stepTableClipBoard; }
+  //[/UserMethods]
 
-    void paint (Graphics& g);
-    void resized();
-    void buttonClicked (Button* buttonThatWasClicked);
+  void paint(Graphics &g);
+  void resized();
+  void buttonClicked(Button *buttonThatWasClicked);
 
+  //==============================================================================
+  juce_UseDebuggingNewOperator
 
-    //==============================================================================
-    juce_UseDebuggingNewOperator
+      private :
+      //[UserVariables]   -- You can add your own custom variables in this
+      //section.
+      PlugModeSingleBankComponent *
+      getBankComponent(int iBank) {
+    return m_bankComponent->getSingleBankComponent(iBank);
+  }
+  PlugAccess *m_pPlugAccess;
+  bool m_learnFader;
+  int m_paramChangedConnectionId;
+  PMVPot::tSteps m_stepTableClipBoard;
+  //[/UserVariables]
 
-private:
-    //[UserVariables]   -- You can add your own custom variables in this section.
-                PlugModeSingleBankComponent* getBankComponent(int iBank){return m_bankComponent->getSingleBankComponent(iBank);}
-                PlugAccess* m_pPlugAccess;
-                bool m_learnFader;
-                int m_paramChangedConnectionId;
-                PMVPot::tSteps m_stepTableClipBoard;
-    //[/UserVariables]
+  //==============================================================================
+  GroupComponent *m_groupFile;
+  Label *m_mappingFile;
+  TextButton *m_save;
+  ToggleButton *m_autosave;
+  PlugModeBankComponent *m_bankComponent;
+  ToggleButton *m_learn;
+  TextButton *m_saveAs;
+  ToggleButton *m_useParamName;
+  TextButton *m_clear;
+  ToggleButton *m_local;
 
-    //==============================================================================
-    GroupComponent* m_groupFile;
-    Label* m_mappingFile;
-    TextButton* m_save;
-    ToggleButton* m_autosave;
-    PlugModeBankComponent* m_bankComponent;
-    ToggleButton* m_learn;
-    TextButton* m_saveAs;
-    ToggleButton* m_useParamName;
-    TextButton* m_clear;
-    ToggleButton* m_local;
-
-    //==============================================================================
-    // (prevent copy constructor and operator= being generated..)
-    PlugModeComponent (const PlugModeComponent&);
-    const PlugModeComponent& operator= (const PlugModeComponent&);
+  //==============================================================================
+  // (prevent copy constructor and operator= being generated..)
+  PlugModeComponent(const PlugModeComponent &);
+  const PlugModeComponent &operator=(const PlugModeComponent &);
 };
 
-
-#endif   // __JUCER_HEADER_PLUGMODECOMPONENT_PLUGMODECOMPONENT_A9A481D3__
+#endif // __JUCER_HEADER_PLUGMODECOMPONENT_PLUGMODECOMPONENT_A9A481D3__

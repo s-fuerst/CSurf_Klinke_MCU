@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 /*
   ==============================================================================
@@ -37,55 +37,54 @@
 
 //==============================================================================
 /**
-                                                                    //[Comments]
-    An auto-generated component, created by the Jucer.
+ //[Comments]
+ An auto-generated component, created by the Jucer.
 
-    Describe your class and how it works here!
-                                                                    //[/Comments]
-*/
-class PlugModeBankReferenceComponent  : public Component,
-                                        public LabelListener,
-                                        public ComboBoxListener
-{
+ Describe your class and how it works here!
+ //[/Comments]
+ */
+class PlugModeBankReferenceComponent : public Component,
+                                       public LabelListener,
+                                       public ComboBoxListener {
 public:
-    //==============================================================================
-    PlugModeBankReferenceComponent (PlugModeBankComponent* pPMBC, PMBank* pBank);
-    ~PlugModeBankReferenceComponent();
+  //==============================================================================
+  PlugModeBankReferenceComponent(PlugModeBankComponent *pPMBC, PMBank *pBank);
+  ~PlugModeBankReferenceComponent();
 
-    //==============================================================================
-    //[UserMethods]     -- You can add your own custom methods in this section.
-                void updateEverything();
-    //[/UserMethods]
+  //==============================================================================
+  //[UserMethods]     -- You can add your own custom methods in this section.
+  void updateEverything();
+  //[/UserMethods]
 
-    void paint (Graphics& g);
-    void resized();
-    void labelTextChanged (Label* labelThatHasChanged);
-    void comboBoxChanged (ComboBox* comboBoxThatHasChanged);
+  void paint(Graphics &g);
+  void resized();
+  void labelTextChanged(Label *labelThatHasChanged);
+  void comboBoxChanged(ComboBox *comboBoxThatHasChanged);
 
+  //==============================================================================
+  juce_UseDebuggingNewOperator
 
-    //==============================================================================
-    juce_UseDebuggingNewOperator
+      private :
+      //[UserVariables]   -- You can add your own custom variables in this
+      //section.
+      PMBank *m_pBank;
+  PlugModeBankComponent *m_pPlugModeBankComponent;
+  //[/UserVariables]
 
-private:
-    //[UserVariables]   -- You can add your own custom variables in this section.
-                PMBank* m_pBank;
-                PlugModeBankComponent* m_pPlugModeBankComponent;
-    //[/UserVariables]
+  //==============================================================================
+  GroupComponent *groupComponent2;
+  Label *m_nameShort;
+  Label *m_nameLong;
+  GroupComponent *m_groupReference;
+  ComboBox *m_referenceTo;
+  Label *m_offset;
+  Label *m_offsetLabel;
 
-    //==============================================================================
-    GroupComponent* groupComponent2;
-    Label* m_nameShort;
-    Label* m_nameLong;
-    GroupComponent* m_groupReference;
-    ComboBox* m_referenceTo;
-    Label* m_offset;
-    Label* m_offsetLabel;
-
-    //==============================================================================
-    // (prevent copy constructor and operator= being generated..)
-    PlugModeBankReferenceComponent (const PlugModeBankReferenceComponent&);
-    const PlugModeBankReferenceComponent& operator= (const PlugModeBankReferenceComponent&);
+  //==============================================================================
+  // (prevent copy constructor and operator= being generated..)
+  PlugModeBankReferenceComponent(const PlugModeBankReferenceComponent &);
+  const PlugModeBankReferenceComponent &
+  operator=(const PlugModeBankReferenceComponent &);
 };
 
-
-#endif   // __JUCER_HEADER_PLUGMODEBANKREFERENCECOMPONENT_PLUGMODEBANKREFERENCECOMPONENT_62EDAE97__
+#endif // __JUCER_HEADER_PLUGMODEBANKREFERENCECOMPONENT_PLUGMODEBANKREFERENCECOMPONENT_62EDAE97__

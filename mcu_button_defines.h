@@ -1,7 +1,7 @@
 /*
-MCU documentation:
+  MCU documentation:
 
-MCU=>PC:
+  MCU=>PC:
   The MCU seems to send, when it boots (or is reset) F0 00 00 66 14 01 58 59 5A 57 18 61 05 57 18 61 05 F7
 
   Ex vv vv    :   volume fader move, x=0..7, 8=master, vv vv is int14
@@ -80,7 +80,7 @@ MCU=>PC:
   90 6x vv    :   fader touch x=8..f
   90 70 vv    :   master fader touch
 
-PC=>MCU:
+  PC=>MCU:
 
   F0 00 00 66 14 12 xx <data> F7   : update LCD. xx=offset (0-112), string. display is 55 chars wide, second line begins at 56, though.
   F0 00 00 66 14 08 00 F7          : reset MCU

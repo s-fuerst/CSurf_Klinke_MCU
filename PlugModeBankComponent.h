@@ -1,7 +1,7 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 /*
   ==============================================================================
@@ -35,57 +35,56 @@ class PlugModeComponent;
 class PlugModeSingleBankComponent;
 //[/Headers]
 
-
-
 //==============================================================================
 /**
-                                                                    //[Comments]
-    An auto-generated component, created by the Jucer.
+ //[Comments]
+ An auto-generated component, created by the Jucer.
 
-    Describe your class and how it works here!
-                                                                    //[/Comments]
-*/
-class PlugModeBankComponent  : public Component, TabbedCallback
-{
+ Describe your class and how it works here!
+ //[/Comments]
+ */
+class PlugModeBankComponent : public Component, TabbedCallback {
 public:
-    //==============================================================================
-    PlugModeBankComponent (PlugMap* pMap, PlugModeComponent* pMC);
-    ~PlugModeBankComponent();
+  //==============================================================================
+  PlugModeBankComponent(PlugMap *pMap, PlugModeComponent *pMC);
+  ~PlugModeBankComponent();
 
-    //==============================================================================
-    //[UserMethods]     -- You can add your own custom methods in this section.
-                PlugModeSingleBankComponent* getSingleBankComponent(int iBank);
-                PlugModeSingleBankComponent* getSelectedBankComponent(); // can return NULL if Map Info is selected
+  //==============================================================================
+  //[UserMethods]     -- You can add your own custom methods in this section.
+  PlugModeSingleBankComponent *getSingleBankComponent(int iBank);
+  PlugModeSingleBankComponent *
+  getSelectedBankComponent(); // can return NULL if Map Info is selected
 
-                void selectedBankChanged(int iBank){m_tabbedBanks->setCurrentTabIndex(iBank);}
-                void updateBankNames();
-                void updateEverything();
-                void selectedTabHasChanged();
+  void selectedBankChanged(int iBank) {
+    m_tabbedBanks->setCurrentTabIndex(iBank);
+  }
+  void updateBankNames();
+  void updateEverything();
+  void selectedTabHasChanged();
 
-                void setTabVisible(bool shouldBeVisible);
-    //[/UserMethods]
+  void setTabVisible(bool shouldBeVisible);
+  //[/UserMethods]
 
-    void paint (Graphics& g);
-    void resized();
+  void paint(Graphics &g);
+  void resized();
 
+  //==============================================================================
+  juce_UseDebuggingNewOperator
 
-    //==============================================================================
-    juce_UseDebuggingNewOperator
+      private :
+      //[UserVariables]   -- You can add your own custom variables in this
+      //section.
+      PlugMap *m_pMap;
+  PlugModeComponent *m_pMainComponent;
+  //[/UserVariables]
 
-private:
-    //[UserVariables]   -- You can add your own custom variables in this section.
-                PlugMap* m_pMap;
-                PlugModeComponent* m_pMainComponent;
-    //[/UserVariables]
+  //==============================================================================
+  TabbedComponentWithCallback *m_tabbedBanks;
 
-    //==============================================================================
-    TabbedComponentWithCallback* m_tabbedBanks;
-
-    //==============================================================================
-    // (prevent copy constructor and operator= being generated..)
-    PlugModeBankComponent (const PlugModeBankComponent&);
-    const PlugModeBankComponent& operator= (const PlugModeBankComponent&);
+  //==============================================================================
+  // (prevent copy constructor and operator= being generated..)
+  PlugModeBankComponent(const PlugModeBankComponent &);
+  const PlugModeBankComponent &operator=(const PlugModeBankComponent &);
 };
 
-
-#endif   // __JUCER_HEADER_PLUGMODEBANKCOMPONENT_PLUGMODEBANKCOMPONENT_59EA7095__
+#endif // __JUCER_HEADER_PLUGMODEBANKCOMPONENT_PLUGMODEBANKCOMPONENT_59EA7095__

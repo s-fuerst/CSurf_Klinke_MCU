@@ -1,15 +1,15 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
-*/
+ * Copyright (C) 2009-2012 Steffen Fuerst 
+ * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ */
 
 #include "UndoEnd.h"
 #include "csurf_mcu.h"
 #include "Assert.h"
 
-UndoEnd* UndoEnd::s_instance = NULL;
+UndoEnd *UndoEnd::s_instance = NULL;
 
-UndoEnd* UndoEnd::instance() {
+UndoEnd *UndoEnd::instance() {
   if (s_instance == NULL) {
     s_instance = new UndoEnd();
   }
@@ -23,7 +23,8 @@ void UndoEnd::callUndoBegin() {
   }
 }
 
-void UndoEnd::callUndoEnd(const char* pMessage, const int flags, const int waitInMs) {
+void UndoEnd::callUndoEnd(const char *pMessage, const int flags,
+                          const int waitInMs) {
   ASSERT(m_bInBlock);
 
   m_pMessage = pMessage;
@@ -35,7 +36,7 @@ void UndoEnd::run(DWORD timeInMs) {
   if (m_waitInMs > 0) {
     m_sendUndoAfterTime = timeInMs + m_waitInMs;
     m_waitInMs = 0;
-  } 
+  }
 
   if (m_bInBlock && timeInMs > m_sendUndoAfterTime) {
     Undo_EndBlock(m_pMessage, m_flags);
@@ -44,7 +45,4 @@ void UndoEnd::run(DWORD timeInMs) {
   }
 }
 
-UndoEnd::~UndoEnd()
-{
-  s_instance = NULL;
-}
+UndoEnd::~UndoEnd() { s_instance = NULL; }
