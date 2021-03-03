@@ -23,7 +23,13 @@ protected:
   void *getSendInfo(ESendInfo sendInfo, int iTrack);
   void setSendInfo(ESendInfo sendInfo, int iTrack, void *pValue, int wait);
 
-  int calcSendIdx(int sendNr);
+  int calcSendIdxSet(int sendNr);
+  int calcSendIdxGet(int sendNr);
+
+	void getTrackUIVol(MediaTrack *track, int idx, double *volumeOut,
+										 double *panOut);
+	int getTrackUIOffset() { return -1; };
+
 
   const char *stringForESendInfo(ESendInfo sendInfo);
 };

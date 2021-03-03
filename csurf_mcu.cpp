@@ -398,7 +398,7 @@ double CSurf_MCU::CalcMovement(double oldPos, int dir) {
 }
 
 bool CSurf_MCU::OnAutoMode(MIDI_event_t *evt) {
-  int mode = -1;
+  AutoMode mode = AutoMode::AUTO_MODE_TRIM;
   int a = evt->midi_message[1] - 0x4a;
   if (!a)
     mode = AUTO_MODE_READ;
@@ -411,8 +411,11 @@ bool CSurf_MCU::OnAutoMode(MIDI_event_t *evt) {
   else if (a == 4)
     mode = AUTO_MODE_LATCH;
 
-  if (mode >= 0)
+  if (mode >= 0) {
+		m_pCCSManager->setAutoMode(mode);
     SetAutomationMode(mode, !IsModifierPressed(VK_CONTROL));
+	}
+		//    SetAutomationMode(mode, !IsModifierPressed(VK_CONTROL));
 
   return true;
 }

@@ -47,9 +47,20 @@ void SendMode::setSendInfo(ESendInfo sendInfo, int iTrack, void *pValue,
                                    UNDO_STATE_TRACKCFG, wait);
 }
 
-int SendMode::calcSendIdx(int sendNr) {
+int SendMode::calcSendIdxGet(int sendNr) {
   return sendNr + GetTrackNumSends(selectedTrack(), 1);
 }
+
+int SendMode::calcSendIdxSet(int sendNr) {
+  return sendNr + GetTrackNumSends(selectedTrack(), 1);
+}
+
+
+void SendMode::getTrackUIVol(MediaTrack *track, int idx, double *volumeOut,
+														 double *panOut) {
+	GetTrackSendUIVolPan(track, idx, volumeOut, panOut);
+}
+
 
 const char *SendMode::stringForESendInfo(ESendInfo sendInfo) {
   switch (sendInfo) {
@@ -79,3 +90,4 @@ bool SendMode::buttonSelect(int channel, bool pressed) {
 
   return true;
 }
+

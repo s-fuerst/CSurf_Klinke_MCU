@@ -117,6 +117,7 @@ extern int __g_projectconfig_measoffs;
 extern bool (*SetTrackSendUIVol)(MediaTrack* track, int send_idx, double vol, int isend);
 extern bool (*SetTrackSendUIPan)(MediaTrack* track, int send_idx, double vol, int isend);
 extern bool (*GetTrackSendUIVolPan)(MediaTrack* track, int send_index, double* volumeOut, double* panOut);
+extern bool (*GetTrackReceiveUIVolPan)(MediaTrack* track, int send_index, double* volumeOut, double* panOut);
 extern int (*GetTrackNumSends)(MediaTrack* tr, int category);
 extern void *(*GetSetTrackSendInfo)(MediaTrack *tr, int category, int sendidx, const char *parmname, void *setNewValue);
 extern void *(*GetSetMediaTrackInfo)(MediaTrack *tr, const char *parmname, void *setNewValue);
@@ -153,7 +154,7 @@ extern MediaTrack* (*GetMasterTrack)(ReaProject* proj);
 
 extern int (*AddProjectMarker)(ReaProject* proj, bool isrgn, double pos, double rgnend, const char* name, int wantidx);
 extern bool (*DeleteProjectMarker)(void* proj, int markrgnindexnumber, bool isrgn);
-
+extern void* (*ThemeLayout_RefreshAll)();
 #define NUM_MAX_CHANNELS 32
 /*
 ** REAPER command message defines
@@ -193,11 +194,11 @@ extern bool (*DeleteProjectMarker)(void* proj, int markrgnindexnumber, bool isrg
 
 // Reaper track automation modes
 enum AutoMode {
-  AUTO_MODE_TRIM,
-  AUTO_MODE_READ,
-  AUTO_MODE_TOUCH,
-  AUTO_MODE_WRITE,
-  AUTO_MODE_LATCH,
+  AUTO_MODE_TRIM = 0,
+  AUTO_MODE_READ = 1,
+  AUTO_MODE_TOUCH = 2,
+  AUTO_MODE_WRITE = 3,
+  AUTO_MODE_LATCH = 4,
 };
 extern midi_Output *CreateThreadedMIDIOutput(midi_Output *output); // returns null on null
 

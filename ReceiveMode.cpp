@@ -6,6 +6,7 @@
 #include "ReceiveMode.h"
 #include "Display.h"
 #include "ccsmanager.h"
+#include "csurf.h"
 #include "csurf_mcu.h"
 #include "undoend.h"
 
@@ -47,7 +48,18 @@ void ReceiveMode::setSendInfo(ESendInfo sendInfo, int iTrack, void *pValue,
                                    UNDO_STATE_TRACKCFG, wait);
 }
 
-int ReceiveMode::calcSendIdx(int sendNr) { return -sendNr - 1; }
+int ReceiveMode::calcSendIdxSet(int sendNr) { return -sendNr - 1; }
+
+int ReceiveMode::calcSendIdxGet(int sendNr) {
+  return sendNr + GetTrackNumSends(selectedTrack(), -1) - 1;
+}
+
+void ReceiveMode::getTrackUIVol(MediaTrack *track, int idx, double *volumeOut,
+                                double *panOut) {
+	GetTrackReceiveUIVolPan(track, idx, volumeOut, panOut);
+}
+
+
 
 const char *ReceiveMode::stringForESendInfo(ESendInfo sendInfo) {
   switch (sendInfo) {

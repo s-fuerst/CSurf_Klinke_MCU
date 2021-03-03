@@ -133,6 +133,8 @@ bool (*SetTrackSendUIPan)(MediaTrack *track, int send_idx, double vol,
                           int isend);
 bool (*GetTrackSendUIVolPan)(MediaTrack *track, int send_index,
                              double *volumeOut, double *panOut);
+bool (*GetTrackReceiveUIVolPan)(MediaTrack* track, int recv_index, double* volumeOut, double* panOut);
+
 int (*GetTrackNumSends)(MediaTrack *tr, int category);
 void *(*GetSetTrackSendInfo)(MediaTrack *tr, int category, int sendidx,
                              const char *parmname, void *setNewValue);
@@ -184,6 +186,8 @@ MediaTrack *(*GetMasterTrack)(ReaProject *proj);
 int (*AddProjectMarker)(ReaProject *proj, bool isrgn, double pos, double rgnend,
                         const char *name, int wantidx);
 bool (*DeleteProjectMarker)(void *proj, int markrgnindexnumber, bool isrgn);
+
+void* (*ThemeLayout_RefreshAll)();
 
 int __g_projectconfig_timemode2, __g_projectconfig_timemode;
 int __g_projectconfig_measoffs;
@@ -292,6 +296,7 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   IMPAPI(SetTrackSendUIVol)
   IMPAPI(SetTrackSendUIPan)
   IMPAPI(GetTrackSendUIVolPan)
+  IMPAPI(GetTrackReceiveUIVolPan)
   IMPAPI(GetTrackNumSends)
   IMPAPI(GetSetTrackSendInfo)
   IMPAPI(GetSetMediaTrackInfo)
@@ -334,6 +339,8 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   IMPAPI(AddProjectMarker)
   IMPAPI(DeleteProjectMarker)
 
+	IMPAPI(ThemeLayout_RefreshAll)
+		
   if (errcnt)
     return 0;
 

@@ -76,16 +76,6 @@ public:
   virtual void updateEverything();
 
   virtual void trackListChange() { updateEverything(); }
-  //      virtual void trackVolume(MediaTrack *trackid, double
-  //      volume){/*updateFaders();updateVPOTs();*/} virtual void
-  //      trackPan(MediaTrack *trackid, double
-  //      pan){/*updateVPOTs();updateFaders();} virtual void
-  //      trackMute(MediaTrack *trackid, bool mute){updateMuteLEDs();} virtual
-  //      void trackSelected(MediaTrack *trackid, bool
-  //      selected){/*updateSelectLEDs();*/}//add updateSelectLED(MediaTrack)
-  //      und eigentlich gehoert das ganze nicht in die Basisklasse virtual void
-  //      trackSolo(MediaTrack *trackid, bool solo){updateSoloLEDs();} virtual
-  //      void trackRecArm(MediaTrack *trackid, bool recarm){updateRecLEDs();}
   virtual void trackName(MediaTrack *trackid, const char *pName) {
     updateDisplay();
   }
@@ -105,10 +95,15 @@ public:
   virtual void deleteEditorComponent(){};
 
   // Helper
-  MediaTrack *
-  selectedTrack(); // returns null if zero or more then one track is selected
+	// returns null if zero or more then one track is selected
+  MediaTrack *selectedTrack(); 
   bool isModifierPressed(int modifier);
 
+	virtual void setAutoMode(AutoMode mode){ autoMode = mode; }
+	AutoMode getAudoMode() { return autoMode; }
+	
 protected:
   CCSManager *m_pCCSManager;
+
+	AutoMode autoMode = AutoMode::AUTO_MODE_TRIM;
 };

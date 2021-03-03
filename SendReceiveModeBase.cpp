@@ -7,6 +7,7 @@
 #include "Display.h"
 #include <boost/foreach.hpp>
 #include "Assert.h"
+#include "csurf.h"
 
 SendReceiveModeBase::SendReceiveModeBase(CCSManager *pManager)
     : CCSMode(pManager), m_flip(false), m_pLastSelectedTrack(NULL),
@@ -27,6 +28,25 @@ void SendReceiveModeBase::activate() {
   }
 
   m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
+}
+
+void SendReceiveModeBase::updateRecLEDs() {
+  getSendInfos(&m_sendInfos, AUTOMODE);
+  for (unsigned int iInfo = 0; iInfo < 8; iInfo++) {
+    if (m_startWithSend + iInfo < m_sendInfos.size()) {
+			int mode = *((int *)m_sendInfos[m_startWithSend + iInfo]);
+			if (mode == -1) {
+				mode = AUTO_MODE_TRIM;
+				setSendInfo(AUTOMODE, m_startWithSend + iInfo, &mode);
+			}
+				
+      m_pCCSManager->setRecLED(
+          this, iInfo + 1,
+          mode == AUTO_MODE_READ || mode == AUTO_MODE_TRIM ? LED_OFF : LED_ON);
+		}
+    else
+      m_pCCSManager->setRecLED(this, iInfo + 1, LED_OFF);
+  }
 }
 
 void SendReceiveModeBase::updateSoloLEDs() {
@@ -63,12 +83,12 @@ void SendReceiveModeBase::updateFaders() {
 
   for (unsigned int iInfo = 1; iInfo < 9; iInfo++) {
     if (m_startWithSend + iInfo <= m_sendInfos.size()) {
-      int sendIdx = calcSendIdx(m_startWithSend + iInfo - 1);
+      int sendIdx = calcSendIdxGet(m_startWithSend + iInfo - 1);
       if (m_flip) {
-        GetTrackSendUIVolPan(selectedTrack(), sendIdx, &vol, &pan);
+        getTrackUIVol(selectedTrack(), sendIdx, &vol, &pan);
         m_pCCSManager->setFader(this, iInfo, panToInt14(pan));
       } else {
-        GetTrackSendUIVolPan(selectedTrack(), sendIdx, &vol, &pan);
+        getTrackUIVol(selectedTrack(), sendIdx, &vol, &pan);
         m_pCCSManager->setFader(this, iInfo, volToInt14(vol));
       }
     } else
@@ -137,10 +157,13 @@ void SendReceiveModeBase::updateDisplay() {
     for (iInfo = 0; (m_startWithSend + iInfo) < m_sendInfos.size() && iInfo < 8;
          iInfo++) {
       if (m_pCCSManager->getFaderTouched(iInfo + 1) && !m_flip) {
-        double *volume = (double *)getSendInfo(VOL, iInfo + m_startWithSend);
-
+				double vol;
+				double pan;
+				int sendIdx = calcSendIdxGet(m_startWithSend + iInfo);
+        getTrackUIVol(selectedTrack(), sendIdx, &vol, &pan);
+				
         char text[7];
-        double asDB = VAL2DB(*volume);
+        double asDB = VAL2DB(vol);
         if (asDB > -100)
           sprintf(text, "%6.1f", asDB);
         else
@@ -173,8 +196,29 @@ const char *SendReceiveModeBase::stringForESendInfo(ESendInfo sendInfo) {
     return "D_VOL";
   case PAN:
     return "D_PAN";
+  case AUTOMODE:
+		return "I_AUTOMODE";
   }
   return NULL;
+}
+
+bool SendReceiveModeBase::buttonRec(int channel, bool pressed) {
+  if (pressed) {
+    int sendNr = m_startWithSend + channel - 1;
+    int *pOldState = (int *)getSendInfo(AUTOMODE, sendNr);
+		if (pOldState) {
+			int newMode = autoMode;
+			if (*pOldState == autoMode) 
+				newMode = AUTO_MODE_TRIM;
+
+			setSendInfo(AUTOMODE, sendNr, (void *)&newMode);
+
+      // m_pCCSManager->setRecLED(this, channel, autoMode == AUTO_MODE_TRIM || autoMode == AUTO_MODE_READ ? LED_OFF : LED_ON);
+			ThemeLayout_RefreshAll();
+		}
+  }
+
+  return true;
 }
 
 bool SendReceiveModeBase::buttonFaderBanks(int button, bool pressed) {
@@ -243,13 +287,12 @@ bool SendReceiveModeBase::fader(int channel, int value) {
         selectedTrack(),
         CSurf_OnVolumeChange(selectedTrack(), int14ToVol(value), false), NULL);
   } else {
-    int sendIdx = calcSendIdx(m_startWithSend + channel - 1);
+    int sendIdx = calcSendIdxSet(m_startWithSend + channel - 1);
     if (m_flip) {
       double newVal = int14ToPan(value);
       SetTrackSendUIPan(selectedTrack(), sendIdx, newVal, 0);
     } else {
       double newVal = int14ToVol(value);
-      DBOUT("send fader " << sendIdx << " with value " << newVal << "\n");
       SetTrackSendUIVol(selectedTrack(), sendIdx, newVal, 0);
     }
   }
@@ -260,13 +303,12 @@ bool SendReceiveModeBase::fader(int channel, int value) {
 
 bool SendReceiveModeBase::faderTouched(int channel, bool touched) {
   if (touched == false) {
-    int sendIdx = calcSendIdx(m_startWithSend + channel - 1);
+    int sendIdx = calcSendIdxSet(m_startWithSend + channel - 1);
     if (m_flip) {
       double newVal = int14ToPan(m_pCCSManager->getFaderPos(channel));
       SetTrackSendUIPan(selectedTrack(), sendIdx, newVal, 1);
     } else {
       double newVal = int14ToVol(m_pCCSManager->getFaderPos(channel));
-      DBOUT("release fader " << sendIdx << " with value " << newVal << "\n");
       SetTrackSendUIVol(selectedTrack(), sendIdx, newVal, 1);
     }
   }
@@ -321,6 +363,7 @@ void SendReceiveModeBase::updateFlipLED() {
 void SendReceiveModeBase::frameUpdate() {
   updateFaders();
   updateVPOTs();
+	updateRecLEDs();
   updateSoloLEDs();
   updateMuteLEDs();
   updateDisplay();

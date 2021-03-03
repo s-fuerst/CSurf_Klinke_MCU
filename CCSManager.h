@@ -124,7 +124,8 @@ public:
   CCSMode *getActualMode() { return m_pActualMode; }
   DWORD getLastTime() { return m_lastTime; }
   CCSModesEditor *getEditor() { return m_pEditor; }
-
+	void setAutoMode(AutoMode mode) { m_pActualMode->setAutoMode(mode); }
+	
   // helper
   void switchToDisplay(CCSMode *pMode, Display *pDisplay);
   void setVPOTMode(VPOT_LED::MODE mode); // set all VPOTs to the same mode
