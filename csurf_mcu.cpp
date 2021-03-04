@@ -929,6 +929,9 @@ void CSurf_MCU::Run() {
 
     signalFrame(now);
 
+		if (IsFlagSet(CONFIG_FLAG_PROX))
+			EmulateBlinkingLEDs(now);
+
     Tracks::instance()->adjust(g_mcu_list.GetSize() * 8);
 
     UpdateGlobalSoloLED();
@@ -1152,6 +1155,26 @@ void CSurf_MCU::SetLED(int button_nr, int led_state) {
     m_led_state[button_nr] = led_state;
   }
 }
+
+void CSurf_MCU::EmulateBlinkingLEDs(DWORD now) {
+	static short lastNowMod2 = 0;
+
+	if (lastNowMod2 == (now >> 8) % 2)
+		return;
+
+	lastNowMod2 = !lastNowMod2;
+
+	short blinkLedState = LED_OFF;
+	if (lastNowMod2 == 1)
+		blinkLedState = LED_ON;
+	
+	for (int i = 0; i < 128; i++) {
+		if (m_led_state[i] == LED_BLINK) {
+			SendMidi(0x90, i, blinkLedState, -1);
+		}
+	}
+}
+
 
 void CSurf_MCU::SetTrackListChange() {
   //  ProjectConfig::instance()->checkReaProjectChange();
@@ -1488,6 +1511,8 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
 
     if (parms[4] & CONFIG_FLAG_FADER_TOUCH_FAKE)
       CheckDlgButton(hwndDlg, IDC_FAKE_TOUCH, BST_CHECKED);
+    if (parms[4] & CONFIG_FLAG_PROX)
+      CheckDlgButton(hwndDlg, IDC_PROX, BST_CHECKED);
     if (parms[4] & CONFIG_FLAG_SWAPZOOM)
       CheckDlgButton(hwndDlg, IDC_CHECK2, BST_CHECKED);
     if (parms[4] & CONFIG_FLAG_NO_LEVEL_METER)
@@ -1516,6 +1541,8 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
       int cflags = 0;
       if (IsDlgButtonChecked(hwndDlg, IDC_FAKE_TOUCH))
         cflags |= CONFIG_FLAG_FADER_TOUCH_FAKE;
+      if (IsDlgButtonChecked(hwndDlg, IDC_PROX))
+        cflags |= CONFIG_FLAG_PROX;
       if (IsDlgButtonChecked(hwndDlg, IDC_CHECK2))
         cflags |= CONFIG_FLAG_SWAPZOOM;
       if (IsDlgButtonChecked(hwndDlg, IDC_NOLEVEL))

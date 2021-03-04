@@ -26,8 +26,9 @@ DisplayHandler::DisplayHandler(CSurf_MCU *pMCU, EnumMCUType mcuType) {
   m_mcuType = mcuType;
   m_wait = false;
   for (int i = 0; i < 9; i++) {
-    m_metersEnabled[i] = m_pMCU->IsFlagSet(
-        CONFIG_FLAG_NO_LEVEL_METER); // enableMeter must be processed once
+		// enableMeter must be processed once
+    m_metersEnabled[i] = m_pMCU->IsFlagSet(CONFIG_FLAG_NO_LEVEL_METER) ||
+			m_pMCU->IsFlagSet(CONFIG_FLAG_PROX);
   }
 
   m_pHardwareState = new Display(this, 2);
@@ -114,7 +115,8 @@ void DisplayHandler::enableMeter(int channel, bool enable) // channel is 1 based
 {
   ASSERT(channel > 0 && channel <= 9);
 
-  if (m_pMCU->IsFlagSet(CONFIG_FLAG_NO_LEVEL_METER)) {
+  if (m_pMCU->IsFlagSet(CONFIG_FLAG_NO_LEVEL_METER) ||
+			m_pMCU->IsFlagSet(CONFIG_FLAG_PROX)) {
     enable = false;
   }
 

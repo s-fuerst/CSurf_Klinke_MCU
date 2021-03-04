@@ -21,6 +21,7 @@
 #define IDC_NOLEVEL                     1009
 #define IDC_KEYBOARD_MODIFIER           1010
 #define IDC_FAKE_TOUCH                  1011
+#define IDC_PROX                        1012
 #define IDC_EDIT1_LBL                   1276
 #define IDC_EDIT2_LBL                   1277
 #define IDC_EDIT2_LBL2                  1278

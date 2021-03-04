@@ -44,7 +44,8 @@ bool PanMode::faderTouched(int channel, bool touched) {
 
 void PanMode::updateDisplay() {
   MultiTrackMode::updateDisplay();
-  if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_NO_LEVEL_METER)) {
+  if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_NO_LEVEL_METER) ||
+			m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX)) {
     for (int iTrack = 1; iTrack < 9; iTrack++) {
       MediaTrack *tr = getMediaTrackForChannel(iTrack);
       if (tr) {
