@@ -7,6 +7,8 @@
 #include "csurf_mcu.h"
 #include "Assert.h"
 #include "Tracks.h"
+#include "boost\foreach.hpp"
+
 
 DisplayTrackMeter::DisplayTrackMeter(DisplayHandler *pDisplayHandler,
                                      int numRows)
@@ -17,12 +19,28 @@ DisplayTrackMeter::DisplayTrackMeter(DisplayHandler *pDisplayHandler,
   m_mcu_meter_lastrun = 0;
 }
 
+bool oneChildrenIsSoloed(MediaTrack * pMT) {
+	std::vector<MediaTrack *> children =
+		Tracks::instance()->getChildredForMediaTrack(pMT);
+
+	int *soloState;
+	BOOST_FOREACH (MediaTrack *pMediaTrack, children) {
+		soloState = (int *)GetSetMediaTrackInfo(pMediaTrack, "I_SOLO", NULL);
+		if (*soloState > 0)
+			return true;
+		if (oneChildrenIsSoloed(pMediaTrack))
+			return true;
+	}
+
+	return false;
+}
+
 void DisplayTrackMeter::updateTrackMeter(DWORD now) {
   if (m_pDisplayHandler->getMCU()->IsFlagSet(CONFIG_FLAG_NO_LEVEL_METER))
     return;
   // 0xD0 = level meter, hi nibble = channel index, low = level (F=clip, E=top)
   int x;
-  bool somethingSoloed = m_pDisplayHandler->getMCU()->SomethingSoloed();
+
 #define VU_BOTTOM 70
   double decay = 0.0;
   if (m_mcu_meter_lastrun) {
@@ -37,15 +55,29 @@ void DisplayTrackMeter::updateTrackMeter(DWORD now) {
     if (t = Tracks::instance()->getMediaTrackForChannel(x)) {
       // check mute/solo state of track(s), maybe the signal is muted
       bool isPlaying = true;
-      if (somethingSoloed) {
-        int *soloState = (int *)GetSetMediaTrackInfo(t, "I_SOLO", NULL);
-        if (*soloState == 0)
-          isPlaying = false;
-      }
       bool *muteState = (bool *)GetSetMediaTrackInfo(t, "B_MUTE", NULL);
       if (*muteState) {
         isPlaying = false;
       }
+      if (m_pDisplayHandler->getMCU()->SomethingSoloed()) {
+        int *soloState = (int *)GetSetMediaTrackInfo(t, "I_SOLO", NULL);
+        if (*soloState == 0) {
+          isPlaying = false;
+					while(t = Tracks::instance()->getParentForMediaTrack(t)) {
+						soloState = (int *)GetSetMediaTrackInfo(t, "I_SOLO", NULL);
+						if (*soloState > 0) {
+							isPlaying = true;
+							continue;
+						}
+					}
+				} else {
+					isPlaying = true;
+				}
+      }
+			t = Tracks::instance()->getMediaTrackForChannel(x);
+			if (isPlaying == false) {
+				isPlaying = oneChildrenIsSoloed(t);
+			}
 
       int v = 0x0;
       if (isPlaying) {

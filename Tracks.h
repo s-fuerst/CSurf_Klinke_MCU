@@ -41,6 +41,7 @@ public:
 
   MediaTrack *getMediaTrack() { return m_pMediaTrack; }
   TSNode *getParentNode() { return m_pParent; }
+	std::vector<TSNode *> getChildren() { return m_children; }
   TSNode *getNextNodeOnSameLevel(EFilter fitler);
 
   int getDepth();
@@ -194,6 +195,9 @@ public:
   MediaTrack *getMediaTrackForChannel(int channel);
   MediaTrack *getMediaTrackForGUID(String guid);
 
+	MediaTrack *getParentForMediaTrack(MediaTrack *pMT);
+	std::vector<MediaTrack *> getChildredForMediaTrack(MediaTrack *pMT);
+	
   int getNumMediaTracksOnMCU();
 
   int getNumMediaTracksTotal();

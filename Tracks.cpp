@@ -112,8 +112,8 @@ void TSGraph::buildGraph(bool flat) {
     delete (t2n.second);
   m_mapTrack.clear();
 
-  m_mapTrack[NULL] = new TSNode(NULL, NULL);
-  TSNode *pParentNode = m_mapTrack[NULL];
+  m_mapTrack[0] = new TSNode(NULL, NULL);
+  TSNode *pParentNode = m_mapTrack[0];
 
   for (TrackIterator ti; !ti.end(); ++ti) {
     TSNode *pNewNode = new TSNode(*ti, pParentNode);
@@ -565,6 +565,34 @@ int Tracks::getChannelForMediaTrack(MediaTrack *pMT) {
   }
   return -1;
 }
+
+MediaTrack *Tracks::getParentForMediaTrack(MediaTrack *pMT) {
+  TSNode *pNode = m_structure.nodeOfTrack(pMT);
+  if (pNode == NULL)
+    return NULL;
+
+	TSNode *pParentNode = pNode->getParentNode();
+	if (pParentNode == NULL)
+		return NULL;
+
+	return pParentNode->getMediaTrack();
+}
+
+std::vector<MediaTrack *> Tracks::getChildredForMediaTrack(MediaTrack *pMT) {
+	std::vector<MediaTrack *> mediaTracks;
+
+	TSNode *pNode = m_structure.nodeOfTrack(pMT);
+  if (pNode == NULL)
+    return mediaTracks;
+	
+	std::vector<TSNode *> children = pNode->getChildren();
+  BOOST_FOREACH (TSNode *&pNode, children) {
+		mediaTracks.push_back(pNode->getMediaTrack());
+  }
+
+	return mediaTracks;
+}
+
 
 MediaTrack *Tracks::findMediaTrackForChannel(int channel) {
   // find anchor and count anchors with lower channel
