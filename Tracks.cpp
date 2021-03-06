@@ -4,6 +4,7 @@
  */
 
 #include "Tracks.h"
+#include "csurf.h"
 #include "csurf_mcu.h"
 #include <boost\foreach.hpp>
 #include <boost\bind.hpp>
@@ -170,14 +171,14 @@ TrackState::TrackState()
     : m_pMediaTrack(NULL), m_isInSet(true), m_isOnMCU(false), m_onMCUChannel(0),
       m_anchorChannel(0), m_quickJumpChannel(0), m_isShownInMCP(true),
       m_isShownInTCP(true), m_tcpHeight(16), m_quickJumpName(String::empty),
-      m_quickRoot(false), m_displayName(String::empty),
+      m_quickRoot(false), m_displayName(String::empty), m_vu(true),
       m_guidAsString(String::empty) {}
 
 TrackState::TrackState(MediaTrack *pMT)
     : m_pMediaTrack(NULL), m_isInSet(true), m_isOnMCU(false), m_onMCUChannel(0),
       m_anchorChannel(0), m_quickJumpChannel(0), m_isShownInMCP(true),
       m_isShownInTCP(true), m_tcpHeight(16), m_quickJumpName(String::empty),
-      m_quickRoot(false), m_displayName(String::empty) {
+      m_quickRoot(false), m_vu(true), m_displayName(String::empty) {
   m_pMediaTrack = pMT;
   if (pMT)
     m_guidAsString = GUID2String(GetTrackGUID(pMT));
@@ -282,7 +283,7 @@ void TrackState::setAnchorChannel(int channel) {
 }
 
 //======================================================== MediaTrackInfo
-
+ 
 bool MediaTrackInfo::isShownInTCP(MediaTrack *pMT) {
   assert(pMT != NULL);
   if (pMT == NULL)
@@ -566,12 +567,8 @@ int Tracks::getChannelForMediaTrack(MediaTrack *pMT) {
   return -1;
 }
 
-MediaTrack *Tracks::getParentForMediaTrack(MediaTrack *pMT, bool forSolo) {
-  TSNode *pNode = m_structure.nodeOfTrack(pMT);
-
-  if (m_pOptions1->isOptionSetTo(MTO_REFLECT_FOLDER, MTOA_REFLECT_NO) &&
-			forSolo)
-		pNode = m_structureForSolos.nodeOfTrack(pMT);
+MediaTrack *Tracks::getParentForMediaTrack(MediaTrack *pMT) {
+  TSNode *pNode = m_structureVU.nodeOfTrack(pMT);
 
   if (pNode == NULL)
     return NULL;
@@ -583,15 +580,10 @@ MediaTrack *Tracks::getParentForMediaTrack(MediaTrack *pMT, bool forSolo) {
 	return pParentNode->getMediaTrack();
 }
 
-std::vector<MediaTrack *> Tracks::getChildredForMediaTrack(MediaTrack *pMT,
-																													 bool forSolo) {
+std::vector<MediaTrack *> Tracks::getChildredForMediaTrack(MediaTrack * pMT) {
 	std::vector<MediaTrack *> mediaTracks;
 
-  TSNode *pNode = m_structure.nodeOfTrack(pMT);
-
-  if (m_pOptions1->isOptionSetTo(MTO_REFLECT_FOLDER, MTOA_REFLECT_NO) &&
-			forSolo)
-		pNode = m_structureForSolos.nodeOfTrack(pMT);
+  TSNode *pNode = m_structureVU.nodeOfTrack(pMT);
 
   if (pNode == NULL)
     return mediaTracks;
@@ -969,13 +961,83 @@ TrackState *Tracks::getTrackStateForMediaTrack(MediaTrack *pMediaTrack) {
 }
 
 void Tracks::buildGraph() {
-	if (m_pOptions1->isOptionSetTo(MTO_REFLECT_FOLDER, MTOA_REFLECT_NO)) {
-		m_structure.buildGraph(true);
-		m_structureForSolos.buildGraph(false);
-	} else {
-		m_structure.buildGraph(false);
-	}
+	m_structure.buildGraph(m_pOptions1->isOptionSetTo(MTO_REFLECT_FOLDER,
+																										MTOA_REFLECT_NO));
+	m_structureVU.buildGraph(false);
+	
   createChannelTrackVector();
+  updateVUactive();
+}
+
+bool Tracks::oneChildrenIsSoloed(MediaTrack * pMT) {
+	std::vector<MediaTrack *> children = getChildredForMediaTrack(pMT);
+
+  int *soloState;
+  for(MediaTrack *pMediaTrack : children) {
+    soloState = (int *)GetSetMediaTrackInfo(pMediaTrack, "I_SOLO", NULL);
+    if (*soloState > 0)
+      return true;
+    if (oneChildrenIsSoloed(pMediaTrack))
+      return true;
+  }
+
+  return false;
+}
+
+void Tracks::activeVUallChildren(MediaTrack *pMT) {
+	std::vector<MediaTrack *> children = getChildredForMediaTrack(pMT);
+
+	for (MediaTrack *pMediaTrack : children) {
+		getTrackStateForMediaTrack(pMediaTrack)->setVUactive(true);
+		activeVUallChildren(pMediaTrack);
+	}
+}
+
+void Tracks::updateVUactive() {
+	if (!m_pMCU->SomethingSoloed()) {
+		for (auto &e : m_trackStates) {
+			e.second->setVUactive(true);
+		}
+		return;
+	}
+	
+	for(auto &e : m_trackStates) {
+		e.second->setVUactive(false);
+	}
+
+	for(auto &e : m_trackStates) {
+		TrackState &ts = *e.second;
+		int *soloState = (int *)GetSetMediaTrackInfo(ts.getMediaTrack(),
+																								 "I_SOLO", NULL);
+		if (*soloState > 0) {
+			ts.setVUactive(true);
+			MediaTrack *p = getParentForMediaTrack(ts.getMediaTrack());
+			// solo all parents
+			while (p) {
+				getTrackStateForMediaTrack(p)->setVUactive(true);
+				p = getParentForMediaTrack(p);
+			}
+			// solo children
+			if (!oneChildrenIsSoloed(ts.getMediaTrack())) {
+				activeVUallChildren(ts.getMediaTrack());
+			}
+		}
+	}
+
+	// check sends
+	for (auto &e : m_trackStates) {
+		TrackState &ts = *e.second;
+		int i = 0;
+		MediaTrack *s = (MediaTrack *)
+			GetSetTrackSendInfo(ts.getMediaTrack(), -1, i, "P_SRCTRACK", NULL);
+		while (s) {
+			i++;
+			if (getTrackStateForMediaTrack(s)->getVUactive())
+				ts.setVUactive(true);
+			s = (MediaTrack *)
+				GetSetTrackSendInfo(ts.getMediaTrack(), -1, i, "P_SRCTRACK", NULL);
+		}
+	}
 }
 
 int Tracks::connect2TrackAddedSignal(const tTrackSignalSlot &slot) {

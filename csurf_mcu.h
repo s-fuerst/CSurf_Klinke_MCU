@@ -518,6 +518,9 @@ public:
   unsigned int GetActualFrameTime() { return m_frameupd_lastrun; }
 
   ButtonManager *GetButtonManager() { return m_pButtonManager; }
+
+private:
+	int runCounter = 0;
 };
 
 class SelectedTrack {

@@ -922,8 +922,10 @@ void CSurf_MCU::Run() {
 
     ProjectConfig::instance()->checkReaProjectChange();
 
-    if (Tracks::instance()->tracksStatesChanged())
-      m_pCCSManager->trackListChange();
+		runCounter++;
+		if (runCounter % 3 == 0)
+			if (Tracks::instance()->tracksStatesChanged())
+				m_pCCSManager->trackListChange();
 
     PlugMoveWatcher::instance()->checkMovement();
 

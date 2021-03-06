@@ -125,6 +125,9 @@ public:
   bool isShownInMCP() { return m_isShownInMCP; }
   void setIsShownInMCP(bool isShown) { m_isShownInMCP = isShown; }
 
+	bool getVUactive() { return m_vu; }
+	void setVUactive(bool active) { m_vu = active; }
+
   int getTCPHeight() { return m_tcpHeight; }
   void setTCPHeight(int height) { m_tcpHeight = height; }
 
@@ -150,6 +153,7 @@ private:
                     // shown, not the track itself)
   bool m_isShownInTCP; // if tcp isn't modified from plugin
   bool m_isShownInMCP; // if mcp isn't modified from plugin
+	bool m_vu; // is true if vu should be shown on meterbridge
   int m_tcpHeight;
   String m_displayName;
 };
@@ -195,19 +199,15 @@ public:
   MediaTrack *getMediaTrackForChannel(int channel);
   MediaTrack *getMediaTrackForGUID(String guid);
 
-	MediaTrack *getParentForMediaTrack(MediaTrack *pMT, bool forSolo);
-	std::vector<MediaTrack *> getChildredForMediaTrack(MediaTrack *pMT,
-																										 bool forSolo);
+	MediaTrack *getParentForMediaTrack(MediaTrack *pMT);
+	std::vector<MediaTrack *> getChildredForMediaTrack(MediaTrack *pMT);
 	
   int getNumMediaTracksOnMCU();
 
   int getNumMediaTracksTotal();
 
-  TrackState *getTrackStateForMediaTrack(
-      MediaTrack
-          *pMediaTrack); // can return NULL while adding multiple tracks at once
-  //      TrackState* getTrackStateForQuickChannel(int channel); // return NULL
-  //      if the channel isn't a target for a quick jump
+	 // can return NULL while adding multiple tracks at once
+  TrackState *getTrackStateForMediaTrack(MediaTrack *pMediaTrack);
 
   int connect2TrackAddedSignal(
       const tTrackSignalSlot &slot); // {signalTrackAdded.connect(slot);}
@@ -264,6 +264,8 @@ public:
 
   bool isTrackInFilter(MediaTrack *pMT);
 
+	void updateVUactive();
+
 private:
   Tracks(void);
   static Tracks *s_instance;
@@ -277,6 +279,9 @@ private:
   MediaTrack *findMediaTrackForChannel(int channel);
   std::set<MediaTrack *> m_selectedTracks;
 
+	bool oneChildrenIsSoloed(MediaTrack *pMT);
+	void activeVUallChildren(MediaTrack *pMT);
+	
   typedef std::map<String, TrackState *> tTrackStates;
   tTrackStates m_trackStates;
 
@@ -299,7 +304,7 @@ private:
   int m_globalOffset;
 
   TSGraph m_structure;
-	TSGraph m_structureForSolos;
+	TSGraph m_structureVU;
 	
   MediaTrack *m_pCurrentBaseTrack;
 
