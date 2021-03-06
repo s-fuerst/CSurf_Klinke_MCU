@@ -10,14 +10,14 @@
 
 class DisplayTrackMeter : public Display {
 private:
-  double m_mcu_meterpos[8];
+  double m_mcu_meterpos[10]; // 9 and 10 are for the master
   DWORD m_mcu_meter_lastrun;
 
 public:
   DisplayTrackMeter(DisplayHandler *pDisplayHandler, int numRows);
   bool onlyOnMainUnit() { return false; }
   bool hasMeter() { return true; }
-  void updateTrackMeter(DWORD now);
+  void updateTrackMeter(DWORD now, CSurf_MCU *pMCU);
   void changeText(int row, int pos, const char *text, int pad);
   void changeField(int row, int field, const char *text);
 };

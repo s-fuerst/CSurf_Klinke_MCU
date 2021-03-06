@@ -4,6 +4,7 @@
  */
 
 #include "DisplayTrackMeter.h"
+#include "csurf.h"
 #include "csurf_mcu.h"
 #include "Assert.h"
 #include "Tracks.h"
@@ -21,27 +22,30 @@ DisplayTrackMeter::DisplayTrackMeter(DisplayHandler *pDisplayHandler,
 
 bool oneChildrenIsSoloed(MediaTrack * pMT) {
 	std::vector<MediaTrack *> children =
-		Tracks::instance()->getChildredForMediaTrack(pMT);
+    Tracks::instance()->getChildredForMediaTrack(pMT, true);
 
-	int *soloState;
-	BOOST_FOREACH (MediaTrack *pMediaTrack, children) {
-		soloState = (int *)GetSetMediaTrackInfo(pMediaTrack, "I_SOLO", NULL);
-		if (*soloState > 0)
-			return true;
-		if (oneChildrenIsSoloed(pMediaTrack))
-			return true;
-	}
+  int *soloState;
+  BOOST_FOREACH (MediaTrack *pMediaTrack, children) {
+    soloState = (int *)GetSetMediaTrackInfo(pMediaTrack, "I_SOLO", NULL);
+    if (*soloState > 0)
+      return true;
+    if (oneChildrenIsSoloed(pMediaTrack))
+      return true;
+  }
 
-	return false;
+  return false;
 }
 
-void DisplayTrackMeter::updateTrackMeter(DWORD now) {
+#define VU_BOTTOM 70
+#define VU_BOTTOM_QCON 22
+
+
+void DisplayTrackMeter::updateTrackMeter(DWORD now, CSurf_MCU * pMCU) {
   if (m_pDisplayHandler->getMCU()->IsFlagSet(CONFIG_FLAG_NO_LEVEL_METER))
     return;
   // 0xD0 = level meter, hi nibble = channel index, low = level (F=clip, E=top)
   int x;
 
-#define VU_BOTTOM 70
   double decay = 0.0;
   if (m_mcu_meter_lastrun) {
     decay =
@@ -63,21 +67,21 @@ void DisplayTrackMeter::updateTrackMeter(DWORD now) {
         int *soloState = (int *)GetSetMediaTrackInfo(t, "I_SOLO", NULL);
         if (*soloState == 0) {
           isPlaying = false;
-					while(t = Tracks::instance()->getParentForMediaTrack(t)) {
-						soloState = (int *)GetSetMediaTrackInfo(t, "I_SOLO", NULL);
-						if (*soloState > 0) {
-							isPlaying = true;
-							continue;
-						}
-					}
-				} else {
-					isPlaying = true;
-				}
+          while(t = Tracks::instance()->getParentForMediaTrack(t, true)) {
+            soloState = (int *)GetSetMediaTrackInfo(t, "I_SOLO", NULL);
+            if (*soloState > 0) {
+              isPlaying = true;
+              continue;
+            }
+          }
+        } else {
+          isPlaying = true;
+        }
       }
-			t = Tracks::instance()->getMediaTrackForChannel(x);
-			if (isPlaying == false) {
-				isPlaying = oneChildrenIsSoloed(t);
-			}
+      t = Tracks::instance()->getMediaTrackForChannel(x);
+      if (isPlaying == false) {
+        isPlaying = oneChildrenIsSoloed(t);
+      }
 
       int v = 0x0;
       if (isPlaying) {
@@ -92,19 +96,56 @@ void DisplayTrackMeter::updateTrackMeter(DWORD now) {
         if (pp < m_mcu_meterpos[x - 1])
           continue;
         m_mcu_meterpos[x - 1] = pp;
-        if (pp < 0.0) {
-          if (pp <= -VU_BOTTOM)
-            v = 0x0;
-          else
-            v = (int)((pp + VU_BOTTOM) * 13.0 / VU_BOTTOM);
-        }
+        if (pMCU->IsFlagSet(CONFIG_FLAG_PROX)) {
+					if (pp < 0.0) {
+						if (pp <= -VU_BOTTOM)
+							v = 0x0;
+						else if (pp <= -VU_BOTTOM_QCON)
+							v = 0x1;
+						else
+							v = (int)((pp + VU_BOTTOM_QCON) * 13.0 / VU_BOTTOM_QCON);
+					}
+				} else {
+					if (pp < 0.0) {
+						if (pp <= -VU_BOTTOM)
+							v = 0x0;
+						else
+							v = (int)((pp + VU_BOTTOM) * 13.0 / VU_BOTTOM);
+					}
+				}
       }
 
       if (m_pDisplayHandler->getDisplay() &&
           m_pDisplayHandler->getDisplay()->hasMeter())
-        m_pDisplayHandler->getMCU()->SendMidi(0xD0, ((x - 1) << 4) | v, 0, -1);
+        pMCU->SendMidi(0xD0, ((x - 1) << 4) | v, 0, -1);
     }
   }
+	if (pMCU->IsFlagSet(CONFIG_FLAG_PROX)) {
+		int v = 0x0;
+		for (x = 0; x < 2; x++) {
+			v = 0xd; // 0xe turns on clip indicator, 0xf turns it off
+			double pp =
+				VAL2DB(Track_GetPeakInfo(GetMasterTrack(NULL), x));
+
+			if (m_mcu_meterpos[8 + x] > -VU_BOTTOM * 2)
+				m_mcu_meterpos[8 + x] -= decay;
+			
+			if (pp > m_mcu_meterpos[8 + x]) {
+				m_mcu_meterpos[8 + x] = pp;
+			}
+			else {
+				pp = m_mcu_meterpos[8 + x];
+			}
+			
+			if (pp < 0.0) {
+				if (pp <= -VU_BOTTOM)
+					v = 0x0;
+				else
+					v = (int)((pp + VU_BOTTOM_QCON) * 13.0 / VU_BOTTOM_QCON);
+			}
+			pMCU->SendMidi(0xD1, (x << 4) | v, 0, -1);
+		}
+	}
 }
 
 void DisplayTrackMeter::changeText(int row, int pos, const char *text,

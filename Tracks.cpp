@@ -566,8 +566,13 @@ int Tracks::getChannelForMediaTrack(MediaTrack *pMT) {
   return -1;
 }
 
-MediaTrack *Tracks::getParentForMediaTrack(MediaTrack *pMT) {
+MediaTrack *Tracks::getParentForMediaTrack(MediaTrack *pMT, bool forSolo) {
   TSNode *pNode = m_structure.nodeOfTrack(pMT);
+
+  if (m_pOptions1->isOptionSetTo(MTO_REFLECT_FOLDER, MTOA_REFLECT_NO) &&
+			forSolo)
+		pNode = m_structureForSolos.nodeOfTrack(pMT);
+
   if (pNode == NULL)
     return NULL;
 
@@ -578,10 +583,16 @@ MediaTrack *Tracks::getParentForMediaTrack(MediaTrack *pMT) {
 	return pParentNode->getMediaTrack();
 }
 
-std::vector<MediaTrack *> Tracks::getChildredForMediaTrack(MediaTrack *pMT) {
+std::vector<MediaTrack *> Tracks::getChildredForMediaTrack(MediaTrack *pMT,
+																													 bool forSolo) {
 	std::vector<MediaTrack *> mediaTracks;
 
-	TSNode *pNode = m_structure.nodeOfTrack(pMT);
+  TSNode *pNode = m_structure.nodeOfTrack(pMT);
+
+  if (m_pOptions1->isOptionSetTo(MTO_REFLECT_FOLDER, MTOA_REFLECT_NO) &&
+			forSolo)
+		pNode = m_structureForSolos.nodeOfTrack(pMT);
+
   if (pNode == NULL)
     return mediaTracks;
 	
@@ -958,8 +969,12 @@ TrackState *Tracks::getTrackStateForMediaTrack(MediaTrack *pMediaTrack) {
 }
 
 void Tracks::buildGraph() {
-  m_structure.buildGraph(
-      m_pOptions1->isOptionSetTo(MTO_REFLECT_FOLDER, MTOA_REFLECT_NO));
+	if (m_pOptions1->isOptionSetTo(MTO_REFLECT_FOLDER, MTOA_REFLECT_NO)) {
+		m_structure.buildGraph(true);
+		m_structureForSolos.buildGraph(false);
+	} else {
+		m_structure.buildGraph(false);
+	}
   createChannelTrackVector();
 }
 

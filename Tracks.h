@@ -195,8 +195,9 @@ public:
   MediaTrack *getMediaTrackForChannel(int channel);
   MediaTrack *getMediaTrackForGUID(String guid);
 
-	MediaTrack *getParentForMediaTrack(MediaTrack *pMT);
-	std::vector<MediaTrack *> getChildredForMediaTrack(MediaTrack *pMT);
+	MediaTrack *getParentForMediaTrack(MediaTrack *pMT, bool forSolo);
+	std::vector<MediaTrack *> getChildredForMediaTrack(MediaTrack *pMT,
+																										 bool forSolo);
 	
   int getNumMediaTracksOnMCU();
 
@@ -298,6 +299,8 @@ private:
   int m_globalOffset;
 
   TSGraph m_structure;
+	TSGraph m_structureForSolos;
+	
   MediaTrack *m_pCurrentBaseTrack;
 
   MediaTrack *m_pLastSelectedSingleTrack;

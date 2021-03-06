@@ -1164,7 +1164,7 @@ void CSurf_MCU::EmulateBlinkingLEDs(DWORD now) {
 
 	lastNowMod2 = !lastNowMod2;
 
-	short blinkLedState = LED_OFF;
+	unsigned char blinkLedState = LED_OFF;
 	if (lastNowMod2 == 1)
 		blinkLedState = LED_ON;
 	
@@ -1304,7 +1304,7 @@ bool CSurf_MCU::IsKeyboardPressed(int key) {
 
 bool CSurf_MCU::OnGlobalViewKeys(MIDI_event_t *evt) {
   if (evt->midi_message[2] >= 0x40) {
-    int a = evt->midi_message[1];
+    unsigned char a = evt->midi_message[1];
     if (IsButtonPressed(B_GLOBAL_VIEW))
       a -= 0x10;
     else if (IsButtonPressed(B_MARKER))
@@ -1312,7 +1312,7 @@ bool CSurf_MCU::OnGlobalViewKeys(MIDI_event_t *evt) {
     else if (IsButtonPressed(B_NUDGE))
       a -= 0x30;
 
-    int byte2 = 0xbf;
+    unsigned char byte2 = 0xbf;
     if (IsModifierPressed(VK_SHIFT))
       byte2 -= 1;
     if (IsModifierPressed(VK_OPTION))
