@@ -106,7 +106,6 @@ CommandMode::CommandMode(CCSManager *pManager) : MultiTrackMode(pManager) {
 
   readConfigFile();
 
-  m_pDisplay = new Display(pManager->getDisplayHandler(), 2);
   m_pSelector = new CommandPageSelector(pManager->getDisplayHandler(), this);
 
   m_pMainComponent = NULL;
@@ -120,7 +119,6 @@ CommandMode::~CommandMode(void) {
   }
 
   safe_delete(m_pSelector);
-  safe_delete(m_pDisplay);
 }
 
 bool CommandMode::readConfigFile() {
@@ -247,23 +245,30 @@ void CommandMode::updateVPOTs() {
 
 // write the page names to the second row
 void CommandMode::updateDisplay() {
-  for (int x = 1; x < 9; x++) {
-    MediaTrack *tr = getMediaTrackForChannel(x);
-    if (tr) {
-      TrackState *pTS = Tracks::instance()->getTrackStateForMediaTrack(tr);
-      if (pTS) {
-        m_pDisplay->changeField(0, x, pTS->showInDisplay().toCString());
-      }
-    } else {
-      m_pDisplay->changeField(0, x, "");
-    }
-  }
+  MultiTrackMode::updateDisplay();
+
+	if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX)) {
+		for (int iChan = 1; iChan < 9; iChan++) {
+			MediaTrack *tr = getMediaTrackForChannel(iChan);
+			if (tr) {
+				if (s_flipmode) {
+					showPan(3, iChan, *((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
+				}
+				else {
+					showDB(3, iChan, *((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
+				}
+			} else {
+				m_pDisplay->changeField(3, iChan, "");
+			}
+		}
+	}
 
   int shift = m_pCCSManager->getMCU()->IsModifierPressed(VK_SHIFT) ? 1 : 0;
 
   for (int i = 0; i < 8; i++)
     m_pDisplay->changeField(
         1, i + 1, m_pActivePage->getCommandName(shift, i).toCString());
+
 }
 
 Component **CommandMode::createEditorComponent() {

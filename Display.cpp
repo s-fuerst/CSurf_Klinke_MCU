@@ -15,7 +15,7 @@ Display::Display(DisplayHandler *pDisplayHandler, int numRows) {
   m_wait = false;
 
   for (int iRow = 0; iRow < numRows; iRow++) {
-    m_ppText[iRow] = new char[DISPLAY_ROW_LENGTH];
+    m_ppText[iRow] = new char[getRowLength(iRow)];
   }
 
   m_ppForwardToDisplay = new Display *[numRows];
@@ -39,7 +39,7 @@ void Display::changeText(int row, int pos, const char *text, int pad,
   ASSERT(row < m_numRows);
 
   char *pCenteredText = new char[pad + 1];
-  int textlen = min(pad, (int)strnlen(text, DISPLAY_ROW_LENGTH));
+  int textlen = min(pad, (int)strnlen(text, getRowLength(row)));
   memset(pCenteredText, ' ', pad + 1);
   if (centered)
     strncpy(pCenteredText + ((pad - textlen) / 2), text, textlen);
@@ -79,19 +79,27 @@ void Display::clear() {
 }
 
 void Display::changeTextFullLine(int row, const char *text, bool centered) {
-  changeText(row, 0, text, DISPLAY_ROW_LENGTH, centered);
+  changeText(row, 0, text, getRowLength(row), centered);
 }
 
 void Display::changeTextAutoPad(int row, int pos, const char *text,
                                 bool centered) {
-  changeText(row, pos, text, strnlen(text, DISPLAY_ROW_LENGTH), centered);
+  changeText(row, pos, text, strnlen(text, getRowLength(row)), centered);
 }
 
 void Display::clearLine(int row) { changeTextFullLine(row, ""); }
 
 void Display::changeField(int row, int field, const char *text, bool centered) {
-  ASSERT(field > 0 && field < 9);
-  changeText(row, (field - 1) * 7, text, 6);
+	if (row < 2) {
+		ASSERT(field > 0 && field < 9);
+		changeText(row, (field - 1) * 7, text, 6);
+	} else {
+		ASSERT(field > 0 && field < 10);
+		changeText(row,
+							 (field - 1) * 6 + ((field > 4) ? 1 : 0),
+							 text,
+							 5 + ((field > 8) ? 2 : 0));
+	}
 }
 
 void Display::forwardRowTo(int sourceRow, Display *pDisplay, int targetRow) {
@@ -102,10 +110,10 @@ void Display::forwardRowTo(int sourceRow, Display *pDisplay, int targetRow) {
 }
 
 void Display::writeToBuffer(int row, int pos, const char *text, int pad) {
-  if (pad + pos > DISPLAY_ROW_LENGTH)
-    pad = DISPLAY_ROW_LENGTH - pos;
+  if (pad + pos > getRowLength(row))
+    pad = getRowLength(row) - pos;
 
-  int l = strnlen(text, DISPLAY_ROW_LENGTH);
+  int l = strnlen(text, getRowLength(row));
   if (pad < l)
     l = pad;
 

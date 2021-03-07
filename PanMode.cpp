@@ -49,8 +49,22 @@ void PanMode::updateDisplay() {
     for (int iTrack = 1; iTrack < 9; iTrack++) {
       MediaTrack *tr = getMediaTrackForChannel(iTrack);
       if (tr) {
-        showDB(iTrack, *((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
-      } else {
+				if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX)) {
+					if (s_flipmode) {
+						showPan(3, iTrack, *((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
+						showDB(1, iTrack, *((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
+					}
+					else {
+						showDB(3, iTrack, *((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
+						showPan(1, iTrack, *((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
+					}
+				} else {
+					if (s_flipmode)
+						showPan(1, iTrack, *((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
+					else
+						showDB(1, iTrack, *((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
+				}
+			}else {
         m_pDisplay->changeField(1, iTrack, "");
       }
     }

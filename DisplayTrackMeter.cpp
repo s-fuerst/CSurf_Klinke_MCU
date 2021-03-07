@@ -122,11 +122,5 @@ void DisplayTrackMeter::changeText(int row, int pos, const char *text,
 }
 
 void DisplayTrackMeter::changeField(int row, int field, const char *pText) {
-  ASSERT(field > 0 && field < 9);
-
-  char pShortText[7];
-  memset(pShortText, ' ', 7);
-  strncpy(pShortText, pText, 6);
-
-  changeText(row, (field - 1) * 7, pShortText, 7);
+	Display::changeField(row, field, pText, false);
 }

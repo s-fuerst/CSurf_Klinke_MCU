@@ -13,7 +13,7 @@ class MIDI_Message;
 
 class DisplayHandler {
 public:
-  enum EnumMCUType { MCU = 0, MCU_EX, MCU_C4 };
+  enum EnumMCUType { MCU = 0, MCU_EX, PROX };
 
 private:
   CSurf_MCU *m_pMCU;
@@ -24,7 +24,7 @@ private:
 
   Display *m_pHardwareState;
 
-  void addHeader(MIDI_Message *pmm);
+  void addHeader(MIDI_Message *pmm, int row);
 
 public:
   DisplayHandler(CSurf_MCU *pMCU, EnumMCUType mcuType);

@@ -31,11 +31,13 @@ DisplayHandler::DisplayHandler(CSurf_MCU *pMCU, EnumMCUType mcuType) {
 			m_pMCU->IsFlagSet(CONFIG_FLAG_PROX);
   }
 
-  m_pHardwareState = new Display(this, 2);
-  char pInvalidText[55];
-  memset(pInvalidText, 0x1, 55);
+  m_pHardwareState = new Display(this, 4);
+  char pInvalidText[56];
+  memset(pInvalidText, 0x1, 56);
   m_pHardwareState->changeText(0, 1, pInvalidText, 55);
   m_pHardwareState->changeText(1, 1, pInvalidText, 55);
+  m_pHardwareState->changeText(2, 1, pInvalidText, 56);
+  m_pHardwareState->changeText(3, 1, pInvalidText, 56);
 }
 
 DisplayHandler::~DisplayHandler() { safe_delete(m_pHardwareState); }
@@ -49,7 +51,7 @@ void DisplayHandler::sendDifferences(Display *pDisplay, int row,
   char *cpos = m_pHardwareState->getText()[row];
   const char *org = text;
 
-  for (int i = 0; i < DISPLAY_ROW_LENGTH; i++) {
+  for (int i = 0; i < pDisplay->getRowLength(row); i++) {
     if (*cpos != *text && diffStart == -1) {
       diffStart = i;
     }
@@ -62,27 +64,29 @@ void DisplayHandler::sendDifferences(Display *pDisplay, int row,
   }
   if (diffStart != -1)
     sendToHardware(row, diffStart, org + diffStart,
-                   DISPLAY_ROW_LENGTH - diffStart);
+                   pDisplay->getRowLength(row) - diffStart);
 }
 
 void DisplayHandler::sendToHardware(int row, int pos, char const *text,
                                     int len) {
   m_pHardwareState->changeText(row, pos, text, len);
 
-  ASSERT(row < 2); // support for C4 is missing at the moment
-  if (row == 1)
-    pos += DISPLAY_ROW_LENGTH +
-           row; // + row because there is one unused byte at the end of each row
+	if (row > 1 && !m_pMCU->IsFlagSet(CONFIG_FLAG_PROX))
+		return;
+
+	pos += m_pActualDisplay->getRowLength(row) * (row % 2) +
+           (row == 1); // + row because there is one unused byte at the end of each row
 
   MIDI_Message mm;
-  addHeader(&mm);
+  addHeader(&mm, row);
   //  F0 00 00 66 14 12 xx <data> F7   : update LCD. xx=offset (0-112), string.
   //  display is 55 chars wide, second line begins at 56, though.
 
   //  mm.evt.frame_offset=0;
   //  mm.evt.size=0;
 
-  mm.evt.midi_message[mm.evt.size++] = 0x12;
+
+	mm.evt.midi_message[mm.evt.size++] = (row > 1) ? 0x13 : 0x12; // 0x12
   mm.evt.midi_message[mm.evt.size++] = pos;
 
   int cnt = 0;
@@ -105,7 +109,7 @@ void DisplayHandler::switchTo(Display *pDisplay) {
   }
 
   if (!pDisplay->hasMeter()) {
-    memset(m_pHardwareState->getText()[1], 1, DISPLAY_ROW_LENGTH);
+    memset(m_pHardwareState->getText()[1], 1, pDisplay->getRowLength(0));
   }
 
   enableMeter(pDisplay->hasMeter());
@@ -126,7 +130,7 @@ void DisplayHandler::enableMeter(int channel, bool enable) // channel is 1 based
   //  F0 00 00 66 14 20 0x 03 F7       : put track in VU meter mode, x=track
   MIDI_Message mm;
 
-  addHeader(&mm);
+  addHeader(&mm, 0);
 
   mm.evt.midi_message[mm.evt.size++] = 0x20;
   mm.evt.midi_message[mm.evt.size++] = 0x00 + channel - 1;
@@ -155,22 +159,24 @@ void DisplayHandler::enableMeter(bool enable) {
   safe_call(m_pActualDisplay, resendRow(1));
 }
 
-void DisplayHandler::addHeader(MIDI_Message *pmm) {
+void DisplayHandler::addHeader(MIDI_Message *pmm, int row) {
   //  F0 00 00 66 xx
   pmm->evt.midi_message[pmm->evt.size++] = 0xF0;
   pmm->evt.midi_message[pmm->evt.size++] = 0x00;
   pmm->evt.midi_message[pmm->evt.size++] = 0x00;
-  pmm->evt.midi_message[pmm->evt.size++] = 0x66;
   switch (m_mcuType) {
-  case MCU:
-    pmm->evt.midi_message[pmm->evt.size++] = 0x14;
-    break;
   case MCU_EX:
+		pmm->evt.midi_message[pmm->evt.size++] = 0x66; //0x66
     pmm->evt.midi_message[pmm->evt.size++] = 0x15;
     break;
-  case MCU_C4:
-    ASSERT(false); // not implemented
-    break;
+	case MCU:
+		if (row <= 1) {
+			pmm->evt.midi_message[pmm->evt.size++] = 0x66; //0x66
+			pmm->evt.midi_message[pmm->evt.size++] = 0x14; // 0x14
+		} else {
+			pmm->evt.midi_message[pmm->evt.size++] = 0x67; //0x66
+			pmm->evt.midi_message[pmm->evt.size++] = 0x15; // 0x14
+		}
   }
 }
 

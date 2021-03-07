@@ -6,8 +6,9 @@
 #include "ActionsDisplay.h"
 #include "DisplayHandler.h"
 #include "Assert.h"
+#include "csurf_mcu.h"
 
-ActionsDisplay::ActionsDisplay(DisplayHandler* pDH) : Display(pDH, 2),
+ActionsDisplay::ActionsDisplay(DisplayHandler* pDH) : Display(pDH, 4),
 m_pDisplayHandler(pDH),
 m_pOtherDisplay(NULL),
 m_shownModifier(0)

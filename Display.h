@@ -10,9 +10,6 @@
 
 #include "DisplayHandler.h"
 
-#define DISPLAY_ROW_LENGTH 55
-#define DISPLAY_SIZE DISPLAY_ROW_LENGTH * 2 // incl 0
-
 class Display {
 protected:
   DisplayHandler *m_pDisplayHandler;
@@ -51,6 +48,8 @@ public:
   virtual bool hasMeter() { return false; };
   virtual bool onlyOnMainUnit() { return true; };
 
+	virtual int getRowLength(int row) { return (row < 2) ? 55 : 56; }
+	
 protected:
   void writeToBuffer(int row, int pos, const char *text, int pad);
 };

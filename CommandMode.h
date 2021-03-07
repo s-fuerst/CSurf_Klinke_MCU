@@ -81,7 +81,6 @@ public:
   }
 
 private:
-  Display *m_pDisplay;
   Page *m_pPage[8];
   Page *m_pActivePage;
 
