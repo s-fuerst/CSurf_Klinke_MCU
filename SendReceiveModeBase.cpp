@@ -8,11 +8,13 @@
 #include <boost/foreach.hpp>
 #include "Assert.h"
 #include "csurf.h"
+#include "csurf_mcu.h"
+#include "tracks.h"
 
 SendReceiveModeBase::SendReceiveModeBase(CCSManager *pManager)
     : CCSMode(pManager), m_flip(false), m_pLastSelectedTrack(NULL),
       m_startWithSend(0) {
-  m_pDisplay = new Display(pManager->getDisplayHandler(), 2);
+  m_pDisplay = new Display(pManager->getDisplayHandler(), 4);
 }
 
 SendReceiveModeBase::~SendReceiveModeBase(void) { safe_delete(m_pDisplay); }
@@ -137,8 +139,9 @@ void SendReceiveModeBase::trackName(MediaTrack *trackid, const char *pName) {
 }
 
 void SendReceiveModeBase::writeTrackName(int startPos) {
-  m_pDisplay->changeText(0, startPos,
-                         m_pCCSManager->getMCU()->GetTrackName(selectedTrack()),
+	CSurf_MCU * pMCU = m_pCCSManager->getMCU();
+  m_pDisplay->changeText(pMCU->IsFlagSet(CONFIG_FLAG_PROX) ? 2 : 0, startPos,
+                         pMCU->GetTrackName(selectedTrack()),
                          44 - startPos);
 }
 
@@ -146,30 +149,31 @@ void SendReceiveModeBase::updateDisplay() {
   if (selectedTrack() == NULL) {
     m_pDisplay->changeTextFullLine(0, "You must select a single track.", true);
     m_pDisplay->clearLine(1);
+    m_pDisplay->clearLine(2);
+    m_pDisplay->clearLine(3);
   } else {
-    m_pDisplay->changeText(0, 0, m_pSendOrReceiveText,
-                           strlen(m_pSendOrReceiveText));
-    writeTrackName(strlen(m_pSendOrReceiveText));
-    m_pDisplay->changeText(0, 46, "solo=mono", 19);
+		if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX))
+			return updateDisplayProX();
 
+	m_pDisplay->changeText(0, 0, m_pSendOrReceiveText,
+												 strlen(m_pSendOrReceiveText));
+	writeTrackName(strlen(m_pSendOrReceiveText));
+	m_pDisplay->changeText(0, 46, "solo=mono", 19);
+		
     getSendInfos(&m_sendInfos, TRACK);
     unsigned int iInfo;
     for (iInfo = 0; (m_startWithSend + iInfo) < m_sendInfos.size() && iInfo < 8;
          iInfo++) {
-      if (m_pCCSManager->getFaderTouched(iInfo + 1) && !m_flip) {
+      if (m_pCCSManager->getFaderTouched(iInfo + 1)) {
 				double vol;
 				double pan;
 				int sendIdx = calcSendIdxGet(m_startWithSend + iInfo);
         getTrackUIVol(selectedTrack(), sendIdx, &vol, &pan);
-				
-        char text[7];
-        double asDB = VAL2DB(vol);
-        if (asDB > -100)
-          sprintf(text, "%6.1f", asDB);
-        else
-          sprintf(text, "  -inf");
 
-        m_pDisplay->changeField(1, iInfo + 1, text);
+				if (m_flip)
+					m_pDisplay->showPan(1, iInfo + 1, pan);
+				else
+					m_pDisplay->showDB(1, iInfo + 1, vol);
       } else {
         m_pDisplay->changeField(
             1, iInfo + 1,
@@ -182,6 +186,44 @@ void SendReceiveModeBase::updateDisplay() {
       iInfo++;
     }
   }
+}
+
+void SendReceiveModeBase::updateDisplayProX() {
+	m_pDisplay->changeText(2, 0, m_pSendOrReceiveText,
+												 strlen(m_pSendOrReceiveText));
+	writeTrackName(strlen(m_pSendOrReceiveText));
+	m_pDisplay->changeText(2, 34, "solo=mono", 19);
+
+	getSendInfos(&m_sendInfos, TRACK);
+	unsigned int iInfo;
+	for (iInfo = 0; (m_startWithSend + iInfo) < m_sendInfos.size() && iInfo < 8;
+			 iInfo++) {
+		double vol;
+		double pan;
+		int sendIdx = calcSendIdxGet(m_startWithSend + iInfo);
+		getTrackUIVol(selectedTrack(), sendIdx, &vol, &pan);
+		
+		if (m_flip) {
+			m_pDisplay->showDB(1, iInfo + 1, vol);
+			m_pDisplay->showPan(3, iInfo + 1, pan);
+		} else {
+			m_pDisplay->showDB(3, iInfo + 1, vol);
+			m_pDisplay->showPan(1, iInfo + 1, pan);
+		}
+			
+		m_pDisplay->changeField(0, iInfo + 1,
+														m_pCCSManager->getMCU()->GetTrackName(
+										      (MediaTrack *)m_sendInfos[m_startWithSend + iInfo]));
+	}
+	while (iInfo < 8) {
+		m_pDisplay->changeField(1, iInfo + 1, "");
+		iInfo++;
+	}
+
+	m_pDisplay->changeField(2, 9,
+												m_pCCSManager->getMCU()->GetTrackName(selectedTrack()));
+	double vol = m_pCCSManager->getMCU()->GetSurfaceVolume(selectedTrack());
+	m_pDisplay->showDB(3, 9, vol);
 }
 
 const char *SendReceiveModeBase::stringForESendInfo(ESendInfo sendInfo) {

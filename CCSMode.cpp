@@ -81,3 +81,7 @@ void CCSMode::updateVPOTs() {
 MediaTrack *CCSMode::selectedTrack() {
   return Tracks::instance()->getSelectedSingleTrack();
 }
+
+Display *CCSMode::getCurrentDisplay() {
+		return m_pCCSManager->getDisplayHandler()->getDisplay();
+}

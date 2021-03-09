@@ -252,10 +252,12 @@ void CommandMode::updateDisplay() {
 			MediaTrack *tr = getMediaTrackForChannel(iChan);
 			if (tr) {
 				if (s_flipmode) {
-					showPan(3, iChan, *((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
+					m_pDisplay->showPan(3, iChan,
+													*((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
 				}
 				else {
-					showDB(3, iChan, *((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
+					m_pDisplay->showDB(3, iChan,
+													*((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
 				}
 			} else {
 				m_pDisplay->changeField(3, iChan, "");

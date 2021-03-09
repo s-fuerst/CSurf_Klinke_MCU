@@ -76,8 +76,6 @@ public:
 
 protected:
   void toggleShowInMixer(MediaTrack *tr);
-  void showDB(int row, int channel, double volume);
-  void showPan(int row, int channel, double pan);
   MediaTrack *getMediaTrackForChannel(int channel);
 
   TrackStatesEditorComponent *m_pTrackStatesEditor;

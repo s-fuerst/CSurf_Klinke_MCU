@@ -434,37 +434,11 @@ void MultiTrackMode::trackVolume(int id, double volume) {
         //        if (m_pCCSManager->getNumFadersTouched() > 1) {
         //          m_pCCSManager->getDisplayHandler()->waitForMoreChanges(true);
         //        }
-        showDB(1, id, volume);
+        m_pDisplay->showDB(1, id, volume);
       }
     }
   }
 }
-
-void MultiTrackMode::showDB(int row, int id, double volume) {
-  char text[7];
-  double asDB = VAL2DB(volume);
-  if (id > 0) {
-    if (asDB > -100)
-      sprintf(text, "%5.1f", VAL2DB(volume));
-    else
-      sprintf(text, " -inf");
-    m_pDisplay->changeField(row, id, text);
-  }
-}
-
-void MultiTrackMode::showPan(int row, int id, double pan) {
-  char text[7];
-	int i = (int) (pan * 100);
-	char side = i < 0 ? 'L' : 'R';
-  if (id > 0) {
-		if (i != 0)
-			sprintf(text, "%3d%%%c", abs(i), side);
-		else
-			sprintf(text, "center");
-    m_pDisplay->changeField(row, id, text);
-  }
-}
-
 
 void MultiTrackMode::trackPan(int id, double pan) {
   MIDIOUT
@@ -486,12 +460,20 @@ void MultiTrackMode::updateDisplay() {
       TrackState *pTS = Tracks::instance()->getTrackStateForMediaTrack(tr);
       if (pTS) {
         m_pDisplay->changeField(0, x, pTS->showInDisplay().toCString());
-        m_pDisplay->changeField(2, x, pTS->showInDisplay().toCString());
+				if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX)) 
+					m_pDisplay->changeField(2, x, pTS->showInDisplay().toCString());
       }
     } else {
       m_pDisplay->changeField(0, x, "");
     }
   }
+
+	if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX)) {
+		m_pDisplay->changeField(2, 9, "Master");
+		m_pDisplay->showDB(3, 9,
+		             *((double *)GetSetMediaTrackInfo(getMediaTrackForChannel(0),
+																									"D_VOL", NULL)));
+	}
 }
 
 void MultiTrackMode::toggleShowInMixer(MediaTrack *tr) {

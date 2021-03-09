@@ -49,7 +49,10 @@ public:
   virtual bool onlyOnMainUnit() { return true; };
 
 	virtual int getRowLength(int row) { return (row < 2) ? 55 : 56; }
-	
+
+	void showDB(int row, int channel, double volume);
+  void showPan(int row, int channel, double pan);
+
 protected:
   void writeToBuffer(int row, int pos, const char *text, int pad);
 };

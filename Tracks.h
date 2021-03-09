@@ -266,6 +266,8 @@ public:
 
 	void updateVUactive();
 
+	MediaTrack *getMasterTrack() { return getMediaTrackForChannel(0); }
+	
 private:
   Tracks(void);
   static Tracks *s_instance;

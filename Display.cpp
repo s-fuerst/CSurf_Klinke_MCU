@@ -126,3 +126,28 @@ void Display::writeToBuffer(int row, int pos, const char *text, int pad) {
   while (cnt++ < pad)
     *cpos++ = ' ';
 }
+
+void Display::showDB(int row, int id, double volume) {
+  char text[7];
+  double asDB = VAL2DB(volume);
+  if (id > 0) {
+    if (asDB > -100)
+      sprintf(text, "%5.1f", VAL2DB(volume));
+    else
+      sprintf(text, " -inf");
+    changeField(row, id, text);
+  }
+}
+
+void Display::showPan(int row, int id, double pan) {
+  char text[7];
+	int i = (int) (pan * 100);
+	char side = i < 0 ? 'L' : 'R';
+  if (id > 0) {
+		if (i != 0)
+			sprintf(text, "%3d%%%c", abs(i), side);
+		else
+			sprintf(text, "center");
+    changeField(row, id, text);
+  }
+}

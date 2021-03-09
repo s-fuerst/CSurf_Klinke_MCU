@@ -89,6 +89,8 @@ public:
 
   CCSManager *getCCSManager() { return m_pCCSManager; }
 
+	Display *getCurrentDisplay();
+
   // in the case that the CCSMode has an editor, overwrite the following two
   // functions
   virtual Component **createEditorComponent() { return NULL; }

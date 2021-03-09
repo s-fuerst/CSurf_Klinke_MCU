@@ -51,18 +51,24 @@ void PanMode::updateDisplay() {
       if (tr) {
 				if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX)) {
 					if (s_flipmode) {
-						showPan(3, iTrack, *((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
-						showDB(1, iTrack, *((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
+						m_pDisplay->showPan(3, iTrack,
+													*((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
+						m_pDisplay->showDB(1, iTrack,
+												  *((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
 					}
 					else {
-						showDB(3, iTrack, *((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
-						showPan(1, iTrack, *((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
+						m_pDisplay->showDB(3, iTrack,
+													*((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
+						m_pDisplay->showPan(1, iTrack,
+													*((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
 					}
 				} else {
 					if (s_flipmode)
-						showPan(1, iTrack, *((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
+						m_pDisplay->showPan(1, iTrack,
+													*((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
 					else
-						showDB(1, iTrack, *((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
+						m_pDisplay->showDB(1, iTrack,
+													*((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
 				}
 			}else {
         m_pDisplay->changeField(1, iTrack, "");
