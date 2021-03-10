@@ -31,8 +31,8 @@ PlugMode::PlugMode(CCSManager *pManager)
   m_pPlugModeOptions = new PlugModeOptions(pManager->getDisplayHandler());
   m_pPlugMode2ndOptions = new PlugMode2ndOptions(pManager->getDisplayHandler());
 
-  m_pParamsDisplay = new Display(pManager->getDisplayHandler(), 2);
-  m_pTouchedDisplay = new Display(pManager->getDisplayHandler(), 2);
+  m_pParamsDisplay = new Display(pManager->getDisplayHandler(), 4);
+  m_pTouchedDisplay = new Display(pManager->getDisplayHandler(), 4);
   m_pValueDisplay = new Display(pManager->getDisplayHandler(), 2);
 
   m_pSingleTrackMessage = new Display(pManager->getDisplayHandler(), 2);
@@ -495,6 +495,36 @@ void PlugMode::switchDisplay() {
 }
 
 void PlugMode::updateParamsDisplay() {
+	if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX)) {
+		for (int iChannel = 0; iChannel < 8; iChannel++) {
+			m_pParamsDisplay->changeField(1, iChannel + 1,
+				m_pAccess->getParamValueShort(PlugAccess::ElementDesc::VPOT, iChannel)
+																		.toCString());
+
+      m_pParamsDisplay->changeField(0, iChannel + 1,
+          m_pAccess->getParamNameShort(PlugAccess::ElementDesc::VPOT, iChannel)
+              .toCString());
+
+      m_pParamsDisplay->changeField(3, iChannel + 1,
+          m_pAccess
+              ->getParamValueShort(PlugAccess::ElementDesc::FADER, iChannel)
+              .toCString());
+
+      m_pParamsDisplay->changeField(2, iChannel + 1,
+          m_pAccess->getParamNameShort(PlugAccess::ElementDesc::FADER, iChannel)
+              .toCString());
+
+			m_pParamsDisplay->changeField(2, 9, " Wet");
+
+      int wet = m_pAccess->getParamValueInt(PlugAccess::ElementDesc::DRYWET);
+			char text[8];
+			sprintf(text, " %3.0f%%", (100 * (double) wet / 16368.));
+			m_pParamsDisplay->changeField(3, 9, text);
+
+		}
+		return;
+	}
+		
   for (int iChannel = 0; iChannel < 8; iChannel++) {
     if (m_pCCSManager->getVPotTouched(iChannel + 1) || m_buttonNameValuePressed)
       m_pParamsDisplay->changeField(
@@ -524,35 +554,133 @@ void PlugMode::updateParamsDisplay() {
 
 void PlugMode::updateTouchedDisplay() {
   if (m_pAccess->plugExist()) {
+		if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX)) {
+			updateTouchedDisplayProX();
+			return;
+		}
+		
     PlugAccess::ElementDesc::eType element =
         (m_iSingleFaderTouched > 0) ? PlugAccess::ElementDesc::FADER
                                     : PlugAccess::ElementDesc::VPOT;
     int iChannel = (m_iSingleFaderTouched > 0) ? m_iSingleFaderTouched
                                                : m_iSingleVPotTouched;
-    m_pTouchedDisplay->changeText(
-        0, 0,
+
+		
+    m_pTouchedDisplay->changeText(0, 0,
         m_pAccess->getBankNameLong(m_pAccess->getSelectedBank()).toCString(),
         17, true);
-    m_pTouchedDisplay->changeText(
-        0, 19,
+    m_pTouchedDisplay->changeText(0, 19,
         m_pAccess
             ->getPageNameLongInSelectedBank(
                 m_pAccess->getSelectedPageInSelectedBank())
             .toCString(),
         17, true);
-    m_pTouchedDisplay->changeText(
-        0, 38, m_pAccess->getParamNameLong(element, iChannel - 1).toCString(),
+    m_pTouchedDisplay->changeText(0, 38,
+				m_pAccess->getParamNameLong(element, iChannel - 1).toCString(),
         17, true);
-    m_pTouchedDisplay->changeText(
-        1, 0, m_pCCSManager->getMCU()->GetTrackName(m_pAccess->getPlugTrack()),
+    m_pTouchedDisplay->changeText(1, 0,
+				m_pCCSManager->getMCU()->GetTrackName(m_pAccess->getPlugTrack()),
         17, true);
-    m_pTouchedDisplay->changeText(
-        1, 19, m_pAccess->getPlugNameLong().toCString(), 17, true);
-    m_pTouchedDisplay->changeText(
-        1, 38, m_pAccess->getParamValueLong(element, iChannel - 1).toCString(),
+    m_pTouchedDisplay->changeText(1, 19,
+			  m_pAccess->getPlugNameLong().toCString(), 17, true);
+    m_pTouchedDisplay->changeText(1, 38,
+				m_pAccess->getParamValueLong(element, iChannel - 1).toCString(),
         17, true);
   }
 }
+
+void PlugMode::updateTouchedDisplayProX() {
+	//	m_pTouchedDisplay->clear();
+
+	static int last_iSingleVPotTouched = -1;
+	if (m_iSingleVPotTouched != last_iSingleVPotTouched) {
+		last_iSingleVPotTouched = m_iSingleVPotTouched;
+		m_pTouchedDisplay->clearLine(0);
+		m_pTouchedDisplay->clearLine(1);
+	}
+
+	static int last_iSingleFaderTouched = -1;
+	if (m_iSingleFaderTouched != last_iSingleFaderTouched) {
+		last_iSingleFaderTouched = m_iSingleFaderTouched;
+		m_pTouchedDisplay->clearLine(2);
+		m_pTouchedDisplay->clearLine(3);
+	}
+
+	
+	if (m_iSingleVPotTouched > 0) {
+    m_pTouchedDisplay->changeText(0, 0,
+        m_pAccess->getBankNameLong(m_pAccess->getSelectedBank()).toCString(),
+        17, true);
+    m_pTouchedDisplay->changeText(0, 19,
+        m_pAccess->getPageNameLongInSelectedBank(
+                     m_pAccess->getSelectedPageInSelectedBank()).toCString(),
+        17, true);
+    m_pTouchedDisplay->changeText(0, 38,
+				m_pAccess->getParamNameLong(PlugAccess::ElementDesc::VPOT, m_iSingleVPotTouched - 1).toCString(),
+        17, true);
+    m_pTouchedDisplay->changeText(1, 0,
+				m_pCCSManager->getMCU()->GetTrackName(m_pAccess->getPlugTrack()),
+        17, true);
+    m_pTouchedDisplay->changeText(1, 19,
+			  m_pAccess->getPlugNameLong().toCString(), 17, true);
+    m_pTouchedDisplay->changeText(1, 38,
+				m_pAccess->getParamValueLong(PlugAccess::ElementDesc::VPOT, m_iSingleVPotTouched - 1).toCString(),
+        17, true);
+	} else {
+		for (int iChannel = 0; iChannel < 8; iChannel++) {
+      m_pTouchedDisplay->changeField(1, iChannel + 1,
+          m_pAccess
+              ->getParamValueShort(PlugAccess::ElementDesc::VPOT, iChannel)
+              .toCString());
+
+      m_pTouchedDisplay->changeField(0, iChannel + 1,
+          m_pAccess->getParamNameShort(PlugAccess::ElementDesc::VPOT, iChannel)
+              .toCString());
+		}
+	}
+
+	if (m_iSingleFaderTouched > 0) {
+    m_pTouchedDisplay->changeText(2, 0,
+        m_pAccess->getBankNameLong(m_pAccess->getSelectedBank()).toCString(),
+        17, true);
+    m_pTouchedDisplay->changeText(2, 19,
+        m_pAccess
+            ->getPageNameLongInSelectedBank(
+                m_pAccess->getSelectedPageInSelectedBank())
+            .toCString(),
+        17, true);
+    m_pTouchedDisplay->changeText(2, 38,
+				m_pAccess->getParamNameLong(PlugAccess::ElementDesc::FADER, m_iSingleFaderTouched - 1).toCString(),
+        17, true);
+    m_pTouchedDisplay->changeText(3, 0,
+				m_pCCSManager->getMCU()->GetTrackName(m_pAccess->getPlugTrack()),
+        17, true);
+    m_pTouchedDisplay->changeText(3, 19,
+			  m_pAccess->getPlugNameLong().toCString(), 17, true);
+    m_pTouchedDisplay->changeText(3, 38,
+				m_pAccess->getParamValueLong(PlugAccess::ElementDesc::FADER, m_iSingleFaderTouched - 1).toCString(),
+        17, true);
+	} else {
+		for (int iChannel = 0; iChannel < 8; iChannel++) {
+      m_pTouchedDisplay->changeField(3, iChannel + 1,
+          m_pAccess
+              ->getParamValueShort(PlugAccess::ElementDesc::FADER, iChannel)
+              .toCString());
+
+      m_pTouchedDisplay->changeField(2, iChannel + 1,
+          m_pAccess->getParamNameShort(PlugAccess::ElementDesc::FADER, iChannel)
+              .toCString());
+
+			m_pParamsDisplay->changeField(2, 9, " Wet");
+
+      int wet = m_pAccess->getParamValueInt(PlugAccess::ElementDesc::DRYWET);
+			char text[8];
+			sprintf(text, " %3.0f%%", (100 * (double) wet / 16368.));
+			m_pParamsDisplay->changeField(3, 9, text);
+		}
+	}
+}
+
 
 String PlugMode::getPlugNameShort(int iSlot) {
   if (selectedTrack()) {

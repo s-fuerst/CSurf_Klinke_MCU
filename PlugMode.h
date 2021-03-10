@@ -127,6 +127,7 @@ private:
   void updateParamsDisplay();
   void updateValueDisplay();
   void updateTouchedDisplay();
+  void updateTouchedDisplayProX();
   int randomPreset();
 
   bool isSingleFaderTouched() {
