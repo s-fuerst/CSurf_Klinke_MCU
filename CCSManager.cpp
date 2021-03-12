@@ -504,8 +504,10 @@ void CCSManager::setAssignmentDisplay(CCSMode *pCaller, char text[2]) {
 
   if (memcmp(text, m_stateAssignmentDisplay, 2) != 0) {
     if (!m_pMCU->IsExtender()) {
-      m_pMCU->SendMidi(0xB0, 0x40 + 11, text[0], -1);
-      m_pMCU->SendMidi(0xB0, 0x40 + 10, text[1], -1);
+			if (!m_pMCU->IsFlagSet(CONFIG_FLAG_PROX)) {
+				m_pMCU->SendMidi(0xB0, 0x40 + 11, text[0], -1);
+				m_pMCU->SendMidi(0xB0, 0x40 + 10, text[1], -1);
+			}
     }
   }
 }

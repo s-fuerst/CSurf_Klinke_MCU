@@ -15,8 +15,10 @@ DisplayTrackMeter::DisplayTrackMeter(DisplayHandler *pDisplayHandler,
                                      int numRows)
     : Display(pDisplayHandler, numRows) {
   int x;
-  for (x = 0; x < sizeof(m_mcu_meterpos) / sizeof(m_mcu_meterpos[0]); x++)
+  for (x = 0; x < sizeof(m_mcu_meterpos) / sizeof(m_mcu_meterpos[0]); x++) {
     m_mcu_meterpos[x] = -100000.0;
+		m_last_sent_meterpos[x] = -1;
+	}
   m_mcu_meter_lastrun = 0;
 }
 
@@ -80,7 +82,7 @@ void DisplayTrackMeter::updateTrackMeter(DWORD now, CSurf_MCU * pMCU) {
 
       if (m_pDisplayHandler->getDisplay() &&
           m_pDisplayHandler->getDisplay()->hasMeter())
-        pMCU->SendMidi(0xD0, ((x - 1) << 4) | v, 0, -1);
+				sendToHardware(pMCU, x - 1, v);
     }
   }
 	if (pMCU->IsFlagSet(CONFIG_FLAG_PROX)) {
@@ -106,9 +108,28 @@ void DisplayTrackMeter::updateTrackMeter(DWORD now, CSurf_MCU * pMCU) {
 				else
 					v = (int)((pp + VU_BOTTOM_QCON) * 13.0 / VU_BOTTOM_QCON);
 			}
-			pMCU->SendMidi(0xD1, (x << 4) | v, 0, -1);
+			sendToHardware(pMCU, 8 + x, v);
 		}
 	}
+}
+
+void DisplayTrackMeter::sendToHardware(CSurf_MCU *pMCU, int pos, short meter) {
+	ASSERT(pos >=0 && pos < 10);
+
+	if (meter > 12)
+		meter = 12;
+	if (meter < 0)
+		meter = 0;
+	
+	if (m_last_sent_meterpos[pos] == meter)
+		return;
+
+	m_last_sent_meterpos[pos] = meter;
+
+	if (pos < 8)
+		pMCU->SendMidi(0xD0, (pos << 4) | meter, 0, -1);
+	else
+		pMCU->SendMidi(0xD1, ((pos - 8) << 4) | meter, 0, -1);
 }
 
 void DisplayTrackMeter::changeText(int row, int pos, const char *text,

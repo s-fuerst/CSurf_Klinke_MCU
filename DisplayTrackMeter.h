@@ -11,6 +11,7 @@
 class DisplayTrackMeter : public Display {
 private:
   double m_mcu_meterpos[10]; // 9 and 10 are for the master
+	short m_last_sent_meterpos[10];
   DWORD m_mcu_meter_lastrun;
 
 public:
@@ -20,6 +21,9 @@ public:
   void updateTrackMeter(DWORD now, CSurf_MCU *pMCU);
   void changeText(int row, int pos, const char *text, int pad);
   void changeField(int row, int field, const char *text);
+
+private:
+	void sendToHardware(CSurf_MCU *pMCU, int pos, short meter);
 };
 
 #endif
