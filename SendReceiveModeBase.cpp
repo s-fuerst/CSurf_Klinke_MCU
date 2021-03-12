@@ -325,6 +325,7 @@ bool SendReceiveModeBase::buttonSolo(int channel, bool pressed) {
 
 bool SendReceiveModeBase::fader(int channel, int value) {
   if (channel == 0 && selectedTrack()) {
+		//		m_pCCSManager->elementTouched(FADER, channel, true);
     CSurf_SetSurfaceVolume(
         selectedTrack(),
         CSurf_OnVolumeChange(selectedTrack(), int14ToVol(value), false), NULL);
@@ -337,8 +338,8 @@ bool SendReceiveModeBase::fader(int channel, int value) {
       double newVal = int14ToVol(value);
       SetTrackSendUIVol(selectedTrack(), sendIdx, newVal, 0);
     }
+		m_pCCSManager->setFader(this, channel, value);
   }
-  m_pCCSManager->setFader(this, channel, value);
 
   return true;
 }

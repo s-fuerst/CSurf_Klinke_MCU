@@ -366,7 +366,7 @@ void CCSManager::elementTouched(EElement element, int channel, bool touched) {
 
   if (element == FADER) {
     if (getNumFadersTouched() == 1) {
-      for (int iChannel = 1; iChannel < 9; iChannel++)
+      for (int iChannel = 0; iChannel < 9; iChannel++)
         if (touchedArray[iChannel])
           m_pActualMode->singleFaderTouched(iChannel);
     } else {
@@ -374,7 +374,7 @@ void CCSManager::elementTouched(EElement element, int channel, bool touched) {
     }
   } else {
     if (getNumVPotTouched() == 1) {
-      for (int iChannel = 1; iChannel < 9; iChannel++)
+      for (int iChannel = 0; iChannel < 9; iChannel++)
         if (touchedArray[iChannel])
           m_pActualMode->singleVPotTouched(iChannel);
     } else {
@@ -430,16 +430,18 @@ void CCSManager::updateAssignmentDisplay() {
   m_pActualMode->updateAssignmentDisplay();
 }
 
-void CCSManager::setFader(CCSMode *pCaller, int channel, int value) {
+void CCSManager::setFader(CCSMode* pCaller, int channel, int value) {
   CHECKMODEANDCHANNEL
 
   if (m_faderPos[channel] != value) {
-    m_faderPos[channel] = value;
-    if (channel == 0) {
-      m_pMCU->SendMidi(0xe8, value & 0x7f, (value >> 7) & 0x7f, -1);
-    } else {
-      m_pMCU->SendMidi(0xdf + channel, value & 0x7f, (value >> 7) & 0x7f, -1);
-    }
+		m_faderPos[channel] = value;
+		if (!m_faderTouched[channel]) {
+			if (channel == 0) {
+				m_pMCU->SendMidi(0xe8,value&0x7f,(value>>7)&0x7f,-1);
+			} else {
+				m_pMCU->SendMidi(0xdf + channel,value&0x7f,(value>>7)&0x7f,-1);
+			}
+		}
   }
 }
 
@@ -629,7 +631,7 @@ void CCSManager::frameUpdate(DWORD time) {
   }
 
   if (m_pMCU->IsFlagSet(CONFIG_FLAG_FADER_TOUCH_FAKE)) {
-    for (int i = 1; i < 9; i++) {
+    for (int i = 0; i < 9; i++) {
       if (m_faderTouchedTill[i] > 0 && time > m_faderTouchedTill[i]) {
         elementTouched(FADER, i, false);
         m_faderTouchedTill[i] = 0;

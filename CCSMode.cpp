@@ -65,7 +65,7 @@ void CCSMode::updateEverything() {
 }
 
 void CCSMode::updateFaders() {
-  for (int i = 1; i < 9; i++) {
+  for (int i = 0; i < 9; i++) {
     m_pCCSManager->setFader(this, i, 0);
   }
 }
