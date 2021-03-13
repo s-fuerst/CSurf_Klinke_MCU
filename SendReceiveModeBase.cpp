@@ -29,6 +29,10 @@ void SendReceiveModeBase::activate() {
     m_pLastSelectedTrack = selectedTrack();
   }
 
+	for (int i = 0; i < 8; i++) {
+		m_recButtonPressed[i] = false;
+	}
+
   m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
 }
 
@@ -152,19 +156,45 @@ void SendReceiveModeBase::updateDisplay() {
     m_pDisplay->clearLine(2);
     m_pDisplay->clearLine(3);
   } else {
+    m_pDisplay->clearLine(0);
 		if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX))
 			return updateDisplayProX();
 
-	m_pDisplay->changeText(0, 0, m_pSendOrReceiveText,
-												 strlen(m_pSendOrReceiveText));
-	writeTrackName(strlen(m_pSendOrReceiveText));
-	m_pDisplay->changeText(0, 46, "solo=mono", 19);
 		
     getSendInfos(&m_sendInfos, TRACK);
     unsigned int iInfo;
     for (iInfo = 0; (m_startWithSend + iInfo) < m_sendInfos.size() && iInfo < 8;
          iInfo++) {
-      if (m_pCCSManager->getFaderTouched(iInfo + 1)) {
+      if (m_pCCSManager->getNumFadersTouched()) {
+				m_pDisplay->clearLine(0);
+
+				getSendInfos(&m_sendInfos, AUTOMODE);
+				for (unsigned int iInfo = 0; iInfo < 8; iInfo++) {
+					if (m_startWithSend + iInfo < m_sendInfos.size()) {
+						int mode = *((int *)m_sendInfos[m_startWithSend + iInfo]);
+
+						switch(mode) {
+						case AUTO_MODE_READ:
+							m_pDisplay->changeField(0, iInfo + 1, "Read");
+							break;
+						case AUTO_MODE_LATCH:
+							m_pDisplay->changeField(0, iInfo + 1, "Latch");
+							break;
+						case AUTO_MODE_TRIM:
+							m_pDisplay->changeField(0, iInfo + 1, "Trim");
+							break;
+						case AUTO_MODE_WRITE:
+							m_pDisplay->changeField(0, iInfo + 1, "Write");
+							break;
+						case AUTO_MODE_TOUCH:
+							m_pDisplay->changeField(0, iInfo + 1, "Touch");
+							break;
+						default:
+							m_pDisplay->changeField(0, iInfo + 1, "");
+						}
+					}
+				}
+				
 				double vol;
 				double pan;
 				int sendIdx = calcSendIdxGet(m_startWithSend + iInfo);
@@ -175,7 +205,12 @@ void SendReceiveModeBase::updateDisplay() {
 				else
 					m_pDisplay->showDB(1, iInfo + 1, vol);
       } else {
-        m_pDisplay->changeField(
+				m_pDisplay->changeText(0, 0, m_pSendOrReceiveText,
+															 strlen(m_pSendOrReceiveText));
+				writeTrackName(strlen(m_pSendOrReceiveText));
+				m_pDisplay->changeText(0, 46, "solo=mono", 19);
+
+				m_pDisplay->changeField(
             1, iInfo + 1,
             m_pCCSManager->getMCU()->GetTrackName(
                 (MediaTrack *)m_sendInfos[m_startWithSend + iInfo]));
@@ -194,7 +229,48 @@ void SendReceiveModeBase::updateDisplayProX() {
 	writeTrackName(strlen(m_pSendOrReceiveText));
 	m_pDisplay->changeText(2, 34, "solo=mono", 19);
 
+  getSendInfos(&m_sendInfos, AUTOMODE);
+  for (unsigned int iInfo = 0; iInfo < 8; iInfo++) {
+    if (m_startWithSend + iInfo < m_sendInfos.size()) {
+			int mode = *((int *)m_sendInfos[m_startWithSend + iInfo]);
+
+			if (m_pCCSManager->getVPotTouched(iInfo + 1)) {
+				double vol;
+				double pan;
+				int sendIdx = calcSendIdxGet(m_startWithSend + iInfo);
+				getTrackUIVol(selectedTrack(), sendIdx, &vol, &pan);
+		
+				if (m_flip) {
+					m_pDisplay->showDB(1, iInfo + 1, vol);
+				} else {
+					m_pDisplay->showPan(1, iInfo + 1, pan);
+				}
+			} else {
+				switch(mode) {
+				case AUTO_MODE_READ:
+					m_pDisplay->changeField(1, iInfo + 1, "Read");
+					break;
+				case AUTO_MODE_LATCH:
+					m_pDisplay->changeField(1, iInfo + 1, "Latch");
+					break;
+				case AUTO_MODE_TRIM:
+					m_pDisplay->changeField(1, iInfo + 1, "Trim");
+					break;
+				case AUTO_MODE_WRITE:
+					m_pDisplay->changeField(1, iInfo + 1, "Write");
+					break;
+				case AUTO_MODE_TOUCH:
+					m_pDisplay->changeField(1, iInfo + 1, "Touch");
+					break;
+				default:
+					m_pDisplay->changeField(1, iInfo + 1, "");
+				}
+			}
+		}
+  }
+	
 	getSendInfos(&m_sendInfos, TRACK);
+	
 	unsigned int iInfo;
 	for (iInfo = 0; (m_startWithSend + iInfo) < m_sendInfos.size() && iInfo < 8;
 			 iInfo++) {
@@ -204,11 +280,9 @@ void SendReceiveModeBase::updateDisplayProX() {
 		getTrackUIVol(selectedTrack(), sendIdx, &vol, &pan);
 		
 		if (m_flip) {
-			m_pDisplay->showDB(1, iInfo + 1, vol);
 			m_pDisplay->showPan(3, iInfo + 1, pan);
 		} else {
 			m_pDisplay->showDB(3, iInfo + 1, vol);
-			m_pDisplay->showPan(1, iInfo + 1, pan);
 		}
 			
 		m_pDisplay->changeField(0, iInfo + 1,
@@ -216,7 +290,9 @@ void SendReceiveModeBase::updateDisplayProX() {
 										      (MediaTrack *)m_sendInfos[m_startWithSend + iInfo]));
 	}
 	while (iInfo < 8) {
+		m_pDisplay->changeField(0, iInfo + 1, "");
 		m_pDisplay->changeField(1, iInfo + 1, "");
+		m_pDisplay->changeField(3, iInfo + 1, "");
 		iInfo++;
 	}
 
@@ -245,17 +321,19 @@ const char *SendReceiveModeBase::stringForESendInfo(ESendInfo sendInfo) {
 }
 
 bool SendReceiveModeBase::buttonRec(int channel, bool pressed) {
+	ASSERT(channel > 0 && channel < 9);
+	m_recButtonPressed[channel - 1] = pressed;
+	
   if (pressed) {
     int sendNr = m_startWithSend + channel - 1;
     int *pOldState = (int *)getSendInfo(AUTOMODE, sendNr);
 		if (pOldState) {
-			int newMode = autoMode;
-			if (*pOldState == autoMode) 
-				newMode = AUTO_MODE_TRIM;
+			int newMode = AUTO_MODE_TRIM;
+			if (*pOldState == AUTO_MODE_TRIM || *pOldState == AUTO_MODE_READ) 
+				newMode = AUTO_MODE_TOUCH;
 
 			setSendInfo(AUTOMODE, sendNr, (void *)&newMode);
 
-      // m_pCCSManager->setRecLED(this, channel, autoMode == AUTO_MODE_TRIM || autoMode == AUTO_MODE_READ ? LED_OFF : LED_ON);
 			ThemeLayout_RefreshAll();
 		}
   }
@@ -372,7 +450,11 @@ bool SendReceiveModeBase::vpotMoved(int channel, int numSteps) {
       numSteps *= 5;
     }
     double newState = *pOldState + numSteps / 40.f;
-    newState = min(newState, 1.);
+		if (m_flip)
+			newState = min(newState, 4.);
+		else
+			newState = min(newState, 1.);
+			
     newState = max(newState, -1.);
 
     if (m_flip) {
@@ -425,3 +507,22 @@ int SendReceiveModeBase::getNumSends() {
   getSendInfos(&m_sendInfos, TRACK);
   return m_sendInfos.size();
 }
+
+bool SendReceiveModeBase::setAutoMode(AutoMode mode) {
+	bool ret = false;
+
+  for (unsigned int i = 1; i < 9; i++) {
+		if (m_recButtonPressed[i-1]) {
+			int sendNr = m_startWithSend + i - 1;
+
+			setSendInfo(AUTOMODE, sendNr, (void *)&mode);
+
+			ThemeLayout_RefreshAll();
+
+			ret = true;
+ 		}
+	}
+
+  return ret;
+}
+

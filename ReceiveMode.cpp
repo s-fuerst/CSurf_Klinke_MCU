@@ -11,7 +11,7 @@
 #include "undoend.h"
 
 ReceiveMode::ReceiveMode(CCSManager *pManager) : SendReceiveModeBase(pManager) {
-  m_pSendOrReceiveText = "Receive Track ";
+  m_pSendOrReceiveText = "Receives Track ";
 }
 
 ReceiveMode::~ReceiveMode(void) {}

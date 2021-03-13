@@ -101,11 +101,8 @@ public:
   MediaTrack *selectedTrack(); 
   bool isModifierPressed(int modifier);
 
-	virtual void setAutoMode(AutoMode mode){ autoMode = mode; }
-	AutoMode getAudoMode() { return autoMode; }
+	virtual bool setAutoMode(AutoMode mode){ return false; }
 	
 protected:
   CCSManager *m_pCCSManager;
-
-	AutoMode autoMode = AutoMode::AUTO_MODE_TRIM;
 };

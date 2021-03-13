@@ -412,8 +412,8 @@ bool CSurf_MCU::OnAutoMode(MIDI_event_t *evt) {
     mode = AUTO_MODE_LATCH;
 
   if (mode >= 0) {
-		m_pCCSManager->setAutoMode(mode);
-    SetAutomationMode(mode, !IsModifierPressed(VK_CONTROL));
+		if (!m_pCCSManager->setAutoMode(mode))
+			SetAutomationMode(mode, !IsModifierPressed(VK_CONTROL));
 	}
 		//    SetAutomationMode(mode, !IsModifierPressed(VK_CONTROL));
 

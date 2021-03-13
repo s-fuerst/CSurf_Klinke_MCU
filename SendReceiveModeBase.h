@@ -68,6 +68,7 @@ public:
 
   int getNumSends();
 
+	bool setAutoMode(AutoMode mode);
 	
 protected:
   virtual void getSendInfos(std::vector<void *> *pResult,
@@ -99,4 +100,6 @@ protected:
   int m_startWithSend;
 
   bool m_flip;
+
+	bool m_recButtonPressed[8];
 };
