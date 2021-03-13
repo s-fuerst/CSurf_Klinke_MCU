@@ -37,6 +37,16 @@ void CCSModesEditor::setMainComponent(CCSMode *pCommandMode, bool visible) {
 }
 
 void CCSModesEditor::setMainComponent(Component **ppComponent, bool visible) {
+	if (m_pActiveComponent == *ppComponent) {
+		if (m_pWindow->isVisible()) {
+			m_pWindow->setVisible(false);
+			return;
+		}
+		m_pWindow->setVisible(visible);
+		m_pWindow->setAlwaysOnTop(true);
+		m_pWindow->setTopLeftPosition(20, 60);
+		return;
+  }
   deleteWindow();
   m_pComponentsCommandMode = NULL;
   m_pWindow = new CCSModesEditorWindow("MCU Editor", Colours::white, false,

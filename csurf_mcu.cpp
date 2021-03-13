@@ -1340,8 +1340,10 @@ bool CSurf_MCU::OnNameValue(MIDI_event_t *evt) {
     if (!m_pActionsDialogComponent)
       m_pActionsDialogComponent = new ActionsDialogComponent(m_pActionDisplay);
 
-    m_pCCSManager->getEditor()->setMainComponent(&m_pActionsDialogComponent,
-                                                 true);
+	if (evt->midi_message[2] >= 0x40) {
+		m_pCCSManager->getEditor()->setMainComponent(&m_pActionsDialogComponent,
+			true);
+	}
   } else {
     if (evt->midi_message[2] >= 0x40) {
       m_pActionDisplay->activate(s_mackie_modifiers);
