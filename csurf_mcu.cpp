@@ -11,7 +11,7 @@
 #include "Region.h"
 #include "Assert.h"
 #include "DisplayHandler.h"
-#include "DisplayTrackMeter.h"
+#include "Display.h"
 #include "multitrackmode.h"
 #include "UndoEnd.h"
 #include "tracks.h"

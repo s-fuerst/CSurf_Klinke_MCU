@@ -415,6 +415,8 @@
     <ClInclude Include="csurf.h" />
     <ClInclude Include="csurf_mcu.h" />
     <ClInclude Include="mcu_button_defines.h" />
+    <ClInclude Include="MeterBridge.h" />
+    <ClInclude Include="MultiTrackMeterBridge.h" />
     <ClInclude Include="PlugMoveWatcher.h" />
     <ClInclude Include="ProjectConfig.h" />
     <ClInclude Include="..\reaper_plugin.h" />
@@ -476,7 +478,6 @@
     <ClInclude Include="ActionsDisplay.h" />
     <ClInclude Include="Display.h" />
     <ClInclude Include="DisplayHandler.h" />
-    <ClInclude Include="DisplayTrackMeter.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Actions.cpp" />
@@ -490,6 +491,8 @@
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <ClCompile Include="csurf_mcu.cpp" />
+    <ClCompile Include="MeterBridge.cpp" />
+    <ClCompile Include="MultiTrackMeterBridge.cpp" />
     <ClCompile Include="PlugMoveWatcher.cpp" />
     <ClCompile Include="ProjectConfig.cpp" />
     <ClCompile Include="Region.cpp" />
@@ -546,7 +549,6 @@
     <ClCompile Include="ActionsDisplay.cpp" />
     <ClCompile Include="Display.cpp" />
     <ClCompile Include="DisplayHandler.cpp" />
-    <ClCompile Include="DisplayTrackMeter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="res.rc">

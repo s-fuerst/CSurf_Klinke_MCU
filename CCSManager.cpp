@@ -9,12 +9,12 @@
 #include "panmode.h"
 #include "performancemode.h"
 #include "CommandMode.h"
+#include "Display.h"
 #include "SendMode.h"
 #include "ReceiveMode.h"
 #include "PlugMode.h"
 #include "csurf_mcu.h"
 #include "Assert.h"
-#include "DisplayTrackMeter.h"
 #include "ccsmodeseditor.h"
 #include "Options.h"
 #include <src/juce_WithoutMacros.h> // includes everything in juce.h, but

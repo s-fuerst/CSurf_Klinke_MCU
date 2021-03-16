@@ -102,11 +102,8 @@ void DisplayHandler::switchTo(Display *pDisplay) {
   if (m_pActualDisplay == pDisplay)
     return;
 
-  if (m_mcuType == MCU_EX && !pDisplay->onlyOnMainUnit() ||
-      m_mcuType != MCU_EX) {
-    m_pActualDisplay = pDisplay;
-    pDisplay->activate();
-  }
+	m_pActualDisplay = pDisplay;
+	pDisplay->activate();
 
   if (!pDisplay->hasMeter()) {
     memset(m_pHardwareState->getText()[1], 1, pDisplay->getRowLength(0));

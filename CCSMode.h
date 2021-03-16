@@ -14,6 +14,7 @@ class CCSManager;
 class MediaTrack;
 class Selector;
 class Options;
+class MeterBridge;
 
 class CCSMode {
 public:
@@ -105,4 +106,6 @@ public:
 	
 protected:
   CCSManager *m_pCCSManager;
+
+	MeterBridge *m_pMeterBridge;
 };

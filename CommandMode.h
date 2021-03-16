@@ -8,7 +8,6 @@
 #include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
 #include "selector.h"
 #include "Display.h"
-#include "DisplayTrackMeter.h"
 #include "csurf_mcu.h"
 #include "ccsmanager.h"
 #include "Assert.h"

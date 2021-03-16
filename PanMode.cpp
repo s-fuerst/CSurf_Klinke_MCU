@@ -7,7 +7,7 @@
 #include "reaper_plugin.h"
 #include "csurf_mcu.h"
 #include "Assert.h"
-#include "DisplayTrackMeter.h"
+#include "Display.h"
 //#include "MultiTrackSelector.h"
 
 PanMode::PanMode(CCSManager *pManager) : MultiTrackMode(pManager) {}

@@ -57,6 +57,12 @@
     <Filter Include="Source Files\Display_src">
       <UniqueIdentifier>{cbd89adc-da8e-416b-b4d7-6c54ab14a749}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\MeterBridge_h">
+      <UniqueIdentifier>{29dfd27f-cb03-4f3f-81dc-b94f301068e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\MeterBridge_src">
+      <UniqueIdentifier>{f9ac9bd0-1daf-40ac-9941-9f83c2031627}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Actions.h">
@@ -257,11 +263,14 @@
     <ClInclude Include="DisplayHandler.h">
       <Filter>Header Files\Display_h</Filter>
     </ClInclude>
-    <ClInclude Include="DisplayTrackMeter.h">
-      <Filter>Header Files\Display_h</Filter>
-    </ClInclude>
     <ClInclude Include="Tracks.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MeterBridge.h">
+      <Filter>Header Files\MeterBridge_h</Filter>
+    </ClInclude>
+    <ClInclude Include="MultiTrackMeterBridge.h">
+      <Filter>Header Files\MeterBridge_h</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -442,11 +451,14 @@
     <ClCompile Include="DisplayHandler.cpp">
       <Filter>Source Files\Display_src</Filter>
     </ClCompile>
-    <ClCompile Include="DisplayTrackMeter.cpp">
-      <Filter>Source Files\Display_src</Filter>
-    </ClCompile>
     <ClCompile Include="Tracks.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MultiTrackMeterBridge.cpp">
+      <Filter>Source Files\MeterBridge_src</Filter>
+    </ClCompile>
+    <ClCompile Include="MeterBridge.cpp">
+      <Filter>Source Files\MeterBridge_src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -4,12 +4,13 @@
  */
 
 #pragma once
+#include "MultiTrackMeterBridge.h"
 #include "ccsmode.h"
 #include "Tracks.h"
 
 class MediaTrack;
 class SelectedTrack;
-class DisplayTrackMeter;
+class Display;
 class Options;
 class TrackStatesEditorComponent;
 class MultiTrackSelector;
@@ -82,7 +83,8 @@ protected:
 
   MultiTrackSelector *m_pSelector;
 
-  DisplayTrackMeter *m_pDisplay;
+	
+  Display *m_pDisplay;
   static bool s_flipmode;
   static bool s_mcpmode;
 

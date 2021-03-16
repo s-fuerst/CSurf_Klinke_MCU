@@ -4,11 +4,12 @@
  */
 
 #include "MultiTrackMode.h"
+#include "MultiTrackMeterBridge.h"
 #include "ccsmanager.h"
 #include "csurf_mcu.h"
 #include "assert.h"
-#include "DisplayTrackMeter.h"
 #include "stdio.h"
+#include "Display.h"
 #include "MultiTrackOptions.h"
 #include "MultiTrackOptions2.h"
 #include "TrackStatesEditorComponent.h"
@@ -19,14 +20,16 @@ bool MultiTrackMode::s_mcpmode = false;
 
 MultiTrackMode::MultiTrackMode(CCSManager *pManager)
     : CCSMode(pManager), m_pTrackStatesEditor(NULL), m_lastSelectedTrackNr(-1) {
-  m_pDisplay = new DisplayTrackMeter(pManager->getDisplayHandler(), 4);
+  m_pDisplay = new Display(pManager->getDisplayHandler(), 4);
   m_pSelector = new MultiTrackSelector(pManager->getDisplayHandler());
+	m_pMeterBridge = new MultiTrackMeterBridge();
   s_mcpmode = CSurf_MCU::IsFlagSet(CONFIG_FLAG_STARTGLOBALVIEW);
 
   Tracks::instance()->setDisplayHandler(pManager->getDisplayHandler());
 }
 
 MultiTrackMode::~MultiTrackMode(void) {
+	safe_delete(m_pMeterBridge);
   safe_delete(m_pSelector);
   safe_delete(m_pDisplay);
 }
@@ -36,9 +39,9 @@ MediaTrack *MultiTrackMode::getMediaTrackForChannel(int channel) {
 }
 
 void MultiTrackMode::frameUpdate() {
-  m_pDisplay->updateTrackMeter(m_pCCSManager->getMCU()->GetActualFrameTime(),
-															 m_pCCSManager->getMCU());
-
+  m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU()->GetActualFrameTime(),
+	 														      m_pCCSManager->getMCU());
+	
   updateEverything();
 
   int msize = Tracks::instance()->getNumMediaTracksOnMCU();

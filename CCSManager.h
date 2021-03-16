@@ -12,7 +12,6 @@ class CCSMode;
 class MultiTrackMode;
 class PanMode;
 class PerformanceMode;
-class DisplayTrackMeter;
 class CommandMode;
 class SendMode;
 class ReceiveMode;

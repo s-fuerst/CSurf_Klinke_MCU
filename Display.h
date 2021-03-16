@@ -46,7 +46,6 @@ public:
   //      virtual static const char* getName() = 0;
 
   virtual bool hasMeter() { return false; };
-  virtual bool onlyOnMainUnit() { return true; };
 
 	virtual int getRowLength(int row) { return (row < 2) ? 55 : 56; }
 

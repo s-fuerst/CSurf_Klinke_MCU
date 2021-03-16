@@ -6,8 +6,8 @@
 #include "csurf.h"
 #include "CommandMode.h"
 #include "CCSManager.h"
-#include "DisplayTrackMeter.h"
 #include "csurf_mcu.h"
+#include "Display.h"
 #include "swell\swell.h"
 #include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
 #include "CommandModeMainComponent.h"
