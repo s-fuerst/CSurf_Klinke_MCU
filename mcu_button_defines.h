@@ -159,5 +159,5 @@
 #define LED_ON                                                  0x7f
 #define LED_OFF                                                 0x00
 #define LED_BLINK                                               0x01
-#define LED_BLINK_LESS                                          0x02
+#define LED_BLINK_BYPASSED                                      0x02
 #define LED_UNKNOWN                              -0x01

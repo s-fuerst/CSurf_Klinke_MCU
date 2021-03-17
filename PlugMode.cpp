@@ -8,6 +8,7 @@
 #include "PlugMode.h"
 #include "PlugModeComponent.h"
 #include "PlugAccess.h"
+#include "csurf.h"
 #include "csurf_mcu.h"
 #include "Display.h"
 #include "std_helper.h"
@@ -824,14 +825,24 @@ void PlugMode::updateRecLEDs() {
   }
 }
 
+bool PlugMode::isSlotBypassed(MediaTrack *pPlugTrack, int iSlot) {
+  double min, max;
+  int bypassID = TrackFX_GetNumParams(pPlugTrack, iSlot) - 2;
+	return TrackFX_GetParam(pPlugTrack, iSlot, bypassID, &min, &max) > 0;
+}
+
 void PlugMode::updateSelectLEDs() {
   int start = isModifierPressed(VK_SHIFT) ? 8 : 0;
   if (m_followTrack) {
     for (int channel = 0; channel < 8; channel++) {
       if (channel + start == m_pAccess->getPlugSlot())
         m_pCCSManager->setSelectLED(this, channel + 1, LED_BLINK);
-      else if (channel + start < getNumPlugsInSelectedTrack())
-        m_pCCSManager->setSelectLED(this, channel + 1, LED_ON);
+      else if (channel + start < getNumPlugsInSelectedTrack()) {
+				if (isSlotBypassed(m_pAccess->getPlugTrack(), channel + start))
+					m_pCCSManager->setSelectLED(this, channel + 1, LED_BLINK_BYPASSED);
+				else
+					m_pCCSManager->setSelectLED(this, channel + 1, LED_ON);
+			}
       else
         m_pCCSManager->setSelectLED(this, channel + 1, LED_OFF);
     }
@@ -844,8 +855,13 @@ void PlugMode::updateSelectLEDs() {
         if (slot == m_pAccess->getPlugSlot() &&
             pMT == m_pAccess->getPlugTrack() && pMT != NULL)
           m_pCCSManager->setSelectLED(this, channel + 1, LED_BLINK);
-        else if (pMT != NULL)
-          m_pCCSManager->setSelectLED(this, channel + 1, LED_ON);
+        else if (pMT != NULL) {
+					if (isSlotBypassed(pMT, channel + start))
+						m_pCCSManager->setSelectLED(this, channel + 1, LED_BLINK_BYPASSED);
+					else
+						m_pCCSManager->setSelectLED(this, channel + 1, LED_ON);
+					
+				}
       } else
         m_pCCSManager->setSelectLED(this, channel + 1, LED_OFF);
     }

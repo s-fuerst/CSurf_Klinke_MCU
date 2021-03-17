@@ -1152,6 +1152,9 @@ void CSurf_MCU::SendMidi(unsigned char status, unsigned char d1,
 }
 
 void CSurf_MCU::SetLED(int button_nr, int led_state) {
+	if (!IsFlagSet(CONFIG_FLAG_PROX) && led_state == LED_BLINK_BYPASSED)
+		led_state = LED_ON;
+	
   if (m_led_state[button_nr] != led_state) {
     SendMidi(0x90, button_nr, led_state, -1);
     m_led_state[button_nr] = led_state;
@@ -1160,6 +1163,7 @@ void CSurf_MCU::SetLED(int button_nr, int led_state) {
 
 void CSurf_MCU::EmulateBlinkingLEDs(DWORD now) {
 	static short lastNowMod2 = 0;
+	static short blinkSometimes = 0;
 
 	if (lastNowMod2 == (now >> 8) % 2)
 		return;
@@ -1173,6 +1177,15 @@ void CSurf_MCU::EmulateBlinkingLEDs(DWORD now) {
 	for (int i = 0; i < 128; i++) {
 		if (m_led_state[i] == LED_BLINK) {
 			SendMidi(0x90, i, blinkLedState, -1);
+		}
+	}
+
+	if (++blinkSometimes == 12) {
+		blinkSometimes = 0;
+	}
+	for (int i = 0; i < 128; i++) {
+		if (m_led_state[i] == LED_BLINK_BYPASSED) {
+			SendMidi(0x90, i, blinkSometimes > 2, -1);
 		}
 	}
 }

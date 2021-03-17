@@ -143,6 +143,9 @@ private:
   void writeLastCalledPresetsToProjectConfig(XmlElement *pNode);
   void readLastCalledPresetsFromProjectConfig(XmlElement *pNode);
   void handlePresetChange(int presetNr, int slot, int randomPresetNr);
+
+	bool isSlotBypassed(MediaTrack *pPlugTrack, int iSlot);
+	
   bool m_followTrack;
 
   Display *m_pParamsDisplay;
