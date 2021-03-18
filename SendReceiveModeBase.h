@@ -70,10 +70,12 @@ public:
 
 	bool setAutoMode(AutoMode mode);
 	
-protected:
   virtual void getSendInfos(std::vector<void *> *pResult,
                             ESendInfo sendInfo) = 0;
   virtual void *getSendInfo(ESendInfo sendInfo, int iTrack) = 0;
+
+	int getChannelOffset() { return m_startWithSend; }
+protected:
   virtual void setSendInfo(ESendInfo sendInfo, int iTrack, void *pValue,
                            int wait = 0) = 0;
 

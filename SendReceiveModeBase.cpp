@@ -4,6 +4,7 @@
  */
 
 #include "SendReceiveModeBase.h"
+#include "SendReceiveMeterBridge.h"
 #include "Display.h"
 #include <boost/foreach.hpp>
 #include "Assert.h"
@@ -15,9 +16,13 @@ SendReceiveModeBase::SendReceiveModeBase(CCSManager *pManager)
     : CCSMode(pManager), m_flip(false), m_pLastSelectedTrack(NULL),
       m_startWithSend(0) {
   m_pDisplay = new Display(pManager->getDisplayHandler(), 4);
+	m_pMeterBridge = new SendReceiveMeterBridge(this);
 }
 
-SendReceiveModeBase::~SendReceiveModeBase(void) { safe_delete(m_pDisplay); }
+SendReceiveModeBase::~SendReceiveModeBase(void) {
+	safe_delete(m_pMeterBridge);
+	safe_delete(m_pDisplay);
+}
 
 void SendReceiveModeBase::activate() {
   m_pDisplay->clear();
@@ -486,6 +491,9 @@ void SendReceiveModeBase::updateFlipLED() {
 }
 
 void SendReceiveModeBase::frameUpdate() {
+  m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU()->GetActualFrameTime(),
+	 														      m_pCCSManager->getMCU());
+	
   updateFaders();
   updateVPOTs();
 	updateRecLEDs();

@@ -20,12 +20,14 @@ public:
   virtual void updateMeterBridge(DWORD now, CSurf_MCU *pMCU) = 0;
 
 protected:
-	virtual void updateMasterLEDs(DWORD now, CSurf_MCU *pMCU, double decay);
+	virtual void updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
+													 double decay, int pin);
+	virtual void updateMasterLEDs(CSurf_MCU *pMCU, double decay);
 	void sendToHardware(CSurf_MCU *pMCU, int pos, short meter);
 
-double m_mcu_meterpos[10]; // 9 and 10 are for the master
-	short m_last_sent_meterpos[10];
+  double m_mcu_meterpos[10]; // 9 and 10 are for the master
   DWORD m_mcu_meter_lastrun;
 };
 
 #endif
+

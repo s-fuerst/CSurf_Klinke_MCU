@@ -423,6 +423,7 @@
     <ClInclude Include="..\reaper_plugin_functions.h" />
     <ClInclude Include="Region.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="SendReceiveMeterBridge.h" />
     <ClInclude Include="std_helper.h" />
     <ClInclude Include="Transport.h" />
     <ClInclude Include="UndoEnd.h" />
@@ -496,6 +497,7 @@
     <ClCompile Include="PlugMoveWatcher.cpp" />
     <ClCompile Include="ProjectConfig.cpp" />
     <ClCompile Include="Region.cpp" />
+    <ClCompile Include="SendReceiveMeterBridge.cpp" />
     <ClCompile Include="Transport.cpp" />
     <ClCompile Include="UndoEnd.cpp" />
     <ClCompile Include="VPOT_LED.cpp" />
