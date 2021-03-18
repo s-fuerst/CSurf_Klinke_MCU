@@ -39,8 +39,7 @@ MediaTrack *MultiTrackMode::getMediaTrackForChannel(int channel) {
 }
 
 void MultiTrackMode::frameUpdate() {
-  m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU()->GetActualFrameTime(),
-	 														      m_pCCSManager->getMCU());
+  m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU());
 	
   updateEverything();
 

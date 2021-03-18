@@ -14,7 +14,7 @@ class MultiTrackMeterBridge : public MeterBridge {
 public:
   MultiTrackMeterBridge();
 	bool alsoOnDisplay() { return true; }
-  void updateMeterBridge(DWORD now, CSurf_MCU *pMCU);
+  void updateMeterBridge(CSurf_MCU *pMCU);
 };
 
 #endif

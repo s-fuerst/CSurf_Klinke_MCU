@@ -417,6 +417,7 @@
     <ClInclude Include="mcu_button_defines.h" />
     <ClInclude Include="MeterBridge.h" />
     <ClInclude Include="MultiTrackMeterBridge.h" />
+    <ClInclude Include="PlugModeMeterBridge.h" />
     <ClInclude Include="PlugMoveWatcher.h" />
     <ClInclude Include="ProjectConfig.h" />
     <ClInclude Include="..\reaper_plugin.h" />
@@ -494,6 +495,7 @@
     <ClCompile Include="csurf_mcu.cpp" />
     <ClCompile Include="MeterBridge.cpp" />
     <ClCompile Include="MultiTrackMeterBridge.cpp" />
+    <ClCompile Include="PlugModeMeterBridge.cpp" />
     <ClCompile Include="PlugMoveWatcher.cpp" />
     <ClCompile Include="ProjectConfig.cpp" />
     <ClCompile Include="Region.cpp" />

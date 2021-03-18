@@ -491,8 +491,7 @@ void SendReceiveModeBase::updateFlipLED() {
 }
 
 void SendReceiveModeBase::frameUpdate() {
-  m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU()->GetActualFrameTime(),
-	 														      m_pCCSManager->getMCU());
+  m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU());
 	
   updateFaders();
   updateVPOTs();

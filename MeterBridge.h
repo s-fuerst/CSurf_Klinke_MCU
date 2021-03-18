@@ -17,7 +17,7 @@ class MeterBridge {
 public:
   MeterBridge();
   virtual bool alsoOnDisplay() { return false; }
-  virtual void updateMeterBridge(DWORD now, CSurf_MCU *pMCU) = 0;
+  virtual void updateMeterBridge(CSurf_MCU *pMCU) = 0;
 
 protected:
 	virtual void updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,

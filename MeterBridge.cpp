@@ -4,11 +4,9 @@
  */
 
 #include "MeterBridge.h"
-#include "csurf.h"
 #include "csurf_mcu.h"
 #include "Assert.h"
 #include "Tracks.h"
-#include "boost\foreach.hpp"
 
 MeterBridge::MeterBridge() {
   int x;
@@ -25,7 +23,7 @@ void MeterBridge::updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
 	bool isPlaying = ts->getVUactive();
 
 	int v = 0x0;
-	if (isPlaying) {
+	if (isPlaying && pMT) {
 		v = 0xd; // 0xe turns on clip indicator, 0xf turns it off
 		double pp = 0.0;
 		// get peak

@@ -8,6 +8,7 @@
 #include "PlugMode.h"
 #include "PlugModeComponent.h"
 #include "PlugAccess.h"
+#include "PlugModeMeterBridge.h"
 #include "csurf.h"
 #include "csurf_mcu.h"
 #include "Display.h"
@@ -35,6 +36,8 @@ PlugMode::PlugMode(CCSManager *pManager)
   m_pParamsDisplay = new Display(pManager->getDisplayHandler(), 4);
   m_pTouchedDisplay = new Display(pManager->getDisplayHandler(), 4);
   m_pValueDisplay = new Display(pManager->getDisplayHandler(), 2);
+
+	m_pMeterBridge = new PlugModeMeterBridge(this);
 
   m_pSingleTrackMessage = new Display(pManager->getDisplayHandler(), 2);
   m_pSingleTrackMessage->changeTextFullLine(
@@ -78,6 +81,7 @@ PlugMode::~PlugMode(void) {
   safe_delete(m_pAccess);
   safe_delete(m_pParamsDisplay);
   safe_delete(m_pTouchedDisplay);
+	safe_delete(m_pMeterBridge);
   safe_delete(m_pValueDisplay);
   safe_delete(m_pSingleTrackMessage);
   safe_delete(m_pPlugSelector);
@@ -787,6 +791,8 @@ void PlugMode::removeEditor() {
 }
 
 void PlugMode::frameUpdate() {
+  m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU());
+	
   updateEverything();
   if (m_pCCSManager->getNumSelectButtonsPressed() == 0 &&
       m_lastTimePlugWasSelected + TIMETOSWITCHPLUGINMS <

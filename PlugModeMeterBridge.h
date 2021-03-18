@@ -3,22 +3,23 @@
  * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
  */
 
-#ifndef MCU_SENDRECEIVEMETERBRIDGE
-#define MCU_SENDRECEIVEMETERBRIDGE
+#ifndef MCU_PLUGMODEMETERBRIDGE
+#define MCU_PLUGMODEMETERBRIDGE
 
 #include "csurf.h"
 
 #include "MeterBridge.h"
 
-class SendReceiveModeBase;
+class PlugMode;
 
-class SendReceiveMeterBridge : public MeterBridge {
+class PlugModeMeterBridge : public MeterBridge {
 public:
-  SendReceiveMeterBridge(SendReceiveModeBase *pSendMode);
+  PlugModeMeterBridge(PlugMode *pPlugMode);
 	bool alsoOnDisplay() { return true; }
   void updateMeterBridge(CSurf_MCU *pMCU);
+
 private:
-	SendReceiveModeBase *m_pSendMode = NULL;
+	PlugMode *m_pPlugMode;
 };
 
 #endif

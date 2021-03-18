@@ -17,7 +17,9 @@ SendReceiveMeterBridge::SendReceiveMeterBridge(SendReceiveModeBase *pSendMode)
 }
 
 
-void SendReceiveMeterBridge::updateMeterBridge(DWORD now, CSurf_MCU * pMCU) {
+void SendReceiveMeterBridge::updateMeterBridge(CSurf_MCU * pMCU) {
+	DWORD now = pMCU->GetActualFrameTime();
+	
 	std::vector<void *> sendInfos;
 	m_pSendMode->getSendInfos(&sendInfos, TRACK);
 

@@ -275,6 +275,9 @@
     <ClInclude Include="SendReceiveMeterBridge.h">
       <Filter>Header Files\MeterBridge_h</Filter>
     </ClInclude>
+    <ClInclude Include="PlugModeMeterBridge.h">
+      <Filter>Header Files\MeterBridge_h</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Actions.cpp">
@@ -464,6 +467,9 @@
       <Filter>Source Files\MeterBridge_src</Filter>
     </ClCompile>
     <ClCompile Include="SendReceiveMeterBridge.cpp">
+      <Filter>Source Files\MeterBridge_src</Filter>
+    </ClCompile>
+    <ClCompile Include="PlugModeMeterBridge.cpp">
       <Filter>Source Files\MeterBridge_src</Filter>
     </ClCompile>
   </ItemGroup>

@@ -3,24 +3,23 @@
  * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
  */
 
-#include "MultiTrackMeterBridge.h"
+#include "PlugModeMeterBridge.h"
 #include "csurf_mcu.h"
-#include "Assert.h"
-#include "Tracks.h"
+#include "PlugMode.h"
+#include "PlugAccess.h"
 
 
-MultiTrackMeterBridge::MultiTrackMeterBridge()
+PlugModeMeterBridge::PlugModeMeterBridge(PlugMode *pPlugMode)
     : MeterBridge() {
+	m_pPlugMode = pPlugMode;
 }
 
 
-void MultiTrackMeterBridge::updateMeterBridge(CSurf_MCU * pMCU) {
+void PlugModeMeterBridge::updateMeterBridge(CSurf_MCU * pMCU) {
   //if (m_pDisplayHandler->getMCU()->IsFlagSet(CONFIG_FLAG_NO_LEVEL_METER))
   //  return;
   // 0xD0 = level meter, hi nibble = channel index, low = level (F=clip, E=top)
 	DWORD now = pMCU->GetActualFrameTime();
-	
-  int x;
 
   double decay = 0.0;
   if (m_mcu_meter_lastrun) {
@@ -29,13 +28,10 @@ void MultiTrackMeterBridge::updateMeterBridge(CSurf_MCU * pMCU) {
         (1.4 * 1000.0); // they claim 1.8s for falloff but we'll underestimate
   }
   m_mcu_meter_lastrun = now;
-  for (x = 1; x < 9; x++) {
-    MediaTrack *t;
-
-    if (t = Tracks::instance()->getMediaTrackForChannel(x)) {
-			updateMeter(x, t, pMCU, decay, -1);
-    }
-  }
+	MediaTrack *pPlugTrack = m_pPlugMode->getPlugAccess()->getPlugTrack();
+	for (int x = 1; x < 9; x++) {
+		updateMeter(x, pPlugTrack, pMCU, decay, x-1);
+	}
 	MeterBridge::updateMasterLEDs(pMCU, decay);
 }
 
