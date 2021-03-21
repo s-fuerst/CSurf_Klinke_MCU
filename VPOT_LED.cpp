@@ -16,6 +16,10 @@ VPOT_LED::~VPOT_LED(void) {}
 void VPOT_LED::updateLEDs() {
   if (!m_mustUpdate)
     return;
+
+  int byte3 = m_bottom ? 1 << 6 : 0;
+	if (m_pMCU->IsFlagSet(CONFIG_FLAG_PROX))
+		byte3 = 0;
   // LED Kraenze:
   // CC Kanal 1
   // 0x20 + nr-1 fuer Position
@@ -27,13 +31,12 @@ void VPOT_LED::updateLEDs() {
     if (m_track >
         0) { // m_track == 0 exist only to have also the VPOTs 1 based (with
              // m_track 0 for the master channel, but this has no VPOT)
-      m_pMCU->SendMidi(0xB0, 0x2F + m_track, m_bottom ? 1 << 6 : 0, -1);
+			m_pMCU->SendMidi(0xB0, 0x2F + m_track, byte3, -1);
       m_mustUpdate = false;
       return;
     }
   }
 
-  int byte3 = m_bottom ? 1 << 6 : 0;
   switch (m_mode) {
   case FROM_LEFT:
     byte3 += 2 << 4;

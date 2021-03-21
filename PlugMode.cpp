@@ -451,15 +451,15 @@ void PlugMode::updateVPOTs() {
           pVPot->setValue(11);
         } else if (pStepMap->size() == 2) {
           if (index == 0) {
-            pVPot->setMode(VPOT_LED::FROM_LEFT);
-            pVPot->setValue(6);
+            pVPot->setMode(VPOT_LED::FROM_MIDDLE_POINT);
+            pVPot->setValue(1);
           }
           if (index == 1) {
             pVPot->setMode(VPOT_LED::FROM_MIDDLE_POINT);
             pVPot->setValue(11);
           }
         } else {
-          pVPot->setMode(VPOT_LED::SINGLE);
+          pVPot->setMode(VPOT_LED::FROM_LEFT);
           if ((unsigned)index <
               pStepMap->size() /
                   2) { // the ceil/floor stuff give a more symetric result

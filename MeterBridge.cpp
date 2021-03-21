@@ -20,10 +20,10 @@ void MeterBridge::updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
 															double decay, int pin) {
 	auto ts = Tracks::instance()->getTrackStateForMediaTrack(pMT);
 	// check mute/solo state of track(s), maybe the signal is muted
-	bool isPlaying = ts->getVUactive();
+	bool isActive = ts->getVUactive();
 
 	int v = 0x0;
-	if (isPlaying && pMT) {
+	if (isActive && pMT) {
 		v = 0xd; // 0xe turns on clip indicator, 0xf turns it off
 		double pp = 0.0;
 		// get peak
@@ -35,6 +35,11 @@ void MeterBridge::updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
 		if (m_mcu_meterpos[iChannel - 1] > -VU_BOTTOM * 2)
 			m_mcu_meterpos[iChannel - 1] -= decay;
 
+		if (pp < -VU_BOTTOM) {
+			sendToHardware(pMCU, iChannel - 1, 0);
+		  return;
+		}
+
 		if (pp < m_mcu_meterpos[iChannel - 1])
 			return;
 		
@@ -45,15 +50,18 @@ void MeterBridge::updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
 					v = 0x0;
 				else if (pp <= -VU_BOTTOM_QCON)
 					v = 0x1;
-				else
-					v = (int)((pp + VU_BOTTOM_QCON) * 13.0 / VU_BOTTOM_QCON);
+				else {
+					if (pp < -1)
+						pp++;
+					v = (int)(1 + ((pp + VU_BOTTOM_QCON) * 12.0 / VU_BOTTOM_QCON));
+				}
 			}
 		} else {
 			if (pp < 0.0) {
 				if (pp <= -VU_BOTTOM)
 					v = 0x0;
 				else
-					v = (int)((pp + VU_BOTTOM) * 13.0 / VU_BOTTOM);
+					v = (int)(0 + ((pp + VU_BOTTOM) * 13.0 / VU_BOTTOM_QCON));
 			}
 		}
 	}
@@ -84,7 +92,7 @@ void MeterBridge::updateMasterLEDs(CSurf_MCU *pMCU, double decay) {
 				if (pp <= -VU_BOTTOM)
 					v = 0x0;
 				else
-					v = (int)((pp + VU_BOTTOM_QCON) * 13.0 / VU_BOTTOM_QCON);
+					v = (int)((pp + VU_BOTTOM_QCON) * 12.0 / VU_BOTTOM_QCON) + 1;
 			}
 			sendToHardware(pMCU, 8 + x, v);
 		}

@@ -124,8 +124,14 @@ void SendReceiveModeBase::updateVPOTs() {
     getSendInfos(&m_sendInfos, PAN);
 
   for (unsigned int iInfo = 0; iInfo < 8; iInfo++) {
+
     VPOT_LED *pVPOT = m_pCCSManager->getVPOT(iInfo + 1);
     if (m_startWithSend + iInfo < m_sendInfos.size()) {
+			if (m_flip)
+				m_pCCSManager->getVPOT(iInfo+1)->setMode(VPOT_LED::FROM_LEFT);
+			else
+				m_pCCSManager->getVPOT(iInfo+1)->setMode(VPOT_LED::FROM_MIDDLE_POINT);
+			
       if (m_flip)
         pVPOT->setValueFromChar(
             volToChar(*((double *)m_sendInfos[m_startWithSend + iInfo])));
@@ -133,10 +139,9 @@ void SendReceiveModeBase::updateVPOTs() {
         pVPOT->setValueFromChar(
             panToChar(*((double *)m_sendInfos[m_startWithSend + iInfo])));
 
-      pVPOT->setMode(VPOT_LED::SINGLE);
     } else {
+			m_pCCSManager->getVPOT(iInfo+1)->setMode(VPOT_LED::OFF);
       pVPOT->setValue(0);
-      pVPOT->setMode(VPOT_LED::FROM_LEFT);
     }
   }
 }

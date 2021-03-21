@@ -33,9 +33,12 @@ void SendReceiveMeterBridge::updateMeterBridge(CSurf_MCU * pMCU) {
 
 	unsigned offset = m_pSendMode->getChannelOffset();
 
-	for (int iInfo = 0; (offset + iInfo) < sendInfos.size() && iInfo < 8; iInfo++) {
-    MediaTrack *t = (MediaTrack *) sendInfos[offset + iInfo];
-		updateMeter(iInfo - offset + 1, t, pMCU, decay, -1);
+	for (int iInfo = 0; iInfo < 8; iInfo++) {
+		if ((offset + iInfo) < sendInfos.size()) {
+			MediaTrack *t = (MediaTrack *)sendInfos[offset + iInfo];
+			updateMeter(iInfo + 1, t, pMCU, decay, -1);
+		} else
+			updateMeter(iInfo + 1, NULL, pMCU, decay, -1);
   }
 
   MeterBridge::updateMasterLEDs(pMCU, decay);

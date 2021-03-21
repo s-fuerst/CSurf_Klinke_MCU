@@ -9,7 +9,7 @@
 #include "reaper_plugin.h" // DWORD
 
 #define VU_BOTTOM 70
-#define VU_BOTTOM_QCON 22
+#define VU_BOTTOM_QCON 20
 
 class CSurf_MCU;
 

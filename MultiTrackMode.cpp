@@ -148,8 +148,12 @@ void MultiTrackMode::updateFaders() {
 void MultiTrackMode::updateVPOTs() {
   for (int channel = 1; channel < 9; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
-      m_pCCSManager->getVPOT(channel)->setMode(VPOT_LED::SINGLE);
-      m_pCCSManager->getVPOT(channel)->setBottom(
+			if (s_flipmode)
+				m_pCCSManager->getVPOT(channel)->setMode(VPOT_LED::FROM_LEFT);
+			else
+				m_pCCSManager->getVPOT(channel)->setMode(VPOT_LED::FROM_MIDDLE_POINT);
+
+			m_pCCSManager->getVPOT(channel)->setBottom(
           Tracks::instance()->hasChilds(tr));
       if (s_flipmode)
         trackVolume(channel,

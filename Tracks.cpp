@@ -996,7 +996,10 @@ void Tracks::activeVUallChildren(MediaTrack *pMT) {
 void Tracks::updateVUactive() {
 	if (!m_pMCU->SomethingSoloed()) {
 		for (auto &e : m_trackStates) {
-			e.second->setVUactive(true);
+			TrackState &ts = *e.second;
+			bool *muteState = (bool *)GetSetMediaTrackInfo(ts.getMediaTrack(),
+																									 "B_MUTE", NULL);
+			e.second->setVUactive(! *muteState);
 		}
 		return;
 	}
