@@ -50,9 +50,7 @@ void ReceiveMode::setSendInfo(ESendInfo sendInfo, int iTrack, void *pValue,
 
 int ReceiveMode::calcSendIdxSet(int sendNr) { return -sendNr - 1; }
 
-int ReceiveMode::calcSendIdxGet(int sendNr) {
-  return sendNr + GetTrackNumSends(selectedTrack(), -1) - 1;
-}
+int ReceiveMode::calcSendIdxGet(int sendNr) { return sendNr; }
 
 void ReceiveMode::getTrackUIVol(MediaTrack *track, int idx, double *volumeOut,
                                 double *panOut) {
