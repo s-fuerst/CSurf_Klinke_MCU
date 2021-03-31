@@ -53,7 +53,7 @@ void MeterBridge::updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
 				else {
 					if (pp < -1)
 						pp++;
-					v = (int)(1 + ((pp + VU_BOTTOM_QCON) * 12.0 / VU_BOTTOM_QCON));
+					v = (int)(1 + ((pp + VU_BOTTOM_QCON) * 11.0 / VU_BOTTOM_QCON));
 				}
 			}
 		} else {
@@ -92,7 +92,7 @@ void MeterBridge::updateMasterLEDs(CSurf_MCU *pMCU, double decay) {
 				if (pp <= -VU_BOTTOM)
 					v = 0x0;
 				else
-					v = (int)((pp + VU_BOTTOM_QCON) * 12.0 / VU_BOTTOM_QCON) + 1;
+					v = (int)((pp + VU_BOTTOM_QCON) * 11.0 / VU_BOTTOM_QCON) + 1;
 			}
 			sendToHardware(pMCU, 8 + x, v);
 		}
