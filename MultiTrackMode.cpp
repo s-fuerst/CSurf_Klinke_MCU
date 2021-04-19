@@ -471,6 +471,9 @@ void MultiTrackMode::updateDisplay() {
       }
     } else {
       m_pDisplay->changeField(0, x, "");
+      m_pDisplay->changeField(1, x, "");
+      m_pDisplay->changeField(2, x, "");
+      m_pDisplay->changeField(3, x, "");
     }
   }
 
