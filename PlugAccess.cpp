@@ -367,6 +367,20 @@ double PlugAccess::getParamValueDouble(ElementDesc::eType type, int channel) {
   return 0;
 }
 
+double PlugAccess::getParamValueDouble(ElementDesc* desc) {
+  if (!plugExist())
+    return 0;
+
+  double min, max;
+  int id = getParamID(desc);
+  if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams() + 2) {
+    return TrackFX_GetParam(m_pPlugTrack, m_iSlot, id, &min, &max);
+  }
+
+  return 0;
+}
+
+
 PMVPot::tSteps *PlugAccess::getParamSteps(int vpot) {
   if (!plugExist())
     return NULL;

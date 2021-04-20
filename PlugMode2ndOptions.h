@@ -15,7 +15,9 @@
 #define PMO2A_OFF JUCE_T("off")
 #define PMO2A_ON JUCE_T("on")
 
-#define PMO2_SHOW_DETAILS JUCE_T("Param details")
+#define PMO2_SHOW_DETAILS JUCE_T("Touch details")
+
+#define PMO2_FOLLOW_CHANGE JUCE_T("Follow change")
 
 class PlugMode2ndOptions : public Options {
 public:

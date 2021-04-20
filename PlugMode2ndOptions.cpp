@@ -22,6 +22,10 @@ PlugMode2ndOptions::PlugMode2ndOptions(DisplayHandler *pDH) : Options(pDH) {
 	addOption(PMO2_SHOW_DETAILS);
 	addAttribute(PMO2_SHOW_DETAILS, PMO2A_OFF);
 	addAttribute(PMO2_SHOW_DETAILS, PMO2A_ON, true);
+
+	addOption(PMO2_FOLLOW_CHANGE);
+	addAttribute(PMO2_FOLLOW_CHANGE, PMO2A_OFF, true);
+	addAttribute(PMO2_FOLLOW_CHANGE, PMO2A_ON);
 	
   readConfigFile();
 }

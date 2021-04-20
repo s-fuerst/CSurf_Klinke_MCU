@@ -804,6 +804,9 @@ void PlugMode::frameUpdate() {
   m_pAccess->checkFloatWindows();
 
   m_pAccess->getPlugWindowManager()->moveWnd();
+
+	if (m_pPlugMode2ndOptions->isOptionSetTo(PMO2_FOLLOW_CHANGE, PMO2A_ON))
+		followChanges();
 }
 
 void PlugMode::updateRecLEDs() {
@@ -1101,6 +1104,36 @@ void PlugMode::plugMoved(MediaTrack *pOldTrack, int oldSlot,
       break;
     }
   }
+}
+
+void PlugMode::followChanges() {
+  int numChangedValues = 0;
+	int changeInBank = -1;
+	int changeInPage = -1;
+
+	for (int bank = 0; bank < 8; bank++) {
+		for (int page = 0; page < 8; page ++) {
+			for (int channel = 0; channel < 8; channel++) {
+				double faderVal = m_pAccess->getParamValueDouble(
+					   &PlugAccess::ElementDesc(bank, page, PlugAccess::ElementDesc::FADER, channel));
+				double vpotVal = m_pAccess->getParamValueDouble(
+					   &PlugAccess::ElementDesc(bank, page, PlugAccess::ElementDesc::VPOT, channel));
+				if (faderVal != lastFaderValues[bank][page][channel] ||
+						vpotVal != lastVPotValues[bank][page][channel]) {
+					numChangedValues++;
+					changeInBank = bank;
+					changeInPage = page;
+					lastFaderValues[bank][page][channel] = faderVal;
+					lastVPotValues[bank][page][channel] = vpotVal;
+				}
+			}
+		}
+	}
+
+	if (numChangedValues > 0 && numChangedValues < 3) {
+		m_pAccess->setSelectedBank(changeInBank);
+		m_pAccess->setSelectedPage(changeInBank, changeInPage);
+	}
 }
 
 // MediaTrack* PlugMode::selectedTrack()

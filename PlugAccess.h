@@ -109,6 +109,7 @@ public:
       ElementDesc::eType type,
       int channel); // channel is 0 based, returns unconverted value, returns 0
                     // if element hasn't an assigned id
+  double getParamValueDouble(ElementDesc* desc);
   PMVPot::tSteps *getParamSteps(
       int vpot); // ElementDesc can be only VPOT, so vpot parameter is enough
   String getParamValueShort(ElementDesc::eType type, int channel);

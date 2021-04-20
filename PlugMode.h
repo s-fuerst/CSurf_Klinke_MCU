@@ -121,7 +121,8 @@ public:
 
   //      MediaTrack* selectedTrack(); // returns the MasterTrack if zero or
   //      more then one track is selected
-
+	void followChanges();
+	
 private:
   void switchDisplay();
   void updateParamsDisplay();
@@ -184,4 +185,7 @@ private:
 
   typedef std::map<String, int> tLCPs; // fxGUID
   tLCPs m_lastCalledPreset;
+
+	double lastFaderValues[8][8][8];
+	double lastVPotValues[8][8][8];
 };
