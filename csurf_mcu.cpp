@@ -1544,6 +1544,13 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
                    "https://www.paypal.com/cgi-bin/"
                    "webscr?cmd=_s-xclick&hosted_button_id=LR54GZHGL6VHA",
                    NULL, NULL, SW_SHOWDEFAULT);
+			break;
+    case BTN_OPEN_MANUAL:
+      ShellExecute(NULL, "open",
+                   "https://bitbucket.org/"
+                   "Klinkenstecker/csurf_klinke_mcu/downloads/mcu_klinke_manual.pdf",
+                   NULL, NULL, SW_SHOWDEFAULT);
+			break;
     }
   }
   case WM_USER + 1024:
@@ -1568,7 +1575,7 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
         cflags |= CONFIG_FLAG_KEYBOARD_MODIFIER;
 
       char tmp[512];
-      sprintf(tmp, "%d %d %d %d %d", offs, size, indev, outdev, cflags);
+      sprintf(tmp, "%Id %Id %Id %Id %d", offs, size, indev, outdev, cflags);
       lstrcpyn((char *)lParam, tmp, wParam);
     }
     break;
@@ -1593,9 +1600,9 @@ static HWND configFunc(const char *type_string, HWND parent,
 reaper_csurf_reg_t csurf_mcu_modified_reg = {
     MAIN_ID,
 #ifdef EXT_B
-    "Mackie Control B (Klinke)",
+    "Mackie Control Protocol B (Klinke)",
 #else
-    "Mackie Control (Klinke)",
+    "Mackie Control Protocol (Klinke)",
 #endif
     createFunc,
     configFunc,
