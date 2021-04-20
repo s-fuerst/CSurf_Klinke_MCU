@@ -1532,8 +1532,8 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
       CheckDlgButton(hwndDlg, IDC_PROX, BST_CHECKED);
     if (parms[4] & CONFIG_FLAG_SWAPZOOM)
       CheckDlgButton(hwndDlg, IDC_CHECK2, BST_CHECKED);
-    if (parms[4] & CONFIG_FLAG_MACKIE_LEVEL_METER)
-      CheckDlgButton(hwndDlg, IDC_NOLEVEL, BST_CHECKED);
+    // if (parms[4] & CONFIG_FLAG_MACKIE_LEVEL_METER)
+    //   CheckDlgButton(hwndDlg, IDC_NOLEVEL, BST_CHECKED);
     if (parms[4] & CONFIG_FLAG_KEYBOARD_MODIFIER)
       CheckDlgButton(hwndDlg, IDC_KEYBOARD_MODIFIER, BST_CHECKED);
   } break;
@@ -1562,8 +1562,8 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
         cflags |= CONFIG_FLAG_PROX;
       if (IsDlgButtonChecked(hwndDlg, IDC_CHECK2))
         cflags |= CONFIG_FLAG_SWAPZOOM;
-      if (IsDlgButtonChecked(hwndDlg, IDC_NOLEVEL))
-        cflags |= CONFIG_FLAG_MACKIE_LEVEL_METER;
+      // if (IsDlgButtonChecked(hwndDlg, IDC_NOLEVEL))
+      //   cflags |= CONFIG_FLAG_MACKIE_LEVEL_METER;
       if (IsDlgButtonChecked(hwndDlg, IDC_KEYBOARD_MODIFIER))
         cflags |= CONFIG_FLAG_KEYBOARD_MODIFIER;
 

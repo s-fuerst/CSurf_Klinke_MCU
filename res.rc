@@ -73,12 +73,11 @@ BEGIN
     COMBOBOX        IDC_COMBO2,63,6,181,105,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     RTEXT           "MIDI output:",IDC_STATIC,4,23,56,8
     COMBOBOX        IDC_COMBO3,63,21,181,105,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    CONTROL         "Swap left/right arrow on zoom",IDC_CHECK2,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,18,61,126,10
-    CONTROL         "Mackie Control level meter",IDC_NOLEVEL,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,18,51,120,10
+    CONTROL         "Swap left/right arrow on zoom",IDC_CHECK2,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,18,51,126,10
     PUSHBUTTON      "Donate",BTN_DONATE,161,95,50,14
     CONTROL         "Use keyboard modifier (right Alt substitute the OPTION button)",IDC_KEYBOARD_MODIFIER,
-                    "Button",BS_AUTOCHECKBOX,18,71,232,10
-    CONTROL         "Fake fader touch",IDC_FAKE_TOUCH,"Button",BS_AUTOCHECKBOX,18,81,232,10
+                    "Button",BS_AUTOCHECKBOX,18,61,232,10
+    CONTROL         "Fake fader touch",IDC_FAKE_TOUCH,"Button",BS_AUTOCHECKBOX,18,71,232,10
     CONTROL         "Icon ProX support",IDC_PROX,"Button",BS_AUTOCHECKBOX,18,41,232,10
 END
 
