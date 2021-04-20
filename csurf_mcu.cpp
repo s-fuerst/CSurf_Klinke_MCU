@@ -1498,7 +1498,7 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
     parseParms((const char *)lParam, parms);
 
     int n = GetNumMIDIInputs();
-    int x = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_ADDSTRING, 0,
+    LRESULT x = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_ADDSTRING, 0,
                                (LPARAM) "None");
     SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_SETITEMDATA, x, -1);
     x = SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_ADDSTRING, 0,
@@ -1507,7 +1507,7 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
     for (x = 0; x < n; x++) {
       char buf[512];
       if (GetMIDIInputName(x, buf, sizeof(buf))) {
-        int a = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_ADDSTRING, 0,
+        LRESULT a = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_ADDSTRING, 0,
                                    (LPARAM)buf);
         SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_SETITEMDATA, a, x);
         if (x == parms[2])
@@ -1518,7 +1518,7 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
     for (x = 0; x < n; x++) {
       char buf[512];
       if (GetMIDIOutputName(x, buf, sizeof(buf))) {
-        int a = SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_ADDSTRING, 0,
+        LRESULT a = SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_ADDSTRING, 0,
                                    (LPARAM)buf);
         SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_SETITEMDATA, a, x);
         if (x == parms[3])
@@ -1548,8 +1548,8 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
   }
   case WM_USER + 1024:
     if (wParam > 1 && lParam) {
-      int indev = -1, outdev = -1, offs = 0, size = 8;
-      int r = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_GETCURSEL, 0, 0);
+      LRESULT indev = -1, outdev = -1, offs = 0, size = 8;
+      LRESULT r = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_GETCURSEL, 0, 0);
       if (r != CB_ERR)
         indev = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_GETITEMDATA, r, 0);
       r = SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_GETCURSEL, 0, 0);
