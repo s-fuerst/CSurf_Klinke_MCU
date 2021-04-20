@@ -448,6 +448,8 @@ void Tracks::moveSelectedTrack2MCU() {
     tracksStatesChanged();
     TrackState *pTS = Tracks::instance()->getTrackStateForMediaTrack(trackid);
     if (pTS->getAnchorChannel() == 0 && !pTS->isOnMCU()) {
+			MediaTrack *newParent = Tracks::instance()->getParentForMediaTrack(trackid);
+			Tracks::instance()->moveBaseTrack(newParent);
       int tracknr = MediaTrackInfo::getTrackNr(trackid);
       int numChannels = 8 - Tracks::instance()->getNumberOfAnchors();
 
@@ -459,8 +461,8 @@ void Tracks::moveSelectedTrack2MCU() {
             Tracks::instance()->getGlobalOffset() + numChannels);
       }
 
-      // track wasn't found (because it is in the set of shown tracks), so use
-      // the original offset
+      // track wasn't found (because it is not in the set of shown tracks, or
+			// on a different level
       if (Tracks::instance()->getGlobalOffset() >= tracknr) {
         Tracks::instance()->setGlobalOffset(originalOffset);
       }

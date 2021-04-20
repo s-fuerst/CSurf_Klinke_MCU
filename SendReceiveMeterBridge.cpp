@@ -41,6 +41,36 @@ void SendReceiveMeterBridge::updateMeterBridge(CSurf_MCU * pMCU) {
 			updateMeter(iInfo + 1, NULL, pMCU, decay, -1);
   }
 
-  MeterBridge::updateMasterLEDs(pMCU, decay);
+  updateMasterLEDs(pMCU, decay);
+}
+
+void SendReceiveMeterBridge::updateMasterLEDs(CSurf_MCU *pMCU, double decay) {
+	if (pMCU->IsFlagSet(CONFIG_FLAG_PROX)) {
+		int x;
+		int v = 0x0;
+		for (x = 0; x < 2; x++) {
+			v = 0xd; // 0xe turns on clip indicator, 0xf turns it off
+			double pp =
+				VAL2DB(Track_GetPeakInfo(Tracks::instance()->getSelectedSingleTrack(), x));
+
+			if (m_mcu_meterpos[8 + x] > -VU_BOTTOM * 2)
+				m_mcu_meterpos[8 + x] -= decay;
+			
+			if (pp > m_mcu_meterpos[8 + x]) {
+				m_mcu_meterpos[8 + x] = pp;
+			}
+			else {
+				pp = m_mcu_meterpos[8 + x];
+			}
+			
+			if (pp < 0.0) {
+				if (pp <= -VU_BOTTOM)
+					v = 0x0;
+				else
+					v = (int)((pp + VU_BOTTOM_QCON) * 11.0 / VU_BOTTOM_QCON) + 1;
+			}
+			sendToHardware(pMCU, 8 + x, v);
+		}
+	}
 }
 

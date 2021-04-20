@@ -17,6 +17,7 @@ public:
   SendReceiveMeterBridge(SendReceiveModeBase *pSendMode);
 	bool alsoOnDisplay() { return true; }
   void updateMeterBridge(CSurf_MCU *pMCU);
+	void updateMasterLEDs(CSurf_MCU *pMCU, double decay);
 private:
 	SendReceiveModeBase *m_pSendMode = NULL;
 };
