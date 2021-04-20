@@ -161,6 +161,7 @@ void CommandMode::writeConfigFile() {
 void CommandMode::activate() {
   CCSMode::activate();
   m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
+	m_pCCSManager->getDisplayHandler()->enableMCUMeter(false);
 }
 
 // command mode: Channel 1-8, 0x06-0x0c, 0x16-0x1c, 0x26-0x2c ... 0x76-0x7c (the

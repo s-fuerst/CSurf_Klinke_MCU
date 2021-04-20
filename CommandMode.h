@@ -104,7 +104,6 @@ public:
           1, i + 1, m_pCommandMode->m_pPage[i]->m_strPageName.toCString());
 
     m_pCommandMode->m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
-    m_pCommandMode->m_pCCSManager->getDisplayHandler()->enableMeter(false);
   }
   // returns true if selector should still be active
   bool select(int index) {

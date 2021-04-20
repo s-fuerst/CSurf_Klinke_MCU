@@ -45,8 +45,6 @@ public:
   virtual void forwardRowTo(int sourceRow, Display *pDisplay, int targetRow);
   //      virtual static const char* getName() = 0;
 
-  virtual bool hasMeter() { return false; };
-
 	virtual int getRowLength(int row) { return (row < 2) ? 55 : 56; }
 
 	void showDB(int row, int channel, double volume);

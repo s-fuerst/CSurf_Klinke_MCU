@@ -39,6 +39,7 @@ void SendReceiveModeBase::activate() {
 	}
 
   m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
+	m_pCCSManager->getDisplayHandler()->enableMCUMeter(true);
 }
 
 void SendReceiveModeBase::updateRecLEDs() {

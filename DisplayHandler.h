@@ -35,8 +35,8 @@ public:
   void updateDisplay(Display *pDisplay, int row, int pos, char const *text,
                      int pad, bool forceUpdate = false);
   Display *getDisplay() const { return m_pActualDisplay; }
-  void enableMeter(bool enable);
-  void enableMeter(int channel, bool enable); // channel is 1 based
+  void enableMCUMeter(bool enable);
+  void enableMCUMeter(int channel, bool enable); // channel is 1 based
   bool getMetersEnabled(int channel) const { return m_metersEnabled[channel]; }
   CSurf_MCU *getMCU() const { return m_pMCU; }
 

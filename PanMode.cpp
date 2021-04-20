@@ -14,6 +14,14 @@ PanMode::PanMode(CCSManager *pManager) : MultiTrackMode(pManager) {}
 
 PanMode::~PanMode(void) {}
 
+void PanMode::activate() {
+	m_pCCSManager->getDisplayHandler()->enableMCUMeter(true);
+
+	m_pCCSManager->switchToDisplay(this, m_pDisplay);
+
+	CCSMode::activate();
+}
+
 bool PanMode::vpotMoved(int channel, int numSteps) {
   if (m_pCCSManager->getVPOT(channel)->isPressed()) {
     numSteps *= 5;
@@ -35,17 +43,9 @@ bool PanMode::vpotMoved(int channel, int numSteps) {
   return false;
 }
 
-bool PanMode::faderTouched(int channel, bool touched) {
-  if (channel > 0) {
-    m_pCCSManager->getDisplayHandler()->enableMeter(channel, !touched);
-  }
-  return true;
-}
-
 void PanMode::updateDisplay() {
   MultiTrackMode::updateDisplay();
-  if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_NO_LEVEL_METER) ||
-			m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX)) {
+	//  if (! m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_MACKIE_LEVEL_METER)) {
     for (int iTrack = 1; iTrack < 9; iTrack++) {
       MediaTrack *tr = getMediaTrackForChannel(iTrack);
       if (tr) {
@@ -74,5 +74,5 @@ void PanMode::updateDisplay() {
         m_pDisplay->changeField(1, iTrack, "");
       }
     }
-  }
+		//  }
 }

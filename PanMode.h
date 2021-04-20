@@ -15,10 +15,11 @@ public:
 public:
   virtual ~PanMode(void);
 
+  void activate();
+	
   bool vpotMoved(int channel,
                  int numSteps); // numSteps are negativ for left rotation
 
-  bool faderTouched(int channel, bool touched);
   void updateDisplay();
 
   Selector *getSelector() { return m_pSelector; }

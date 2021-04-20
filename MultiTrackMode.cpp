@@ -440,7 +440,7 @@ void MultiTrackMode::trackVolume(int id, double volume) {
         //        if (m_pCCSManager->getNumFadersTouched() > 1) {
         //          m_pCCSManager->getDisplayHandler()->waitForMoreChanges(true);
         //        }
-        m_pDisplay->showDB(1, id, volume);
+        //m_pDisplay->showDB(1, id, volume);
       }
     }
   }
@@ -471,9 +471,12 @@ void MultiTrackMode::updateDisplay() {
       }
     } else {
       m_pDisplay->changeField(0, x, "");
-      m_pDisplay->changeField(1, x, "");
-      m_pDisplay->changeField(2, x, "");
-      m_pDisplay->changeField(3, x, "");
+			//			if (! m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_MACKIE_LEVEL_METER))
+			m_pDisplay->changeField(1, x, "");
+      if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX)) {
+        m_pDisplay->changeField(2, x, "");
+        m_pDisplay->changeField(3, x, "");
+      }
     }
   }
 

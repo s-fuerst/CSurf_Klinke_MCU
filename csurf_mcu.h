@@ -75,7 +75,7 @@ struct ScheduledAction {
 
 #define CONFIG_FLAG_FADER_TOUCH_FAKE 1
 #define CONFIG_FLAG_SWAPZOOM 2
-#define CONFIG_FLAG_NO_LEVEL_METER 4
+#define CONFIG_FLAG_MACKIE_LEVEL_METER 4
 #define CONFIG_FLAG_KEYBOARD_MODIFIER 8
 #define CONFIG_FLAG_PROX 16 
 #define CONFIG_FLAG_STARTGLOBALVIEW 32
@@ -457,9 +457,9 @@ public:
 
   const char *CSurf_MCU::GetDescString() {
 #ifdef EXT_B
-    m_descspace.Set("Mackie Control B (Klinke v0.8.4.9.2)");
+    m_descspace.Set("Mackie Control B (Klinke v0.8.4.9.5)");
 #else
-    m_descspace.Set("Mackie Control (Klinke v0.8.4.9.2)");
+    m_descspace.Set("Mackie Control (Klinke v0.8.4.9.5)");
 #endif
     char tmp[512];
     sprintf(tmp, " (dev %d,%d)", m_midi_in_dev, m_midi_out_dev);

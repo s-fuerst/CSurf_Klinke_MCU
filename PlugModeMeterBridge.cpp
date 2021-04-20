@@ -16,8 +16,6 @@ PlugModeMeterBridge::PlugModeMeterBridge(PlugMode *pPlugMode)
 
 
 void PlugModeMeterBridge::updateMeterBridge(CSurf_MCU * pMCU) {
-  //if (m_pDisplayHandler->getMCU()->IsFlagSet(CONFIG_FLAG_NO_LEVEL_METER))
-  //  return;
   // 0xD0 = level meter, hi nibble = channel index, low = level (F=clip, E=top)
 	DWORD now = pMCU->GetActualFrameTime();
 

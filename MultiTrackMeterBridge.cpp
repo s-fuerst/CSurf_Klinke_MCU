@@ -15,7 +15,7 @@ MultiTrackMeterBridge::MultiTrackMeterBridge()
 
 
 void MultiTrackMeterBridge::updateMeterBridge(CSurf_MCU * pMCU) {
-  //if (m_pDisplayHandler->getMCU()->IsFlagSet(CONFIG_FLAG_NO_LEVEL_METER))
+  //if (m_pDisplayHandler->getMCU()->IsFlagSet(CONFIG_FLAG_MACKIE_LEVEL_METER))
   //  return;
   // 0xD0 = level meter, hi nibble = channel index, low = level (F=clip, E=top)
 	DWORD now = pMCU->GetActualFrameTime();

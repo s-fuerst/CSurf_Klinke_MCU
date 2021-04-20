@@ -26,9 +26,7 @@ DisplayHandler::DisplayHandler(CSurf_MCU *pMCU, EnumMCUType mcuType) {
   m_mcuType = mcuType;
   m_wait = false;
   for (int i = 0; i < 9; i++) {
-		// enableMeter must be processed once
-    m_metersEnabled[i] = m_pMCU->IsFlagSet(CONFIG_FLAG_NO_LEVEL_METER) ||
-			m_pMCU->IsFlagSet(CONFIG_FLAG_PROX);
+    m_metersEnabled[i] = false;
   }
 
   m_pHardwareState = new Display(this, 4);
@@ -105,21 +103,15 @@ void DisplayHandler::switchTo(Display *pDisplay) {
 	m_pActualDisplay = pDisplay;
 	pDisplay->activate();
 
-  if (!pDisplay->hasMeter()) {
-    memset(m_pHardwareState->getText()[1], 1, pDisplay->getRowLength(0));
-  }
-
-  enableMeter(pDisplay->hasMeter());
+	memset(m_pHardwareState->getText()[1], 1, pDisplay->getRowLength(0));
 }
 
-void DisplayHandler::enableMeter(int channel, bool enable) // channel is 1 based
+void DisplayHandler::enableMCUMeter(int channel, bool enable) // channel is 1 based
 {
   ASSERT(channel > 0 && channel <= 9);
 
-  if (m_pMCU->IsFlagSet(CONFIG_FLAG_NO_LEVEL_METER) ||
-			m_pMCU->IsFlagSet(CONFIG_FLAG_PROX)) {
-    enable = false;
-  }
+  // if (! m_pMCU->IsFlagSet(CONFIG_FLAG_MACKIE_LEVEL_METER))
+  //   enable = false;
 
   if (enable == m_metersEnabled[channel])
     return;
@@ -131,27 +123,38 @@ void DisplayHandler::enableMeter(int channel, bool enable) // channel is 1 based
 
   mm.evt.midi_message[mm.evt.size++] = 0x20;
   mm.evt.midi_message[mm.evt.size++] = 0x00 + channel - 1;
-  mm.evt.midi_message[mm.evt.size++] = enable ? 0x07 : 0x01;
+	//  mm.evt.midi_message[mm.evt.size++] = enable ? 0x07 : 0x01;
+  mm.evt.midi_message[mm.evt.size++] = enable ? 0x03 : 0x01;
   mm.evt.midi_message[mm.evt.size++] = 0xF7;
   m_pMCU->SendMsg(&mm.evt, -1);
 
-  if (m_pActualDisplay && m_pActualDisplay->hasMeter()) {
-    if (enable)
-      m_pActualDisplay->changeField(1, channel, "||||||");
-    else
-      m_pActualDisplay->changeField(1, channel, "------");
-  }
+  // if (m_pActualDisplay && m_pActualDisplay->hasMeter()) {
+  //   if (enable)
+  //     m_pActualDisplay->changeField(1, channel, "||||||");
+  //   else
+  //     m_pActualDisplay->changeField(1, channel, "------");
+  // }
   //  Sleep(50);
   //  D0 yx    : update VU meter, y=track, x=0..d=volume, e=clip on, f=clip off
   //  if (enable) {
   //    m_pMCU->SendMidi(0xD0,((channel-1)<<4)|0xF,0,-1);
   //    Sleep(5);
   //  }
+  //  F0 00 00 66 14 21 01 F7       : Vertical Line Meter
+  MIDI_Message mm2;
+
+  addHeader(&mm2, 0);
+
+  mm2.evt.midi_message[mm2.evt.size++] = 0x21;
+  mm2.evt.midi_message[mm2.evt.size++] = 0x01;
+  mm2.evt.midi_message[mm2.evt.size++] = 0xF7;
+  m_pMCU->SendMsg(&mm2.evt, -1);
+	
 }
 
-void DisplayHandler::enableMeter(bool enable) {
+void DisplayHandler::enableMCUMeter(bool enable) {
   for (int i = 1; i < 9; i++) {
-    enableMeter(i, enable);
+    enableMCUMeter(i, enable);
   }
   safe_call(m_pActualDisplay, resendRow(1));
 }
