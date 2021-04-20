@@ -15,6 +15,8 @@
 #define PMO2A_OFF JUCE_T("off")
 #define PMO2A_ON JUCE_T("on")
 
+#define PMO2_SHOW_DETAILS JUCE_T("Param details")
+
 class PlugMode2ndOptions : public Options {
 public:
   PlugMode2ndOptions(DisplayHandler *pDH);

@@ -492,7 +492,8 @@ void PlugMode::switchDisplay() {
     m_pCCSManager->switchToDisplay(
         this, m_pBankPagePlugSelector->getSelectorDisplay());
   } else if ((isSingleFaderTouched() || isSingleVPotTouched()) &&
-             !m_buttonNameValuePressed) {
+             !m_buttonNameValuePressed &&
+						 m_pPlugMode2ndOptions->isOptionSetTo(PMO2_SHOW_DETAILS, PMO2A_ON)) {
     m_pCCSManager->switchToDisplay(this, m_pTouchedDisplay);
   } else {
     m_pCCSManager->switchToDisplay(this, m_pParamsDisplay);
