@@ -2,10 +2,11 @@
 
 \subsection{Editing the \vpot Values Manually}
 
-The parameter map editor does not allow to edit the different values for the
-\vpot manually,  the values can  only be learned. In some cases this
-can not be done. But you can edit the XML file directly, which is not so
-complicated. For example, if you open the Tin Man map, you will find something like:
+The parameter map editor does not allow to edit the different values
+for the \vpot manually, the values can only be learned. In some cases
+this can not be done. But you can edit the maps directly, they are
+stored as XML files. For example, if you open the Tin Man map, you
+will find something like:
  
 \begin{verbatim} 
 <VPOT short=" oink" long="filter type" paramId="2" ver="1">
@@ -15,19 +16,7 @@ complicated. For example, if you open the Tin Man map, you will find something l
 \end{verbatim} 
  
 You can copy, paste and edit STEP lines to edit the table, only these
-lines must be edited. E.g. if you need an additonal filter type you
-can modify this lines to:
-
-
-\begin{verbatim} 
-<VPOT short=" oink" long="filter type" paramId="2" ver="1">
-  <STEP value="0" short="all pa" long="all pass"/>
-  <STEP value="0.33333" short="high" long="high pass"/>
-  <STEP value="0.66666" short="band" long="band pass"/>
-  <STEP value="1" short="low pa" long="low pass"/>
-</VPOT>
-\end{verbatim} 
- 
-The difference between the value in the XML-file and the correct value
+lines must be edited. The values are between 0 and 1 and the
+difference between the value in the XML-file and the correct value
 must be lower than 0.001.
 

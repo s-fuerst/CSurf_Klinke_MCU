@@ -10,7 +10,9 @@
 \input{shortcuts}   
 %define style
 \input{style_singleside}
- 
+
+\input{mackie}
+
 \begin{document} 
 \withoutSource
 \headerTitlepage
@@ -26,7 +28,9 @@
 \pikText{transport}
 \pikText{region}
 \pikText{globalactions}
-\pikText{buttonactions}
+\prox{
+  \pikText{buttonactions}
+}
 \pikText{csmodes}
 \pikText{misc}
 
@@ -40,6 +44,6 @@
 \end{document}         
 
 %%% Local Variables:
-%%% mode: latex
+%%% mode: lualatex
 %%% TeX-master: t
 %%% End:
