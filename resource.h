@@ -18,7 +18,7 @@
 #define IDC_TRACKFOLLOW                 1004
 #define IDC_OLDTRACKSELECTION           1005
 #define BTN_DONATE                      1008
-//#define IDC_NOLEVEL                     1009
+#define IDC_EMULATE_BLINKING            1009
 #define IDC_KEYBOARD_MODIFIER           1010
 #define BTN_OPEN_MANUAL                 1020
 #define IDC_FAKE_TOUCH                  1011

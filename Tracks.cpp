@@ -116,17 +116,16 @@ void TSGraph::buildGraph(bool flat) {
   m_mapTrack[0] = new TSNode(NULL, NULL);
   TSNode *pParentNode = m_mapTrack[0];
 
+	bool anchors = Tracks::instance()->getOptions()->isOptionSetTo(MTO_DISABLE_ANCHORS,
+																																 MTOA_ANCHORS_YES);
+
   for (TrackIterator ti; !ti.end(); ++ti) {
     TSNode *pNewNode = new TSNode(*ti, pParentNode);
     m_mapTrack[*ti] = pNewNode;
 
-    if (!(Tracks::instance()
-                  ->getTrackStateForMediaTrack(*ti)
-                  ->getAnchorChannel() > 0 &&
-          Tracks::instance()->getOptions()->isOptionSetTo(MTO_DISABLE_ANCHORS,
-                                                          MTOA_ANCHORS_YES))) {
+    if (!(anchors &&
+					Tracks::instance()->getTrackStateForMediaTrack(*ti)->getAnchorChannel() > 0)) 
       pParentNode->addChild(pNewNode);
-    }
 
     if (flat) // ignore tree structure and add everything to the root (NULL)
       continue;

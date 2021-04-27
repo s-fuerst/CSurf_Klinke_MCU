@@ -8,19 +8,19 @@
 
 MultiTrackOptions2::MultiTrackOptions2(DisplayHandler *pDH) : Options(pDH) {
   addOption(MTO2_TCP_ADJUCT);
-  addAttribute(MTO2_TCP_ADJUCT, MTO2A_TCP_NO);
+  addAttribute(MTO2_TCP_ADJUCT, MTO2A_TCP_NO, true);
   addAttribute(MTO2_TCP_ADJUCT, MTO2A_TCP_BANK);
   addAttribute(MTO2_TCP_ADJUCT, MTO2A_TCP_SELECTED);
   addAttribute(MTO2_TCP_ADJUCT, MTO2A_TCP_ALL);
 
   addOption(MTO2_MCP_ADJUCT);
-  addAttribute(MTO2_MCP_ADJUCT, MTO2A_MCP_NO);
+  addAttribute(MTO2_MCP_ADJUCT, MTO2A_MCP_NO, true);
   addAttribute(MTO2_MCP_ADJUCT, MTO2A_MCP_BANK);
   addAttribute(MTO2_MCP_ADJUCT, MTO2A_MCP_ALL);
 
   addOption(MTO2_FOLLOW_REAPER);
   addAttribute(MTO2_FOLLOW_REAPER, MTO2A_FOLLOW_REAPER_OFF);
-  addAttribute(MTO2_FOLLOW_REAPER, MTO2A_FOLLOW_REAPER_ON);
+  addAttribute(MTO2_FOLLOW_REAPER, MTO2A_FOLLOW_REAPER_ON, true);
 
   addOption(MTO2_AUTO_TOUCH);
   addAttribute(MTO2_AUTO_TOUCH, MTO2A_AUTO_TOUCH_OFF);

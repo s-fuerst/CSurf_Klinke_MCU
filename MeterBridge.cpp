@@ -23,50 +23,30 @@ void MeterBridge::updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
 	bool isActive = ts->getVUactive();
 
 	int v = 0x0;
+	int x = iChannel - 1;
 	if (isActive && pMT) {
 		v = 0xd; // 0xe turns on clip indicator, 0xf turns it off
-		double pp = 0.0;
-		// get peak
-		if (pin < 0)
-			pp = VAL2DB((Track_GetPeakInfo(pMT, 0) + Track_GetPeakInfo(pMT, 1)) * 0.5);
-		else
-			pp = VAL2DB((Track_GetPeakInfo(pMT, pin)));
+		double pp =
+			VAL2DB(Track_GetPeakInfo(GetMasterTrack(NULL), x));
 
-		if (m_mcu_meterpos[iChannel - 1] > -VU_BOTTOM * 2)
-			m_mcu_meterpos[iChannel - 1] -= decay;
+		if (m_mcu_meterpos[x] > -VU_BOTTOM * 2)
+			m_mcu_meterpos[x] -= decay * 2;
 
-		if (pp < -VU_BOTTOM) {
-			sendToHardware(pMCU, iChannel - 1, 0);
-		  return;
+		if (pp > m_mcu_meterpos[x]) {
+			m_mcu_meterpos[x] = pp;
+		}
+		else {
+			pp = m_mcu_meterpos[x];
 		}
 
-		if (pp < m_mcu_meterpos[iChannel - 1])
-			return;
-		
-		m_mcu_meterpos[iChannel - 1] = pp;
-		if (pMCU->IsFlagSet(CONFIG_FLAG_PROX)) {
-			if (pp < 0.0) {
-				if (pp <= -VU_BOTTOM)
-					v = 0x0;
-				else if (pp <= -VU_BOTTOM_QCON)
-					v = 0x1;
-				else {
-					if (pp < -1)
-						pp++;
-					v = (int)(1 + ((pp + VU_BOTTOM_QCON) * 11.0 / VU_BOTTOM_QCON));
-				}
-			}
-		} else {
-			if (pp < 0.0) {
-				if (pp <= -VU_BOTTOM)
-					v = 0x0;
-				else
-					v = (int)(0 + ((pp + VU_BOTTOM) * 13.0 / VU_BOTTOM_QCON));
-			}
+		if (pp < 0.0) {
+			if (pp <= -VU_BOTTOM)
+				v = 0x0;
+			else
+				v = (int)((pp + VU_BOTTOM_QCON) * 11.0 / VU_BOTTOM_QCON) + 1;
 		}
+		sendToHardware(pMCU, x, v);
 	}
-
-	sendToHardware(pMCU, iChannel - 1, v);
 }
 
 void MeterBridge::updateMasterLEDs(CSurf_MCU *pMCU, double decay) {
@@ -79,7 +59,7 @@ void MeterBridge::updateMasterLEDs(CSurf_MCU *pMCU, double decay) {
 				VAL2DB(Track_GetPeakInfo(GetMasterTrack(NULL), x));
 
 			if (m_mcu_meterpos[8 + x] > -VU_BOTTOM * 2)
-				m_mcu_meterpos[8 + x] -= decay;
+				m_mcu_meterpos[8 + x] -= decay * 2;
 			
 			if (pp > m_mcu_meterpos[8 + x]) {
 				m_mcu_meterpos[8 + x] = pp;

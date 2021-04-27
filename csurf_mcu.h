@@ -75,7 +75,7 @@ struct ScheduledAction {
 
 #define CONFIG_FLAG_FADER_TOUCH_FAKE 1
 #define CONFIG_FLAG_SWAPZOOM 2
-#define CONFIG_FLAG_MACKIE_LEVEL_METER 4
+#define CONFIG_FLAG_EMULATING_BLINKING 4
 #define CONFIG_FLAG_KEYBOARD_MODIFIER 8
 #define CONFIG_FLAG_PROX 16 
 #define CONFIG_FLAG_STARTGLOBALVIEW 32
@@ -459,7 +459,7 @@ public:
 #ifdef EXT_B
     m_descspace.Set("Mackie Control Protocol B (Klinke v0.9)");
 #else
-    m_descspace.Set("Mackie Control Protocol (Klinke v0.9beta1)");
+    m_descspace.Set("Mackie Control Protocol (Klinke v0.9)");
 #endif
     char tmp[512];
     sprintf(tmp, " (dev %d,%d)", m_midi_in_dev, m_midi_out_dev);

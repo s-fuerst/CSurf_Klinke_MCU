@@ -409,7 +409,8 @@ void PlugMode::updateAssignmentDisplay() {
 void PlugMode::updateDisplay() {
   if (selectedTrack()) {
     if ((isSingleFaderTouched() || isSingleVPotTouched()) &&
-        !m_buttonNameValuePressed) {
+        !m_buttonNameValuePressed &&
+				m_pPlugMode2ndOptions->isOptionSetTo(PMO2_SHOW_DETAILS, PMO2A_ON)) {
       updateTouchedDisplay();
     } else {
       updateParamsDisplay();
@@ -1107,6 +1108,11 @@ void PlugMode::plugMoved(MediaTrack *pOldTrack, int oldSlot,
 }
 
 void PlugMode::followChanges() {
+	static int onlyEveryTenth = 0;
+	onlyEveryTenth++;
+	if (onlyEveryTenth % 10 != 0)
+		return;
+	
   int numChangedValues = 0;
 	int changeInBank = -1;
 	int changeInPage = -1;
