@@ -1,15 +1,12 @@
 
 \section{Introduction}
 
-Welcome to the manual for the \mcu Extension for \reaper (v3.6 or
-higher). This extension enhances support for the Mackie Control
-Universal (MCU) controller, but can also be used for other controllers
-that use the MCU protocol (please read the manual of your
-controller to check if and how your controller supports this
-protocol). In addition, the extension also supports the Behringer
-BCF2000 and BCR2000. tehsux0r has written a setup guide for the
-BCF2000 that can be found
-\href{http://forum.cockos.com/showthread.php?t=117909}{here}
+Welcome to the manual for the \mcu Extension for \reaper. This
+extension enhances support for the Mackie Control Universal protocol.
+It was developed specifically for the Mackie Control Universal and the Icon QCon
+Pro X, but can also be used for other controllers that use the MCU
+protocol. tehsux0r has written a setup guide for the BCF2000 that can
+be found \href{http://forum.cockos.com/showthread.php?t=117909}{here}
 and nofish wrote a setup guide for the BCR2000 that can be found
 \href{http://forum.cockos.com/showthread.php?t=60110}{here}.
 
@@ -25,15 +22,14 @@ section~\ref{disclaimer}.
   should be feasible (and I will try to support them as much as
   possible).
 
-\item The extension does not support the Mackie Control Extender
-  (MCE), and  not more then two controllers at the same time in
-  general. Also the support of a second controller is already a hack as
-  described in section \ref{secondcontroller}.
+\item The extension does not support the Mackie Control Extender, and
+  not more then two controllers at the same time in general. Also the
+  support of a second controller is already a hack as described in
+  section \ref{secondcontroller}.
 
-  If you have a MCE and think it is more important to use the extender
-  than the new features in v0.8, you can still download the older v0.6
-  from here: \url{http://tinyurl.com/67qjt6y}.
-
+  In case that this limitation are a problem, there are two alternatives:
+  \href{http://www.mossgrabers.de/Software/Reaper/Reaper.html}{DrivenByMoss 4 Reaper} and \href{https://github.com/GeoffAWaddington/reaper_csurf_integrator/wiki}{CSI project for Reaper}.
+  
 \end{itemize}
 
 % \subsection{Manual style}
@@ -42,9 +38,16 @@ section~\ref{disclaimer}.
 % also to different part of the manual) are marked in blue.
 % \todo{vervollstaendigen}
 
-\subsection{New in v0.8}
+\subsection{Most important latest changes}
+\subsubsection{Version 0.9}
+\begin{compactitem}
+\item Icon Qcon Pro X support
+\item Send/Receive automation
+\item Meterbridge improvments
+\item FX page follows parameter change in GUI option
+\end{compactitem}
 
-The most important changes in v0.8:
+\subsubsection{Version 0.8}
 \begin{compactitem}
 \item \hyperref[secondcontroller]{2nd controller hack} (since v0.8.3)
 \item \hyperref[buttonactions]{Button-emulating actions} (since v0.8.2)
@@ -61,15 +64,6 @@ shown in MCU display
 \item improved \hyperref[tracknames]{Track Name} handling
 \item FX favorites can be stored in \reaper project file
 \end{compactitem}
-
-\subsection{Known Issues}
-\begin{itemize}
-\item On some computers the MCU freezes after  \reaper is started and
-  some buttons are pressed. This problem disappears automatically after
-  a few minutes or by touching one of the faders several times (until you
-  see that the display reacts to the touch, e.g. shows the dB
-  value of the track).
-\end{itemize}
 
 \subsection{Mailing List / ``Support''}
 You can subscribe at \url{https://www.freelists.org/list/mackie_csurf_klinke}
