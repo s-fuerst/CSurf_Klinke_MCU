@@ -64,10 +64,12 @@ void SendReceiveMeterBridge::updateMasterLEDs(CSurf_MCU *pMCU, double decay) {
 			}
 			
 			if (pp < 0.0) {
-				if (pp <= -VU_BOTTOM)
+				if (pp <= -VU_SIGNAL_LED)
 					v = 0x0;
+				else if (pp <= -VU_BOTTOM)
+					v = 0x1;
 				else
-					v = (int)((pp + VU_BOTTOM_QCON) * 11.0 / VU_BOTTOM_QCON) + 1;
+					v = (int)((pp + VU_BOTTOM) * 11.0 / VU_BOTTOM) + 1;
 			}
 			sendToHardware(pMCU, 8 + x, v);
 		}

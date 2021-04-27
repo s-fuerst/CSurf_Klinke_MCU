@@ -26,8 +26,12 @@ void MeterBridge::updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
 	int x = iChannel - 1;
 	if (isActive && pMT) {
 		v = 0xd; // 0xe turns on clip indicator, 0xf turns it off
-		double pp =
-			VAL2DB(Track_GetPeakInfo(GetMasterTrack(NULL), x));
+		double pp = 0.0;
+		// get peak
+		if (pin < 0)
+			pp = VAL2DB((Track_GetPeakInfo(pMT, 0) + Track_GetPeakInfo(pMT, 1)) * 0.5);
+		else
+			pp = VAL2DB((Track_GetPeakInfo(pMT, pin)));
 
 		if (m_mcu_meterpos[x] > -VU_BOTTOM * 2)
 			m_mcu_meterpos[x] -= decay * 2;
@@ -40,10 +44,12 @@ void MeterBridge::updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
 		}
 
 		if (pp < 0.0) {
-			if (pp <= -VU_BOTTOM)
+			if (pp <= -VU_SIGNAL_LED)
 				v = 0x0;
+			else if (pp <= -VU_BOTTOM)
+				v = 0x1;
 			else
-				v = (int)((pp + VU_BOTTOM_QCON) * 11.0 / VU_BOTTOM_QCON) + 1;
+				v = (int)((pp + VU_BOTTOM) * 11.0 / VU_BOTTOM) + 1;
 		}
 		sendToHardware(pMCU, x, v);
 	}
@@ -69,10 +75,12 @@ void MeterBridge::updateMasterLEDs(CSurf_MCU *pMCU, double decay) {
 			}
 			
 			if (pp < 0.0) {
-				if (pp <= -VU_BOTTOM)
-					v = 0x0;
-				else
-					v = (int)((pp + VU_BOTTOM_QCON) * 11.0 / VU_BOTTOM_QCON) + 1;
+			if (pp <= -VU_SIGNAL_LED)
+				v = 0x0;
+			else if (pp <= -VU_BOTTOM)
+				v = 0x1;
+			else
+				v = (int)((pp + VU_BOTTOM) * 11.0 / VU_BOTTOM) + 1;
 			}
 			sendToHardware(pMCU, 8 + x, v);
 		}

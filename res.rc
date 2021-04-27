@@ -73,7 +73,7 @@ BEGIN
     COMBOBOX        IDC_COMBO2,63,6,181,105,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     RTEXT           "MIDI output:",IDC_STATIC,4,23,56,8
     COMBOBOX        IDC_COMBO3,63,21,181,105,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    CONTROL         "Icon ProX support",IDC_PROX,"Button",BS_AUTOCHECKBOX,18,41,232,10
+    CONTROL         "Icon QCon Pro X support",IDC_PROX,"Button",BS_AUTOCHECKBOX,18,41,232,10
     CONTROL         "Emulate blinking LEDs",IDC_EMULATE_BLINKING,"Button",BS_AUTOCHECKBOX,18,51,232,10
     CONTROL         "Use keyboard modifier (right Alt substitute the OPTION button)",IDC_KEYBOARD_MODIFIER,
                     "Button",BS_AUTOCHECKBOX,18,61,232,10
