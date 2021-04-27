@@ -2,20 +2,17 @@
 
 The current version of the extension can be downloaded from
 \url{https://bitbucket.org/Klinkenstecker/csurf\_klinke\_mcu/downloads}.
-
-
-
-To install the extension download unpack the zip--archiv in the plugin
-directory of \reaper.
-
-Afterwards the folder with the original {\tt
-  reaper\_csurf.dll} file should also contains four new {\tt
-  reaper\_csurf\_mcu\_klinke} dll-files, this manual and a new folder
-named {\tt MCU}. This {\tt MCU} folder contains default configuration
-files and FX maps. Do not modify them. Your own configuration files
-and FX maps are stored in the folder {\tt My Documents\textbackslash
-  MCU} that is created when you start the
-\mcu surface for the first time.\\
+To install the extension open the \reaper resources path, e.g. via
+\reaper by selecting the menu-entry: {\tt Options/Show \reaper
+  resource path in explorer/finder...}. In this path, there is a
+folder with the name {\tt UserPlugin}. Unpack the downloaded
+zip--archiv in this directory. Afterwards the {\tt UserPlugin} folder
+should contains four new {\tt reaper\_csurf\_mcu\_klinke} dll-files,
+this manual and a new folder named {\tt MCU}. This {\tt MCU} folder
+contains default configuration files and FX maps. Do not modify
+them. Your own configuration files and FX maps are stored in the
+folder {\tt My Documents\textbackslash Reaper\textbackslash MCU} that
+is created when you start the \mcu surface for the first time.\\
 
 \noindent
 To activate the extension you need to follow these steps:
@@ -59,25 +56,16 @@ shortcuts:\footnote{If you want to assign all actions by yourself
 \end{compactitem}
 
 \subsection{Control Surface Settings Options}\label{settings}
-There are four options in the Control Surface Settings dialog that can
-be activated (the later three are useful for owners of the Behringer
-BCF2000 and maybe other controllers as well):
+There are five options in the Control Surface Settings dialog that can
+be activated:
 %\pikFigure[][8.05cm][-2.5mm]{Screenshot_CSS}{Control Surface Settings}{}{}
 %\vspace{-5mm}
 \begin{itemize}
-\item Swap left/right arrow on zoom: By default the left arrow key
-  zooms out of the arrangement and the right arrow button zooms in (assuming
-  zooming is activated via the \zoom button). This can be swapped.
-%\item Controller follows track selection: Per default the shown tracks at the
-%Mackie Control can be only changed via the Mackie Control itself. If this
-%option is turned on and a track that isn't shown at the controller is selected,
-%then the shown tracks are adjusted so that the selected track is one of the
-%shown tracks.
-
-\item No level meter: Do not show the level-meters in the Pan-Mode,
-  always show the dB values instead (the bcfview Application does not
-  support the level-meters protocol, so for BCF users it is useful to
-  choose this option).
+\item Icon Qcon Pro X support: Icon Qcon Pro X support: This option
+  activates the additional hardware elements (second display,
+  meterbridge for the master) of the Icon Qcon Pro X.
+\item Emulate blinking LEDs: In the case that there is no blinking
+  LED on your hardware by defaut, try this option.
 \item Use keyboard modifier: The Behringer BCF does not have 
   \option/\control and \alt modifier buttons. When this option is
   selected, the keyboard modifier can be used instead. The left
@@ -86,11 +74,14 @@ BCF2000 and maybe other controllers as well):
 \item Fake fader touch: The BCF2000 does not have fader touch sensitive
   faders, so after a fader movement the extension simulates that the
   fader being touched for an additional 2 seconds.
+\item Swap left/right arrow on zoom: By default the left arrow key
+  zooms out of the arrangement and the right arrow button zooms in (assuming
+  zooming is activated via the \zoom button). This can be swapped.
 \end{itemize}
 
 
 \subsection{2nd controller (Mackie Control B)}\label{secondcontroller}
-If you try to add a second controller using the ``Mackie Control
+If you try to add a second controller using the ``Mackie Control Protocol
 (Klinke)'' entry in the Control Surfaces dialog, you will get an
 error message that tells you that a second instance of the extension
 can not be added.
@@ -109,7 +100,7 @@ the extensions.
 
 To activate a second extender you need to follow the steps described
 aboved for the first extender, the only difference is that the
-``Mackie Control B (Klinke)'' surface must be selected.
+``Mackie Control Protocol B (Klinke)'' surface must be selected.
 %%% Local Variables: 
 %%% mode: latex
 %%% TeX-master: "../mcu_klinke_manual"
