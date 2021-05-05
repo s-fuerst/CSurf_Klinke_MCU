@@ -26,3 +26,5 @@ ipch/
 /.gitattributes
 /.vs/
 /.vscode/
+/.ccls-cache/
+/manual/mcu_klinke_manual.synctex.gz
