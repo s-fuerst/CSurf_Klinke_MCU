@@ -74,7 +74,12 @@ void MultiTrackMode::updateRecLEDs() {
       } else if (isModifierPressed(VK_OPTION)) {
         if (*pRecArm) {
           int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
-          m_pCCSManager->setRecLED(this, channel, *pRecMode ? LED_OFF : LED_ON);
+          m_pCCSManager->setRecLED(this, channel, *pRecMode == 0 ? LED_ON : LED_OFF);
+        }
+      } else if (isModifierPressed(VK_ALT)) {
+        if (*pRecArm) {
+          int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
+          m_pCCSManager->setRecLED(this, channel, *pRecMode == 2 ? LED_OFF : LED_ON);
         }
       } else {
         m_pCCSManager->setRecLED(this, channel, *pRecArm ? LED_ON : LED_OFF);
@@ -285,7 +290,22 @@ bool MultiTrackMode::buttonRec(int channel, bool pressed) {
       int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
       if (*pRecArm) {
         int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
-        *pRecMode = *pRecMode ? 0 : 2;
+        *pRecMode = *pRecMode == 0 ? 2 : 0;
+        GetSetMediaTrackInfo(tr, "I_RECMODE", (bool *)pRecMode);
+        CSurf_OnRecArmChange(tr, -1); // workaround for missing gui update
+        CSurf_OnRecArmChange(tr, -1);
+      }
+    } else if (isModifierPressed(VK_ALT)) {
+      int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
+      if (*pRecArm) {
+        int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
+				if (*pRecMode == 1)
+					*pRecMode = 5;
+				else if (*pRecMode == 5)
+					*pRecMode = 2;
+				else
+					*pRecMode = 1;
+						
         GetSetMediaTrackInfo(tr, "I_RECMODE", (bool *)pRecMode);
         CSurf_OnRecArmChange(tr, -1); // workaround for missing gui update
         CSurf_OnRecArmChange(tr, -1);
