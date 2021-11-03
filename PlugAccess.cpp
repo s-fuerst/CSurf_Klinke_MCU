@@ -232,7 +232,7 @@ int PlugAccess::getNumParams() {
     return 0;
   }
   return TrackFX_GetNumParams(m_pPlugTrack, m_iSlot) -
-         2; // No Bypass and  Dry/Wet
+         3; // No Bypass, Dry/Wet or Delta
 }
 
 PMParam *PlugAccess::getPMParam(ElementDesc *pElement) {
