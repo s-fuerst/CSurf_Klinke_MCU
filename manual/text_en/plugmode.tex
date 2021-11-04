@@ -11,8 +11,11 @@ parameters (like e.g. thresholds, frequencies, etc.), the parameters
 mapped to \vpots are handled as discreet parameters with a limited
 number of values (e.g. for On/Off buttons or the selection of a
 Waveform). The \flip button bypasses the FX, the master fader controls
-the Dry/Wet level and holding the \shift modifier and pressing \flip
-toggles delta solo.
+the Dry/Wet level, holding the \shift modifier and pressing \flip
+toggles delta solo and holding the \option modifier and pressing \flip
+toggles between 0\% and 100\% Dry/Wet which can be a better glitch free
+alternative to enabling/disabling certain plugins if you're attempting
+to assess the audible qualities the plugin imparts on the source.
 
 
 For many FXs, maps are installed in the MCU subfolder of the \reaper
@@ -220,6 +223,7 @@ Favorite (else).
 \item \gv: see \select
 \item \flip: Bypass
 \item \shift \flip: Delta Solo
+\item \option \flip: Toggle 0/100\% Dry/Wet level.
 \item \mfader: Control Dry/Wet level.
 \item Double-click (and hold) \nv: Show all parameter values in the display.
 \end{itemize}

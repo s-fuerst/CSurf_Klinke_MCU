@@ -768,7 +768,10 @@ bool PlugMode::buttonFlip(bool pressed) {
 
   PlugAccess::ElementDesc::eType type;
 
-  if (isModifierPressed(VK_SHIFT)) {
+  if (isModifierPressed(VK_OPTION)) {
+    type = PlugAccess::ElementDesc::DRYWET;
+  }
+  else if (isModifierPressed(VK_SHIFT)) {
     type = PlugAccess::ElementDesc::DELTA;
   }
   else {
