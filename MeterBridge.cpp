@@ -19,6 +19,8 @@ MeterBridge::MeterBridge() {
 void MeterBridge::updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
 															double decay, int pin) {
 	auto ts = Tracks::instance()->getTrackStateForMediaTrack(pMT);
+	if (ts == nullptr) return;
+
 	// check mute/solo state of track(s), maybe the signal is muted
 	bool isActive = ts->getVUactive();
 
