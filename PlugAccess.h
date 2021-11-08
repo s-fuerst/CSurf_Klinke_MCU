@@ -29,7 +29,7 @@ class PlugAccess {
 public:
   class ElementDesc {
   public:
-    enum eType { FADER = 0, VPOT, DRYWET, BYPASS, UNKNOWN };
+    enum eType { FADER = 0, VPOT, DRYWET, BYPASS, UNKNOWN, DELTA };
 
     ElementDesc(int bank, int page, eType type, int channel) {
       m_bank = bank;
@@ -157,7 +157,7 @@ public:
 
   // TrackFX_ releated stuff
   bool plugExist();
-  int getNumParams();
+  int getNumParams(bool includingReaper = false);
 
   void checkChainChanges();
   void checkFloatWindows();

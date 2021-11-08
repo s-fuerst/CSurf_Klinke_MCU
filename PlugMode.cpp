@@ -766,10 +766,20 @@ bool PlugMode::buttonFlip(bool pressed) {
   if (!pressed)
     return true;
 
-  int actualValue =
-      m_pAccess->getParamValueInt(PlugAccess::ElementDesc::BYPASS);
-  m_pAccess->setParamValueInt(PlugAccess::ElementDesc::BYPASS, 0,
-                              actualValue ? 0 : (int)MAX_FADER_VALUE);
+  PlugAccess::ElementDesc::eType type;
+
+  if (isModifierPressed(VK_OPTION)) {
+    type = PlugAccess::ElementDesc::DRYWET;
+  }
+  else if (isModifierPressed(VK_SHIFT)) {
+    type = PlugAccess::ElementDesc::DELTA;
+  }
+  else {
+    type = PlugAccess::ElementDesc::BYPASS;
+  }
+
+  int actualValue = m_pAccess->getParamValueInt(type);
+  m_pAccess->setParamValueInt(type, 0, actualValue ? 0 : (int)MAX_FADER_VALUE);
 
   updateFlipLED();
 

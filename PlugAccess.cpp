@@ -227,12 +227,23 @@ bool PlugAccess::plugExist() {
   return (m_pPlugTrack && TrackFX_GetCount(m_pPlugTrack) > m_iSlot);
 }
 
-int PlugAccess::getNumParams() {
+/**
+ * Return the number of params this plugin has.
+ *
+ * @param includeReaper If true then the returned value will include the params for bypass, dry/wet and delta solo. If
+ *                      false then the returned value will only include the params implemented for the plugin itself.
+ * @return int
+ */
+int PlugAccess::getNumParams(bool includeReaper) {
   if (!plugExist()) {
     return 0;
   }
-  return TrackFX_GetNumParams(m_pPlugTrack, m_iSlot) -
-         2; // No Bypass and  Dry/Wet
+
+  int numParams = TrackFX_GetNumParams(m_pPlugTrack, m_iSlot);
+
+  return includeReaper
+    ? numParams
+    : numParams - 3; // No Bypass, Dry/Wet or Delta Solo
 }
 
 PMParam *PlugAccess::getPMParam(ElementDesc *pElement) {
@@ -267,6 +278,8 @@ int PlugAccess::getParamID(ElementDesc *pElement) {
     return getNumParams() + 1;
   } else if (pElement->m_type == ElementDesc::BYPASS) {
     return getNumParams();
+  } else if (pElement->m_type == ElementDesc::DELTA) {
+    return getNumParams() + 2;
   }
 
   PMParam *pParam = getPMParam(pElement);
@@ -323,7 +336,7 @@ void PlugAccess::setParamValueInt(ElementDesc::eType type, int channel,
     return;
 
   int id = getParamID(type, channel);
-  if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams() + 2) {
+  if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams(true)) {
     TrackFX_SetParam(m_pPlugTrack, m_iSlot, id,
                      convertMCU2R(id, min(value, MAX_FADER_VALUE_INT)));
   }
@@ -335,7 +348,7 @@ void PlugAccess::setParamValueDouble(ElementDesc::eType type, int channel,
     return;
 
   int id = getParamID(type, channel);
-  if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams() + 2) {
+  if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams(true)) {
     TrackFX_SetParam(m_pPlugTrack, m_iSlot, id, value);
   }
 }
@@ -346,7 +359,7 @@ int PlugAccess::getParamValueInt(ElementDesc::eType type, int channel) {
 
   double min, max;
   int id = getParamID(type, channel);
-  if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams() + 2) {
+  if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams(true)) {
     return convertR2MCU(
         id, TrackFX_GetParam(m_pPlugTrack, m_iSlot, id, &min, &max));
   }
@@ -360,7 +373,7 @@ double PlugAccess::getParamValueDouble(ElementDesc::eType type, int channel) {
 
   double min, max;
   int id = getParamID(type, channel);
-  if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams() + 2) {
+  if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams(true)) {
     return TrackFX_GetParam(m_pPlugTrack, m_iSlot, id, &min, &max);
   }
 
@@ -373,7 +386,7 @@ double PlugAccess::getParamValueDouble(ElementDesc* desc) {
 
   double min, max;
   int id = getParamID(desc);
-  if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams() + 2) {
+  if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams(true)) {
     return TrackFX_GetParam(m_pPlugTrack, m_iSlot, id, &min, &max);
   }
 
