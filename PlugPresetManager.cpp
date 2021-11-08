@@ -49,6 +49,9 @@ void PlugPresetManager::storePreset(MediaTrack *pTrack, int slot, int presetNr,
   ed.m_type = PlugAccess::ElementDesc::BYPASS;
   addParam2Preset(pAccess, ed, pTrack, slot, newPreset);
 
+  ed.m_type = PlugAccess::ElementDesc::DELTA;
+  addParam2Preset(pAccess, ed, pTrack, slot, newPreset);
+
   m_presetStorage.push_back(tPresetWithPos(fxGUID, presetNr, newPreset));
 }
 
@@ -84,7 +87,7 @@ void PlugPresetManager::addParam2Preset(PlugAccess *pAccess,
                                         tPreset &newPreset) {
   int paramId = pAccess->getParamID(&ed);
   if (paramId != NOT_ASSIGNED && paramId >= 0 &&
-      paramId < pAccess->getNumParams() + 2 /*incl dry and wet*/) {
+      paramId < pAccess->getNumParams(true) /*incl dry, wet & delta*/) {
     double min, max;
     double val = TrackFX_GetParam(pTrack, slot, paramId, &min, &max);
     newPreset.push_back(tPlugValue(paramId, val));
