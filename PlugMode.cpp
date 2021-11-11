@@ -376,13 +376,20 @@ void PlugMode::updateMuteLEDs() {
 
 void PlugMode::updateFlipLED() {
   if (isModifierPressed(VK_ALT))
-    return; // ALT + REC_BUTTON is used for blind test, so also the flip led
-            // shouldn't give any hint about the preset
-
-  m_pCCSManager->setFlipLED(
-      this, m_pAccess->getParamValueInt(PlugAccess::ElementDesc::BYPASS) > 0
-                ? LED_OFF
-                : LED_BLINK);
+		m_pCCSManager->setFlipLED(this,
+															m_pAccess->getParamValueInt(PlugAccess::ElementDesc::DELTA) > 0
+															? LED_BLINK
+															: LED_OFF);
+	else if (isModifierPressed(VK_SHIFT))
+		m_pCCSManager->setFlipLED(this,
+															m_pAccess->getParamValueInt(PlugAccess::ElementDesc::DRYWET) > 0
+															? LED_BLINK
+															: LED_OFF);
+	else
+		m_pCCSManager->setFlipLED(this,
+															m_pAccess->getParamValueInt(PlugAccess::ElementDesc::BYPASS) > 0
+															? LED_OFF
+															: LED_BLINK);
 }
 
 void PlugMode::updateAssignmentDisplay() {
@@ -768,10 +775,10 @@ bool PlugMode::buttonFlip(bool pressed) {
 
   PlugAccess::ElementDesc::eType type;
 
-  if (isModifierPressed(VK_OPTION)) {
+  if (isModifierPressed(VK_SHIFT)) {
     type = PlugAccess::ElementDesc::DRYWET;
   }
-  else if (isModifierPressed(VK_SHIFT)) {
+  else if (isModifierPressed(VK_ALT)) {
     type = PlugAccess::ElementDesc::DELTA;
   }
   else {

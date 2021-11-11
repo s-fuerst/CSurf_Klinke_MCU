@@ -64,6 +64,8 @@ CCSManager::CCSManager(CSurf_MCU *pMCU) {
 }
 
 CCSManager::~CCSManager(void) {
+	m_pEditor->deleteWindow();
+	
   safe_delete(m_pEditor); // editor must be delete before modes
   safe_delete(m_pCommandMode);
   safe_delete(m_pPanMode);

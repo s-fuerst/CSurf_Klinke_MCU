@@ -155,6 +155,10 @@ extern MediaTrack* (*GetMasterTrack)(ReaProject* proj);
 extern int (*AddProjectMarker)(ReaProject* proj, bool isrgn, double pos, double rgnend, const char* name, int wantidx);
 extern bool (*DeleteProjectMarker)(void* proj, int markrgnindexnumber, bool isrgn);
 extern void* (*ThemeLayout_RefreshAll)();
+
+extern int (*TrackFX_GetParamFromIdent)(MediaTrack* track, int fx, const char* ident_str);
+
+
 #define NUM_MAX_CHANNELS 32
 /*
 ** REAPER command message defines

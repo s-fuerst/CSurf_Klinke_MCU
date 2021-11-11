@@ -189,6 +189,8 @@ bool (*DeleteProjectMarker)(void *proj, int markrgnindexnumber, bool isrgn);
 
 void* (*ThemeLayout_RefreshAll)();
 
+int (*TrackFX_GetParamFromIdent)(MediaTrack* track, int fx, const char* ident_str);
+
 int __g_projectconfig_timemode2, __g_projectconfig_timemode;
 int __g_projectconfig_measoffs;
 int __g_projectconfig_timeoffs; // double
@@ -340,6 +342,8 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   IMPAPI(DeleteProjectMarker)
 
 	IMPAPI(ThemeLayout_RefreshAll)
+
+	IMPAPI(TrackFX_GetParamFromIdent)
 		
   if (errcnt)
     return 0;

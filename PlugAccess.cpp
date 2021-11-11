@@ -240,10 +240,10 @@ int PlugAccess::getNumParams(bool includeReaper) {
   }
 
   int numParams = TrackFX_GetNumParams(m_pPlugTrack, m_iSlot);
+  if (includeReaper)
+      return numParams;
 
-  return includeReaper
-    ? numParams
-    : numParams - 3; // No Bypass, Dry/Wet or Delta Solo
+	return TrackFX_GetParamFromIdent(m_pPlugTrack, m_iSlot, ":bypass");
 }
 
 PMParam *PlugAccess::getPMParam(ElementDesc *pElement) {
@@ -275,11 +275,11 @@ PMParam *PlugAccess::getPMParam(ElementDesc *pElement) {
 
 int PlugAccess::getParamID(ElementDesc *pElement) {
   if (pElement->m_type == ElementDesc::DRYWET) {
-    return getNumParams() + 1;
+    return TrackFX_GetParamFromIdent(m_pPlugTrack, m_iSlot, ":wet");
   } else if (pElement->m_type == ElementDesc::BYPASS) {
-    return getNumParams();
+    return TrackFX_GetParamFromIdent(m_pPlugTrack, m_iSlot, ":bypass");
   } else if (pElement->m_type == ElementDesc::DELTA) {
-    return getNumParams() + 2;
+    return TrackFX_GetParamFromIdent(m_pPlugTrack, m_iSlot, ":delta");
   }
 
   PMParam *pParam = getPMParam(pElement);
