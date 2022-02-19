@@ -119,8 +119,7 @@ public:
   String shortPlugName(const char *pName);
   String longPlugName(const char *pName);
 
-  //      MediaTrack* selectedTrack(); // returns the MasterTrack if zero or
-  //      more then one track is selected
+  MediaTrack *selectedTrack(); 
 	void followChanges();
 	
 private:

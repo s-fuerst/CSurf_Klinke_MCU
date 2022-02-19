@@ -459,7 +459,7 @@ public:
 #ifdef EXT_B
     m_descspace.Set("Mackie Control Protocol B (Klinke v0.9.0.3)");
 #else
-    m_descspace.Set("Mackie Control Protocol (Klinke v0.9.0.3)");
+    m_descspace.Set("Mackie Control Protocol (Klinke v0.9.0.4)");
 #endif
     char tmp[512];
     sprintf(tmp, " (dev %d,%d)", m_midi_in_dev, m_midi_out_dev);

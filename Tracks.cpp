@@ -532,13 +532,26 @@ bool Tracks::tracksStatesChanged(bool checkProjectChange) {
   return somethingHasChanged;
 }
 
-MediaTrack *Tracks::getSelectedSingleTrack() { // returns null if more then one
-                                               // track is selected
-  if (m_selectedTracks.size() == 1) {
-    return *(m_selectedTracks.begin());
-  } else {
-    return NULL;
-  }
+MediaTrack *Tracks::getSelectedSingleTrack(bool includeMaster) {
+	if (includeMaster) {
+		int masterSelected = *(int *)GetSetMediaTrackInfo(GetMasterTrack(NULL),
+																										"I_SELECTED",
+																										NULL);
+
+		if (m_selectedTracks.size() == 1 && masterSelected == 0) {
+			return *(m_selectedTracks.begin());
+		} else if (m_selectedTracks.size() == 0 && masterSelected == 1) {
+			return GetMasterTrack(NULL);
+		} else {
+			return NULL;
+		}
+	} else {
+		if (m_selectedTracks.size() == 1) {
+			return *(m_selectedTracks.begin());
+		} else {
+			return NULL;
+		}
+	}
 }
 
 void Tracks::createChannelTrackVector() {
@@ -927,6 +940,10 @@ void Tracks::setMCP2TrackStates() {
 }
 
 int Tracks::getNumberOfAnchors() {
+	if (Tracks::instance()->getOptions()->isOptionSetTo(MTO_DISABLE_ANCHORS,
+																											MTOA_ANCHORS_NO))
+		return 0;
+						
   int numAnchors = 0;
   BOOST_FOREACH (tTrackStates::value_type &v, m_trackStates) {
     if (v.second->getAnchorChannel() > 0)

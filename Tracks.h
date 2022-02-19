@@ -192,7 +192,7 @@ public:
 
   void selectionChanged();
   bool tracksStatesChanged(bool checkProjectChange = true);
-  MediaTrack *getSelectedSingleTrack();
+  MediaTrack *getSelectedSingleTrack(bool includeMaster = false);
 
   int getChannelForMediaTrack(
       MediaTrack *pMT); // returns -1 if MediaTrack isn't mapped to a channel

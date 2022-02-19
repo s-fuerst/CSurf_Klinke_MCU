@@ -19,6 +19,7 @@
 #include "PlugWindowManager.h"
 #include "PlugMoveWatcher.h"
 #include "PlugPresetManager.h"
+#include "Tracks.h"
 
 #define NUM_FAVORITES 16
 #define NUM_PRESETS 16
@@ -819,6 +820,9 @@ void PlugMode::frameUpdate() {
     m_pAccess->checkChainChanges();
   }
 
+  if (m_followTrack && m_pPlugModeOptions->isOptionSetTo(PMO_MCU_FOLLOW, PMOA_ALWAYS))
+    m_pAccess->trackChanged(selectedTrack());
+
   m_pAccess->checkFloatWindows();
 
   m_pAccess->getPlugWindowManager()->moveWnd();
@@ -1161,10 +1165,13 @@ void PlugMode::followChanges() {
 
 // MediaTrack* PlugMode::selectedTrack()
 // {
-//  MediaTrack* pMT = Tracks::instance()->getSelectedSingleTrack();
-//  if (pMT == NULL) {
-//    return GetMasterTrack(NULL);
-//  }
-//
-//  return pMT;
+// 	if (Tracks::instance()->getNumberOfSelectedTracks() == 0) {
+// 		return GetMasterTrack(NULL);
+// 	}
+
+// 	return Tracks::instance()->getSelectedSingleTrack();
 // }
+
+MediaTrack *PlugMode::selectedTrack() {
+  return Tracks::instance()->getSelectedSingleTrack(true);
+}

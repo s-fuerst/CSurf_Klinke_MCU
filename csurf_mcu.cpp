@@ -164,6 +164,9 @@ const char *CSurf_MCU::GetTrackName(MediaTrack *tr) {
     return trackName;
   }
 
+	if (tr == GetMasterTrack(NULL))
+		return "Master";
+
   const char *pTrackName = (char *)(*GetSetMediaTrackInfo)(tr, "P_NAME", NULL);
   if (pTrackName != NULL && strnlen(pTrackName, 55) > 0)
     return pTrackName;

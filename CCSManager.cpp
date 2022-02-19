@@ -143,7 +143,7 @@ bool CCSManager::buttonVPOTassign(int button, bool pressed) {
       }
       break;
     case B_VPOT_PLUG:
-      if (pSingleTrack && m_pPlugMode->getNumPlugsInSelectedTrack())
+      if (m_pPlugMode->getNumPlugsInSelectedTrack())
         pNewMode = m_pPlugMode;
       break;
     }
@@ -192,7 +192,7 @@ void CCSManager::updateVPOTLeds() {
   // B_VPOT_PLUG
   if (m_pActualMode == m_pPlugMode) {
     m_pMCU->SetLED(B_VPOT_PLUG, LED_BLINK);
-  } else if (m_pSelectedTrack && m_pPlugMode->getNumPlugsInSelectedTrack()) {
+  } else if (m_pPlugMode->getNumPlugsInSelectedTrack()) {
     m_pMCU->SetLED(B_VPOT_PLUG, LED_ON);
   } else {
     m_pMCU->SetLED(B_VPOT_PLUG, LED_OFF);
