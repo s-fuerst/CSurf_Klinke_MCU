@@ -537,6 +537,9 @@ void PlugAccess::checkFloatWindows() {
         pFWI = pTrackFWI;
       }
     }
+		// trigger update when user opens floating plugin on master track
+    if (!pFWI)
+      pFWI = checkAppearingFloats(GetMasterTrack(NULL));
   }
 
   if (isOptionSetTo(PMO_LIMIT_FLOATING, PMOA_ONLY_CHAIN)) {
@@ -579,6 +582,8 @@ void PlugAccess::checkChainChanges() {
     for (TrackIterator ti; !ti.end(); ++ti) {
       checkChain(*ti);
     }
+    // trigger update when user changes selected plugin on master track
+    checkChain(GetMasterTrack(NULL)); 
   }
 }
 
