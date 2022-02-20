@@ -463,7 +463,7 @@ public:
 
   const char *CSurf_MCU::GetDescString() {
 #ifdef EXT_B
-    m_descspace.Set("Mackie Control Protocol B (Klinke v0.9.0.3)");
+    m_descspace.Set("Mackie Control Protocol B (Klinke v0.9.0.4)");
 #else
     m_descspace.Set("Mackie Control Protocol (Klinke v0.9.0.4)");
 #endif
