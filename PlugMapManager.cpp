@@ -163,7 +163,7 @@ bool PlugMapManager::loadMapForPlug(MediaTrack *pMediaTrack, int iSlot) {
 
   m_pPlugTrack = pMediaTrack;
   m_iSlot = iSlot;
-  m_plugID = tPlugID(GUID2String(GetTrackGUID(pMediaTrack)), iSlot);
+  m_plugID = tPlugID(GUID2String(CSurf_MCU::GUIDfromTrack(pMediaTrack)), iSlot);
 
   String plugName = GetPlugName(m_pPlugTrack, m_iSlot);
 
@@ -336,10 +336,10 @@ void PlugMapManager::readLocalMapsFromProjectConfig(XmlElement *pNode) {
 
 void PlugMapManager::plugMoved(MediaTrack *pOldTrack, int oldSlot,
                                MediaTrack *pNewTrack, int newSlot) {
-  tPlugID oldPlugID = tPlugID(GUID2String(GetTrackGUID(pOldTrack)), oldSlot);
+  tPlugID oldPlugID = tPlugID(GUID2String(CSurf_MCU::GUIDfromTrack(pOldTrack)), oldSlot);
   tPlugID newPlugID;
   if (pNewTrack) {
-    newPlugID = tPlugID(GUID2String(GetTrackGUID(pNewTrack)), newSlot);
+    newPlugID = tPlugID(GUID2String(CSurf_MCU::GUIDfromTrack(pNewTrack)), newSlot);
   } // so if we don't have a new track, newPlugID.get<0>() will return an empty
     // string in movePlugMap
 

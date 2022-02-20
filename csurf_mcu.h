@@ -29,6 +29,12 @@ static const GUID GUID_NOT_ACTIVE = {
     0x0000,
     {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
 
+static GUID GUID_MASTER = {
+	  0x12345678,
+    0x8765,
+    0x4321,
+    {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
+
 #define safe_call(p, f)                                                        \
   if (p != NULL) {                                                             \
     p->f;                                                                      \
@@ -510,6 +516,7 @@ public:
   double CalcMovement(double oldPos, int dir);
   int FindTrackNr(MediaTrack *tr);
   static MediaTrack *TrackFromGUID(const GUID &guid);
+	static GUID *GUIDfromTrack(MediaTrack *tr);
   bool SomethingSoloed();
   const char *GetTrackName(MediaTrack *tr);
   char trackName[4];

@@ -90,7 +90,7 @@ void PlugAccess::accessPlugin(MediaTrack *pMediaTrack, int iSlot,
 
   m_pPlugTrack = pMediaTrack;
   if (pMediaTrack != NULL) {
-    m_GUIDplugTrack = *(GetTrackGUID(m_pPlugTrack));
+    m_GUIDplugTrack = *(CSurf_MCU::GUIDfromTrack(m_pPlugTrack));
   } else {
     m_GUIDplugTrack = GUID_NOT_ACTIVE;
   }
@@ -113,7 +113,7 @@ void PlugAccess::accessPlugin(MediaTrack *pMediaTrack, int iSlot,
 
   // restore the stored state
   tSlotStatesMap::iterator iterStoredStates = m_knownSlotStates.find(
-      tSlotLocation(GUID2String(GetTrackGUID(pMediaTrack)), iSlot));
+      tSlotLocation(GUID2String(CSurf_MCU::GUIDfromTrack(pMediaTrack)), iSlot));
   if (iterStoredStates != m_knownSlotStates.end()) {
     tSlotState storedState = (*iterStoredStates).second;
     String storedPlugName = storedState.get<0>();

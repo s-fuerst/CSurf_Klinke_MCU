@@ -52,7 +52,8 @@ public:
   int connectPlugMoveFinishedSignal(const tPlugMoveFinishedSignalSlot &slot);
   void disconnectPlugMoveFinishedSignal(int connectionId);
 
-  void checkMovement();
+  void checkMovementForTrack(MediaTrack *pTrack);
+	void checkMovement();
 
   void trackRemoved(MediaTrack *pMT);
 

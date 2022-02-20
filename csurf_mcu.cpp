@@ -126,6 +126,8 @@
 
 #define SPLASH_MESSAGE "REAPER! Initializing... Please wait..."
 
+#define MASTER_GUID 
+
 int CSurf_MCU::s_iNumInstances = 0;
 
 int CSurf_MCU::s_mackie_modifiers = 0;
@@ -181,6 +183,9 @@ const char *CSurf_MCU::GetTrackName(MediaTrack *tr) {
 }
 
 MediaTrack *CSurf_MCU::TrackFromGUID(const GUID &guid) {
+	if (guid == GUID_MASTER)
+		return GetMasterTrack(NULL);
+	
   for (TrackIterator ti; !ti.end(); ++ti) {
     MediaTrack *tr = *ti;
     const GUID *tguid = GetTrackGUID(tr);
@@ -189,6 +194,15 @@ MediaTrack *CSurf_MCU::TrackFromGUID(const GUID &guid) {
       return tr;
   }
   return NULL;
+}
+
+// this wraps GetTrackGUID and also support the MasterTrack
+// via an own GUID
+GUID *CSurf_MCU::GUIDfromTrack(MediaTrack *tr) {
+	if (tr == GetMasterTrack(NULL))
+		return &GUID_MASTER;
+
+	return GetTrackGUID(tr);
 }
 
 bool CSurf_MCU::SomethingSoloed() {

@@ -1113,8 +1113,8 @@ void PlugMode::readFavsFromProjectConfig(XmlElement *pNode) {
 
 void PlugMode::plugMoved(MediaTrack *pOldTrack, int oldSlot,
                          MediaTrack *pNewTrack, int newSlot) {
-  GUID oldGUID = *GetTrackGUID(pOldTrack);
-  GUID newGUID = pNewTrack != NULL ? *GetTrackGUID(pNewTrack) : GUID_NOT_ACTIVE;
+  GUID oldGUID = *CSurf_MCU::GUIDfromTrack(pOldTrack);
+  GUID newGUID = pNewTrack != NULL ? *CSurf_MCU::GUIDfromTrack(pNewTrack) : GUID_NOT_ACTIVE;
 
   for (int i = 0; i < NUM_FAVORITES; i++) {
     if (m_favPlugins[i].get<0>() == oldGUID &&
