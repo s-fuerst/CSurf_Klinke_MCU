@@ -37,7 +37,7 @@ void CCSModesEditor::setMainComponent(CCSMode *pCommandMode, bool visible) {
 }
 
 void CCSModesEditor::setMainComponent(Component **ppComponent, bool visible) {
-	if (m_pActiveComponent == *ppComponent) {
+	if (m_pWindow && m_pActiveComponent == *ppComponent) {
 		if (m_pWindow->isVisible()) {
 			m_pWindow->setVisible(false);
 			return;
