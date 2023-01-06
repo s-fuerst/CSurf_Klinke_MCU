@@ -30,7 +30,7 @@
     <ProjectGuid>{B9B6E91D-CB13-40BC-B9BB-DCC3787A0681}</ProjectGuid>
     <RootNamespace>reaper_csurf</RootNamespace>
     <ProjectName>reaper_csurf_mcu_klinke</ProjectName>
-    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_B|Win32'" Label="Configuration">
@@ -281,7 +281,7 @@
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <AdditionalIncludeDirectories>$(JUCE);$(REAPER_EXTENSION_SDK)\jmde;$(REAPER_EXTENSION_SDK)\WDL;$(BOOST);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_DEPRECATE;NDEBUG;TIXML_USE_TICPP;_WIN64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_DEPRECATE;NDEBUG;TIXML_USE_TICPP;_WIN64;%(PreprocessorDefinitions);KLINKE</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
