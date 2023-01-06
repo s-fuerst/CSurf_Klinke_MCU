@@ -110,7 +110,11 @@ void PlugWindowManager::moveWnd() {
             if (is2ndOptionSetTo(PMO2_MOVE, PMO2A_ON)) {
               ::SetWindowPos(hwnd,                   // handle to window
                              HWND_TOP,               // placement-order handle
+#ifdef KLINKE
+														 -1280,
+#else														 
                              0,                      // horizontal position
+#endif
                              0,                      // vertical position
                              rect.right - rect.left, // width
                              rect.bottom - rect.top, // height
