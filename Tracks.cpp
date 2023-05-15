@@ -817,7 +817,8 @@ int tcpSizeInPixel = calcTCPSizeInPixel();
       //        &wndHeight);
 
       bool bShow = shouldTrackInTCP(pTS);
-      if (bShow) {
+      if (bShow != *((bool *)GetSetMediaTrackInfo(pTS->getMediaTrack(),
+																									"B_SHOWINTCP", NULL))) {
         GetSetMediaTrackInfo(pTS->getMediaTrack(), "B_SHOWINTCP", &bShow);
       }
     }
