@@ -859,7 +859,7 @@ void PlugMode::updateRecLEDs() {
 
 bool PlugMode::isSlotBypassed(MediaTrack *pPlugTrack, int iSlot) {
   double min, max;
-  int bypassID = TrackFX_GetNumParams(pPlugTrack, iSlot) - 2;
+  int bypassID = TrackFX_GetNumParams(pPlugTrack, iSlot) - 3;
 	return TrackFX_GetParam(pPlugTrack, iSlot, bypassID, &min, &max) > 0;
 }
 
