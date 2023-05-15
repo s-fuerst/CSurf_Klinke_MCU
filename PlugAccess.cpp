@@ -84,8 +84,6 @@ void PlugAccess::accessPlugin(MediaTrack *pMediaTrack, int iSlot,
       return;
   }
 
-  m_pMode->removeEditor();
-
   storeActualSlotState();
 
   m_pPlugTrack = pMediaTrack;

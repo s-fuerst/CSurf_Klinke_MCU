@@ -229,7 +229,13 @@ void PlugModeComponent::buttonClicked(Button *buttonThatWasClicked) {
 }
 
 //[MiscUserCode] You can add your own definitions of your custom methods or any
-//other code here...
+// other code here...
+
+void PlugModeComponent::changePlug(PlugAccess* pPA) {
+  m_pPlugAccess = pPA;
+  updateEverything();
+}
+
 void PlugModeComponent::updateEverything() {
   selectedBankChanged(m_pPlugAccess->getSelectedBank());
   selectedPageChanged(m_pPlugAccess->getSelectedPageInSelectedBank());

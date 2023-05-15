@@ -29,6 +29,7 @@
 
 //[Headers]     -- You can add your own extra header files here --
 #include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
+#include "PlugAccess.h"
 #include "PlugModeSingleBankComponent.h"
 class PluginWatcher;
 //[/Headers]
@@ -55,6 +56,7 @@ public:
   void selectedBankChanged(int iBank);
   void selectedPageChanged(int iPage);
   void selectedChannelChanged(int iChannel, bool fader);
+	void changePlug(PlugAccess* pPA);
   void updateEverything();
   void updateLearnStatus();
   PlugAccess *getPlugAccess() { return m_pPlugAccess; }

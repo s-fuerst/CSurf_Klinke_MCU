@@ -67,7 +67,6 @@ void CCSModesEditor::setMainComponent(Component **ppComponent, bool visible) {
 void CCSModesEditor::closeWindowAndRemoveComponent(Component *pComponent) {
   if (m_pWindow && m_pActiveComponent && pComponent == m_pActiveComponent) {
     m_pWindow->setVisible(false);
-    m_pWindow->removeComponent();
   }
 }
 

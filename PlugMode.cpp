@@ -740,6 +740,8 @@ void PlugMode::updateEverything() {
   switchDisplay();
   m_pBankPagePlugSelector->updateDisplay();
   CCSMode::updateEverything();
+	if (m_pPlugEditor)
+		m_pPlugEditor->changePlug(m_pAccess);
 }
 
 bool PlugMode::buttonGView(bool pressed) {
