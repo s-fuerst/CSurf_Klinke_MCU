@@ -50,8 +50,9 @@ void SendReceiveMeterBridge::updateMasterLEDs(CSurf_MCU *pMCU, double decay) {
 		int v = 0x0;
 		for (x = 0; x < 2; x++) {
 			v = 0xd; // 0xe turns on clip indicator, 0xf turns it off
-			double pp =
-				VAL2DB(Track_GetPeakInfo(Tracks::instance()->getSelectedSingleTrack(), x));
+			double pp = -100;
+			if (Tracks::instance()->getSelectedSingleTrack())
+				pp = VAL2DB(Track_GetPeakInfo(Tracks::instance()->getSelectedSingleTrack(), x));
 
 			if (m_mcu_meterpos[8 + x] > -VU_BOTTOM * 2)
 				m_mcu_meterpos[8 + x] -= decay;
