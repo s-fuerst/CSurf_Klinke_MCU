@@ -812,6 +812,11 @@ void PlugMode::removeEditor() {
 
 void PlugMode::frameUpdate() {
   m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU());
+
+	// workaround for controllers, that doesn send all touched events
+	// (in combination with the ResetAllTouch action)
+	if (m_pCCSManager->getNumFadersTouched() == 0)
+		m_iSingleFaderTouched = 0;
 	
   updateEverything();
   if (m_pCCSManager->getNumSelectButtonsPressed() == 0 &&

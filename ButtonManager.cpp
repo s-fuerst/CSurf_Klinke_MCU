@@ -33,7 +33,7 @@ bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt) {
   if ((evt->midi_message[0] & 0xf0) != 0x90)
     return false;
 
-  static const int nPressOnlyHandlers = 17;
+  static const int nPressOnlyHandlers = 18;
   static const ButtonHandler pressOnlyHandlers[nPressOnlyHandlers] = {
       // Press down only events
       {0x08, 0x0f, NULL, &CSurf_MCU::OnSoloDC},
@@ -52,6 +52,7 @@ bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt) {
       {0X5b, 0x5f, NULL, &CSurf_MCU::OnTransportDC},
       {0x64, 0x64, &CSurf_MCU::OnZoom, NULL},
       {0x65, 0x65, &CSurf_MCU::OnScrub, NULL},
+      {0x71, 0x71, &CSurf_MCU::ResetAllFaderTouch, NULL},
   };
 
   //  static const int nReleaseOnlyHandlers = 1;

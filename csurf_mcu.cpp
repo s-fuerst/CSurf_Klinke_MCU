@@ -1297,6 +1297,13 @@ bool CSurf_MCU::GetTouchState(MediaTrack *pMT, int isPan) {
   return false;
 }
 
+bool CSurf_MCU::ResetAllFaderTouch(MIDI_event_t *evt) {
+	m_pCCSManager->resetAllFaderTouch();
+	
+	return true;
+}
+
+
 void CSurf_MCU::SetAutoMode(int mode) {
   // wird von Reaper aufgerufen, wenn der automation-mode geaendert wurde,
   // m_pCCSManager->updateAutoMode();

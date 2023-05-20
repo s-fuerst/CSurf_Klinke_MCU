@@ -143,8 +143,7 @@ bool CCSManager::buttonVPOTassign(int button, bool pressed) {
       }
       break;
     case B_VPOT_PLUG:
-      if (m_pPlugMode->getNumPlugsInSelectedTrack())
-        pNewMode = m_pPlugMode;
+			pNewMode = m_pPlugMode;
       break;
     }
   } else if (m_selectorActive) {

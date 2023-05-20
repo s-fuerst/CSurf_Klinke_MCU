@@ -108,8 +108,9 @@ void Actions::addActions() {
   addKeyAction("Right", 0x63);
   addKeyAction("Zoom", 0x64);
   addKeyAction("Scrub", 0x65);
-  add8ButtonActions("Fader touch", 0x66);
+  add8ButtonActions("Fader touch", 0x68);
   addButtonAction("Master fader touch", 0x70);
+	addKeyAction("Reset all fader touch", 0x71);
 }
 
 bool Actions::commandCallback(int command, int flag) {

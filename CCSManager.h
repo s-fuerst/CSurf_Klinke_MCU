@@ -129,6 +129,14 @@ public:
   void switchToDisplay(CCSMode *pMode, Display *pDisplay);
   void setVPOTMode(VPOT_LED::MODE mode); // set all VPOTs to the same mode
 
+	
+	void resetAllFaderTouch() {
+		  for (int i = 0; i < 9; i++) {
+				m_faderTouched[i] = false;
+				m_vpotTouched[i] = false;
+			}
+	}
+	
 private:
   void elementTouched(EElement fader, int channel, bool touched);
   void checkOption();
