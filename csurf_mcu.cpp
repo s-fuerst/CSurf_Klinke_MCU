@@ -888,8 +888,26 @@ CSurf_MCU::~CSurf_MCU() {
     for (x = 0; x < sizeof(bla) - 1; x++)
       m_midiout->Send(0xB0, 0x40 + x, bla[x], -1);
 #endif
-  }
+		// turn all leds off and move faders to the bottom, etc.
+		for(int i=0; i < 128; i++)
+			SetLED(i, LED_OFF);
+		for(int i=0; i < 9; i++)
+			SendMidi(0xe0 + i, 0, 0, -1);
 
+		m_pDisplayHandler->sendToHardware(0, 0, "                        Goodbye                          ", 55);
+		for(int i=1; i<4; i++)
+			m_pDisplayHandler->sendToHardware(i, 0, "                                                       ", 55);
+
+		// turn off the meter bridge
+		for(int i=0; i < 8; i++) {
+			SendMidi(0xd0, i << 4, 0, -1);
+			// for QCon
+			SendMidi(0xd1, i << 4, 0, -1);
+		}
+	}
+
+	
+	
   delete m_pTransport;
   delete m_pSplashDisplay;
   delete m_pActionsDialogComponent;
@@ -898,7 +916,9 @@ CSurf_MCU::~CSurf_MCU() {
   delete m_pCCSManager;
 
   g_mcu_list.Delete(g_mcu_list.Find(this));
-  delete m_midiout;
+	// okay, this cause a memory leak, but when we delete the midi out
+	// we can not reset the controller 
+	//  delete m_midiout;
   delete m_midiin;
   while (m_schedule != NULL) {
     ScheduledAction *temp = m_schedule;
