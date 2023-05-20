@@ -740,8 +740,6 @@ void PlugMode::updateEverything() {
   switchDisplay();
   m_pBankPagePlugSelector->updateDisplay();
   CCSMode::updateEverything();
-	if (m_pPlugEditor)
-		m_pPlugEditor->changePlug(m_pAccess);
 }
 
 bool PlugMode::buttonGView(bool pressed) {
@@ -1176,4 +1174,8 @@ void PlugMode::followChanges() {
 
 MediaTrack *PlugMode::selectedTrack() {
   return Tracks::instance()->getSelectedSingleTrack(true);
+}
+
+void PlugMode::plugChanged() {
+	 if (m_pPlugEditor) m_pPlugEditor->changePlug(m_pAccess);
 }

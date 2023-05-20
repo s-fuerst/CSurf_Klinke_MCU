@@ -122,6 +122,7 @@ void PlugAccess::accessPlugin(MediaTrack *pMediaTrack, int iSlot,
   }
 
   m_pPlugWatcher->setPlugin(pMediaTrack, iSlot);
+	m_pMode->plugChanged();
 
   if (!changeTriggeredFromGUI)
     m_pWindowManager->switchedTo(pMediaTrack, iSlot);

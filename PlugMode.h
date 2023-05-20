@@ -121,6 +121,9 @@ public:
 
   MediaTrack *selectedTrack(); 
 	void followChanges();
+
+	void plugChanged();
+
 	
 private:
   void switchDisplay();
