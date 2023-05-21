@@ -245,8 +245,8 @@ void CSurf_MCU::MCUReset() {
 
   // code from Justin, i don't really understand what this is doing
   int sz;
-  m_metronom_offset = projectconfig_var_getoffs(
-																								"projmetroen", &sz); // this can be done once, and stored (for speed)
+	// this can be done once, and stored (for speed)
+  m_metronom_offset = projectconfig_var_getoffs("projmetroen", &sz); 
   if (sz != 4)
     m_metronom_offset = 0;
 
@@ -271,10 +271,6 @@ void CSurf_MCU::MCUReset() {
                       '0' + ((Tracks::instance()->getGlobalOffset() + 1) % 10),
                       -1);
 
-			for(int i=0; i < 128; i++) {
-				SetLED(i, LED_OFF);
-				m_led_state[i] = LED_OFF;
-			}
     }
 
     m_pSplashDisplay->changeTextFullLine(0, SPLASH_MESSAGE);
@@ -316,8 +312,9 @@ bool CSurf_MCU::OnFaderMove(MIDI_event_t *evt) {
     else
       tid++;
 
-    return m_pCCSManager->fader(
-																tid, msbLsbToInt(evt->midi_message[2], evt->midi_message[1]));
+    return m_pCCSManager->fader(tid,
+																msbLsbToInt(evt->midi_message[2],
+																						evt->midi_message[1]));
   }
   return false;
 }
@@ -542,6 +539,7 @@ bool CSurf_MCU::OnTransport(MIDI_event_t *evt) {
 bool CSurf_MCU::OnTransportDC(MIDI_event_t *evt) {
   switch (evt->midi_message[1]) {
   case B_RECORD:
+
     break;
   case B_PLAY:
     break;
@@ -816,12 +814,13 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
   s_cfg_flags = cfgflags;
   // create midi hardware access
   m_midiin = m_midi_in_dev >= 0 ? CreateMIDIInput(m_midi_in_dev) : NULL;
-  m_midiout = m_midi_out_dev >= 0 ? CreateThreadedMIDIOutput(CreateMIDIOutput(
-																																							m_midi_out_dev, false, NULL))
-		: NULL;
+  m_midiout = m_midi_out_dev >= 0 ?
+		CreateThreadedMIDIOutput(CreateMIDIOutput(m_midi_out_dev, false, NULL)) :
+		NULL;
 
-  m_pDisplayHandler = new DisplayHandler(
-																				 this, m_is_mcuex ? DisplayHandler::MCU_EX : DisplayHandler::MCU);
+  m_pDisplayHandler = new DisplayHandler(this, m_is_mcuex ?
+																				 DisplayHandler::MCU_EX :
+																				 DisplayHandler::MCU);
   m_pSplashDisplay = new Display(m_pDisplayHandler, 2);
   m_pActionDisplay = new ActionsDisplay(m_pDisplayHandler);
   m_pCCSManager =
@@ -851,9 +850,13 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
 
   m_pCCSManager->init();
 
-  for (int i = 0; i < 128; i++) {
-    m_led_state[i] = LED_UNKNOWN;
-  }
+
+	for(int i=0; i < 128; i++) {
+		m_led_state[i] = LED_ON;
+		SetLED(i, LED_OFF);
+		m_led_state[i] = LED_OFF;
+	}
+
 
   m_pTransport = new Transport(this);
   m_pTransport->updateLeds();
@@ -885,9 +888,6 @@ CSurf_MCU::~CSurf_MCU() {
 	}
 
 
-	// Sending MIDI in the same function in that the output is closed does
-	// not work here using a QCon Pro X. But maybe this is device depend so
-	// i leave this code here.
 	// turn all leds off and move faders to the bottom, etc.
 	for(int i=0; i < 128; i++)
 		SetLED(i, LED_OFF);
@@ -905,7 +905,8 @@ CSurf_MCU::~CSurf_MCU() {
 		SendMidi(0xd1, i << 4, 0, -1);
 	}
 
-	Sleep(5);
+	// we must ensure that all events are send before the midi out is deleted
+	Sleep(100);
 	
   delete m_pTransport;
   delete m_pSplashDisplay;
@@ -1296,7 +1297,7 @@ bool CSurf_MCU::GetTouchState(MediaTrack *pMT, int isPan) {
 
 bool CSurf_MCU::ResetAllFaderTouch(MIDI_event_t *evt) {
 	m_pCCSManager->resetAllFaderTouch();
-	
+
 	return true;
 }
 
