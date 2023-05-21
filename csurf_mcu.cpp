@@ -142,14 +142,14 @@ static double timeToBeats(double tpos, int *measures, int *cml,
     return TimeMap2_timeToBeats(NULL, tpos, measures, cml, fullbeats, cdenom);
 }
 /*
-        static unsigned int get_midi_evt_code( MIDI_event_t *evt ) {
+	static unsigned int get_midi_evt_code( MIDI_event_t *evt ) {
   unsigned int code = 0;
   code |= (evt->midi_message[0]<<24);
   code |= (evt->midi_message[1]<<16);
   code |= (evt->midi_message[2]<<8);
   code |= evt->size > 3 ? evt->midi_message[3] : 0;
   return code;
-        }
+	}
 */
 int CSurf_MCU::FindTrackNr(MediaTrack *tr) {
   int iNr = 1;
@@ -246,7 +246,7 @@ void CSurf_MCU::MCUReset() {
   // code from Justin, i don't really understand what this is doing
   int sz;
   m_metronom_offset = projectconfig_var_getoffs(
-      "projmetroen", &sz); // this can be done once, and stored (for speed)
+																								"projmetroen", &sz); // this can be done once, and stored (for speed)
   if (sz != 4)
     m_metronom_offset = 0;
 
@@ -265,11 +265,16 @@ void CSurf_MCU::MCUReset() {
                       -1);
 
       m_midiout->Send(
-          0xB0, 0x40 + 11,
-          '0' + (((Tracks::instance()->getGlobalOffset() + 1) / 10) % 10), -1);
+											0xB0, 0x40 + 11,
+											'0' + (((Tracks::instance()->getGlobalOffset() + 1) / 10) % 10), -1);
       m_midiout->Send(0xB0, 0x40 + 10,
                       '0' + ((Tracks::instance()->getGlobalOffset() + 1) % 10),
                       -1);
+
+			for(int i=0; i < 128; i++) {
+				SetLED(i, LED_OFF);
+				m_led_state[i] = LED_OFF;
+			}
     }
 
     m_pSplashDisplay->changeTextFullLine(0, SPLASH_MESSAGE);
@@ -290,7 +295,7 @@ void CSurf_MCU::CallTransportRewind() {
 
 bool CSurf_MCU::OnMCUReset(MIDI_event_t *evt) {
   unsigned char onResetMsg[] = {
-      0xf0, 0x00, 0x00, 0x66, 0x14, 0x01, 0x58, 0x59, 0x5a,
+		0xf0, 0x00, 0x00, 0x66, 0x14, 0x01, 0x58, 0x59, 0x5a,
   };
   onResetMsg[4] = m_is_mcuex ? 0x15 : 0x14;
   if (evt->midi_message[0] == 0xf0 && evt->size >= sizeof(onResetMsg) &&
@@ -312,7 +317,7 @@ bool CSurf_MCU::OnFaderMove(MIDI_event_t *evt) {
       tid++;
 
     return m_pCCSManager->fader(
-        tid, msbLsbToInt(evt->midi_message[2], evt->midi_message[1]));
+																tid, msbLsbToInt(evt->midi_message[2], evt->midi_message[1]));
   }
   return false;
 }
@@ -323,7 +328,7 @@ bool CSurf_MCU::OnRotaryEncoder(MIDI_event_t *evt) {
     int tid = evt->midi_message[1] - 0x10;
 
     m_pan_lasttouch[Tracks::instance()->getMediaTrackForChannel(tid + 1)] =
-        timeGetTime();
+			timeGetTime();
 
     int adj = (evt->midi_message[2] & 0x3f);
     if (evt->midi_message[2] & 0x40)
@@ -342,59 +347,59 @@ bool CSurf_MCU::OnVPOTAssign(MIDI_event_t *evt) {
 bool CSurf_MCU::OnJogWheel(MIDI_event_t *evt) {
   if ((evt->midi_message[0] & 0xf0) == 0xb0 &&
       evt->midi_message[1] == 0x3c) // jog wheel
-  {
-    int dir;
-    if (evt->midi_message[2] == 0x41) {
-      dir = -1;
-      if (IsNoModifierPressed()) {
-        CSurf_OnRew(m_mackie_arrow_states & ARROW_STATE_SCRUB);
-        return true;
-      }
-    } else if (evt->midi_message[2] == 0x01) {
-      dir = 1;
-      if (IsNoModifierPressed()) {
-        CSurf_OnFwd(m_mackie_arrow_states & ARROW_STATE_SCRUB);
-        return true;
-      }
-    }
+		{
+			int dir;
+			if (evt->midi_message[2] == 0x41) {
+				dir = -1;
+				if (IsNoModifierPressed()) {
+					CSurf_OnRew(m_mackie_arrow_states & ARROW_STATE_SCRUB);
+					return true;
+				}
+			} else if (evt->midi_message[2] == 0x01) {
+				dir = 1;
+				if (IsNoModifierPressed()) {
+					CSurf_OnFwd(m_mackie_arrow_states & ARROW_STATE_SCRUB);
+					return true;
+				}
+			}
 
-    if (IsModifierPressed(VK_SHIFT) || IsModifierPressed(VK_OPTION)) {
-      m_region.GetFromActualRegion(false);
-      if (!Region::IsActive(Region::TIME)) {
-        m_region.SetStart(::GetCursorPosition());
-        m_region.SetEnd(::GetCursorPosition());
-      }
-      if (IsModifierPressed(VK_SHIFT)) {
-        m_region.SetStart(CalcMovement(m_region.GetStart(), dir));
-      }
-      if (IsModifierPressed(VK_OPTION)) {
-        m_region.SetEnd(CalcMovement(m_region.GetEnd(), dir));
-      }
-      m_region.Set(false);
-    }
+			if (IsModifierPressed(VK_SHIFT) || IsModifierPressed(VK_OPTION)) {
+				m_region.GetFromActualRegion(false);
+				if (!Region::IsActive(Region::TIME)) {
+					m_region.SetStart(::GetCursorPosition());
+					m_region.SetEnd(::GetCursorPosition());
+				}
+				if (IsModifierPressed(VK_SHIFT)) {
+					m_region.SetStart(CalcMovement(m_region.GetStart(), dir));
+				}
+				if (IsModifierPressed(VK_OPTION)) {
+					m_region.SetEnd(CalcMovement(m_region.GetEnd(), dir));
+				}
+				m_region.Set(false);
+			}
 
-    if (IsModifierPressed(VK_CONTROL) || IsModifierPressed(VK_ALT)) {
-      m_region.GetFromActualRegion(true);
-      if (!Region::IsActive(Region::LOOP)) {
-        m_region.SetStart(::GetCursorPosition());
-        m_region.SetEnd(::GetCursorPosition());
-      }
-      if (IsModifierPressed(VK_CONTROL)) {
-        m_region.SetStart(CalcMovement(m_region.GetStart(), dir));
-      }
-      if (IsModifierPressed(VK_ALT)) {
-        m_region.SetEnd(CalcMovement(m_region.GetEnd(), dir));
-        if ((GetPlayState() == 1) && (m_region.GetEnd() < GetPlayPosition())) {
-          CSurf_OnStop();
-          SetEditCurPos(m_region.GetStart(), false, false);
-          CSurf_OnPlay();
-        }
-      }
-      m_region.Set(true);
-    }
+			if (IsModifierPressed(VK_CONTROL) || IsModifierPressed(VK_ALT)) {
+				m_region.GetFromActualRegion(true);
+				if (!Region::IsActive(Region::LOOP)) {
+					m_region.SetStart(::GetCursorPosition());
+					m_region.SetEnd(::GetCursorPosition());
+				}
+				if (IsModifierPressed(VK_CONTROL)) {
+					m_region.SetStart(CalcMovement(m_region.GetStart(), dir));
+				}
+				if (IsModifierPressed(VK_ALT)) {
+					m_region.SetEnd(CalcMovement(m_region.GetEnd(), dir));
+					if ((GetPlayState() == 1) && (m_region.GetEnd() < GetPlayPosition())) {
+						CSurf_OnStop();
+						SetEditCurPos(m_region.GetStart(), false, false);
+						CSurf_OnPlay();
+					}
+				}
+				m_region.Set(true);
+			}
 
-    return true;
-  }
+			return true;
+		}
   return false;
 }
 
@@ -432,7 +437,7 @@ bool CSurf_MCU::OnAutoMode(MIDI_event_t *evt) {
 		if (!m_pCCSManager->setAutoMode(mode))
 			SetAutomationMode(mode, !IsModifierPressed(VK_CONTROL));
 	}
-		//    SetAutomationMode(mode, !IsModifierPressed(VK_CONTROL));
+	//    SetAutomationMode(mode, !IsModifierPressed(VK_CONTROL));
 
   return true;
 }
@@ -444,7 +449,7 @@ bool CSurf_MCU::OnBankChannel(MIDI_event_t *evt) {
 
 bool CSurf_MCU::OnSMPTEBeats(MIDI_event_t *evt) {
   int *tmodeptr =
-      (int *)projectconfig_var_addr(NULL, __g_projectconfig_timemode2);
+		(int *)projectconfig_var_addr(NULL, __g_projectconfig_timemode2);
   if (tmodeptr && *tmodeptr >= 0) {
     (*tmodeptr)++;
     if ((*tmodeptr) > 5)
@@ -467,7 +472,7 @@ bool CSurf_MCU::OnSMPTEBeats(MIDI_event_t *evt) {
 bool CSurf_MCU::OnRotaryEncoderPush(MIDI_event_t *evt) {
   int trackid = evt->midi_message[1] - 0x20;
   m_pan_lasttouch[Tracks::instance()->getMediaTrackForChannel(trackid + 1)] =
-      timeGetTime();
+		timeGetTime();
 
   m_pCCSManager->vpotPressed(trackid + 1, evt->midi_message[2] > 0x3f);
 
@@ -601,8 +606,8 @@ bool CSurf_MCU::OnSave(MIDI_event_t *evt) {
     m_midiout->Send(0x90, 0x50, 0x7f, -1);
   SendMessage(g_hwnd, WM_COMMAND,
               IsModifierPressed(VK_SHIFT) | IsModifierPressed(VK_ALT)
-                  ? ID_FILE_SAVEAS
-                  : ID_FILE_SAVEPROJECT,
+							? ID_FILE_SAVEAS
+							: ID_FILE_SAVEPROJECT,
               0);
   ScheduleAction(timeGetTime() + 1000, &CSurf_MCU::ClearSaveLed);
   return true;
@@ -678,7 +683,7 @@ bool CSurf_MCU::OnScroll(MIDI_event_t *evt) {
 bool CSurf_MCU::OnTouch(MIDI_event_t *evt) {
   int fader = evt->midi_message[1] - 0x68;
   m_fader_touchstate[Tracks::instance()->getMediaTrackForChannel(fader + 1)] =
-      evt->midi_message[2] >= 0x7f;
+		evt->midi_message[2] >= 0x7f;
 
   return m_pCCSManager->faderTouched(fader != 8 ? fader + 1 : 0,
                                      evt->midi_message[2] > 0x3f);
@@ -698,8 +703,8 @@ bool CSurf_MCU::OnFunctionKey(MIDI_event_t *evt) {
   }
 
   int command =
-      (IsModifierPressed(VK_CONTROL) ? ID_SET_MARKER1 : ID_GOTO_MARKER1) +
-      fkey - 1;
+		(IsModifierPressed(VK_CONTROL) ? ID_SET_MARKER1 : ID_GOTO_MARKER1) +
+		fkey - 1;
   SendMessage(g_hwnd, WM_COMMAND, command, 0);
   return true;
 }
@@ -782,9 +787,9 @@ void CSurf_MCU::OnMIDIEvent(MIDI_event_t *evt) {
 
   static const int nHandlers = 6;
   static const MidiHandlerFunc handlers[nHandlers] = {
-      &CSurf_MCU::OnMCUReset,      &CSurf_MCU::OnFaderMove,
-      &CSurf_MCU::OnRotaryEncoder, &CSurf_MCU::OnJogWheel,
-      &CSurf_MCU::OnButtonPress,   &CSurf_MCU::OnPedalMove,
+		&CSurf_MCU::OnMCUReset,      &CSurf_MCU::OnFaderMove,
+		&CSurf_MCU::OnRotaryEncoder, &CSurf_MCU::OnJogWheel,
+		&CSurf_MCU::OnButtonPress,   &CSurf_MCU::OnPedalMove,
   };
   for (int i = 0; i < nHandlers; i++)
     if ((this->*handlers[i])(evt))
@@ -793,7 +798,7 @@ void CSurf_MCU::OnMIDIEvent(MIDI_event_t *evt) {
 
 CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
                      int cfgflags, int *errStats)
-    : m_pActionsDialogComponent(NULL) {
+	: m_pActionsDialogComponent(NULL) {
   //_CrtSetBreakAlloc(6938);
   if (s_iNumInstances == 0)
     initialiseJuce_GUI();
@@ -812,15 +817,15 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
   // create midi hardware access
   m_midiin = m_midi_in_dev >= 0 ? CreateMIDIInput(m_midi_in_dev) : NULL;
   m_midiout = m_midi_out_dev >= 0 ? CreateThreadedMIDIOutput(CreateMIDIOutput(
-                                        m_midi_out_dev, false, NULL))
-                                  : NULL;
+																																							m_midi_out_dev, false, NULL))
+		: NULL;
 
   m_pDisplayHandler = new DisplayHandler(
-      this, m_is_mcuex ? DisplayHandler::MCU_EX : DisplayHandler::MCU);
+																				 this, m_is_mcuex ? DisplayHandler::MCU_EX : DisplayHandler::MCU);
   m_pSplashDisplay = new Display(m_pDisplayHandler, 2);
   m_pActionDisplay = new ActionsDisplay(m_pDisplayHandler);
   m_pCCSManager =
-      new CCSManager(this); // m_pDisplayHandler must be constructed before
+		new CCSManager(this); // m_pDisplayHandler must be constructed before
 
   m_repeatState = false;
 
@@ -860,53 +865,47 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
 
 CSurf_MCU::~CSurf_MCU() {
   if (m_midiout) {
-#if 0 // NDEBUG  // reset MCU to stock!, fucko enable this in dist builds,
-      // maybe?
-			struct
-			{
-				MIDI_event_t evt;
-				char data[5];
-			}
-				poo;
-			poo.evt.frame_offset=0;
-			poo.evt.size=8;
-			poo.evt.midi_message[0]=0xF0;
-			poo.evt.midi_message[1]=0x00;
-			poo.evt.midi_message[2]=0x00;
-			poo.evt.midi_message[3]=0x66;
-			poo.evt.midi_message[4]=m_is_mcuex ? 0x15 : 0x14;
-			poo.evt.midi_message[5]=0x08;
-			poo.evt.midi_message[6]=0x00;
-			poo.evt.midi_message[7]=0xF7;
-			Sleep(5);
-			m_midiout->SendMsg(&poo.evt,-1);
-			Sleep(5);
-
-#else
-    char bla[11] = {"          "};
-    int x;
-    for (x = 0; x < sizeof(bla) - 1; x++)
-      m_midiout->Send(0xB0, 0x40 + x, bla[x], -1);
-#endif
-		// turn all leds off and move faders to the bottom, etc.
-		for(int i=0; i < 128; i++)
-			SetLED(i, LED_OFF);
-		for(int i=0; i < 9; i++)
-			SendMidi(0xe0 + i, 0, 0, -1);
-
-		m_pDisplayHandler->sendToHardware(0, 0, "                        Goodbye                          ", 55);
-		for(int i=1; i<4; i++)
-			m_pDisplayHandler->sendToHardware(i, 0, "                                                       ", 55);
-
-		// turn off the meter bridge
-		for(int i=0; i < 8; i++) {
-			SendMidi(0xd0, i << 4, 0, -1);
-			// for QCon
-			SendMidi(0xd1, i << 4, 0, -1);
+		struct
+		{
+			MIDI_event_t evt;
+			char data[5];
 		}
+			poo;
+		poo.evt.frame_offset=0;
+		poo.evt.size=8;
+		poo.evt.midi_message[0]=0xF0;
+		poo.evt.midi_message[1]=0x00;
+		poo.evt.midi_message[2]=0x00;
+		poo.evt.midi_message[3]=0x66;
+		poo.evt.midi_message[4]=m_is_mcuex ? 0x15 : 0x14;
+		poo.evt.midi_message[5]=0x08;
+		poo.evt.midi_message[6]=0x00;
+		poo.evt.midi_message[7]=0xF7;
+		m_midiout->SendMsg(&poo.evt,-1);
 	}
 
-	
+
+	// Sending MIDI in the same function in that the output is closed does
+	// not work here using a QCon Pro X. But maybe this is device depend so
+	// i leave this code here.
+	// turn all leds off and move faders to the bottom, etc.
+	for(int i=0; i < 128; i++)
+		SetLED(i, LED_OFF);
+	for(int i=0; i < 9; i++)
+		SendMidi(0xe0 + i, 0, 0, -1);
+
+	m_pDisplayHandler->sendToHardware(0, 0, "                        Goodbye                          ", 55);
+	for(int i=1; i<4; i++)
+		m_pDisplayHandler->sendToHardware(i, 0, "                                                       ", 55);
+
+	// turn off the meter bridge
+	for(int i=0; i < 8; i++) {
+		SendMidi(0xd0, i << 4, 0, -1);
+		// for QCon
+		SendMidi(0xd1, i << 4, 0, -1);
+	}
+
+	Sleep(5);
 	
   delete m_pTransport;
   delete m_pSplashDisplay;
@@ -916,10 +915,8 @@ CSurf_MCU::~CSurf_MCU() {
   delete m_pCCSManager;
 
   g_mcu_list.Delete(g_mcu_list.Find(this));
-	// okay, this cause a memory leak, but when we delete the midi out
-	// we can not reset the controller 
-	//  delete m_midiout;
-  delete m_midiin;
+	DELETE_ASYNC(m_midiout);
+  DELETE_ASYNC(m_midiin);
   while (m_schedule != NULL) {
     ScheduledAction *temp = m_schedule;
     m_schedule = temp->next;
@@ -986,7 +983,7 @@ void CSurf_MCU::Run() {
     if (m_midiout) {
       if (!m_is_mcuex) {
         double pp =
-            (GetPlayState() & 1) ? GetPlayPosition() : GetCursorPosition();
+					(GetPlayState() & 1) ? GetPlayPosition() : GetCursorPosition();
         unsigned char bla[10];
         //      bla[-2]='A';//first char of assignment
         //    bla[-1]='Z';//second char of assignment
@@ -996,7 +993,7 @@ void CSurf_MCU::Run() {
         memset(bla, 0, sizeof(bla));
 
         int *tmodeptr =
-            (int *)projectconfig_var_addr(NULL, __g_projectconfig_timemode2);
+					(int *)projectconfig_var_addr(NULL, __g_projectconfig_timemode2);
 
         int tmode = 0;
 
@@ -1004,62 +1001,62 @@ void CSurf_MCU::Run() {
           tmode = *tmodeptr;
         else {
           tmodeptr =
-              (int *)projectconfig_var_addr(NULL, __g_projectconfig_timemode);
+						(int *)projectconfig_var_addr(NULL, __g_projectconfig_timemode);
           if (tmodeptr)
             tmode = *tmodeptr;
         }
 
         if (tmode == 3) // seconds
-        {
-          double *toptr = (double *)projectconfig_var_addr(
-              NULL, __g_projectconfig_timeoffs);
+					{
+						double *toptr = (double *)projectconfig_var_addr(
+																														 NULL, __g_projectconfig_timeoffs);
 
-          if (toptr)
-            pp += *toptr;
-          char buf[64];
-          sprintf(buf, "%d %02d", (int)pp, ((int)(pp * 100.0)) % 100);
-          if (strlen(buf) > sizeof(bla))
-            memcpy(bla, buf + strlen(buf) - sizeof(bla), sizeof(bla));
-          else
-            memcpy(bla + sizeof(bla) - strlen(buf), buf, strlen(buf));
+						if (toptr)
+							pp += *toptr;
+						char buf[64];
+						sprintf(buf, "%d %02d", (int)pp, ((int)(pp * 100.0)) % 100);
+						if (strlen(buf) > sizeof(bla))
+							memcpy(bla, buf + strlen(buf) - sizeof(bla), sizeof(bla));
+						else
+							memcpy(bla + sizeof(bla) - strlen(buf), buf, strlen(buf));
 
-        } else if (tmode == 4) // samples
-        {
-          char buf[128];
-          format_timestr_pos(pp, buf, sizeof(buf), 4);
-          if (strlen(buf) > sizeof(bla))
-            memcpy(bla, buf + strlen(buf) - sizeof(bla), sizeof(bla));
-          else
-            memcpy(bla + sizeof(bla) - strlen(buf), buf, strlen(buf));
-        } else if (tmode == 5) // frames
-        {
-          char buf[128];
-          format_timestr_pos(pp, buf, sizeof(buf), 5);
-          char *p = buf;
-          char *op = buf;
-          int ccnt = 0;
-          while (*p) {
-            if (*p == ':') {
-              ccnt++;
-              if (ccnt != 3) {
-                p++;
-                continue;
-              }
-              *p = ' ';
-            }
+					} else if (tmode == 4) // samples
+					{
+						char buf[128];
+						format_timestr_pos(pp, buf, sizeof(buf), 4);
+						if (strlen(buf) > sizeof(bla))
+							memcpy(bla, buf + strlen(buf) - sizeof(bla), sizeof(bla));
+						else
+							memcpy(bla + sizeof(bla) - strlen(buf), buf, strlen(buf));
+					} else if (tmode == 5) // frames
+					{
+						char buf[128];
+						format_timestr_pos(pp, buf, sizeof(buf), 5);
+						char *p = buf;
+						char *op = buf;
+						int ccnt = 0;
+						while (*p) {
+							if (*p == ':') {
+								ccnt++;
+								if (ccnt != 3) {
+									p++;
+									continue;
+								}
+								*p = ' ';
+							}
 
-            *op++ = *p++;
-          }
-          *op = 0;
-          if (strlen(buf) > sizeof(bla))
-            memcpy(bla, buf + strlen(buf) - sizeof(bla), sizeof(bla));
-          else
-            memcpy(bla + sizeof(bla) - strlen(buf), buf, strlen(buf));
-        } else if (tmode > 0) {
+							*op++ = *p++;
+						}
+						*op = 0;
+						if (strlen(buf) > sizeof(bla))
+							memcpy(bla, buf + strlen(buf) - sizeof(bla), sizeof(bla));
+						else
+							memcpy(bla + sizeof(bla) - strlen(buf), buf, strlen(buf));
+					} else if (tmode > 0) {
           int num_measures = 0;
           double beats =
-              TimeMap2_timeToBeats(NULL, pp, &num_measures, NULL, NULL, NULL) +
-              0.000000000001;
+						TimeMap2_timeToBeats(NULL, pp, &num_measures, NULL, NULL, NULL) +
+						0.000000000001;
           double nbeats = floor(beats);
 
           beats -= nbeats;
@@ -1067,7 +1064,7 @@ void CSurf_MCU::Run() {
           int fracbeats = (int)(1000.0 * beats);
 
           int *measptr =
-              (int *)projectconfig_var_addr(NULL, __g_projectconfig_measoffs);
+						(int *)projectconfig_var_addr(NULL, __g_projectconfig_measoffs);
           int nm = num_measures + 1 + (measptr ? *measptr : 0);
           if (nm >= 100)
             bla[0] = '0' + (nm / 100) % 10; // bars hund
@@ -1085,7 +1082,7 @@ void CSurf_MCU::Run() {
           bla[9] = '0' + (fracbeats % 10); // frames
         } else {
           double *toptr = (double *)projectconfig_var_addr(
-              NULL, __g_projectconfig_timeoffs);
+																													 NULL, __g_projectconfig_timeoffs);
           if (toptr)
             pp += (*toptr);
 
@@ -1283,10 +1280,10 @@ bool CSurf_MCU::GetTouchState(MediaTrack *pMT, int isPan) {
       DWORD now = timeGetTime();
       if (m_pan_lasttouch[pMT] == 1 ||
           (now < m_pan_lasttouch[pMT] +
-                     3000)) // fake touch, go for 3s after last movement
-      {
-        return true;
-      }
+					 3000)) // fake touch, go for 3s after last movement
+				{
+					return true;
+				}
     }
     return false;
   }
@@ -1340,7 +1337,7 @@ void CSurf_MCU::OnTrackSelection(MediaTrack *trackid) {}
 bool CSurf_MCU::IsModifierPressed(int key) {
   ModifierKeys keyboardModifiers = ModifierKeys::getCurrentModifiersRealtime();
   ASSERT_M(key == VK_SHIFT || key == VK_OPTION || key == VK_CONTROL ||
-               key == VK_ALT,
+					 key == VK_ALT,
            "Only for Modifier");
   if (m_midiin && !m_is_mcuex) {
     if (key == VK_SHIFT)
@@ -1358,7 +1355,7 @@ bool CSurf_MCU::IsModifierPressed(int key) {
 
 bool CSurf_MCU::IsKeyboardPressed(int key) {
   return (GetAsyncKeyState(key) & 0x8000) &&
-         IsFlagSet(CONFIG_FLAG_KEYBOARD_MODIFIER);
+		IsFlagSet(CONFIG_FLAG_KEYBOARD_MODIFIER);
 }
 
 bool CSurf_MCU::OnGlobalViewKeys(MIDI_event_t *evt) {
@@ -1397,10 +1394,10 @@ bool CSurf_MCU::OnNameValue(MIDI_event_t *evt) {
     if (!m_pActionsDialogComponent)
       m_pActionsDialogComponent = new ActionsDialogComponent(m_pActionDisplay);
 
-	if (evt->midi_message[2] >= 0x40) {
-		m_pCCSManager->getEditor()->setMainComponent(&m_pActionsDialogComponent,
-			true);
-	}
+		if (evt->midi_message[2] >= 0x40) {
+			m_pCCSManager->getEditor()->setMainComponent(&m_pActionsDialogComponent,
+																									 true);
+		}
   } else {
     if (evt->midi_message[2] >= 0x40) {
       m_pActionDisplay->activate(s_mackie_modifiers);
@@ -1543,7 +1540,7 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
 
     int n = GetNumMIDIInputs();
     LRESULT x = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_ADDSTRING, 0,
-                               (LPARAM) "None");
+																	 (LPARAM) "None");
     SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_SETITEMDATA, x, -1);
     x = SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_ADDSTRING, 0,
                            (LPARAM) "None");
@@ -1552,7 +1549,7 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
       char buf[512];
       if (GetMIDIInputName(x, buf, sizeof(buf))) {
         LRESULT a = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_ADDSTRING, 0,
-                                   (LPARAM)buf);
+																			 (LPARAM)buf);
         SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_SETITEMDATA, a, x);
         if (x == parms[2])
           SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_SETCURSEL, a, 0);
@@ -1563,7 +1560,7 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
       char buf[512];
       if (GetMIDIOutputName(x, buf, sizeof(buf))) {
         LRESULT a = SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_ADDSTRING, 0,
-                                   (LPARAM)buf);
+																			 (LPARAM)buf);
         SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_SETITEMDATA, a, x);
         if (x == parms[3])
           SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_SETCURSEL, a, 0);
@@ -1642,18 +1639,18 @@ static HWND configFunc(const char *type_string, HWND parent,
 }
 
 reaper_csurf_reg_t csurf_mcu_modified_reg = {
-    MAIN_ID,
+	MAIN_ID,
 #ifdef EXT_B
-    "Mackie Control Protocol B (Klinke)",
+	"Mackie Control Protocol B (Klinke)",
 #else
-    "Mackie Control Protocol (Klinke)",
+	"Mackie Control Protocol (Klinke)",
 #endif
-    createFunc,
-    configFunc,
+	createFunc,
+	configFunc,
 };
 reaper_csurf_reg_t csurf_mcuex_modified_reg = {
-    EXT_ID,
-    "Mackie Control Extender (Klinke)",
-    createFunc,
-    configFunc,
+	EXT_ID,
+	"Mackie Control Extender (Klinke)",
+	createFunc,
+	configFunc,
 };

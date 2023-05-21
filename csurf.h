@@ -206,4 +206,5 @@ enum AutoMode {
 };
 extern midi_Output *CreateThreadedMIDIOutput(midi_Output *output); // returns null on null
 
+#define DELETE_ASYNC(x) do { if (x) (x)->Destroy(); } while (0)
 #endif
