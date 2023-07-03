@@ -94,7 +94,7 @@ void CommandModePageComponent::paint(Graphics &g) {
 
   g.setColour(Colours::black);
   g.setFont(Font(15.0000f, Font::bold));
-  g.drawText(T("Action Description"), 14, 60, 130, 24,
+  g.drawText(T("Action Name"), 14, 60, 130, 24,
              Justification::centredRight, true);
 
   g.setColour(Colours::black);
@@ -114,7 +114,7 @@ void CommandModePageComponent::paint(Graphics &g) {
 
   g.setColour(Colours::black);
   g.setFont(Font(15.0000f, Font::bold));
-  g.drawText(T("Action Description"), 14, 210, 130, 24,
+  g.drawText(T("Action Name"), 14, 210, 130, 24,
              Justification::centredRight, true);
 
   g.setColour(Colours::black);
@@ -181,7 +181,7 @@ void CommandModePageComponent::labelTextChanged(Label *labelThatHasChanged) {
 		overlayOpacity="0.330000013" fixedSize="1" initialWidth="810"
 		initialHeight="380">
 		<BACKGROUND backgroundColour="ffffffff">
-    <TEXT pos="14 60 130 24" fill="solid: ff000000" hasStroke="0" text="Action Description"
+    <TEXT pos="14 60 130 24" fill="solid: ff000000" hasStroke="0" text="Action Name"
 		fontname="Default font" fontsize="15" bold="1" italic="0" justification="34"/>
     <TEXT pos="14 90 130 24" fill="solid: ff000000" hasStroke="0" text="Relative Mode"
 		fontname="Default font" fontsize="15" bold="1" italic="0" justification="34"/>
@@ -189,7 +189,7 @@ void CommandModePageComponent::labelTextChanged(Label *labelThatHasChanged) {
 		fontname="Default font" fontsize="15" bold="1" italic="0" justification="34"/>
     <TEXT pos="14 150 130 24" fill="solid: ff000000" hasStroke="0" text="Pressed Speed"
 		fontname="Default font" fontsize="15" bold="1" italic="0" justification="34"/>
-    <TEXT pos="14 210 130 24" fill="solid: ff000000" hasStroke="0" text="Action Description"
+    <TEXT pos="14 210 130 24" fill="solid: ff000000" hasStroke="0" text="Action Name"
 		fontname="Default font" fontsize="15" bold="1" italic="0" justification="34"/>
     <TEXT pos="14 240 130 24" fill="solid: ff000000" hasStroke="0" text="Relative Mode"
 		fontname="Default font" fontsize="15" bold="1" italic="0" justification="34"/>

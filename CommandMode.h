@@ -73,7 +73,7 @@ public:
 
   Selector *getSelector() { return (Selector *)m_pSelector; }
 
-  File getConfigFile(boolean bLookAtProgramDir);
+  File getConfigFile();
   CommandMode::Page *getPage(int index) {
     ASSERT(index < 8);
     return m_pPage[index];

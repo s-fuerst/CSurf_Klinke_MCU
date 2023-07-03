@@ -64,10 +64,7 @@ const File PlugMapManager::getUserMapsLocation() {
 }
 
 const File PlugMapManager::getInstalledMapsLocation() {
-  return File::getSpecialLocation(File::currentExecutableFile)
-             .getParentDirectory()
-             .getFullPathName() +
-         JUCE_T("\\Plugins\\MCU\\PlugMaps\\");
+  return File(String(GetResourcePath()) + JUCE_T("\\UserPlugins\\MCU\\PlugMaps\\"));
 }
 
 void PlugMapManager::initMap() {

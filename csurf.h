@@ -158,6 +158,8 @@ extern void* (*ThemeLayout_RefreshAll)();
 
 extern int (*TrackFX_GetParamFromIdent)(MediaTrack* track, int fx, const char* ident_str);
 
+extern const char* (*GetResourcePath)();
+
 
 #define NUM_MAX_CHANNELS 32
 /*

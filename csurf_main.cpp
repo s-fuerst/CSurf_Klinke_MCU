@@ -191,6 +191,8 @@ void* (*ThemeLayout_RefreshAll)();
 
 int (*TrackFX_GetParamFromIdent)(MediaTrack* track, int fx, const char* ident_str);
 
+const char* (*GetResourcePath)();
+
 int __g_projectconfig_timemode2, __g_projectconfig_timemode;
 int __g_projectconfig_measoffs;
 int __g_projectconfig_timeoffs; // double
@@ -344,6 +346,8 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
 	IMPAPI(ThemeLayout_RefreshAll)
 
 	IMPAPI(TrackFX_GetParamFromIdent)
+
+	IMPAPI(GetResourcePath)
 		
   if (errcnt)
     return 0;

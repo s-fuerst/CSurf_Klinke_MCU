@@ -14,7 +14,7 @@
 
 CommandMode::Page::Page(CommandMode *pMode, int index)
     : m_pMode(pMode), m_iIndex(index) {
-  m_strPageName = JUCE_T("Page ") + String(index + 1);
+  m_strPageName = JUCE_T("Bank ") + String(index + 1);
   for (int i = 0; i < 2; i++) {
     for (int j = 0; j < 8; j++) {
       m_bRelative[i][j] = false;
@@ -22,20 +22,6 @@ CommandMode::Page::Page(CommandMode *pMode, int index)
       m_iPressedSpeed[i][j] = 5;
       m_strCommandName[i][j] = juce::String::empty;
     }
-  }
-
-  // when to xml file is found, display a warning via the command names of the
-  // first page with a correct installation, the names will be overwritten while
-  // loading the xml file
-  if (index == 0) {
-    m_strCommandName[0][0] = "Please";
-    m_strCommandName[0][1] = " read ";
-    m_strCommandName[0][2] = " the  ";
-    m_strCommandName[0][3] = "instal";
-    m_strCommandName[0][4] = "lation";
-    m_strCommandName[0][5] = " part ";
-    m_strCommandName[0][6] = "of the";
-    m_strCommandName[0][7] = "manual";
   }
 }
 
@@ -122,7 +108,7 @@ CommandMode::~CommandMode(void) {
 }
 
 bool CommandMode::readConfigFile() {
-  XmlDocument *pXmlFile = new XmlDocument(getConfigFile(true));
+  XmlDocument *pXmlFile = new XmlDocument(getConfigFile());
   if (!pXmlFile)
     return false;
 
@@ -153,7 +139,7 @@ void CommandMode::writeConfigFile() {
     m_pPage[iPage]->writeToXml(pRootElement);
   }
 
-  pRootElement->writeToFile(getConfigFile(false), "", JUCE_T("UTF-8"));
+  pRootElement->writeToFile(getConfigFile(), "", JUCE_T("UTF-8"));
 
   safe_delete(pRootElement);
 }
@@ -268,9 +254,20 @@ void CommandMode::updateDisplay() {
 
   int shift = m_pCCSManager->getMCU()->IsModifierPressed(VK_SHIFT) ? 1 : 0;
 
-  for (int i = 0; i < 8; i++)
-    m_pDisplay->changeField(
-        1, i + 1, m_pActivePage->getCommandName(shift, i).toCString());
+	bool somethingAssigned = false;
+  for (int i = 0; i < 8; i++) {
+		if (m_pActivePage->getCommandName(shift, i) != String())
+			somethingAssigned = true;
+	}
+
+	if (somethingAssigned == true) {
+		m_pDisplay->clearLine(1);
+		for (int i = 0; i < 8; i++)
+			m_pDisplay->changeField(
+							1, i + 1, m_pActivePage->getCommandName(shift, i).toCString());
+	} else {
+		m_pDisplay->changeText(1, 0, "No actions are name for this bank (press Alt-EQ).", 55, true);
+	}
 
 }
 
@@ -289,21 +286,12 @@ void CommandMode::deleteEditorComponent() { safe_delete(m_pMainComponent) }
 #define AM_FILE JUCE_T("\\ActionMode.xml")
 #endif
 
-File CommandMode::getConfigFile(boolean bLookAtProgramDir) {
+File CommandMode::getConfigFile() {
   File configDir =
       File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() +
       JUCE_T("\\Reaper\\MCU\\Config\\");
   if (!configDir.exists() ||
       !File(configDir.getFullPathName() + AM_FILE).exists()) {
-    if (bLookAtProgramDir) {
-      File configDirDll = File::getSpecialLocation(File::currentExecutableFile)
-                              .getParentDirectory()
-                              .getFullPathName() +
-                          JUCE_T("\\Plugins\\MCU\\Config\\");
-      if (configDirDll.exists()) {
-        return File(configDirDll.getFullPathName() + AM_FILE);
-      }
-    }
     configDir.createDirectory();
   }
   return File(configDir.getFullPathName() + AM_FILE);
