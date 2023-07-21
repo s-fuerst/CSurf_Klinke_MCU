@@ -126,8 +126,8 @@
 \long\def\pikFigContentImp[#1][#2][#3][#4]#5#6#7#8{%
         \createBox{#2}{ 
                 \figCaption{#6}%
-                \captionof*{figure}{\label{F:#5}}\vspace{-27 pt}%
-                \vspacePlusOpt{-0.6cm}{#3}%
+                \captionof*{figure}{\label{F:#5}}%
+                \vspacePlusOpt{-1.07cm}{#3}%
                 \begin{center}%
                         \ifempty{#1}{%
                                 \internalpikgraph{.704}{#5}%
@@ -135,7 +135,7 @@
                                 \internalpikgraph{#1}{#5}%
                         }%
                 \end{center}%
-                \vspacePlusOpt{-3mm}{#4}%
+                \vspacePlusOpt{2mm}{#4}%
         }%createBox end
         \vspace{-3.5mm}
         \sourceComment{#7}{#8}{#2}%
