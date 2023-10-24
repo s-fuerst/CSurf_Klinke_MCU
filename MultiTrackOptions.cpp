@@ -46,7 +46,7 @@ void MultiTrackOptions::checkAndModifyOptions() {
   }
 
   Tracks::instance()->buildGraph();
-  Tracks::instance()->moveSelectedTrack2MCU();
+  //Tracks::instance()->moveSelectedTrack2MCU();
 
   Options::checkAndModifyOptions();
 }
