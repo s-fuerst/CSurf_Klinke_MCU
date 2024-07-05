@@ -1,5 +1,5 @@
-/**
- * Copyright (C) 2009-2012 Steffen Fuerst 
+﻿/**
+ * Copyright (C) 2009-2012 Steffen Fuerst
  * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
  */
 
@@ -78,7 +78,8 @@ void PlugAccess::trackChanged(MediaTrack *pMediaTrack) {
 }
 
 void PlugAccess::accessPlugin(MediaTrack *pMediaTrack, int iSlot,
-                              bool changeTriggeredFromGUI) {
+                              bool changeTriggeredFromGUI,
+                              bool changeTriggeredFromProjectChange) {
   if (changeTriggeredFromGUI) {
     if (pMediaTrack == m_pPlugTrack && iSlot == m_iSlot)
       return;
@@ -98,7 +99,7 @@ void PlugAccess::accessPlugin(MediaTrack *pMediaTrack, int iSlot,
   BOOST_FOREACH (int &page, m_selectedPage)
     page = 0;
 
-  if (!plugExist()) {
+  if (changeTriggeredFromProjectChange || !plugExist()) {
     m_pMapManager->deselectMap();
     m_pMode->updateEverything();
     m_pPlugWatcher->setPlugin(NULL, -1);
@@ -670,7 +671,7 @@ void PlugAccess::projectChanged(XmlElement *pXmlElement,
     pPlugAccessNode = pXmlElement->getChildByName(PLUGACCESS_NODE_ROOT);
     if (pPlugAccessNode) {
       readSlotStatesFromProjectConfig(pPlugAccessNode);
-      readSelectedPlugFromProjectConfig(pPlugAccessNode);
+      readSelectedPlugFromProjectConfig(pPlugAccessNode, true);
     }
     break;
   }
@@ -738,7 +739,8 @@ void PlugAccess::writeSelectedPlugToProjectConfig(XmlElement *pPlugAccessNode) {
 }
 
 void PlugAccess::readSelectedPlugFromProjectConfig(
-    XmlElement *pPlugAccessNode) {
+    XmlElement *pPlugAccessNode,
+    bool changeTriggeredFromProjectChange) {
   forEachXmlChildElement(*pPlugAccessNode, pChild) {
     if (pChild->getTagName() == PLUGACCESS_NODE_SELECTED_PLUG) {
       String guidString =
@@ -748,7 +750,7 @@ void PlugAccess::readSelectedPlugFromProjectConfig(
       MediaTrack *pMediaTrack = CSurf_MCU::TrackFromGUID(guid);
       int iSlot = pChild->getIntAttribute(PLUGACCESS_ATT_SELECTED_PLUG_SLOT);
 
-      accessPlugin(pMediaTrack, iSlot, false);
+      accessPlugin(pMediaTrack, iSlot, false, changeTriggeredFromProjectChange);
       return;
     }
   }

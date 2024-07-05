@@ -69,7 +69,8 @@ public:
   void trackChanged(
       MediaTrack *pMediaTrack); // can be also the actual selected track
   void accessPlugin(MediaTrack *, int slot,
-                    bool changeTriggeredFromGUI = false); // slot is 0 based
+                    bool changeTriggeredFromGUI = false,
+                    bool changeTriggeredFromProjectChange = false); // slot is 0 based
 
   void storeActualSlotState();
   int getPlugSlot() { return m_iSlot; }
@@ -229,7 +230,7 @@ private:
 
   int m_iSlot; // 0 based
   void writeSelectedPlugToProjectConfig(XmlElement *pPlugAccessNode);
-  void readSelectedPlugFromProjectConfig(XmlElement *pPlugAccessNode);
+  void readSelectedPlugFromProjectConfig(XmlElement *pPlugAccessNode, bool changeTriggeredFromProjectChange = false);
 
   PlugMode *m_pMode;
   PlugMapManager *m_pMapManager;
