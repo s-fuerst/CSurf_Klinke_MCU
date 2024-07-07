@@ -1,4 +1,4 @@
-* TODO [11/15] v0.9.0.6 Release
+* TODO [11/16] v0.9.1 Release
 ** DONE [#A] #51 FX State is always shown as bypassed
 ** DONE [#A] CCSModesEditor without visible window (see also #50)
 ** TODO [#A] #46 Improved Documentation (also #49 add link to overlay)
@@ -6,7 +6,7 @@
 ** DONE [#B] #28 Check performance (especially in Send mode)
 ** DONE [#B] Check: #8: Crashes on undo in 64bit version
 ** DONE [#B] #31 Check: If I'm in folder mode I can't open folders when using the "hide non MCU" setting.
-** TODO [#C] Support for Move Plugins
+** [#C] Support for Move Plugins
 ** [#C] #36 Try to improve record mode
 ** TODO [#C] Check #10: Touch automation with fake fader touch doesn't work 
 ** DONE [#A] Allow activating FX-Mode also when no FX is on track
@@ -17,3 +17,5 @@
 ** TODO [#B] Update Licence to GPL3
 (auch in manual updaten)
 ** DONE Bugfix: Move to selected track when option button is pressed
+** TODO [#A] Pull Request integrieren
+** TODO [#B] Jump to touched 
