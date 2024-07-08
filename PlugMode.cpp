@@ -1162,7 +1162,7 @@ void PlugMode::followChanges() {
 		}
 	}
 
-	if (numChangedValues > 0 && numChangedValues < 3) {
+	if (numChangedValues == 1) {
 		m_pAccess->setSelectedBank(changeInBank);
 		m_pAccess->setSelectedPage(changeInBank, changeInPage);
 	}
