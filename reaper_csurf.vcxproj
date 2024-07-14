@@ -251,7 +251,7 @@
       <OutputFile>.\Debug/reaper_csurf.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>copy .\Debug\reaper_csurf_mcu_klinke_x64.dll "C:\Users\Klinke\Documents\Reaper\Plugins\reaper_csurf_mcu_klinke_x64.dll" </Command>
+      <Command>copy .\Debug\reaper_csurf_mcu_klinke_x64.dll "C:\Users\steff\AppData\Roaming\REAPER\UserPlugins\reaper_csurf_mcu_klinke_x64.dll" </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
