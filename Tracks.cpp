@@ -53,7 +53,8 @@ bool TSNode::showTrack(MediaTrack *pMT, EFilter filter) {
   case MCP:
     return (*((bool *)GetSetMediaTrackInfo(pMT, "B_SHOWINMIXER", NULL)));
   case MCU:
-    return Tracks::instance()->getTrackStateForMediaTrack(pMT)->isInSet();
+    return Tracks::instance()->getTrackStateForMediaTrack(pMT) &&
+			Tracks::instance()->getTrackStateForMediaTrack(pMT)->isInSet();
   }
 
   return true;
@@ -123,7 +124,7 @@ void TSGraph::buildGraph(bool flat) {
     TSNode *pNewNode = new TSNode(*ti, pParentNode);
     m_mapTrack[*ti] = pNewNode;
 
-    if (!(anchors &&
+    if (Tracks::instance()->getTrackStateForMediaTrack(*ti) && !(anchors &&
 					Tracks::instance()->getTrackStateForMediaTrack(*ti)->getAnchorChannel() > 0)) 
       pParentNode->addChild(pNewNode);
 
@@ -638,6 +639,7 @@ MediaTrack *Tracks::findMediaTrackForChannel(int channel) {
   if (Tracks::instance()->getOptions()->isOptionSetTo(MTO_REFLECT_FOLDER,
                                                       MTOA_REFLECT_PLUS) &&
       !pNode->isRoot() &&
+			getTrackStateForMediaTrack(m_pCurrentBaseTrack) &&
       getTrackStateForMediaTrack(m_pCurrentBaseTrack)->getAnchorChannel() ==
           0) { // first non anchor channel must be the parent
     if (channelWithOffset == 1) {
@@ -1007,7 +1009,7 @@ void Tracks::activeVUallChildren(MediaTrack *pMT) {
 	std::vector<MediaTrack *> children = getChildredForMediaTrack(pMT);
 
 	for (MediaTrack *pMediaTrack : children) {
-		getTrackStateForMediaTrack(pMediaTrack)->setVUactive(true);
+		safe_call(getTrackStateForMediaTrack(pMediaTrack), setVUactive(true));
 		activeVUallChildren(pMediaTrack);
 	}
 }
@@ -1036,7 +1038,7 @@ void Tracks::updateVUactive() {
 			MediaTrack *p = getParentForMediaTrack(ts.getMediaTrack());
 			// solo all parents
 			while (p) {
-				getTrackStateForMediaTrack(p)->setVUactive(true);
+				safe_call(getTrackStateForMediaTrack(p), setVUactive(true));
 				p = getParentForMediaTrack(p);
 			}
 			// solo children
@@ -1054,7 +1056,7 @@ void Tracks::updateVUactive() {
 			GetSetTrackSendInfo(ts.getMediaTrack(), -1, i, "P_SRCTRACK", NULL);
 		while (s) {
 			i++;
-			if (getTrackStateForMediaTrack(s)->getVUactive())
+			if (getTrackStateForMediaTrack(s) && getTrackStateForMediaTrack(s)->getVUactive())
 				ts.setVUactive(true);
 			s = (MediaTrack *)
 				GetSetTrackSendInfo(ts.getMediaTrack(), -1, i, "P_SRCTRACK", NULL);
@@ -1141,13 +1143,15 @@ bool Tracks::moveTrackToLeftMostChannel(MediaTrack *pMT) {
   assert(pMT != NULL);
   // if the pMT MediaTrack is an anchor, we need the next MediaTrack
   // that isn't an anchor
-  if (getTrackStateForMediaTrack(pMT)->getAnchorChannel() > 0 &&
+  if (getTrackStateForMediaTrack(pMT) &&
+			getTrackStateForMediaTrack(pMT)->getAnchorChannel() > 0 &&
       m_pOptions1->isOptionSetTo(MTO_DISABLE_ANCHORS, MTOA_ANCHORS_YES)) {
     int depth = m_structure.nodeOfTrack(pMT)->getDepth();
     int channelNr = MediaTrackInfo::getTrackNr(pMT);
     bool trackFound = false;
     for (TrackIterator ti; !ti.end(); ++ti) {
       if (trackFound &&
+					getTrackStateForMediaTrack(*ti) &&
           getTrackStateForMediaTrack(*ti)->getAnchorChannel() == 0 &&
           depth == m_structure.nodeOfTrack(*ti)->getDepth()) {
         pMT = *ti;
@@ -1174,7 +1178,8 @@ bool Tracks::moveTrackToLeftMostChannel(MediaTrack *pMT) {
     if (pMTForChannel == pMT) {
       int numAnchors = 0;
       for (int j = 1; j < childWithTrack; j++) {
-        if (getTrackStateForMediaTrack(findMediaTrackForChannel(j))
+        if (getTrackStateForMediaTrack(findMediaTrackForChannel(j)) &&
+						getTrackStateForMediaTrack(findMediaTrackForChannel(j))
                     ->getAnchorChannel() > 0 &&
             m_pOptions1->isOptionSetTo(MTO_DISABLE_ANCHORS, MTOA_ANCHORS_YES)) {
           numAnchors++;

@@ -180,7 +180,8 @@ void TrackStatesTableComponent::paintCell(Graphics &g, int rowNumber,
   MediaTrack *pMT = getRowMediaTrack(rowNumber);
   if (pMT) {
     if (columnId == TS_COLUMN_ON_MCU) {
-      if (Tracks::instance()->getTrackStateForMediaTrack(pMT)->isOnMCU()) {
+      if (Tracks::instance()->getTrackStateForMediaTrack(pMT) &&
+					Tracks::instance()->getTrackStateForMediaTrack(pMT)->isOnMCU()) {
         g.drawText(String(Tracks::instance()
                               ->getTrackStateForMediaTrack(pMT)
                               ->getOnMCUChannel()),
