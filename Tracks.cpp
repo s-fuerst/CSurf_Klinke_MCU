@@ -447,7 +447,7 @@ void Tracks::moveSelectedTrack2MCU() {
                      MTO2_FOLLOW_REAPER, MTO2A_FOLLOW_REAPER_ON)) {
     tracksStatesChanged();
     TrackState *pTS = Tracks::instance()->getTrackStateForMediaTrack(trackid);
-    if (pTS->getAnchorChannel() == 0 && !pTS->isOnMCU()) {
+    if (pTS && pTS->getAnchorChannel() == 0 && !pTS->isOnMCU()) {
 			MediaTrack *newParent = Tracks::instance()->getParentForMediaTrack(trackid);
 			Tracks::instance()->moveBaseTrack(newParent);
       int tracknr = MediaTrackInfo::getTrackNr(trackid);
