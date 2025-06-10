@@ -496,6 +496,8 @@ String PlugAccess::getParamValueLong(ElementDesc::eType type, int channel) {
 }
 
 void PlugAccess::trackRemoved(MediaTrack *pMT) {
+  Tracks::instance()->selectionChanged();
+
   if (pMT == m_pPlugTrack) {
     accessPlugin(NULL, -1);
     //    m_pPlugTrack = NULL;
