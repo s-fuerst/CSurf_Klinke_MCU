@@ -4,7 +4,7 @@
  */
 
 #pragma once
-#include "options.h"
+#include "Options.h"
 
 #define PMO2_MODE_CHANGE JUCE_T("Mode change")
 #define PMO2A_NOTHING JUCE_T("do nothing")

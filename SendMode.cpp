@@ -5,7 +5,7 @@
 
 #include "SendMode.h"
 #include "Display.h"
-#include "ccsmanager.h"
+#include "CCSManager.h"
 #include "csurf_mcu.h"
 #include "UndoEnd.h"
 

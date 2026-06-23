@@ -4,7 +4,7 @@
  */
 
 #pragma once
-#include "ccsmode.h"
+#include "CCSMode.h"
 #include "csurf_mcu.h"
 #include "vector"
 

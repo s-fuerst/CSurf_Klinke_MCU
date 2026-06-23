@@ -8,7 +8,9 @@
 #include "CCSManager.h"
 #include "csurf_mcu.h"
 #include "Display.h"
+#ifdef _WIN32
 #include "swell\swell.h"
+#endif
 #include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
 #include "CommandModeMainComponent.h"
 
@@ -175,7 +177,7 @@ bool CommandMode::vpotMoved(int channel, int numSteps) {
         0x40 + numSteps * (pVpot->isPressed()
                                ? m_pActivePage->m_iPressedSpeed[shift][channel]
                                : m_pActivePage->m_iNormalSpeed[shift][channel]);
-    midi_byte2 = (unsigned char)min(255, max(0, relative));
+    midi_byte2 = (unsigned char)std::min(255, std::max(0, relative));
   } else {
     bool left = (numSteps < 0);
     midi_byte1 += left ? 0x08 : 0x09;

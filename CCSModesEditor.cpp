@@ -5,6 +5,8 @@
 
 #include "CCSModesEditor.h"
 #include "CommandMode.h"
+#include "McuDebugLog.h"
+#include <boost/bind.hpp>
 
 CCSModesEditor::CCSModesEditor(CCSManager *pManager)
     : m_pManager(pManager), m_pWindow(NULL), m_pActiveComponent(NULL) {
@@ -39,14 +41,17 @@ void CCSModesEditor::setMainComponent(CCSMode *pCommandMode, bool visible) {
 void CCSModesEditor::setMainComponent(Component **ppComponent, bool visible) {
 	if (m_pWindow && m_pActiveComponent == *ppComponent) {
 		if (m_pWindow->isVisible()) {
+      MCU_LOG("EDITOR toggle-hide (same component)");
 			m_pWindow->setVisible(false);
 			return;
 		}
+    MCU_LOG("EDITOR re-show (same component)");
 		m_pWindow->setVisible(visible);
 		m_pWindow->setAlwaysOnTop(true);
 		m_pWindow->setTopLeftPosition(20, 60);
 		return;
   }
+  MCU_LOG("EDITOR new-window visible=%d", visible);
   deleteWindow();
   m_pComponentsCommandMode = NULL;
   m_pWindow = new CCSModesEditorWindow("MCU Editor", Colours::white, false,

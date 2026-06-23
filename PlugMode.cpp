@@ -4,7 +4,7 @@
  */
 
 #include <boost/bind.hpp>
-#include <boost\foreach.hpp>
+#include <boost/foreach.hpp>
 #include "PlugMode.h"
 #include "PlugModeComponent.h"
 #include "PlugAccess.h"
@@ -795,6 +795,11 @@ bool PlugMode::buttonFlip(bool pressed) {
 }
 
 Component **PlugMode::createEditorComponent() {
+  // Ensure we have the right track even when the editor is opened via ALT+PLUG
+  // without switching to PlugMode as the active mode.
+  if (m_followTrack)
+    m_pAccess->trackChanged(selectedTrack());
+
   if (!m_pPlugEditor)
     m_pPlugEditor = new PlugModeComponent(m_pAccess);
 

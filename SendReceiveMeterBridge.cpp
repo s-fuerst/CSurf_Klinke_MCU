@@ -8,7 +8,7 @@
 #include "csurf_mcu.h"
 #include "Assert.h"
 #include "Tracks.h"
-#include "boost\foreach.hpp"
+#include <boost/foreach.hpp>
 #include "SendReceiveModeBase.h"
 
 SendReceiveMeterBridge::SendReceiveMeterBridge(SendReceiveModeBase *pSendMode)

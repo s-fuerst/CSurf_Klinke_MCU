@@ -4,12 +4,12 @@
  */
 
 #pragma once
-#include "multitrackmode.h"
+#include "MultiTrackMode.h"
 #include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
-#include "selector.h"
+#include "Selector.h"
 #include "Display.h"
 #include "csurf_mcu.h"
-#include "ccsmanager.h"
+#include "CCSManager.h"
 #include "Assert.h"
 #include "CommandModeMainComponent.h"
 

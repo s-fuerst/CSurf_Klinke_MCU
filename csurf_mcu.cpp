@@ -5,16 +5,24 @@
 ** License: LGPL.
 */
 
+// JUCE 1.52 internal event dispatcher — defined in juce_amalgamated.cpp
+// inside namespace juce.  Processes one pending X11/JUCE event and returns
+// true, or returns false immediately (no sleep) when the queue is empty.
+namespace juce {
+    bool juce_dispatchNextMessageOnSystemQueue(bool returnIfNoPendingMessages);
+}
+
 #include "csurf_mcu.h"
+#include "McuDebugLog.h"
 #include "math.h"
 #include "Transport.h"
 #include "Region.h"
 #include "Assert.h"
 #include "DisplayHandler.h"
 #include "Display.h"
-#include "multitrackmode.h"
+#include "MultiTrackMode.h"
 #include "UndoEnd.h"
-#include "tracks.h"
+#include "Tracks.h"
 #include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
 #include "boost/bind.hpp"
 #include "ProjectConfig.h"
@@ -346,13 +354,14 @@ bool CSurf_MCU::OnJogWheel(MIDI_event_t *evt) {
       evt->midi_message[1] == 0x3c) // jog wheel
 		{
 			int dir;
-			if (evt->midi_message[2] == 0x41) {
+			// MCU jog sends 0x41-0x7F for backward, 0x01-0x3F for forward
+			if (evt->midi_message[2] >= 0x41) {
 				dir = -1;
 				if (IsNoModifierPressed()) {
 					CSurf_OnRew(m_mackie_arrow_states & ARROW_STATE_SCRUB);
 					return true;
 				}
-			} else if (evt->midi_message[2] == 0x01) {
+			} else if (evt->midi_message[2] >= 0x01) {
 				dir = 1;
 				if (IsNoModifierPressed()) {
 					CSurf_OnFwd(m_mackie_arrow_states & ARROW_STATE_SCRUB);
@@ -798,8 +807,10 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
                      int cfgflags, int *errStats)
 	: m_pActionsDialogComponent(NULL) {
   //_CrtSetBreakAlloc(6938);
-  if (s_iNumInstances == 0)
+  if (s_iNumInstances == 0) {
+    MCU_LOG_INIT();
     initialiseJuce_GUI();
+  }
   s_iNumInstances++;
 
   m_pButtonManager = new ButtonManager(this);
@@ -849,7 +860,6 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
   m_schedule = NULL;
 
   m_pCCSManager->init();
-
 
 	for(int i=0; i < 128; i++) {
 		m_led_state[i] = LED_ON;
@@ -951,7 +961,7 @@ void CSurf_MCU::Run() {
 
   Tracks *m_pTracks = Tracks::instance();
 
-  if (now >= m_frameupd_lastrun + (1000 / max((*g_config_csurf_rate), 1)) ||
+  if (now >= m_frameupd_lastrun + (1000 / std::max((*g_config_csurf_rate), 1)) ||
       now < m_frameupd_lastrun - 250) {
     m_frameupd_lastrun = now;
 
@@ -1178,6 +1188,12 @@ void CSurf_MCU::Run() {
       }
     }
   }
+
+  // Drain JUCE's X11 event queue so editor windows paint, respond to mouse/
+  // keyboard input, and handle WM_DELETE_WINDOW (the title-bar X button).
+  // Each call processes one pending event and returns false when the queue is
+  // empty — no blocking, negligible overhead when no windows are open.
+  for (int i = 0; i < 30 && juce::juce_dispatchNextMessageOnSystemQueue(true); ++i) {}
 }
 
 void CSurf_MCU::SendMidi(unsigned char status, unsigned char d1,
@@ -1336,19 +1352,17 @@ void CSurf_MCU::UpdateAutoModes() {
 void CSurf_MCU::OnTrackSelection(MediaTrack *trackid) {}
 
 bool CSurf_MCU::IsModifierPressed(int key) {
-  ModifierKeys keyboardModifiers = ModifierKeys::getCurrentModifiersRealtime();
   ASSERT_M(key == VK_SHIFT || key == VK_OPTION || key == VK_CONTROL ||
 					 key == VK_ALT,
            "Only for Modifier");
+  // Use IsButtonPressed (m_button_pressed[] in ButtonManager) rather than the
+  // derived s_mackie_modifiers — the button array is updated on every MIDI
+  // event including note-off, so it can't stay stuck across operations.
   if (m_midiin && !m_is_mcuex) {
-    if (key == VK_SHIFT)
-      return (s_mackie_modifiers & 1) || IsKeyboardPressed(VK_SHIFT);
-    if (key == VK_OPTION)
-      return !!(s_mackie_modifiers & 2) || IsKeyboardPressed(VK_RMENU);
-    if (key == VK_CONTROL)
-      return !!(s_mackie_modifiers & 4) || IsKeyboardPressed(VK_CONTROL);
-    if (key == VK_ALT)
-      return !!(s_mackie_modifiers & 8) || IsKeyboardPressed(VK_LMENU);
+    if (key == VK_SHIFT)   return IsButtonPressed(B_SHIFT)   || IsKeyboardPressed(VK_SHIFT);
+    if (key == VK_OPTION)  return IsButtonPressed(B_OPTION)  || IsKeyboardPressed(VK_MENU);
+    if (key == VK_CONTROL) return IsButtonPressed(B_CONTROL) || IsKeyboardPressed(VK_CONTROL);
+    if (key == VK_ALT)     return IsButtonPressed(B_ALT)     || IsKeyboardPressed(VK_MENU);
   }
 
   return false;
@@ -1415,19 +1429,10 @@ bool CSurf_MCU::OnNameValueDC(MIDI_event_t *evt) {
 }
 
 void CSurf_MCU::UnselectAllTracks() {
-  // Clear master track
-  CSurf_OnSelectedChange(CSurf_TrackFromID(0, false), 0);
-  // Clear already selected tracks
-  SelectedTrack *i = GetSelectedTracks();
-  while (i) {
-    // Call to OnSelectedChange will cause 'i' to be destroyed, so go ahead
-    // and get 'next' now
-    SelectedTrack *next = i->next;
-    MediaTrack *track = i->track();
-
-    if (track)
-      CSurf_OnSelectedChange(track, 0);
-    i = next;
+  int n = CSurf_NumTracks(false);
+  for (int i = 0; i <= n; i++) {
+    MediaTrack *t = CSurf_TrackFromID(i, false);
+    if (t) SetTrackSelected(t, false);
   }
 }
 
@@ -1532,6 +1537,62 @@ createFunc(const char *type_string, const char *configString, int *errStats) {
   }
 }
 
+// Reposition all controls to fill the actual dialog rect.
+// Called from WM_SIZE so it works regardless of initial SWELL scale.
+static void layoutDlgControls(HWND hwndDlg) {
+  RECT cr;
+  GetClientRect(hwndDlg, &cr);
+  int W = cr.right, H = cr.bottom;
+  if (W < 40 || H < 40) return;
+
+  auto move = [&](int id, int x, int y, int w, int h) {
+    HWND c = GetDlgItem(hwndDlg, id);
+    if (c) SetWindowPos(c, NULL, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
+  };
+
+  // Enumerate static label windows in creation order (ID==0 for both)
+  auto nthStatic = [&](int n) -> HWND {
+    int count = 0;
+    HWND ch = GetWindow(hwndDlg, GW_CHILD);
+    while (ch) {
+      if (GetWindowLong(ch, GWL_ID) == 0 && count++ == n) return ch;
+      ch = GetWindow(ch, GW_HWNDNEXT);
+    }
+    return NULL;
+  };
+
+  const int mx = 8, label_w = 80, gap = 4;
+  const int combo_x = mx + label_w + gap;
+  const int combo_w = W - combo_x - mx;
+  const int row_h = 24, lbl_h = 18, check_h = 20, btn_w = 90, btn_h = 24;
+
+  // MIDI In row
+  HWND lbl1 = nthStatic(0);
+  if (lbl1) SetWindowPos(lbl1, NULL, mx, mx + 3, label_w, lbl_h, SWP_NOZORDER | SWP_NOACTIVATE);
+  move(IDC_COMBO2, combo_x, mx, combo_w, row_h);
+
+  // MIDI Out row
+  HWND lbl2 = nthStatic(1);
+  int row2_y = mx + row_h + gap;
+  if (lbl2) SetWindowPos(lbl2, NULL, mx, row2_y + 3, label_w, lbl_h, SWP_NOZORDER | SWP_NOACTIVATE);
+  move(IDC_COMBO3, combo_x, row2_y, combo_w, row_h);
+
+  // Checkboxes and buttons (MCUMAIN only)
+  if (GetDlgItem(hwndDlg, IDC_PROX)) {
+    int cy = mx + 2 * (row_h + gap) + gap;
+    int chk_w = W - 2 * mx;
+    move(IDC_PROX,              mx, cy, chk_w, check_h); cy += check_h + gap;
+    move(IDC_EMULATE_BLINKING,  mx, cy, chk_w, check_h); cy += check_h + gap;
+    move(IDC_KEYBOARD_MODIFIER, mx, cy, chk_w, check_h); cy += check_h + gap;
+    move(IDC_FAKE_TOUCH,        mx, cy, chk_w, check_h); cy += check_h + gap;
+    move(IDC_CHECK2,            mx, cy, W / 2, check_h);
+    move(BTN_OPEN_MANUAL, W - 2 * (btn_w + gap), H - btn_h - mx, btn_w, btn_h);
+    move(BTN_DONATE,      W - (btn_w + mx),       H - btn_h - mx, btn_w, btn_h);
+  }
+
+  InvalidateRect(hwndDlg, NULL, TRUE);
+}
+
 static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
                           LPARAM lParam) {
   switch (uMsg) {
@@ -1541,16 +1602,16 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
 
     int n = GetNumMIDIInputs();
     LRESULT x = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_ADDSTRING, 0,
-																	 (LPARAM) "None");
+                                   (LPARAM)"None");
     SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_SETITEMDATA, x, -1);
     x = SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_ADDSTRING, 0,
-                           (LPARAM) "None");
+                           (LPARAM)"None");
     SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_SETITEMDATA, x, -1);
     for (x = 0; x < n; x++) {
       char buf[512];
       if (GetMIDIInputName(x, buf, sizeof(buf))) {
         LRESULT a = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_ADDSTRING, 0,
-																			 (LPARAM)buf);
+                                       (LPARAM)buf);
         SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_SETITEMDATA, a, x);
         if (x == parms[2])
           SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_SETCURSEL, a, 0);
@@ -1561,7 +1622,7 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
       char buf[512];
       if (GetMIDIOutputName(x, buf, sizeof(buf))) {
         LRESULT a = SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_ADDSTRING, 0,
-																			 (LPARAM)buf);
+                                       (LPARAM)buf);
         SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_SETITEMDATA, a, x);
         if (x == parms[3])
           SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_SETCURSEL, a, 0);
@@ -1575,10 +1636,14 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
     if (parms[4] & CONFIG_FLAG_SWAPZOOM)
       CheckDlgButton(hwndDlg, IDC_CHECK2, BST_CHECKED);
     if (parms[4] & CONFIG_FLAG_EMULATING_BLINKING)
-			CheckDlgButton(hwndDlg, IDC_EMULATE_BLINKING, BST_CHECKED);
+      CheckDlgButton(hwndDlg, IDC_EMULATE_BLINKING, BST_CHECKED);
     if (parms[4] & CONFIG_FLAG_KEYBOARD_MODIFIER)
       CheckDlgButton(hwndDlg, IDC_KEYBOARD_MODIFIER, BST_CHECKED);
   } break;
+
+  case WM_SIZE:
+    layoutDlgControls(hwndDlg);
+    break;
   case WM_COMMAND: {
     switch (LOWORD(wParam)) {
     case BTN_DONATE:
@@ -1594,7 +1659,7 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
                    NULL, NULL, SW_SHOWDEFAULT);
 			break;
     }
-  }
+  } break;
   case WM_USER + 1024:
     if (wParam > 1 && lParam) {
       LRESULT indev = -1, outdev = -1, offs = 0, size = 8;
@@ -1617,7 +1682,7 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
         cflags |= CONFIG_FLAG_KEYBOARD_MODIFIER;
 
       char tmp[512];
-      sprintf(tmp, "%Id %Id %Id %Id %d", offs, size, indev, outdev, cflags);
+      sprintf(tmp, "%ld %ld %ld %ld %d", (long)offs, (long)size, (long)indev, (long)outdev, cflags);
       lstrcpyn((char *)lParam, tmp, wParam);
     }
     break;
@@ -1627,16 +1692,15 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
 
 static HWND configFunc(const char *type_string, HWND parent,
                        const char *initConfigString) {
+  HWND ret;
   if (!strcmp(type_string, EXT_ID))
-    return CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_SURFACEEDIT_MCUEX),
-                             parent, dlgProc, (LPARAM)initConfigString);
+    ret = CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_SURFACEEDIT_MCUEX),
+                            parent, dlgProc, (LPARAM)initConfigString);
   else
-    return CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_SURFACEEDIT_MCUMAIN),
-                             parent, dlgProc, (LPARAM)initConfigString);
-
-  return NULL;
-
-  parent = NULL;
+    ret = CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_SURFACEEDIT_MCUMAIN),
+                            parent, dlgProc, (LPARAM)initConfigString);
+  if (ret) ShowWindow(ret, SW_SHOW);
+  return ret;
 }
 
 reaper_csurf_reg_t csurf_mcu_modified_reg = {

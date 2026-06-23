@@ -4,9 +4,11 @@
  */
 
 #include "Region.h"
+#ifdef _WIN32
 #include <windows.h>
-#include <stdio.h>
 #include <process.h>
+#endif
+#include <stdio.h>
 #define REAPER_PLUGIN_DECLARE_APIFUNCS
 
 Region::Region() {

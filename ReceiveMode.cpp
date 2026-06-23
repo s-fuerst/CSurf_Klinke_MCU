@@ -5,10 +5,10 @@
 
 #include "ReceiveMode.h"
 #include "Display.h"
-#include "ccsmanager.h"
+#include "CCSManager.h"
 #include "csurf.h"
 #include "csurf_mcu.h"
-#include "undoend.h"
+#include "UndoEnd.h"
 
 ReceiveMode::ReceiveMode(CCSManager *pManager) : SendReceiveModeBase(pManager) {
   m_pSendOrReceiveText = "Receives Track ";

@@ -18,10 +18,10 @@
 #include "ptrlist.h"
 #include "mcu_button_defines.h"
 #include "Region.h"
-#include "ccsmanager.h"
+#include "CCSManager.h"
 #include "boost/signals2.hpp"
 
-using namespace boost::signals2;
+using boost::signals2::connection;
 
 static const GUID GUID_NOT_ACTIVE = {
     0x00000000,
@@ -34,6 +34,11 @@ static GUID GUID_MASTER = {
     0x8765,
     0x4321,
     {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
+
+#ifndef _WIN32
+inline bool operator==(const GUID &a, const GUID &b) { return memcmp(&a, &b, sizeof(GUID)) == 0; }
+inline bool operator!=(const GUID &a, const GUID &b) { return memcmp(&a, &b, sizeof(GUID)) != 0; }
+#endif
 
 #define safe_call(p, f)                                                        \
   if (p != NULL) {                                                             \
@@ -332,7 +337,7 @@ private:
   Component *m_pActionsDialogComponent;
 
 public:
-  typedef signal<void(DWORD)> tFrameSignal;
+  typedef boost::signals2::signal<void(DWORD)> tFrameSignal;
   typedef tFrameSignal::slot_type tFrameSignalSlot;
 
   static int s_iNumInstances;

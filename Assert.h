@@ -1,4 +1,6 @@
+#ifdef _WIN32
 #include <Windows.h>
+#endif
 #include <iostream>
 #include <sstream>
 
@@ -12,16 +14,16 @@
 #ifndef X64
 #define ASSERT_M(isOK, message)                                                \
   if (!(isOK)) {                                                               \
-    (void)printf("ERROR!! Assert ‘%s’ failed on line %d "                    \
-                 "in file ‘%s’\n%s\n",                                       \
+    (void)printf("ERROR!! Assert ï¿½%sï¿½ failed on line %d "                    \
+                 "in file ï¿½%sï¿½\n%s\n",                                       \
                  #isOK, __LINE__, __FILE__, #message);                         \
     __asm { int 3}                                                              \
   }
 
 #define ASSERT(isOK)                                                           \
   if (!(isOK)) {                                                               \
-    (void)printf("ERROR!! Assert ‘%s’ failed on line %d "                    \
-                 "in file ‘%s’\n",                                           \
+    (void)printf("ERROR!! Assert ï¿½%sï¿½ failed on line %d "                    \
+                 "in file ï¿½%sï¿½\n",                                           \
                  #isOK, __LINE__, __FILE__);                                   \
     __asm { int 3}                                                              \
   }

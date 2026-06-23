@@ -3,7 +3,7 @@
  * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
  */
 
-#include "boost\foreach.hpp"
+#include <boost/foreach.hpp>
 #include "PlugMap.h"
 
 //////////////////////////////////////////////////

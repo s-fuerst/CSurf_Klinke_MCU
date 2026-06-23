@@ -6,7 +6,7 @@
 #include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
 #include "csurf.h"
 #include "DisplayHandler.h"
-#include "vpot_led.h"
+#include "VPOT_LED.h"
 
 #pragma once
 

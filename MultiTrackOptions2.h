@@ -4,7 +4,7 @@
  */
 
 #pragma once
-#include "options.h"
+#include "Options.h"
 
 #define MTO2_TCP_ADJUCT JUCE_T("Adjust TCP")
 #define MTO2A_TCP_NO JUCE_T("don't adjust")

@@ -17,7 +17,7 @@
 #include "csurf_mcu.h"
 #include "Assert.h"
 
-using namespace boost::signals2;
+using boost::signals2::connection;
 
 class MediaTrack;
 class Tracks;
@@ -184,7 +184,7 @@ public:
 
 class Tracks {
 public:
-  typedef signal<void(MediaTrack *)> tTrackSignal;
+  typedef boost::signals2::signal<void(MediaTrack *)> tTrackSignal;
   typedef tTrackSignal::slot_type tTrackSignalSlot;
 
   static Tracks *instance();

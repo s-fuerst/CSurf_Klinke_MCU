@@ -13,7 +13,7 @@
 #include <set>
 #include "csurf.h"
 
-using namespace boost::signals2;
+using boost::signals2::connection;
 
 class MediaTrack;
 
@@ -37,9 +37,9 @@ private:
 
 class PlugMoveWatcher {
 public:
-  typedef signal<void(MediaTrack *, int, MediaTrack *, int)>
+  typedef boost::signals2::signal<void(MediaTrack *, int, MediaTrack *, int)>
       tPlugMoveSignal; // GUID oldPos, slot oldPos, GUID newPos, slot newPos
-  typedef signal<void()> tPlugMoveFinishedSignal;
+  typedef boost::signals2::signal<void()> tPlugMoveFinishedSignal;
   typedef tPlugMoveSignal::slot_type tPlugMoveSignalSlot;
   typedef tPlugMoveFinishedSignal::slot_type tPlugMoveFinishedSignalSlot;
 

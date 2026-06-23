@@ -202,6 +202,7 @@ extern "C" {
 REAPER_PLUGIN_DLL_EXPORT int
 REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
                          reaper_plugin_info_t *rec) {
+  fprintf(stderr, "[klinke] ReaperPluginEntry called hInstance=%p rec=%p\n", hInstance, (void*)rec);
   g_hInst = hInstance;
 
   if (!rec || rec->caller_version != REAPER_PLUGIN_VERSION || !rec->GetFunc)
@@ -368,9 +369,12 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   IMPVARP(__g_projectconfig_timeoffs, "projtimeoffs", double);
   IMPVARP(__g_projectconfig_measoffs, "projmeasoffs", int);
 
-  if (errcnt)
+  if (errcnt) {
+    fprintf(stderr, "[klinke] ReaperPluginEntry: %d API functions missing, returning 0\n", errcnt);
     return 0;
+  }
 
+  fprintf(stderr, "[klinke] ReaperPluginEntry: all APIs resolved, registering csurf MCUM5\n");
   rec->Register("csurf", &csurf_mcu_modified_reg);
   //  rec->Register("csurf",&csurf_mcuex_modified_reg);
   rec->Register("projectconfig", ProjectConfig::instance()->getRegisterInfo());

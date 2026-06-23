@@ -10,7 +10,7 @@
 #include "Assert.h"
 #include "csurf.h"
 #include "csurf_mcu.h"
-#include "tracks.h"
+#include "Tracks.h"
 
 SendReceiveModeBase::SendReceiveModeBase(CCSManager *pManager)
     : CCSMode(pManager), m_flip(false), m_pLastSelectedTrack(NULL),
@@ -462,11 +462,11 @@ bool SendReceiveModeBase::vpotMoved(int channel, int numSteps) {
     }
     double newState = *pOldState + numSteps / 40.f;
 		if (m_flip)
-			newState = min(newState, 4.);
+			newState = std::min(newState, 4.);
 		else
-			newState = min(newState, 1.);
-			
-    newState = max(newState, -1.);
+			newState = std::min(newState, 1.);
+
+    newState = std::max(newState, -1.);
 
     if (m_flip) {
       setSendInfo(VOL, sendNr, (void *)&newState, WAIT_FOR_MORE_MOVEMENT);

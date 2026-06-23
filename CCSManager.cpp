@@ -3,11 +3,13 @@
  * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
  */
 
+#ifdef _WIN32
 #include <windows.h>
+#endif
 #include "CCSManager.h"
-#include "multitrackmode.h"
-#include "panmode.h"
-#include "performancemode.h"
+#include "MultiTrackMode.h"
+#include "PanMode.h"
+#include "PerformanceMode.h"
 #include "CommandMode.h"
 #include "Display.h"
 #include "SendMode.h"
@@ -15,7 +17,7 @@
 #include "PlugMode.h"
 #include "csurf_mcu.h"
 #include "Assert.h"
-#include "ccsmodeseditor.h"
+#include "CCSModesEditor.h"
 #include "Options.h"
 #include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
 

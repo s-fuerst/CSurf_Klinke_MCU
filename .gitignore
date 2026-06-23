@@ -28,3 +28,23 @@ ipch/
 /.vscode/
 /.ccls-cache/
 /manual/mcu_klinke_manual.synctex.gz
+
+# --- CMake build (cross-platform port) ---
+/build/
+/cmake-build*/
+/compile_commands.json
+/CMakeFiles/
+/CMakeCache.txt
+*.so
+*.dll
+*.dylib
+
+# --- Vendored build dependencies (fetched by fetch_deps.sh, NOT committed) ---
+# Sourced from canonical upstream; see AGENTS.md §2 "Prerequisites".
+/juce_1_52/
+/boost_1_39_0/
+/reaper-sdk/
+
+# --- Local-only (agent memory + unused SWELL regen byproduct) ---
+/MEMD.md
+/res.rc_mac_menu

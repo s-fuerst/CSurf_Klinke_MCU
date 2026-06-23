@@ -5,7 +5,7 @@
 
 #pragma once
 #include "csurf_mcu.h"
-#include "sendreceivemodebase.h"
+#include "SendReceiveModeBase.h"
 
 class SendMode : public SendReceiveModeBase {
 public:

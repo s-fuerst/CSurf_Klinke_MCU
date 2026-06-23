@@ -7,7 +7,7 @@
 #include "csurf_mcu.h"
 #include <string>
 #include <list>
-#include "boost\foreach.hpp"
+#include <boost/foreach.hpp>
 #include "csurf_mcu.h"
 
 class Actions {

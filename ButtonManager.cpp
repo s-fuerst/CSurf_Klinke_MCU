@@ -4,6 +4,7 @@
  */
 
 #include "ButtonManager.h"
+#include "McuDebugLog.h"
 #include "boost/bind.hpp"
 
 ButtonManager::ButtonManager(CSurf_MCU *pMCU) : m_pMCU(pMCU) {
@@ -30,7 +31,20 @@ struct ButtonHandler {
 };
 
 bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt) {
-  if ((evt->midi_message[0] & 0xf0) != 0x90)
+  unsigned char status = evt->midi_message[0] & 0xf0;
+
+  // Some MCU units send note-off (0x80) for button release instead of
+  // note-on-velocity-0.  Normalise to note-on-velocity-0 so every downstream
+  // handler (OnSolo, OnMute, buttonVPOTassign, etc.) that checks
+  // midi_message[2] >= 0x40 for "pressed" sees 0 on release, not 0x40.
+  bool is_note_off = (status == 0x80);
+  if (is_note_off) {
+    status = 0x90;
+    evt->midi_message[0] = (evt->midi_message[0] & 0x0f) | 0x90;
+    evt->midi_message[2] = 0;  // release: velocity 0
+  }
+
+  if (status != 0x90)
     return false;
 
   static const int nPressOnlyHandlers = 18;
@@ -87,6 +101,10 @@ bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt) {
 
   unsigned int evt_code = evt->midi_message[1]; // get_midi_evt_code( evt );
 
+  MCU_LOG("BTN 0x%02x %s vel=0x%02x", evt_code,
+          is_note_off ? "NOTE-OFF->rel" : (evt->midi_message[2] >= 0x40 ? "press" : "rel"),
+          evt->midi_message[2]);
+
 #if 0
   char buf[512];
   sprintf( buf, "   0x%08x %02x %02x %02x %02x 0x%08x 0x%08x %s", evt_code,
@@ -98,7 +116,7 @@ bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt) {
 
   DWORD now = timeGetTime();
   // button down is handled at the end of the function
-  bool pressed = (evt->midi_message[2] >= 0x40);
+  bool pressed = !is_note_off && (evt->midi_message[2] >= 0x40);
   m_button_pressed[evt_code] = pressed;
   m_button_pressed_time[evt_code] = m_button_pressed[evt_code] ? now : 0;
   // For these events we only want to track button press

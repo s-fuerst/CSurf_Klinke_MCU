@@ -9,7 +9,7 @@
 #include "juce.h"
 #include <map>
 
-using namespace boost::signals2;
+using boost::signals2::connection;
 
 class ProjectConfig {
 public:
@@ -37,7 +37,7 @@ public:
     WRITE,
     FREE
   }; //  only modes then can be set directly are enumerated here
-  typedef signal<void(XmlElement *, EAction)>
+  typedef boost::signals2::signal<void(XmlElement *, EAction)>
       tProjectChangedSignal; // XmlElement is NULL in BEGIN_LOAD case
   typedef tProjectChangedSignal::slot_type tProjectChangedSignalSlot;
   int connect2ProjectChangeSignal(

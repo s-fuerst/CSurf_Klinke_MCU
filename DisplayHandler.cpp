@@ -5,6 +5,7 @@
 
 #include "DisplayHandler.h"
 
+#include "McuDebugLog.h"
 #include "csurf_mcu.h"
 #include "Assert.h"
 #include "Display.h"
@@ -67,7 +68,17 @@ void DisplayHandler::sendDifferences(Display *pDisplay, int row,
 
 void DisplayHandler::sendToHardware(int row, int pos, char const *text,
                                     int len) {
+  if (row == 0 || row == 1) {
+    char tmp[56] = {};
+    for (int k = 0; k < len && k < 55; k++)
+      tmp[k] = (text[k] >= 0x20 && text[k] < 0x7f) ? text[k] : '.';
+    MCU_LOG("ROW%d snd pos=%d len=%d [%s]", row, pos, len, tmp);
+  }
+
   m_pHardwareState->changeText(row, pos, text, len);
+
+  if (!m_pActualDisplay)
+    return;
 
 	if (row > 1 && !m_pMCU->IsFlagSet(CONFIG_FLAG_PROX))
 		return;
@@ -96,14 +107,26 @@ void DisplayHandler::sendToHardware(int row, int pos, char const *text,
   m_pMCU->SendMsg(&mm.evt, -1);
 }
 
+void DisplayHandler::invalidateHardwareState() {
+  for (int row = 0; row < 4; row++)
+    memset(m_pHardwareState->getText()[row], 1, m_pHardwareState->getRowLength(row));
+}
+
 void DisplayHandler::switchTo(Display *pDisplay) {
   if (m_pActualDisplay == pDisplay)
     return;
 
-	m_pActualDisplay = pDisplay;
-	pDisplay->activate();
+  // Disable VU meters on every display change; PanMode::updateDisplay re-enables them.
+  enableMCUMeter(false);
 
-	memset(m_pHardwareState->getText()[1], 1, pDisplay->getRowLength(0));
+  m_pActualDisplay = pDisplay;
+  pDisplay->activate();
+
+  // Invalidate row 0 separator positions so boot animation underscores are cleared.
+  // Row 1 separators are owned by VU meter hardware (mode 0x03) — don't touch them.
+  char *row0 = m_pHardwareState->getText()[0];
+  for (int sep = 6; sep < 55; sep += 7)
+    row0[sep] = 1;
 }
 
 void DisplayHandler::enableMCUMeter(int channel, bool enable) // channel is 1 based
@@ -124,39 +147,37 @@ void DisplayHandler::enableMCUMeter(int channel, bool enable) // channel is 1 ba
   mm.evt.midi_message[mm.evt.size++] = 0x20;
   mm.evt.midi_message[mm.evt.size++] = 0x00 + channel - 1;
 	//  mm.evt.midi_message[mm.evt.size++] = enable ? 0x07 : 0x01;
-  mm.evt.midi_message[mm.evt.size++] = enable ? 0x03 : 0x01;
+  mm.evt.midi_message[mm.evt.size++] = enable ? 0x03 : 0x00;
   mm.evt.midi_message[mm.evt.size++] = 0xF7;
+  MCU_LOG("METER ch=%d enable=%d -> 0x20 sent", channel, (int)enable);
   m_pMCU->SendMsg(&mm.evt, -1);
 
-  // if (m_pActualDisplay && m_pActualDisplay->hasMeter()) {
-  //   if (enable)
-  //     m_pActualDisplay->changeField(1, channel, "||||||");
-  //   else
-  //     m_pActualDisplay->changeField(1, channel, "------");
-  // }
-  //  Sleep(50);
-  //  D0 yx    : update VU meter, y=track, x=0..d=volume, e=clip on, f=clip off
-  //  if (enable) {
-  //    m_pMCU->SendMidi(0xD0,((channel-1)<<4)|0xF,0,-1);
-  //    Sleep(5);
-  //  }
-  //  F0 00 00 66 14 21 01 F7       : Vertical Line Meter
-  MIDI_Message mm2;
-
-  addHeader(&mm2, 0);
-
-  mm2.evt.midi_message[mm2.evt.size++] = 0x21;
-  mm2.evt.midi_message[mm2.evt.size++] = 0x01;
-  mm2.evt.midi_message[mm2.evt.size++] = 0xF7;
-  m_pMCU->SendMsg(&mm2.evt, -1);
-	
+  // 0x21 (Vertical Line Meter global mode) is handled once in the bool wrapper.
 }
 
 void DisplayHandler::enableMCUMeter(bool enable) {
+  bool anyChanged = false;
   for (int i = 1; i < 9; i++) {
-    enableMCUMeter(i, enable);
+    if (m_metersEnabled[i] != enable) {
+      anyChanged = true;
+      enableMCUMeter(i, enable);
+    }
   }
-  safe_call(m_pActualDisplay, resendRow(1));
+
+  // Only send 0x21 0x01 when at least one channel actually transitioned to
+  // enabled.  Sending it on every PanMode activation (even with no state
+  // change) disrupts the MCU display each time the Pan button is pressed.
+  // Do NOT send 0x21 0x00 on disable — that command breaks the MCU display.
+  if (anyChanged && enable) {
+    MIDI_Message mm;
+    addHeader(&mm, 0);
+    mm.evt.midi_message[mm.evt.size++] = 0x21;
+    mm.evt.midi_message[mm.evt.size++] = 0x01;
+    mm.evt.midi_message[mm.evt.size++] = 0xF7;
+    MCU_LOG("METER all 0x21 01 sent");
+    m_pMCU->SendMsg(&mm.evt, -1);
+    safe_call(m_pActualDisplay, resendRow(1));
+  }
 }
 
 void DisplayHandler::addHeader(MIDI_Message *pmm, int row) {

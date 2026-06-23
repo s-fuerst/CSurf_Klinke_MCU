@@ -5,7 +5,16 @@
 
 #include "PlugWindowManager.h"
 #include "PlugMode2ndOptions.h"
-#include "windows.h"
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+#ifndef SWP_NOREDRAW
+#define SWP_NOREDRAW 0
+#endif
+#ifndef SWP_NOSENDCHANGING
+#define SWP_NOSENDCHANGING 0
+#endif
 
 PlugWindowManager::PlugWindowManager(PlugMode* pPlugMode) :
 	m_pPlugMode(pPlugMode)

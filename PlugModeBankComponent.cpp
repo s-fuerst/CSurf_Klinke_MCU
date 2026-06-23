@@ -36,7 +36,7 @@
 
 //[MiscUserDefs] You can add your own user definitions and misc code here...
 #include <src/juce_DefineMacros.h>
-#include "plugmodecomponent.h"
+#include "PlugModeComponent.h"
 //[/MiscUserDefs]
 
 //==============================================================================

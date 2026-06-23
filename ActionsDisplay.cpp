@@ -25,6 +25,7 @@ void ActionsDisplay::activate(int nr)
   switchTo(nr);
 
   m_pOtherDisplay = m_pDisplayHandler->getDisplay();
+  m_pDisplayHandler->enableMCUMeter(false); // VU mode 0x03 writes to row 1 label positions; disable while shown
   m_pDisplayHandler->switchTo(this);
 }
 
@@ -32,6 +33,7 @@ void ActionsDisplay::deactivate()
 {
   if (m_pDisplayHandler->getDisplay() == this) {
     m_pDisplayHandler->switchTo(m_pOtherDisplay);
+    m_pDisplayHandler->enableMCUMeter(true);
   }
 }
 
@@ -70,21 +72,25 @@ void ActionsDisplay::setLabel( int modifiers, int nr, String& newText )
 // Read/Write XML files
 //-------------------------------------------------------------------
 
-File ActionsDisplay::getConfigFile(boolean bLookAtProgramDir) {
+File ActionsDisplay::getConfigFile(bool bLookAtProgramDir) {
+#ifdef _WIN32
   File configDir = File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() + JUCE_T("\\Reaper\\MCU\\Config\\");
-  if (!configDir.exists()/* || !File(configDir.getFullPathName() + JUCE_T("\\GlobalActions.xml")).exists()*/) {
-//    if (bLookAtProgramDir) {
-//      File configDirDll = File::getSpecialLocation(File::currentExecutableFile).getParentDirectory().getFullPathName() + JUCE_T("\\Plugins\\MCU\\Config\\");
-//      if (configDirDll.exists()) {
-//        return File(configDirDll.getFullPathName() + JUCE_T("\\ActionMode.xml")); 
-//      }
-//    }
+  if (!configDir.exists())
     configDir.createDirectory();
-  }
 #ifdef EXT_B
-  return File(configDir.getFullPathName() + JUCE_T("\\GlobalActionsB.xml")); 
+  return File(configDir.getFullPathName() + JUCE_T("\\GlobalActionsB.xml"));
 #else
-  return File(configDir.getFullPathName() + JUCE_T("\\GlobalActions.xml")); 
+  return File(configDir.getFullPathName() + JUCE_T("\\GlobalActions.xml"));
+#endif
+#else
+  File configDir = String(GetResourcePath()) + JUCE_T("/MCU/Config/");
+  if (!configDir.exists())
+    configDir.createDirectory();
+#ifdef EXT_B
+  return File(configDir.getFullPathName() + JUCE_T("/GlobalActionsB.xml"));
+#else
+  return File(configDir.getFullPathName() + JUCE_T("/GlobalActions.xml"));
+#endif
 #endif
 }
 

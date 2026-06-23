@@ -6,8 +6,8 @@
 #include "Tracks.h"
 #include "csurf.h"
 #include "csurf_mcu.h"
-#include <boost\foreach.hpp>
-#include <boost\bind.hpp>
+#include <boost/foreach.hpp>
+#include <boost/bind.hpp>
 #include "Assert.h"
 #include "MultiTrackOptions.h"
 #include "MultiTrackOptions2.h"
@@ -340,12 +340,7 @@ int MediaTrackInfo::getTrackNr(MediaTrack *pMT) {
 }
 
 bool MediaTrackInfo::testPtr(char *pName) {
-  __try {
-    char *test = pName;
-  } __except (EXCEPTION_EXECUTE_HANDLER) {
-    return false;
-  }
-  return true;
+  return pName != NULL;
 }
 
 String MediaTrackInfo::getTrackName(MediaTrack *pMT,
@@ -354,7 +349,7 @@ String MediaTrackInfo::getTrackName(MediaTrack *pMT,
   if (pMT == NULL)
     return String::empty;
   char *pName = (char *)GetSetMediaTrackInfo(pMT, "P_NAME", NULL);
-  if (IsBadStringPtr(pName, 1) == TRUE)
+  if (pName == NULL)
     return String::empty;
   if (testPtr(pName) && pName && *pName != 0) {
     return String(pName);

@@ -4,7 +4,7 @@
  */
 
 #pragma once
-#include "multitrackmode.h"
+#include "MultiTrackMode.h"
 #include "PlugModeOptions.h"
 #include "MultiTrackSelector.h"
 

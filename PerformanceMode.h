@@ -4,7 +4,7 @@
  */
 
 #pragma once
-#include "ccsmode.h"
+#include "CCSMode.h"
 
 class PerformanceMode : public CCSMode {
 public:

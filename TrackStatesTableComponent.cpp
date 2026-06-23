@@ -5,7 +5,7 @@
 
 #include "TrackStatesTableComponent.h"
 #include <boost/bind.hpp>
-#include "CSurf_MCU.h"
+#include "csurf_mcu.h"
 
 #define TS_COLUMN_ON_MCU 8
 #define TS_COLUMN_TRACKNR 1

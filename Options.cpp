@@ -4,6 +4,10 @@
  */
 
 #include "Options.h"
+#include "McuDebugLog.h"
+#ifndef _WIN32
+#include "csurf_mcu.h"
+#endif
 
 #define OPT_NODE_OPTION JUCE_T("option")
 
@@ -33,13 +37,29 @@ void Options::addAttribute(String optionName, String attribute,
 }
 
 void Options::activateSelector() {
-  m_pDisplay->clear();
+  MCU_LOG("OPT activateSelector numOptions=%d", (int)m_optionList.size());
   for (unsigned int i = 0; i < 4 && i < m_optionList.size(); ++i)
-    m_pDisplay->changeText(0, i * 14, m_optionList[i].first.toCString(), 13,
-                           true);
+    MCU_LOG("OPT label[%d]='%s'", i, m_optionList[i].first.toCString());
+
+  m_pDisplay->clear();
+  for (unsigned int i = 0; i < 4 && i < m_optionList.size(); ++i) {
+    // The MCU hardware permanently redraws a separator char at row 0 offset 6
+    // within each 14-char slot (absolute positions 6, 20, 34, 48).  Avoid
+    // placing label text there by splitting across the two 6-char channel
+    // half-fields on each side of the separator.
+    const char *label = m_optionList[i].first.toCString();
+    int base = i * 14;
+    m_pDisplay->changeText(0, base,     label, 6);   // chars 0-5 → positions 0-5
+    const char *p = label + 6;
+    while (*p == ' ') p++;                           // skip word-boundary space
+    m_pDisplay->changeText(0, base + 7, p,     6);   // chars 6+ → positions 7-12
+  }
 
   displaySelectedOptions();
+  m_pDisplayHandler->enableMCUMeter(false);
+  MCU_LOG("OPT calling switchTo");
   m_pDisplayHandler->switchTo(m_pDisplay);
+  MCU_LOG("OPT switchTo done");
 }
 
 bool Options::select(int index) {
@@ -201,6 +221,7 @@ void Options::readOptionFromXml(XmlElement *pOptionNode,
 }
 
 File Options::getConfigFile() {
+#ifdef _WIN32
 #ifdef EXT_B
   File configDir =
       File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() +
@@ -210,9 +231,19 @@ File Options::getConfigFile() {
       File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() +
       JUCE_T("\\Reaper\\MCU\\Config\\");
 #endif
-  if (!configDir.exists()) {
+  if (!configDir.exists())
     configDir.createDirectory();
-  }
-  return File(configDir.getFullPathName() + "\\" + getConfigFileName() +
-              ".xml");
+  return File(configDir.getFullPathName() + JUCE_T("\\") + getConfigFileName() +
+              JUCE_T(".xml"));
+#else
+#ifdef EXT_B
+  File configDir = String(GetResourcePath()) + JUCE_T("/MCU_B/Config/");
+#else
+  File configDir = String(GetResourcePath()) + JUCE_T("/MCU/Config/");
+#endif
+  if (!configDir.exists())
+    configDir.createDirectory();
+  return File(configDir.getFullPathName() + JUCE_T("/") + getConfigFileName() +
+              JUCE_T(".xml"));
+#endif
 }

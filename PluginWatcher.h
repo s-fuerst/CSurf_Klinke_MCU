@@ -12,7 +12,7 @@
 class MediaTrack;
 class CSurf_MCU;
 
-using namespace boost::signals2;
+using boost::signals2::connection;
 
 class PluginWatcher {
 public:
@@ -22,7 +22,7 @@ public:
   void setPlugin(MediaTrack *pMediaTrack, int iSlot);
   void frame(DWORD time);
 
-  typedef signal<void(MediaTrack *, int, int, double, String)>
+  typedef boost::signals2::signal<void(MediaTrack *, int, int, double, String)>
       tParamSignal; // Parameters: MediaTrack, Slot, ParameterNummer, Value,
                     // ValueString
   typedef tParamSignal::slot_type tParamSignalSlot;
@@ -31,7 +31,7 @@ public:
           &slot); // the returned int is the id that must be used for disconnect
   void disconnectParamChange(int connectionId);
 
-  typedef signal<void(MediaTrack *, int, String)>
+  typedef boost::signals2::signal<void(MediaTrack *, int, String)>
       tNameSignal; // Parameters: MediaTrack, Slot, PlugName
   typedef tNameSignal::slot_type tNameSignalSlot;
   int connect2NameChanged(

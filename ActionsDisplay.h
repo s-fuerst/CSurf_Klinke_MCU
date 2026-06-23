@@ -4,7 +4,7 @@
  */
 
 #pragma once
-#include "display.h"
+#include "Display.h"
 #include <src/juce_WithoutMacros.h>
 
 class DisplayHandler;
@@ -27,7 +27,7 @@ public:
 private:
   void updateDisplay();
 
-  File getConfigFile(boolean bLookAtProgramDir);
+  File getConfigFile(bool bLookAtProgramDir);
   bool readConfigFile();
 
   String m_strLabel[16][8];

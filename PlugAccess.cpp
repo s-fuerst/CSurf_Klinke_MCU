@@ -4,7 +4,7 @@
  */
 
 //#include "SnM/stdafx.h"
-#include "boost\foreach.hpp"
+#include "boost/foreach.hpp"
 #include "PlugAccess.h"
 #include "PlugMode.h"
 #include "PlugMap.h"
@@ -65,16 +65,25 @@ void PlugAccess::trackChanged(MediaTrack *pMediaTrack) {
   tTrack2Plug::iterator iterT2P = m_track2Slot.find((unsigned long)pMediaTrack);
   if (iterT2P != m_track2Slot.end()) {
     accessPlugin(pMediaTrack, (*iterT2P).second);
+  } else {
+    // No prior mapping: prefer whichever slot has a floating window open,
+    // otherwise default to slot 0.  This makes "open a plugin then switch
+    // to PlugMode" Just Work without requiring the user to manually select
+    // a slot via the MCU SELECT buttons.
+    int numFX = TrackFX_GetCount(pMediaTrack);
+    if (numFX > 0) {
+      int slotToUse = 0;
+      for (int i = 0; i < numFX; i++) {
+        if (TrackFX_GetFloatingWindow(pMediaTrack, i)) {
+          slotToUse = i;
+          break;
+        }
+      }
+      accessPlugin(pMediaTrack, slotToUse);
+    } else {
+      accessPlugin(NULL, -1);
+    }
   }
-#if EASY_DEBUG
-  else {
-    accessPlugin(pMediaTrack, 0);
-  }
-#else if
-  else {
-    accessPlugin(NULL, -1);
-  }
-#endif
 }
 
 void PlugAccess::accessPlugin(MediaTrack *pMediaTrack, int iSlot,
@@ -338,7 +347,7 @@ void PlugAccess::setParamValueInt(ElementDesc::eType type, int channel,
   int id = getParamID(type, channel);
   if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams(true)) {
     TrackFX_SetParam(m_pPlugTrack, m_iSlot, id,
-                     convertMCU2R(id, min(value, MAX_FADER_VALUE_INT)));
+                     convertMCU2R(id, std::min(value, MAX_FADER_VALUE_INT)));
   }
 }
 

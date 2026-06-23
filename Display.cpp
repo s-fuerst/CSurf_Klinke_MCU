@@ -3,7 +3,7 @@
  * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
  */
 
-#include "boost\smart_ptr\scoped_ptr.hpp"
+#include <boost/smart_ptr/scoped_ptr.hpp>
 #include "Display.h"
 #include "Assert.h"
 #include "csurf_mcu.h"
@@ -39,7 +39,7 @@ void Display::changeText(int row, int pos, const char *text, int pad,
   ASSERT(row < m_numRows);
 
   char *pCenteredText = new char[pad + 1];
-  int textlen = min(pad, (int)strnlen(text, getRowLength(row)));
+  int textlen = std::min(pad, (int)strnlen(text, getRowLength(row)));
   memset(pCenteredText, ' ', pad + 1);
   if (centered)
     strncpy(pCenteredText + ((pad - textlen) / 2), text, textlen);

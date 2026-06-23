@@ -3,12 +3,12 @@
  * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
  */
 
-#include <boost\smart_ptr\scoped_ptr.hpp>
-#include "ccsmode.h"
+#include <boost/smart_ptr/scoped_ptr.hpp>
+#include "CCSMode.h"
 #include "PlugModeSelectors.h"
 #include "PlugModeOptions.h"
 #include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
-#include <boost\tuple\tuple.hpp>
+#include <boost/tuple/tuple.hpp>
 #include <vector>
 #include "Options.h"
 #include "ProjectConfig.h"

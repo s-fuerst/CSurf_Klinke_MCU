@@ -4,7 +4,7 @@
  */
 
 #pragma once
-#include "options.h"
+#include "Options.h"
 
 #define MTO_SHOW JUCE_T("Show")
 #define MTOA_SHOW_ALL JUCE_T("all")

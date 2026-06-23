@@ -5,7 +5,7 @@
 
 #pragma once
 #include "MultiTrackMeterBridge.h"
-#include "ccsmode.h"
+#include "CCSMode.h"
 #include "Tracks.h"
 
 class MediaTrack;

@@ -161,7 +161,7 @@ void ProjectConfig::checkReaProjectChange() {
   MediaTrack *pActualMasterTrack = GetMasterTrack(NULL);
   if (m_pLastMaster != pActualMasterTrack) {
     if (m_pLastMaster != NULL) {
-      store(m_pLastMaster, createXmlDocString());
+      { String s = createXmlDocString(); store(m_pLastMaster, s); }
     }
     if (m_xmlStorage.find(pActualMasterTrack) != m_xmlStorage.end()) {
       m_signalProjectChanged(NULL, FREE);

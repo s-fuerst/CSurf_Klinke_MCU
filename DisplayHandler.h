@@ -32,6 +32,7 @@ public:
   //      void init();
 
   void switchTo(Display *pDisplay);
+  void invalidateHardwareState();
   void updateDisplay(Display *pDisplay, int row, int pos, char const *text,
                      int pad, bool forceUpdate = false);
   Display *getDisplay() const { return m_pActualDisplay; }

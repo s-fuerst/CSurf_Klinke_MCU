@@ -4,8 +4,9 @@
  */
 
 #include "MultiTrackMode.h"
+#include "McuDebugLog.h"
 #include "MultiTrackMeterBridge.h"
-#include "ccsmanager.h"
+#include "CCSManager.h"
 #include "csurf_mcu.h"
 #include "assert.h"
 #include "stdio.h"
@@ -39,7 +40,8 @@ MediaTrack *MultiTrackMode::getMediaTrackForChannel(int channel) {
 }
 
 void MultiTrackMode::frameUpdate() {
-  m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU());
+  if (m_pCCSManager->getDisplayHandler()->getMetersEnabled(1))
+    m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU());
 	
   updateEverything();
 
@@ -47,7 +49,7 @@ void MultiTrackMode::frameUpdate() {
 
   if (Tracks::instance()->getGlobalOffset() >= msize &&
       Tracks::instance()->getGlobalOffset() > 0) {
-    Tracks::instance()->setGlobalOffset(max(msize - 8, 0));
+    Tracks::instance()->setGlobalOffset(std::max(msize - 8, 0));
     // update all of the sliders
     TrackList_UpdateAllExternalSurfaces();
 
@@ -281,37 +283,32 @@ bool MultiTrackMode::buttonRec(int channel, bool pressed) {
       int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
       if (*pRecArm) {
         int *pMonStatus = (int *)GetSetMediaTrackInfo(tr, "I_RECMON", NULL);
-        *pMonStatus = *pMonStatus ? 0 : 1;
-        GetSetMediaTrackInfo(tr, "I_RECMON", (bool *)pMonStatus);
-        CSurf_OnRecArmChange(tr, -1); // workaround for missing gui update
-        CSurf_OnRecArmChange(tr, -1);
+        int newMon = *pMonStatus ? 0 : 1;
+        GetSetMediaTrackInfo(tr, "I_RECMON", &newMon);
+        TrackList_AdjustWindows(false);
       }
     } else if (isModifierPressed(VK_OPTION)) {
       int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
       if (*pRecArm) {
         int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
-        *pRecMode = *pRecMode == 0 ? 2 : 0;
-        GetSetMediaTrackInfo(tr, "I_RECMODE", (bool *)pRecMode);
-        CSurf_OnRecArmChange(tr, -1); // workaround for missing gui update
-        CSurf_OnRecArmChange(tr, -1);
+        int newMode = (*pRecMode == 0) ? 2 : 0;
+        GetSetMediaTrackInfo(tr, "I_RECMODE", &newMode);
+        TrackList_AdjustWindows(false);
       }
     } else if (isModifierPressed(VK_ALT)) {
       int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
       if (*pRecArm) {
         int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
-				if (*pRecMode == 1)
-					*pRecMode = 5;
-				else if (*pRecMode == 5)
-					*pRecMode = 2;
-				else
-					*pRecMode = 1;
-						
-        GetSetMediaTrackInfo(tr, "I_RECMODE", (bool *)pRecMode);
-        CSurf_OnRecArmChange(tr, -1); // workaround for missing gui update
-        CSurf_OnRecArmChange(tr, -1);
+        int newMode = (*pRecMode == 1) ? 5 : (*pRecMode == 5) ? 2 : 1;
+        GetSetMediaTrackInfo(tr, "I_RECMODE", &newMode);
+        TrackList_AdjustWindows(false);
       }
     } else {
-      CSurf_OnRecArmChange(tr, -1);
+      // Explicit toggle — CSurf_OnRecArmChange(-1) doesn't arm on Linux
+      int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
+      int newArm = (*pRecArm) ? 0 : 1;
+      GetSetMediaTrackInfo(tr, "I_RECARM", &newArm);
+      CSurf_OnRecArmChange(tr, newArm);
     }
     updateRecLEDs();
 
@@ -322,6 +319,7 @@ bool MultiTrackMode::buttonRec(int channel, bool pressed) {
 }
 
 bool MultiTrackMode::buttonMute(int channel, bool pressed) {
+  MCU_LOG("MUTE ch=%d pressed=%d", channel, pressed);
   if (!pressed)
     return false;
 
@@ -336,6 +334,7 @@ bool MultiTrackMode::buttonMute(int channel, bool pressed) {
 }
 
 bool MultiTrackMode::buttonSolo(int channel, bool pressed) {
+  MCU_LOG("SOLO ch=%d pressed=%d", channel, pressed);
   if (!pressed)
     return false;
 
@@ -377,7 +376,7 @@ bool MultiTrackMode::buttonSelect(int channel, bool pressed) {
             MediaTrack *track = CSurf_TrackFromID(trackNr, false);
             if (isModifierPressed(VK_SHIFT) ||
                 Tracks::instance()->isTrackInFilter(track))
-              CSurf_OnSelectedChange(track, 1);
+              SetTrackSelected(track, true);
           }
         } else if (m_toTrackNr > m_lastSelectedTrackNr) {
           for (int trackNr = m_lastSelectedTrackNr; trackNr <= m_toTrackNr;
@@ -385,20 +384,27 @@ bool MultiTrackMode::buttonSelect(int channel, bool pressed) {
             MediaTrack *track = CSurf_TrackFromID(trackNr, false);
             if (isModifierPressed(VK_SHIFT) ||
                 Tracks::instance()->isTrackInFilter(track))
-              CSurf_OnSelectedChange(track, 1);
+              SetTrackSelected(track, true);
           }
         }
+        CSurf_OnTrackSelection(tr);
+        TrackList_AdjustWindows(false);
       }
 
     } else if (isModifierPressed(VK_CONTROL)) {
-      CSurf_OnSelectedChange(tr, -1);
+      // Toggle selection of this track (add/remove from multi-select)
+      int *sel = (int *)GetSetMediaTrackInfo(tr, "I_SELECTED", NULL);
+      bool newSel = !(*sel);
+      SetTrackSelected(tr, newSel);
+      if (newSel) CSurf_OnTrackSelection(tr);
+      TrackList_AdjustWindows(false);
       m_lastSelectedTrackNr = MediaTrackInfo::getTrackNr(tr);
     } else {
       m_lastSelectedTrackNr = MediaTrackInfo::getTrackNr(tr);
       m_pCCSManager->getMCU()->UnselectAllTracks();
-
-      // Select this track
-      CSurf_OnSelectedChange(tr, 1);
+      SetTrackSelected(tr, true);
+      CSurf_OnTrackSelection(tr);
+      TrackList_AdjustWindows(false);
     }
 
     if (Tracks::instance()->get2ndOptions()->isOptionSetTo(

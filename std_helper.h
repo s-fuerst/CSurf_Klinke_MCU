@@ -8,7 +8,7 @@
 template<typename K, typename V>
 static K getNthKeyFromMap(unsigned int iPos, std::map<K,V>* pMap) {
         ASSERT(iPos < pMap->size());
-        std::map<K,V>::iterator iterMap;
+        typename std::map<K,V>::iterator iterMap;
         for (iterMap = pMap->begin(); iPos > 0; ++iterMap)
                 iPos--;
         return (*iterMap).first;
@@ -17,7 +17,7 @@ static K getNthKeyFromMap(unsigned int iPos, std::map<K,V>* pMap) {
 template<typename K, typename V>
 static V getNthValueFromMap(unsigned int iPos, std::map<K,V>* pMap) {
         ASSERT(iPos < pMap->size());
-        std::map<K,V>::iterator iterMap;
+        typename std::map<K,V>::iterator iterMap;
         for (iterMap = pMap->begin(); iPos > 0; ++iterMap)
                 iPos--;
         return (*iterMap).second;
@@ -27,7 +27,7 @@ static V getNthValueFromMap(unsigned int iPos, std::map<K,V>* pMap) {
 template<typename K, typename V>
 static int findIndexFromKeyInMap(K key, std::map<K,V>* pMap) {
         int i = 0;
-        for (std::map<K,V>::iterator iterMap = pMap->begin(); iterMap != pMap->end(); ++iterMap) {
+        for (typename std::map<K,V>::iterator iterMap = pMap->begin(); iterMap != pMap->end(); ++iterMap) {
                 if (fabs((*iterMap).first - key) < 0.001) {
                         return i;
                 }

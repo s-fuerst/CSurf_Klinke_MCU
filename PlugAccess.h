@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <boost\array.hpp>
+#include <boost/array.hpp>
 #include "csurf_mcu.h"
 #include <boost/scoped_ptr.hpp>
 #include <src/juce_WithoutMacros.h> // includes everything in juce.h, but

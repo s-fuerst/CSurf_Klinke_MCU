@@ -4,7 +4,7 @@
  */
 
 #pragma once
-#include "options.h"
+#include "Options.h"
 
 #define PMO_MCU_FOLLOW JUCE_T("MCU follow")
 #define PMO_GUI_FOLLOW JUCE_T("GUI follow")

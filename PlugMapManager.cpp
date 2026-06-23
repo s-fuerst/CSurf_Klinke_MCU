@@ -4,7 +4,7 @@
  */
 
 #include <boost/bind.hpp>
-#include <boost\foreach.hpp>
+#include <boost/foreach.hpp>
 #include "PlugMapManager.h"
 #include "PlugMap.h"
 #include "PlugMode.h"
@@ -52,9 +52,15 @@ PlugMapManager::~PlugMapManager(void) {
 }
 
 const File PlugMapManager::getUserMapsLocation() {
+#ifdef _WIN32
   File userMapDir =
       File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() +
       JUCE_T("\\Reaper\\MCU\\PlugMaps\\");
+#else
+  File userMapDir =
+      File::getSpecialLocation(File::userHomeDirectory).getFullPathName() +
+      JUCE_T("/.config/REAPER/MCU/PlugMaps/");
+#endif
 
   if (!userMapDir.exists()) {
     userMapDir.createDirectory();
@@ -64,7 +70,11 @@ const File PlugMapManager::getUserMapsLocation() {
 }
 
 const File PlugMapManager::getInstalledMapsLocation() {
+#ifdef _WIN32
   return File(String(GetResourcePath()) + JUCE_T("\\UserPlugins\\MCU\\PlugMaps\\"));
+#else
+  return File(String(GetResourcePath()) + JUCE_T("/UserPlugins/MCU/PlugMaps/"));
+#endif
 }
 
 void PlugMapManager::initMap() {
