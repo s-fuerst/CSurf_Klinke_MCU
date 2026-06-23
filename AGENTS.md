@@ -112,6 +112,47 @@ Output: `build/reaper_csurf_mcu_klinke.so`. Deploy by copying it to
 (Klinke)"** in Reaper → Preferences → Control/OSC/web. Pass
 `-DMCU_DEBUG_LOG=OFF` to disable the debug log (on by default).
 
+#### Versioning (VERSION file + build counter)
+
+The version string baked into the surface (shown in Reaper's surface list as
+*Mackie Control Protocol (Klinke v… build …)*) comes from a **`VERSION`**
+file at the repo root, not from a hard-coded constant:
+
+```
+# Format: <version> <build-count>
+0.9.1.3 0
+```
+
+- **`<version>`** (e.g. `0.9.1.3`) is bumped **manually** for a release —
+  edit the `VERSION` file (e.g. → `0.9.2.0`). When you bump the version,
+  reset the build-count to `1` (or `0`).
+- **`<build-count>`** is **auto-incremented** on every `cmake` configure and
+  compiled into the binary as `… build N`. The number stored in the file is
+  the build number of the **last** build produced.
+
+At configure time CMake reads `VERSION`, bumps the count, rewrites `VERSION`,
+and generates `build/Version.h` (`#define MCU_VERSION_STRING "v0.9.1.3 build N"`),
+which `csurf_mcu.h` includes and uses in `CSurf_MCU::GetDescString()`.
+
+> **Do not run `cmake ..` without building afterwards** — it bumps the counter
+> without producing a binary. The build flow is always `cmake .. && cmake --build`.
+
+#### Deploying after a build (agent responsibility)
+
+There is **no auto-deploy step in CMake** (so CI, foreign machines, and the
+future Windows/macOS branches are not surprised). Instead, **the agent copies
+the freshly built artifact into the Reaper plugin directory after every
+successful Linux build**. The agent knows the host platform (it ran the
+build), so on Linux it runs:
+
+```bash
+cp build/reaper_csurf_mcu_klinke.so ~/.config/REAPER/UserPlugins/
+```
+
+Reaper must be **fully restarted** (not just reloaded) to pick up the new
+`.so`. On Windows/macOS the deploy target/path differs and the CMake build is
+not wired yet — so deploy only happens on Linux for now.
+
 The CMake build uses **SWELL** (WDL) for the surface-edit dialog on Linux
 (`res_linux.cpp` + `res.rc_mac_dlg`, generated from `res.rc` via
 `WDL/swell/swell_resgen.pl`).
@@ -187,8 +228,10 @@ reaper loads the .dll
   master fader. `ASSERT` (in `Assert.h`) guards channel ranges.
 - **`EXT_B`** is a *compile-time* switch for the extender variant; build the
   main unit and the B unit from the same source.
-- **Version string** is hard-coded in `CSurf_MCU::GetDescString()` — bump it
-  there on release.
+- **Version string** comes from the `VERSION` file (repo root) — see §4. The
+  build counter auto-increments; bump the version part manually for a release.
+  `csurf_mcu.h` uses `MCU_VERSION_STRING` (from generated `Version.h`) in
+  `GetDescString()`.
 - **No auto-format style is enforced;** match the surrounding file's style
   (roughly 2-space indent, `m_` member prefix, `p` pointer-arg prefix).
 
@@ -227,5 +270,6 @@ manual/                                        LaTeX user manual (EN/DE)
 JUCE-changes/                                  patched juce_Config.h + x64 build
 res.rc resource.h                              Windows surface-edit dialog
 reaper_csurf.sln/.vcxproj                      Visual Studio build (current)
+VERSION Version.h.in                          build-counter version source + template
 gplv3.txt notes.org whats_new.{org,txt} readme.txt   license + notes
 ```

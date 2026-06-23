@@ -39,6 +39,55 @@ endforeach()
 option(MCU_DEBUG_LOG "Write button/window debug log to <REAPER_RESOURCE>/mcu_klinke_debug.log" ON)
 
 # =============================================================================
+#  Versioning — VERSION file at the repo root holds "<version> <build-count>".
+#
+#  • version       (e.g. 0.9.1.3): bumped MANUALLY for a release; when bumped,
+#                  reset build-count to 1.
+#  • build-count : auto-incremented on every `cmake` configure and compiled
+#                  into the binary as "... build N". The number stored in the
+#                  file is the build number of the LAST build produced.
+#
+#  The file is rewritten (count++) on each configure — commit it as-is. The
+#  generated header ${CMAKE_BINARY_DIR}/Version.h is included by csurf_mcu.h.
+#  Increment happens at CONFIGURE time (the build flow always runs `cmake ..`
+#  before `cmake --build`, so the count tracks one build cycle at a time).
+# =============================================================================
+set(MCU_VERSION_FILE "${CMAKE_SOURCE_DIR}/VERSION")
+if(NOT EXISTS "${MCU_VERSION_FILE}")
+    file(WRITE "${MCU_VERSION_FILE}" "0.9.1.3 0\n")
+endif()
+file(READ "${MCU_VERSION_FILE}" _vraw)
+string(REGEX REPLACE "\r" "" _vraw "${_vraw}")
+# Find "<version> <count>" directly via regex — robust against comment lines,
+# semicolons inside comments, and stray whitespace. Ignores everything else.
+string(REGEX MATCH "([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)[ \t]+([0-9]+)" _m "${_vraw}")
+set(MCU_VERSION "${CMAKE_MATCH_1}")
+set(_vc "${CMAKE_MATCH_2}")
+if(MCU_VERSION STREQUAL "")
+    set(MCU_VERSION "0.9.1.3")
+    set(_vc "0")
+endif()
+# increment-first model: count stored in the file = last build produced
+math(EXPR MCU_BUILD_COUNT "${_vc} + 1")
+set(MCU_VERSION_DISPLAY "v${MCU_VERSION} build ${MCU_BUILD_COUNT}")
+file(WRITE "${MCU_VERSION_FILE}"
+    "# Format: <version> <build-count>\n"
+    "#\n"
+    "# version       bump MANUALLY for a release (e.g. 0.9.1.3 -> 0.9.2.0).\n"
+    "#               When you bump the version, reset build-count to 1.\n"
+    "# build-count   auto-incremented on every `cmake` configure and compiled into\n"
+    "#               the binary as \"... build N\". The number stored here is the\n"
+    "#               build number of the LAST build produced.\n"
+    "#\n"
+    "# This file is rewritten (count++) on each configure - this is expected; commit\n"
+    "# it as-is. Do NOT run `cmake ..` without building afterwards (it bumps the\n"
+    "# counter without producing a binary). Displayed in Reaper as: v<version> build <count>.\n"
+    "${MCU_VERSION} ${MCU_BUILD_COUNT}\n")
+message(STATUS "MCU version: ${MCU_VERSION_DISPLAY}")
+# generate the header consumed by csurf_mcu.h
+configure_file("${CMAKE_SOURCE_DIR}/Version.h.in" "${CMAKE_BINARY_DIR}/Version.h" @ONLY)
+
+# =============================================================================
 #  JUCE 1.52 amalgamated — compiled as a separate OBJECT library so the old
 #  C++03-era source gets its own (very permissive) flags and -w silencing.
 # =============================================================================
@@ -61,6 +110,7 @@ target_compile_definitions(juce_amalgamated PRIVATE
 add_library(reaper_csurf_mcu_klinke SHARED)
 
 target_include_directories(reaper_csurf_mcu_klinke PRIVATE
+    ${CMAKE_BINARY_DIR}   # generated Version.h (MCU_VERSION_STRING)
     ${SRC_DIR}      # repo root first: csurf.h, reaper_plugin_functions.h, etc.
     ${JUCE_DIR}
     ${SDK_DIR}
@@ -175,15 +225,19 @@ target_link_libraries(reaper_csurf_mcu_klinke PRIVATE
 if(UNIX AND NOT APPLE)
     # --- Linux (baseline) ----------------------------------------------------
     # C++14: the ported source uses C++11+ features (auto, nullptr, lambdas) and
-    # Rothchild's Linux port builds cleanly under gnu++14. Boost 1.39's
-    # shared_ptr has a move-ctor bug under C++11+ (declares move ctors but no
-    # copy ctor → implicit copy ctor deleted → boost::signals2 breaks); we
-    # patch that in fetch_deps.sh. Same flag on both targets to avoid cross-TU
-    # ABI risk.
+    # builds under strict ISO C++14 (gnu++14 was previously used; c++14 is the
+    # portability target). Boost 1.39's shared_ptr has a move-ctor bug under
+    # C++11+ (declares move ctors but no copy ctor → implicit copy ctor
+    # deleted → boost::signals2 breaks); we patch that in fetch_deps.sh.
+    # Same flag on both targets to avoid cross-TU ABI risk.
+    # -std=c++14 (strict ISO, no GNU extensions) is the portability target.
+    # Verified 2026-06-23: builds clean on Linux/GCC with zero errors — the
+    # code relies on no GNU extensions and no _GNU_SOURCE-only POSIX funcs
+    # (no realpath()/strdup() etc. went missing). Same warning set as gnu++14.
     target_compile_options(juce_amalgamated PRIVATE
-        -std=gnu++14 -fPIC -w -fpermissive -Wno-deprecated-declarations)
+        -std=c++14 -fPIC -w -fpermissive -Wno-deprecated-declarations)
     target_compile_options(reaper_csurf_mcu_klinke PRIVATE
-        -std=gnu++14 -fPIC -fvisibility=hidden -fpermissive
+        -std=c++14 -fPIC -fvisibility=hidden -fpermissive
         -Wno-deprecated-declarations -Wno-unused-result
         -Wno-sign-compare -Wno-reorder -Wno-multichar)
     target_link_libraries(reaper_csurf_mcu_klinke PRIVATE X11 Xext pthread dl)

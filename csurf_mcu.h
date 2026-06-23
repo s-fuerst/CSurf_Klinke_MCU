@@ -20,6 +20,7 @@
 #include "Region.h"
 #include "CCSManager.h"
 #include "boost/signals2.hpp"
+#include "Version.h"   // generated: MCU_VERSION_STRING (v<version> build <count>)
 
 using boost::signals2::connection;
 
@@ -469,9 +470,9 @@ public:
 
   const char *CSurf_MCU::GetDescString() {
 #ifdef EXT_B
-    m_descspace.Set("Mackie Control Protocol B (Klinke v0.9.1.3)");
+    m_descspace.Set("Mackie Control Protocol B (Klinke " MCU_VERSION_STRING ")");
 #else
-    m_descspace.Set("Mackie Control Protocol (Klinke v0.9.1.3)");
+    m_descspace.Set("Mackie Control Protocol (Klinke " MCU_VERSION_STRING ")");
 #endif
     char tmp[512];
     sprintf(tmp, " (dev %d,%d)", m_midi_in_dev, m_midi_out_dev);
