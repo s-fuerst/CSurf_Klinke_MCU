@@ -136,6 +136,7 @@ public:
 				m_vpotTouched[i] = false;
 			}
 	}
+	PlugMode *getPlugMode() { return m_pPlugMode; }
 	
 private:
   void elementTouched(EElement fader, int channel, bool touched);

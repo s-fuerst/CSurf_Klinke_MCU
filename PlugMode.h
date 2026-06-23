@@ -114,6 +114,7 @@ public:
   typedef boost::tuple<GUID, int, unsigned int>
       tFav; // GUID, slot, frameTimeOfChange
   tFav getFavorite(unsigned i);
+	bool accessFXFavorite(int slot);
 
   // Helper
   String shortPlugName(const char *pName);

@@ -27,6 +27,7 @@ namespace juce {
 #include "boost/bind.hpp"
 #include "ProjectConfig.h"
 #include "PlugMoveWatcher.h"
+#include "PlugMode.h"
 #include "ButtonManager.h"
 #include "ActionsDisplay.h"
 #include "ActionsDialogComponent.h"
@@ -1318,6 +1319,14 @@ bool CSurf_MCU::GetTouchState(MediaTrack *pMT, int isPan) {
 
 bool CSurf_MCU::ResetAllFaderTouch(MIDI_event_t *evt) {
 	m_pCCSManager->resetAllFaderTouch();
+
+	return true;
+}
+
+bool CSurf_MCU::OpenFXFavorite(MIDI_event_t *evt) {
+  int slot = evt->midi_message[1] - 0x72; // 0 - 7
+
+	m_pCCSManager->getPlugMode()->accessFXFavorite(slot);
 
 	return true;
 }

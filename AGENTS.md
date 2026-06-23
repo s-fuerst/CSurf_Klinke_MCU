@@ -78,6 +78,13 @@ environment variables above. **All three must be set before building.**
   the JUCE 1.52 download with this.
 - `JUCE-changes/Builds/` — an updated JUCE project that adds the **x64**
   target (JUCE 1.52 shipped only Win32).
+- **Linux ComboBox fix** (applied by `fetch_deps.sh`): JUCE 1.52's
+  `LinuxComponentPeer::createWindow()` creates popup windows (combo dropdowns,
+  tooltips) without `override_redirect` on X11, causing modern window managers
+  to withhold `Expose` paint events → empty white dropdown. `fetch_deps.sh`
+  patches `juce_1_52/juce_amalgamated.cpp` to add `swa.override_redirect =
+  True` + `CWOverrideRedirect` for `windowIsTemporary` windows. Idempotent,
+  auto-skipped if already present.
 
 These patches are why you cannot simply drop in a newer JUCE — the code is
 written against the 1.52 API and `juce_Config.h` enables a specific subset

@@ -580,6 +580,36 @@ void PlugAccess::checkFloatWindows() {
   }
 }
 
+void PlugAccess::syncKnownStates() {
+  // Sync chain visible states for all tracks so the next frame update
+  // doesn't detect false changes from deactivate/activate cycles.
+  for (TrackIterator ti; !ti.end(); ++ti) {
+    int chainVisible = TrackFX_GetChainVisible(*ti);
+    if (chainVisible >= 0) {
+      m_knownChainStates[*ti] = chainVisible;
+    } else {
+      m_knownChainStates.erase(*ti);
+    }
+  }
+  // Also check master track
+  MediaTrack *master = GetMasterTrack(NULL);
+  int masterChain = TrackFX_GetChainVisible(master);
+  if (masterChain >= 0) {
+    m_knownChainStates[master] = masterChain;
+  } else {
+    m_knownChainStates.erase(master);
+  }
+
+  // Sync known floating window states
+  for (TrackIterator ti; !ti.end(); ++ti) {
+    int numFX = TrackFX_GetCount(*ti);
+    for (int i = 0; i < numFX; i++) {
+      m_knownWndStates[boost::tuple<MediaTrack *, int>(*ti, i)] =
+          TrackFX_GetFloatingWindow(*ti, i);
+    }
+  }
+}
+
 void PlugAccess::checkChainChanges() {
   static MediaTrack *lastMediaTrack = NULL;
   static int lastSlot = -1;

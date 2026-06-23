@@ -111,6 +111,7 @@ void Actions::addActions() {
   add8ButtonActions("Fader touch", 0x68);
   addButtonAction("Master fader touch", 0x70);
 	addKeyAction("Reset all fader touch", 0x71);
+	add8KeyActions("Open FX Favorite %i", 0x72);
 }
 
 bool Actions::commandCallback(int command, int flag) {

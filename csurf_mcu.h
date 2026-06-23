@@ -398,6 +398,7 @@ public:
   bool OnTouch(MIDI_event_t *evt);
   bool OnFunctionKey(MIDI_event_t *evt);
 	bool ResetAllFaderTouch(MIDI_event_t *evt);
+	bool OpenFXFavorite(MIDI_event_t *evt);
 
   void HandleFunctionKeyForRegionsOrLoops(int fkey, bool loop);
   bool OnGlobalViewKeys(MIDI_event_t *evt);

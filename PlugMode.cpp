@@ -108,6 +108,11 @@ void PlugMode::activate() {
   switchDisplay();
 
   CCSMode::activate();
+
+  // Sync known chain/window states so the next frame update doesn't detect
+  // false changes from deactivate/activate cycles and spuriously switch
+  // the selected track.
+  m_pAccess->syncKnownStates();
 }
 
 void PlugMode::deactivate() {
@@ -941,6 +946,16 @@ bool PlugMode::buttonSelect(int channel, bool pressed) {
       }
     }
   }
+
+  return true;
+}
+
+bool PlugMode::accessFXFavorite(int slot) {
+	MediaTrack *pMT = CSurf_MCU::TrackFromGUID(m_favPlugins[slot].get<0>());
+	if (pMT) {
+		m_lastTimePlugWasSelected = m_pCCSManager->getLastTime();
+		m_pAccess->accessPlugin(pMT, m_favPlugins[slot].get<1>());
+	}
 
   return true;
 }

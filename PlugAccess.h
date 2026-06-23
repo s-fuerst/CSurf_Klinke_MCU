@@ -162,6 +162,7 @@ public:
 
   void checkChainChanges();
   void checkFloatWindows();
+  void syncKnownStates();
 
   FloatingWindowInfo *checkAppearingFloats(MediaTrack *pTrack,
                                            bool accessAppearing = true);
