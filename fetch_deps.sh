@@ -109,6 +109,17 @@ else
     sed -i 's|^#if defined( BOOST_HAS_RVALUE_REFS )$|#if defined( BOOST_HAS_RVALUE_REFS ) \&\& defined(BOOST_SHARED_PTR_ENABLE_MOVE_CTORS)|' "$sp_h"
     echo "  patched shared_ptr.hpp (disabled buggy 1.39 move ctors)"
   fi
+
+  # Patch JUCE 1.52: Linux popup windows (combo dropdowns, tooltips) need
+  # override-redirect on X11, otherwise the window manager withholds Expose
+  # events until focus — which a popup never gets → empty white rectangle.
+  juce_amal="juce_1_52/juce_amalgamated.cpp"
+  if ! grep -q 'CWOverrideRedirect' "$juce_amal"; then
+    sed -i '/swa\.event_mask = getAllEventsMask();/a\
+    swa.override_redirect = (styleFlags \& windowIsTemporary) ? True : False;' "$juce_amal"
+    sed -i 's/| CWEventMask,$/| CWEventMask | CWOverrideRedirect,/' "$juce_amal"
+    echo "  patched juce_amalgamated.cpp (override-redirect for popup windows)"
+  fi
   ok "fetched and verified"
 fi
 
