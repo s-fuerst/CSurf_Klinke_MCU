@@ -46,24 +46,21 @@ void DisplayHandler::sendDifferences(Display *pDisplay, int row,
   if (pDisplay != m_pActualDisplay)
     return;
 
-  int diffStart = -1;
-  char *cpos = m_pHardwareState->getText()[row];
-  const char *org = text;
-
-  for (int i = 0; i < pDisplay->getRowLength(row); i++) {
-    if (*cpos != *text && diffStart == -1) {
-      diffStart = i;
-    }
-    if (*cpos == *text && diffStart != -1) {
-      sendToHardware(row, diffStart, org + diffStart, i - diffStart);
-      diffStart = -1;
-    }
-    *cpos++;
-    *text++;
+  // Send the line as MULTIPLE SMALL SysEx instead of one big message.
+  // Rationale: a long SysEx issued via CSurf_MCU::SendMsg() only delivers
+  // the first ~4 characters on the Linux JACK/MIDI path (observed
+  // 2026-06-23 with iCON QConPro X); everything after is garbled. Splitting
+  // the line into small chunks, each its own SysEx, keeps every message
+  // under the fragmentation threshold so the whole line arrives intact.
+  // Applied to ALL devices for a simple, uniform update model (no diff
+  // memory to drift out of sync). CHUNK is tunable — 4 matched the
+  // observed clean prefix.
+  const int CHUNK = 4;
+  int rowLen = pDisplay->getRowLength(row);
+  for (int pos = 0; pos < rowLen; pos += CHUNK) {
+    int len = std::min(CHUNK, rowLen - pos);
+    sendToHardware(row, pos, text + pos, len);
   }
-  if (diffStart != -1)
-    sendToHardware(row, diffStart, org + diffStart,
-                   pDisplay->getRowLength(row) - diffStart);
 }
 
 void DisplayHandler::sendToHardware(int row, int pos, char const *text,
@@ -107,26 +104,14 @@ void DisplayHandler::sendToHardware(int row, int pos, char const *text,
   m_pMCU->SendMsg(&mm.evt, -1);
 }
 
-void DisplayHandler::invalidateHardwareState() {
-  for (int row = 0; row < 4; row++)
-    memset(m_pHardwareState->getText()[row], 1, m_pHardwareState->getRowLength(row));
-}
-
 void DisplayHandler::switchTo(Display *pDisplay) {
   if (m_pActualDisplay == pDisplay)
     return;
 
-  // Disable VU meters on every display change; PanMode::updateDisplay re-enables them.
-  enableMCUMeter(false);
+	m_pActualDisplay = pDisplay;
+	pDisplay->activate();
 
-  m_pActualDisplay = pDisplay;
-  pDisplay->activate();
-
-  // Invalidate row 0 separator positions so boot animation underscores are cleared.
-  // Row 1 separators are owned by VU meter hardware (mode 0x03) — don't touch them.
-  char *row0 = m_pHardwareState->getText()[0];
-  for (int sep = 6; sep < 55; sep += 7)
-    row0[sep] = 1;
+	memset(m_pHardwareState->getText()[1], 1, pDisplay->getRowLength(0));
 }
 
 void DisplayHandler::enableMCUMeter(int channel, bool enable) // channel is 1 based
@@ -147,37 +132,28 @@ void DisplayHandler::enableMCUMeter(int channel, bool enable) // channel is 1 ba
   mm.evt.midi_message[mm.evt.size++] = 0x20;
   mm.evt.midi_message[mm.evt.size++] = 0x00 + channel - 1;
 	//  mm.evt.midi_message[mm.evt.size++] = enable ? 0x07 : 0x01;
-  mm.evt.midi_message[mm.evt.size++] = enable ? 0x03 : 0x00;
+  mm.evt.midi_message[mm.evt.size++] = enable ? 0x03 : 0x01;
   mm.evt.midi_message[mm.evt.size++] = 0xF7;
   MCU_LOG("METER ch=%d enable=%d -> 0x20 sent", channel, (int)enable);
   m_pMCU->SendMsg(&mm.evt, -1);
 
-  // 0x21 (Vertical Line Meter global mode) is handled once in the bool wrapper.
+  //  F0 00 00 66 14 21 01 F7       : Vertical Line Meter
+  MIDI_Message mm2;
+
+  addHeader(&mm2, 0);
+
+  mm2.evt.midi_message[mm2.evt.size++] = 0x21;
+  mm2.evt.midi_message[mm2.evt.size++] = 0x01;
+  mm2.evt.midi_message[mm2.evt.size++] = 0xF7;
+  m_pMCU->SendMsg(&mm2.evt, -1);
+
 }
 
 void DisplayHandler::enableMCUMeter(bool enable) {
-  bool anyChanged = false;
   for (int i = 1; i < 9; i++) {
-    if (m_metersEnabled[i] != enable) {
-      anyChanged = true;
-      enableMCUMeter(i, enable);
-    }
+    enableMCUMeter(i, enable);
   }
-
-  // Only send 0x21 0x01 when at least one channel actually transitioned to
-  // enabled.  Sending it on every PanMode activation (even with no state
-  // change) disrupts the MCU display each time the Pan button is pressed.
-  // Do NOT send 0x21 0x00 on disable — that command breaks the MCU display.
-  if (anyChanged && enable) {
-    MIDI_Message mm;
-    addHeader(&mm, 0);
-    mm.evt.midi_message[mm.evt.size++] = 0x21;
-    mm.evt.midi_message[mm.evt.size++] = 0x01;
-    mm.evt.midi_message[mm.evt.size++] = 0xF7;
-    MCU_LOG("METER all 0x21 01 sent");
-    m_pMCU->SendMsg(&mm.evt, -1);
-    safe_call(m_pActualDisplay, resendRow(1));
-  }
+  safe_call(m_pActualDisplay, resendRow(1));
 }
 
 void DisplayHandler::addHeader(MIDI_Message *pmm, int row) {

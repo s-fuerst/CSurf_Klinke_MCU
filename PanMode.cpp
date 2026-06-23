@@ -15,6 +15,8 @@ PanMode::PanMode(CCSManager *pManager) : MultiTrackMode(pManager) {}
 PanMode::~PanMode(void) {}
 
 void PanMode::activate() {
+	m_pCCSManager->getDisplayHandler()->enableMCUMeter(true);
+
 	CCSMode::activate();
 }
 
@@ -41,8 +43,7 @@ bool PanMode::vpotMoved(int channel, int numSteps) {
 
 void PanMode::updateDisplay() {
 	m_pCCSManager->switchToDisplay(this, m_pDisplay);
-	m_pCCSManager->getDisplayHandler()->enableMCUMeter(true);
-
+	
   MultiTrackMode::updateDisplay();
 	//  if (! m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_MACKIE_LEVEL_METER)) {
     for (int iTrack = 1; iTrack < 9; iTrack++) {

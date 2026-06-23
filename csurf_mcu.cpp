@@ -904,9 +904,14 @@ CSurf_MCU::~CSurf_MCU() {
 	for(int i=0; i < 9; i++)
 		SendMidi(0xe0 + i, 0, 0, -1);
 
-	m_pDisplayHandler->sendToHardware(0, 0, "                        Goodbye                          ", 55);
+	// Write goodbye lines in 4-char chunks (same SysEx-fragmentation workaround
+	// as DisplayHandler::sendDifferences). Full-line SysEx via CSurf_MCU::SendMsg()
+	// only delivers the first ~4 chars on the Linux JACK/MIDI path.
+	for (int pos = 0; pos < 55; pos += 4)
+		m_pDisplayHandler->sendToHardware(0, pos, "                        Goodbye                          " + pos, std::min(4, 55 - pos));
 	for(int i=1; i<4; i++)
-		m_pDisplayHandler->sendToHardware(i, 0, "                                                       ", 55);
+		for (int pos = 0; pos < 55; pos += 4)
+			m_pDisplayHandler->sendToHardware(i, pos, "                                                       " + pos, std::min(4, 55 - pos));
 
 	// turn off the meter bridge
 	for(int i=0; i < 8; i++) {

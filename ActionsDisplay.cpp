@@ -25,7 +25,6 @@ void ActionsDisplay::activate(int nr)
   switchTo(nr);
 
   m_pOtherDisplay = m_pDisplayHandler->getDisplay();
-  m_pDisplayHandler->enableMCUMeter(false); // VU mode 0x03 writes to row 1 label positions; disable while shown
   m_pDisplayHandler->switchTo(this);
 }
 
@@ -33,7 +32,6 @@ void ActionsDisplay::deactivate()
 {
   if (m_pDisplayHandler->getDisplay() == this) {
     m_pDisplayHandler->switchTo(m_pOtherDisplay);
-    m_pDisplayHandler->enableMCUMeter(true);
   }
 }
 
