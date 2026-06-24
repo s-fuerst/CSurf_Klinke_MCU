@@ -354,16 +354,18 @@ bool CSurf_MCU::OnJogWheel(MIDI_event_t *evt) {
   if ((evt->midi_message[0] & 0xf0) == 0xb0 &&
       evt->midi_message[1] == 0x3c) // jog wheel
 		{
+			// MCU jog sends 0x41-0x7F for backward, 0x01-0x3F for forward.
+			// Use the lower 6 bits as signed speed so fast turns move further
+			// per event (1..63 steps) than slow turns.
 			int dir;
-			// MCU jog sends 0x41-0x7F for backward, 0x01-0x3F for forward
 			if (evt->midi_message[2] >= 0x41) {
-				dir = -1;
+				dir = -(evt->midi_message[2] & 0x3F);
 				if (IsNoModifierPressed()) {
 					CSurf_OnRew(m_mackie_arrow_states & ARROW_STATE_SCRUB);
 					return true;
 				}
 			} else if (evt->midi_message[2] >= 0x01) {
-				dir = 1;
+				dir = evt->midi_message[2] & 0x3F;
 				if (IsNoModifierPressed()) {
 					CSurf_OnFwd(m_mackie_arrow_states & ARROW_STATE_SCRUB);
 					return true;
@@ -1370,14 +1372,15 @@ bool CSurf_MCU::IsModifierPressed(int key) {
   ASSERT_M(key == VK_SHIFT || key == VK_OPTION || key == VK_CONTROL ||
 					 key == VK_ALT,
            "Only for Modifier");
-  // Use IsButtonPressed (m_button_pressed[] in ButtonManager) rather than the
-  // derived s_mackie_modifiers — the button array is updated on every MIDI
-  // event including note-off, so it can't stay stuck across operations.
   if (m_midiin && !m_is_mcuex) {
-    if (key == VK_SHIFT)   return IsButtonPressed(B_SHIFT)   || IsKeyboardPressed(VK_SHIFT);
-    if (key == VK_OPTION)  return IsButtonPressed(B_OPTION)  || IsKeyboardPressed(VK_MENU);
-    if (key == VK_CONTROL) return IsButtonPressed(B_CONTROL) || IsKeyboardPressed(VK_CONTROL);
-    if (key == VK_ALT)     return IsButtonPressed(B_ALT)     || IsKeyboardPressed(VK_MENU);
+    if (key == VK_SHIFT)
+      return (s_mackie_modifiers & 1) || IsKeyboardPressed(VK_SHIFT);
+    if (key == VK_OPTION)
+      return !!(s_mackie_modifiers & 2) || IsKeyboardPressed(VK_MENU);
+    if (key == VK_CONTROL)
+      return !!(s_mackie_modifiers & 4) || IsKeyboardPressed(VK_CONTROL);
+    if (key == VK_ALT)
+      return !!(s_mackie_modifiers & 8) || IsKeyboardPressed(VK_MENU);
   }
 
   return false;
@@ -1444,10 +1447,19 @@ bool CSurf_MCU::OnNameValueDC(MIDI_event_t *evt) {
 }
 
 void CSurf_MCU::UnselectAllTracks() {
-  int n = CSurf_NumTracks(false);
-  for (int i = 0; i <= n; i++) {
-    MediaTrack *t = CSurf_TrackFromID(i, false);
-    if (t) SetTrackSelected(t, false);
+  // Clear master track
+  CSurf_OnSelectedChange(CSurf_TrackFromID(0, false), 0);
+  // Clear already selected tracks
+  SelectedTrack *i = GetSelectedTracks();
+  while (i) {
+    // Call to OnSelectedChange will cause 'i' to be destroyed, so go ahead
+    // and get 'next' now
+    SelectedTrack *next = i->next;
+    MediaTrack *track = i->track();
+
+    if (track)
+      CSurf_OnSelectedChange(track, 0);
+    i = next;
   }
 }
 
