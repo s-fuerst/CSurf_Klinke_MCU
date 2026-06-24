@@ -45,6 +45,5 @@ ipch/
 /boost_1_39_0/
 /reaper-sdk/
 
-# --- Local-only (agent memory + unused SWELL regen byproduct) ---
-/MEMD.md
+# --- Local-only (unused SWELL regen byproduct) ---
 /res.rc_mac_menu

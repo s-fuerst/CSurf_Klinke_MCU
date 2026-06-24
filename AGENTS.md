@@ -9,6 +9,21 @@ help is expected and encouraged. The project is complex and the
 revival touches many moving parts; a quick question can save hours of
 guesswork.
 
+### ⚠️ Language rule (HIGH PRIORITY — read before writing anything)
+
+Conversations with the maintainer may be in German, but **everything
+written into a file MUST be in English — no exceptions.** This covers
+all of it:
+
+- **Source code** — identifiers, strings, log messages
+- **Comments** — inline (`//`, `/* */`), file headers, TODO/FIXME notes
+- **Commit messages** (already required to be English; restated here)
+- **Docs, README, AGENTS.md, manual text, MEMD.md entries**
+- **Generated code, config files, shell scripts**
+
+Never write German into a file — not even a single comment. When in
+doubt, write it in English.
+
 ## 1. What this project is
 
 **CSurf_Klinke_MCU** is a [Reaper](https://www.reaper.fm/) *control surface

@@ -1,0 +1,84 @@
+# Project Memory
+
+## Decisions
+
+- 2026-06-22: Revival goal: make CSurf_Klinke_MCU build/run cross-platform (Windows, macOS, Linux) while KEEPING the existing dependency versions (JUCE 1.52, Boost ≥1.39). Cross-platform build system (likely CMake) is to be established; the VS2019 .vcxproj remains the current source of truth until then. Dependency download links TBD (user to provide).
+- 2026-06-22: Port approach = HYBRID: start from our pristine master (commit ceaa4a5, v0.9.1.3), cherry-pick Rothchild's CMake + res_linux.cpp (SWELL) + the cross-platform bug fixes from https://codeberg.org/Rothchild/csurf_klinke_mcu_linux (same base commit ceaa4a5). Rothchild's blueprint is the 16-step klinke-mcu-linux-rebuild-prompt.md. Do NOT inherit Linux-only bits wholesale; extend CMake to Windows + macOS ourselves.
+- 2026-06-22: Platform target order: Linux first (build+test via WSL Ubuntu on the Windows machine), then Windows, then macOS last. macOS follows Linux because JUCE 1.52 already supports macOS; Linux/X11 was the hard part Rothchild solved.
+- 2026-06-22: Build system strategy: one CMakeLists.txt drives all platforms, run natively per-target (GCC in WSL for Linux .so, MSVC on Windows for .dll, Clang/Xcode on macOS for .dylib). Do NOT cross-compile the Windows DLL from WSL via MinGW (too much friction with res.rc + JUCE Win32 GUI); use native MSVC. CMake replaces the old .vcxproj as source of truth.
+- 2026-06-23: C++ standard = -std=c++14 (strict ISO, was gnu++14). Verified Linux/GCC build is clean (0 errors) under strict mode — code uses NO GNU extensions and NO _GNU_SOURCE-only POSIX funcs, so the switch was safe and improves cross-compiler portability for the upcoming Windows/macOS branches. Same warning set as gnu++14.
+- 2026-06-23: Versioning = VERSION file (repo root) with "<version> <build-count>". Version part manual (bump for release, reset count), build-count auto-increments per `cmake` configure (increment-first: file holds last-build number). CMake generates build/Version.h (#define MCU_VERSION_STRING) consumed by csurf_mcu.h GetDescString. Display: "v0.9.1.3 build N". Chose configure-time increment (not build-time custom-target) because the build flow always runs `cmake ..` first → one increment per build cycle, simpler, no extra script. Parsing = regex (robust vs comment semicolons), NOT line-split-on-semicolon.
+
+## Active Context
+
+- Linux CMake baseline: WORKING END-TO-END. Build: `cd build && cmake .. -DCMAKE_BUILD_TYPE=Release && cmake --build . -- -j$(nproc)`
+- Deploy: `cp build/reaper_csurf_mcu_klinke.so ~/.config/REAPER/UserPlugins/`
+- Run: `cd /home/fuerst/opt/REAPER && GDK_BACKEND=x11 ./reaper`
+- Hardware: iCON QConPro X (2 displays à 2x55, CONFIG_FLAG_PROX). Verification complete.
+- Build-system TODOs: Windows CMake (MSVC), macOS CMake (Clang), cosmetic warnings.
+- Versioning: VERSION file + cmake configure increment → build/Version.h.
+- Open bugs: JUCE ComboBox (SWELL/JUCE-1.52-X11-PopupMenu).
+- Open TODOs: logging default OFF for release; possibly tune CHUNK larger; define release workflow.
+- SESSION-START REMINDER (high priority): open display bug — on switching to PlugMode the second (lower) display of the iCON QConPro X does not update (rows 2,3 stay stale). It worked in origin/master (ceaa4a5). Main suspected difference: SysEx chunking in DisplayHandler::sendDifferences (commit 35bf711, CHUNK=4) which replaced the diff-based master logic. TODO task #1 exists with analysis + 3 solution variants. User went to bed (2026-06-24); remind on next session start.
+- Two new runtime bugs after fix-1-revert (commit 814ae5d), TODO #2 and #3:
+- #2 Stuck modifier keys: SHIFT/OPTION/CONTROL/ALT stay pressed. Fix 3 (Rothchild) was justified — s_mackie_modifiers really does stick.
+- #3 Releasing the FX-mode button (VPOT assign): top display (rows 0,1) does not switch back to previous content.
+- Common suspected cause: the iCON QConPro X sends a real Note Off (0x80) for button-RELEASE, not the MCU-standard Note-On-Vel-0. After the fix-1-revert, ButtonManager::dispatchMidiEvent filters out 0x80 → OnKeyModifier/OnVPOTassign-release never run. If confirmed, variant 2 (Note-Off normalization only for the affected CCs, e.g. 0x46-0x49 modifier + 0x28-0x2d VPOT-assign) would likely fix BOTH bugs. Connection to the PlugMode rows-2/3 display bug (TODO #1) is unclear — that one is a SysEx-chunking suspicion.
+
+## Bugs & Fixes
+
+- 2026-06-22: RESOLVED — GUID operator==/!=: added inline memcmp-based operator== and operator!= to csurf_mcu.h (after GUID_MASTER decl). SWELL's _GUID is a plain struct with no operators; Windows GUID has them. Fixed all failing sites: csurf_mcu.cpp:186, PlugMode.cpp:889/1089/1125, PlugModeSelectors.cpp:161.
+- 2026-06-22: RESOLVED — std_helper.h typename: added `typename` before `std::map<K,V>::iterator` at lines 13, 24, 37. Dependent type in template context requires typename under C++11. Not actually a GCC extension issue — -fpermissive was masking it.
+- 2026-06-22: RESOLVED — windows.h shim shadowing: moved repo-root windows.h → posix_shims/windows.h. CMakeLists.txt adds -Iposix_shims only if(NOT WIN32). On Windows, the real SDK windows.h is found normally; no shadowing. Deleted old repo-root windows.h.
+- 2026-06-22: RESOLVED — SWP_NOREDRAW / SWP_NOSENDCHANGING not declared: SWELL doesn't provide these SetWindowPos flags. Defined as 0 (no-op) in csurf_mcu.h (after VK_ defines). SWELL's SetWindowPos ignores unrecognised flag bits.
+- 2026-06-22: RESOLVED — Selector.cpp constructor/destructor conflict: Selector.cpp defines no-arg ctor + destructor; Selector.h defines inline ctor(DisplayHandler*) + inline dtor. cpp is entirely redundant (no-op body, conflicting signature). Removed Selector.cpp from CMakeLists.txt source list.
+- 2026-06-22: RESOLVED — ProjectConfig.cpp:164 rvalue-to-lvalue-ref: store() took String& but was passed createXmlDocString() rvalue. Changed store() signature to const String& in both header and cpp.
+- 2026-06-22: RESOLVED — Tracks.cpp __try/__except + IsBadStringPtr: Windows-only SEH and pointer validation. testPtr() now returns true on !WIN32 (REAPER returns valid pointers on Linux). IsBadStringPtr call guarded by #ifdef _WIN32.
+- 2026-06-22: RESOLVED — Region.cpp process.h include: Windows-only header, not used by the code. Guarded with #ifdef _WIN32.
+- 2026-06-22: REMAINING WARNINGS (non-blocking): (1) extra qualification 'CSurf_MCU::' on GetTypeString/GetDescString/GetConfigString in csurf_mcu.h — harmless; (2) JUCE template-body warning in juce_AudioDataConverters.h — harmless; (3) Wwrite-strings warnings in SendMode/ReceiveMode — harmless; (4) void* to int precision loss in Tracks.cpp getTrackNr — harmless on 32-bit track numbers.
+- 2026-06-22: CRASH ROOT CAUSE found — DisplayHandler::sendToHardware() dereferenced m_pActualDisplay without NULL check. When MIDI device init fails (no hardware / wrong device), m_pActualDisplay stays NULL → SIGSEGV on first PanMode::activate(). Fix was Rothchild bug fix #10. This was THE crash on "Add control surface → OK".
+- 2026-06-22: Rothchild's 10 runtime bug fixes now in our tree: (1) ButtonManager note-off velocity, (2) jog wheel range, (3) stuck modifier keys, (4) JUCE event pump in Run(), (5) SHIFT+RECARM, (6) track selection CSurf_OnTrackSelection, (7) plugin auto-selection, (8) PlugMode editor trackChanged, (9) PlugMap Linux paths, (10) NULL display pointer guard (THE crash fix). Plus DisplayHandler meter/VU fixes (0x21 handling, separator invalidation).
+- 2026-06-23: JUCE ComboBox bug: SOLVED (build 10). Cause: JUCE-1.52-LinuxComponentPeer created popup windows without override-redirect on X11. Modern window managers withheld Expose paint events because the dropdown never got focus → empty white rectangle. Fix: swa.override_redirect=True for windowIsTemporary windows + CWOverrideRedirect in the XCreateWindow mask. Fix lives in fetch_deps.sh (idempotent sed patch) since juce_1_52/ is gitignored.
+- 2026-06-23: a2jmidid LED bug: a2jmidid converts Note On velocity 0 → Note Off (issue jackaudio/a2jmidid#14). MCU hardware ignores Note Off for LED control → LEDs never turn off and never blink. Fix: in SendMidi(), velocity 0x00 with Note-On status (0x90-0x9F) is mapped to 0x02; all direct m_midiout->Send(0x90,...) calls replaced with SendMidi(...); DropState::updateMCU() maps LED_OFF inline to 0x02 (since CSurf_MCU is an incomplete type there). Affected: PROX devices with a2jmidid; the JACK-MIDI bridge is not affected.
+- 2026-06-23: a2jmidid LED bug NOT fixable via velocity translation (the velocity-0x02 approach failed — the hardware does not treat 0x02 as OFF). Instead: a known-issues entry in the manual + a2jmidid removed from start_reaper.sh. Workaround: JACK-MIDI bridge or direct ALSA routing via aconnect.
+- 2026-06-23: PipeWire-JACK crash: without a2jmidid, PipeWire's JACK emulation crashes intermittently at startup (SIGSEGV in process_empty, pipewire-jack.c:1783). a2jmidid (even unused) prevents the crash — the extra JACK-MIDI ports stabilize PipeWire's buffer allocation. Detailed analysis and backtrace in PipeWire-JACK-Crash.md. Not solved, deferred for later analysis.
+
+## Changelog
+
+- 2026-06-22: Linux CMake baseline scaffolding in place (not yet compiled — needs WSL build host):
+- 2026-06-22: fetch_deps.sh sources JUCE 1.52 (github julianstorer/JUCE tag 1.52), REAPER SDK (justinfrankel/reaper-sdk sdk/ + justinfrankel/WDL → reaper-sdk/WDL), Boost 1.39.0 (archives.boost.io). Idempotent, gitignored.
+- 2026-06-22: CMakeLists.txt: Linux/GCC baseline working; WIN32/APPLE branches are honest FATAL_ERROR stubs. Validated: parses cleanly, deps detected, compiler found — only find_package(Freetype) aborts (no dev headers in agent sandbox; expected).
+- 2026-06-22: res_linux.cpp + McuDebugLog.h created (verbatim from Rothchild). res.rc_mac_dlg generated via reaper-sdk/WDL/swell/swell_resgen.pl from res.rc (committed, not gitignored).
+- 2026-06-22: .gitignore: added /build/, deps, MEMD.md, res.rc_mac_menu.
+- 2026-06-22: DEP SOURCING NOTE: the Stenzel Bitbucket fork (Rothchild's "simplest" source for juce_1_52/ + reaper-sdk/) returns 404 — DEAD. Used canonical upstream instead (tag 1.52 for JUCE; justinfrankel/reaper-sdk + justinfrankel/WDL). github "juce-1.52" BRANCH does not exist; the TAG "1.52" does.
+- 2026-06-22: NEXT: user runs the actual build in WSL (needs sudo apt for libfreetype-dev/libx11-dev + cmake). Baseline-first: confirm .so builds + loads in Reaper, THEN apply Rothchild's cross-platform bug fixes as separate commits.
+- 2026-06-22: Case-sensitivity (Windows→Linux): 16 lowercase includes → correct case. e.g. ccsmanager.h→CCSManager.h, display.h→Display.h, vpot_led.h→VPOT_LED.h, tracks.h→Tracks.h, etc. Applied via sed to project .h/.cpp only (files derived from filesystem so nothing correct got touched). NOT in CMake — direct source edits.
+- 2026-06-22: signal<> ambiguity: 7 `signal<` → `boost::signals2::signal<` (POSIX signal() from JUCE-pulled <signal.h> collides with boost::signals2::signal via `using namespace boost::signals2`). Files: csurf_mcu.h, PlugMoveWatcher.h, PluginWatcher.h, ProjectConfig.h, Tracks.h.
+- 2026-06-22: Boost 1.39 shared_ptr move-ctor bug: patched vendored boost_1_39_0/boost/smart_ptr/shared_ptr.hpp line 336: `#if defined( BOOST_HAS_RVALUE_REFS )` → `#if defined( BOOST_HAS_RVALUE_REFS ) && defined(BOOST_SHARED_PTR_ENABLE_MOVE_CTORS)`. Known Boost 1.39 bug: declares move ctors w/o copy ctor → C++11 deletes copy → boost::signals2 breaks. Fix reproducible in fetch_deps.sh (idempotent grep guard + sed). Compile with -std=gnu++11 (NOT gnu++03: code uses auto/nullptr/lambda; NOT gnu++14: not needed).
+- 2026-06-22: Backslash includes → forward slash: 13 occurrences (boost\foreach.hpp etc.) in 11 files. Windows-only path separators.
+- 2026-06-22: Assert.h line 1: `<Windows.h>` → `<windows.h>`.
+- 2026-06-22: windows.h SWELL shim: NEW file windows.h at repo root → includes "swell.h". Project includes <windows.h> (Win32 convention); SWELL has no windows.h. Assert.h/Actions.cpp/CCSManager.cpp/Region.cpp use it. CAUTION for Windows port: this shim would shadow real windows.h — WIN32 CMake branch must exclude it.
+- 2026-06-22: boolean→bool: ActionsDisplay.h:30 + ActionsDisplay.cpp:73 (boolean is a Mac/Win typedef, undeclared on Linux).
+- 2026-06-22: VK_LMENU/VK_RMENU: added #defines in csurf_mcu.h (after VK_ALT def), both → VK_MENU (SWELL only exposes VK_MENU).
+- 2026-06-22: using std::min; using std::max; added in csurf_mcu.h (after `using namespace boost::signals2;`). -DNOMINMAX removes SWELL's min/max macros so 8 unqualified min()/max() calls need std:: resolution. JUCE pulls in <algorithm>.
+- 2026-06-22: res.rc_mac_menu: regenerated (was deleted); content is empty `\n//EOF\n`. csurf_main.cpp:388 includes it.
+- 2026-06-22: == CMakeLists.txt state ==
+- 2026-06-22: Linux branch uses -std=gnu++11. WIN32/APPLE are FATAL_ERROR stubs. Comment block explains the Boost/C++11 rationale.
+- 2026-06-22: ButtonManager.cpp + juce_amalgamated compile clean in isolation under gnu++11 + patch.
+- 2026-06-22: LINUX BUILD SUCCESSFUL — reaper_csurf_mcu_klinke.so (9.2 MB) compiles and links clean from scratch. All 65 source files + juce_amalgamated compile with gnu++11. Resolved: GUID operators, std_helper typename, windows.h shim → posix_shims/, SWP_* defines, Selector.cpp removal, ProjectConfig const-ref, SEH/IsBadStringPtr guards, process.h guard, case-sensitive include fix.
+- 2026-06-23: Switched -std=gnu++14 → -std=c++14 (strict ISO) in CMakeLists.txt for both juce_amalgamated + reaper_csurf_mcu_klinke targets. Verified: clean build on Linux/GCC, ZERO errors, same warning set as before. Portability target met — MSVC/Clang now get a predictable strict-ISO standard.
+- 2026-06-23: Deploy convention: NO auto-deploy in CMake (keeps CI/Windows/macOS clean). The AGENT copies build/reaper_csurf_mcu_klinke.so to ~/.config/REAPER/UserPlugins/ after each successful Linux build (documented in AGENTS.md §4). Reaper needs full restart to reload the .so.
+- 2026-06-23: Integrated from origin/master (commits ed25356 + 5234947): feature "8 FX Favorites" (actions for opening FX favorites via CC 0x72-0x79) + bugfix "syncKnownStates" (prevents a wrong track switch when activating FX mode by resetting the chain/window-state detection). Version bumped to 0.9.1.4 (VERSION file). Build & deploy successful.
+- 2026-06-23: a2jmidid LED bug fixed. All LED-OFF messages (Note On velocity 0) are now sent as velocity 0x02 to work around the a2jmidid conversion (Note On vel 0 → Note Off). Affects: SetLED, EmulateBlinkingLEDs, all transport/auto-mode/display LEDs. DropState::updateMCU maps LED_OFF inline (CSurf_MCU is an incomplete type there).
+
+## Patterns
+
+- User can run sudo commands when requested — just tell them what to run and they'll execute it. No sudo password prompt needed from agent side.
+- Version source = VERSION file (repo root), NOT hard-coded. Format "<version> <build-count>". Bump version manually (reset count); count auto-increments per `cmake` configure. Generated build/Version.h → MCU_VERSION_STRING in csurf_mcu.h GetDescString. AGENTS.md §4 documents it.
+- Deploy is the AGENT's job, not CMake's: after a successful Linux build, `cp build/reaper_csurf_mcu_klinke.so ~/.config/REAPER/UserPlugins/`. No CMake auto-deploy (keeps CI/Windows/macOS clean). Reaper needs full restart to reload.
+- Logging architecture: MCU_DEBUG_LOG = standalone CMake OPTION (default ON), NOT tied to CMAKE_BUILD_TYPE → currently EVERY build logs, including Release. When OFF, MCU_LOG(...) compiles to ((void)0) (see McuDebugLog.h #else) → zero runtime cost. 16 call sites in 6 files; most verbose: sendToHardware logs every text write (ROW0/ROW1 snd). Release goal: default OFF, ON only for debug builds.
+- Build-flow rule (always run both steps, otherwise no build-count increment): `cd build && cmake .. -DCMAKE_BUILD_TYPE=Release && cmake --build . -- -j$(nproc)`. The increment happens ONLY in the configure step (`cmake ..`), NOT in the build step. Running only `cmake --build` (incremental) without `cmake ..` first produces a build without an incremented counter (happened 2026-06-23: build 2 deployed instead of 3). Mnemonic: "configure = increments, build = links".
+- Commit messages always in English (user requirement, 2026-06-23).
+- No commits without explicit user instruction (user requirement, 2026-06-23).
+- Always write links out in full (https://...), not as Markdown hyperlinks [text](URL) — the user cannot click Markdown links.
+- HIGH-PRIORITY LANGUAGE RULE (2026-06-25): the dialog with the user may be in German, but EVERYTHING written into a file (source, comments, strings, logs, commit messages, docs, AGENTS.md, manual, MEMD.md, generated code, configs, scripts) MUST be in English. Never write German text into a file, not even comments. Anchored at the very top of AGENTS.md as "⚠️ Language rule (HIGH PRIORITY)".
