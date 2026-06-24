@@ -1,0 +1,18 @@
+\section{Known Issues}\label{knownissues}
+
+\subsection{Linux}
+
+\subsubsection{a2jmidid LED Control Bug}\label{a2jmidid}
+
+The ALSA-to-JACK MIDI bridge \texttt{a2jmidid} has a known issue
+(\href{https://github.com/jackaudio/a2jmidid/issues/14}{jackaudio/a2jmidid\#14})
+that interferes with the Mackie Control LED protocol: it automatically
+converts Note On messages with velocity 0 to Note Off messages. The
+MCU protocol uses Note On velocity 0 to turn LEDs off, and the
+hardware does not respond to Note Off messages for LED control.
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "../mcu_klinke_manual"
+%%% End:

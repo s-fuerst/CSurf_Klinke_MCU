@@ -845,6 +845,7 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
   m_selected_tracks = NULL;
 
   m_mcu_timedisp_lastforce = 0;
+  m_frameupd_lastrun = 0;
 
   if (errStats) {
     if (m_midi_in_dev >= 0 && !m_midiin)
