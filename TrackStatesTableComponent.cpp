@@ -314,12 +314,12 @@ void TableLabelTS::setRowAndColumn(const int newRow, const int columnId) {
   case TS_COLUMN_TRACKNAME_MCU:
     m_label->setText(
         Tracks::instance()->getTrackStateForMediaTrack(pMT)->getDisplayName(),
-        false);
+        dontSendNotification);
     break;
   case TS_COLUMN_QUICK_NAME:
     m_label->setText(
         Tracks::instance()->getTrackStateForMediaTrack(pMT)->getQuickJumpName(),
-        false);
+        dontSendNotification);
     //      m_label->setEnabled(Tracks::instance()->getTrackStateForMediaTrack(pMT)->getQuickJumpChannel());
     break;
   }

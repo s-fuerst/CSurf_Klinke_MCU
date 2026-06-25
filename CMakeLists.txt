@@ -136,9 +136,9 @@ endif()
 target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE
     TIXML_USE_TICPP
     NDEBUG
+    JUCE_MODAL_LOOPS_PERMITTED=1   # enable synchronous AlertWindow/DialogWindow APIs
     SWELL_PROVIDED_BY_APP
     SWELL_LOAD_SWELL_DYLIB       # bind SWELL from REAPER's libSwell.so at load
-    _FILE_OFFSET_BITS=64
     NOMINMAX                     # stop SWELL's min/max macros breaking <limits>
     WDL_NO_DEFINE_MINMAX
     # res.rc_mac_dlg auto-generates FLIPPED|NOAUTOSIZE dialog flags that yield a

@@ -212,7 +212,7 @@ private:
   int convertR2MCU(int id, double value);
   int resolveBankReference();
 
-  bool isOptionSetTo(wchar_t *optionName, wchar_t *attribute) {
+  bool isOptionSetTo(const String &optionName, const String &attribute) {
     return m_pMode->getOptions()->isOptionSetTo(optionName, attribute);
   }
   void checkChain(MediaTrack *pTrack);

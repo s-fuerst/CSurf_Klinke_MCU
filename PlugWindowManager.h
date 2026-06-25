@@ -49,10 +49,10 @@ private:
 
   void openFloating(MediaTrack *pMediaTrack, int iSlot);
 
-  bool isOptionSetTo(wchar_t *optionName, wchar_t *attribute) {
+  bool isOptionSetTo(const String &optionName, const String &attribute) {
     return m_pPlugMode->getOptions()->isOptionSetTo(optionName, attribute);
   }
-  bool is2ndOptionSetTo(wchar_t *optionName, wchar_t *attribute) {
+  bool is2ndOptionSetTo(const String &optionName, const String &attribute) {
     return m_pPlugMode->get2ndOptions()->isOptionSetTo(optionName, attribute);
   }
   PlugMode *m_pPlugMode;

@@ -226,7 +226,7 @@ void PlugModePageReferenceComponent::updateEverything() {
     m_offsetLabel->setVisible(true);
     m_pPlugModePageComponent->setTabVisible(false);
     m_offset->setText(String::formatted(String("%d"), m_pPage->getParamIDOffset()),
-                      false);
+                      dontSendNotification);
   } else {
     m_referenceTo->setSelectedItemIndex(m_pPage->getId(), false);
     m_offset->setVisible(false);

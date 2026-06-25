@@ -250,11 +250,11 @@ void PlugModeComponent::updateEverything() {
   } else {
     if (mapType == PlugMapManager::USER_MAP)
       m_mappingFile->setText(m_pPlugAccess->getMapManager()->getMapName(),
-                             false);
+                             dontSendNotification);
     else if (mapType == PlugMapManager::INSTALLED_MAP)
       m_mappingFile->setText(m_pPlugAccess->getMapManager()->getMapName() +
                                  String(" (factory)"),
-                             false);
+                             dontSendNotification);
     else
       m_mappingFile->setText(String(""), dontSendNotification);
   }
