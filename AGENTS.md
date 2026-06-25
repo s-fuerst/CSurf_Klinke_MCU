@@ -41,9 +41,10 @@ selects in Reaper's *Preferences → Control/OSC/web*.
 
 The project has been largely dormant. The **goal of the revival is to make
 it build and run cross-platform — Windows, macOS, and Linux — while keeping
-the existing dependency versions (JUCE 8 and Boost 1.39) unchanged.** Reaper
-itself runs on all three platforms and its csurf SDK is cross-platform, so
-this is primarily a build-system and platform-porting effort, not a rewrite.
+dependency versions as close to the originals as feasible.** Originally built
+against JUCE 1.52, the project was upgraded to **JUCE 8** (module build)
+as part of the revival, because JUCE 1.52 could not target Apple Silicon
+and modern macOS. Boost 1.39 (headers only) remains unchanged.
 
 > The original build is **Windows + Visual Studio only**. A cross-platform
 > **CMake** build has now been added (see §4): **Linux** is the working
