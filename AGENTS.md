@@ -80,7 +80,8 @@ Following the build instructions from the Rothchild Linux port (we use the
 - **Windows** — CMake build NOT yet wired in (the `WIN32` branch in
   `CMakeLists.txt` fails with a clear message); use the VS `.vcxproj` for
   now. Next milestone after the Linux baseline is confirmed.
-- **macOS** — CMake build NOT yet wired in; planned after Windows.
+- **macOS** — CMake build wired (Clang, Cocoa/Metal, JUCE 8, SWELL);
+  not yet compiled on a macOS host — next step.
 
 ### Linux (CMake, baseline)
 
@@ -132,11 +133,17 @@ which `csurf_mcu.h` includes and uses in `CSurf_MCU::GetDescString()`.
 There is **no auto-deploy step in CMake** (so CI, foreign machines, and the
 future Windows/macOS branches are not surprised). Instead, **the agent copies
 the freshly built artifact into the Reaper plugin directory after every
-successful Linux build**. The agent knows the host platform (it ran the
+successful build**. The agent knows the host platform (it ran the
 build), so on Linux it runs:
 
 ```bash
 cp build/reaper_csurf_mcu_klinke.so ~/.config/REAPER/UserPlugins/
+```
+
+On macOS it would run:
+
+```bash
+cp build/reaper_csurf_mcu_klinke.dylib ~/Library/Application\ Support/REAPER/UserPlugins/
 ```
 
 Reaper must be **fully restarted** (not just reloaded) to pick up the new
@@ -146,6 +153,34 @@ not wired yet — so deploy only happens on Linux for now.
 The CMake build uses **SWELL** (WDL) for the surface-edit dialog on Linux
 (`res_linux.cpp` + `res.rc_mac_dlg`, generated from `res.rc` via
 `WDL/swell/swell_resgen.pl`).
+
+### macOS (CMake, Clang — wired, not yet compiled)
+
+```bash
+# one-time: fetch the three pinned deps to the repo root
+./fetch_deps.sh
+
+# Build host needs Xcode Command Line Tools (or full Xcode) and cmake.
+# No additional system packages needed — JUCE 8 links macOS frameworks
+# (Cocoa, IOKit, Metal, QuartzCore, etc.) automatically via module metadata.
+
+# configure + build
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build . -- -j"$(sysctl -n hw.ncpu)"
+```
+
+Output: `build/reaper_csurf_mcu_klinke.dylib`. Deploy by copying to
+`~/Library/Application Support/REAPER/UserPlugins/` and adding
+**"Mackie Control Protocol (Klinke)"** in Reaper → Preferences →
+Control/OSC/web. Minimum macOS version: 10.15 (Catalina) — JUCE 8 requires it.
+
+Key differences from Linux:
+- **SWELL**: uses the `SWELL_dllMain` export (not `dlopen`/`libSwell.so`).
+  REAPER calls `SWELL_dllMain` at plugin load time with a `_GetFunc` pointer.
+- **Dialog resources**: SWELL's default FLIPPED|NOAUTOSIZE autogen flags are
+  correct on macOS; no style/scaling overrides needed (unlike Linux).
+- **Frameworks**: all linked automatically by `juce::juce_gui_basics`.
 
 ### Windows (Visual Studio — current source of truth)
 

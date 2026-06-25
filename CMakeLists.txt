@@ -4,11 +4,10 @@ cmake_minimum_required(VERSION 3.10)
 #  CSurf_Klinke_MCU — cross-platform CMake build
 #
 #  Status:
-#    • Linux   — baseline build working (GCC, X11/JUCE 8, SWELL).
+#    • Linux   — build working (GCC, X11, JUCE 8, SWELL).
+#    • macOS   — build wired (Clang, Cocoa/Metal, JUCE 8, SWELL).
 #    • Windows — NOT yet wired into CMake (the .vcxproj remains the source of
-#                truth until the WIN32 branch below is implemented; next
-#                milestone after the Linux baseline is confirmed).
-#    • macOS   — NOT yet wired into CMake (planned after Windows).
+#                truth until the WIN32 branch below is implemented).
 #
 #  Dependencies (gitignored; fetch with ./fetch_deps.sh, see AGENTS.md §2):
 #    juce_8/      reaper-sdk/sdk/  reaper-sdk/WDL/  boost_1_39_0/
@@ -136,17 +135,8 @@ target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE
     NDEBUG
     JUCE_MODAL_LOOPS_PERMITTED=1   # enable synchronous AlertWindow/DialogWindow APIs
     SWELL_PROVIDED_BY_APP
-    SWELL_LOAD_SWELL_DYLIB       # bind SWELL from REAPER's libSwell.so at load
     NOMINMAX                     # stop SWELL's min/max macros breaking <limits>
-    WDL_NO_DEFINE_MINMAX
-    # res.rc_mac_dlg auto-generates FLIPPED|NOAUTOSIZE dialog flags that yield a
-    # 0x0 dialog on Linux and a flipped Y-axis on macOS. Override to a plain
-    # WS_CHILD style (=1) at scale 1.0. (see res.rc_mac_dlg / res_linux.cpp)
-    "SET_IDD_SURFACEEDIT_MCUMAIN_STYLE=1"
-    "SET_IDD_SURFACEEDIT_MCUEX_STYLE=1"
-    "SET_IDD_SURFACEEDIT_MCUMAIN_SCALE=1.0"
-    "SET_IDD_SURFACEEDIT_MCUEX_SCALE=1.0"
-    "SWELL_DLG_WS_DEFAULT_SCALING=0")  # macOS-only macro; 0 so _BEGIN compiles on Linux
+    WDL_NO_DEFINE_MINMAX)
 
 if(MCU_DEBUG_LOG)
     target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE MCU_DEBUG_LOG)
@@ -231,10 +221,18 @@ target_link_libraries(reaper_csurf_mcu_klinke PRIVATE
 # =============================================================================
 if(UNIX AND NOT APPLE)
     # --- Linux (baseline) ----------------------------------------------------
-    # C++14: the ported source uses C++11+ features (auto, nullptr, lambdas) and
     # C++17 is the minimum for JUCE 8.
     # -fpermissive kept: the Jucer 1.11-generated *Component files are loose
     # about conversions; we will tighten this as the upgrade progresses.
+    target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE
+        SWELL_LOAD_SWELL_DYLIB   # bind SWELL from REAPER's libSwell.so at load
+        # res.rc_mac_dlg auto-generates FLIPPED|NOAUTOSIZE dialog flags that yield a
+        # 0x0 dialog on Linux. Override to a plain WS_CHILD style (=1) at scale 1.0.
+        "SET_IDD_SURFACEEDIT_MCUMAIN_STYLE=1"
+        "SET_IDD_SURFACEEDIT_MCUEX_STYLE=1"
+        "SET_IDD_SURFACEEDIT_MCUMAIN_SCALE=1.0"
+        "SET_IDD_SURFACEEDIT_MCUEX_SCALE=1.0"
+        "SWELL_DLG_WS_DEFAULT_SCALING=0")  # macOS macro; 0 so _BEGIN compiles
     target_compile_options(reaper_csurf_mcu_klinke PRIVATE
         -std=c++17 -fPIC -fvisibility=hidden -fpermissive
         -Wno-deprecated-declarations -Wno-unused-result
@@ -255,12 +253,28 @@ elseif(WIN32)
         "  This is the next milestone once the Linux baseline is confirmed.\n")
 
 elseif(APPLE)
-    # --- macOS ---------------------------------------------------------------
-    # TODO (after Windows): Clang/Xcode, AppKit (not X11), JUCE Carbon/Cocoa
-    # backend of 1.52, output .dylib.
-    message(FATAL_ERROR
-        "\n  CMake build for macOS is not implemented yet.\n"
-        "  Planned after the Windows build.\n")
+    # --- macOS ----------------------------------------------------------------
+    # Clang / Apple SDK. JUCE 8 provides native Cocoa + Metal backends.
+    # SWELL is provided by REAPER at load time via SWELL_dllMain (the
+    # swell-modstub-generic.cpp non-dlopen path).
+    #
+    # macOS framework dependencies (Cocoa, IOKit, Metal, QuartzCore, etc.) are
+    # linked automatically by juce::juce_gui_basics via JUCE module metadata —
+    # nothing to list here.
+
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING
+        "Minimum macOS version the plugin supports (JUCE 8 requires 10.15+)")
+
+    # macOS SWELL uses the default FLIPPED|NOAUTOSIZE autogen flags;
+    # no dialog style/scaling overrides needed (unlike Linux).
+    # No extra libraries: macOS frameworks (Cocoa, IOKit, Metal, etc.)
+    # are linked automatically by juce::juce_gui_basics (global link).
+    target_compile_options(reaper_csurf_mcu_klinke PRIVATE
+        -std=c++17 -fPIC -fvisibility=hidden
+        -Wno-deprecated-declarations -Wno-unused-result
+        -Wno-sign-compare -Wno-reorder -Wno-multichar)
+    set_target_properties(reaper_csurf_mcu_klinke PROPERTIES
+        PREFIX "" OUTPUT_NAME "reaper_csurf_mcu_klinke" SUFFIX ".dylib")
 
 else()
     message(FATAL_ERROR "Unsupported platform for the CMake build.")
