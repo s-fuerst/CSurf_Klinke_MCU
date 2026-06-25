@@ -25,26 +25,26 @@ void PlugModeSelector::writeTrackPlugTopLine() {
                            17);
     m_pDisplay->changeText(
         0, 28,
-        String::formatted(JUCE_T("FX%2d "),
+        String::formatted(String("FX%2d "),
                           m_pPlugMode->getPlugAccess()->getPlugSlot() + 1)
-            .toCString(),
+            .toRawUTF8(),
         10);
     m_pDisplay->changeText(
-        0, 33, m_pPlugMode->getPlugAccess()->getPlugNameLong().toCString(), 17);
+        0, 33, m_pPlugMode->getPlugAccess()->getPlugNameLong().toRawUTF8(), 17);
   }
 }
 
 void PlugModeSelector::writePlugBankPageTopLine() {
   PlugAccess *pPA = m_pPlugMode->getPlugAccess();
   if (pPA->plugExist()) {
-    m_pDisplay->changeText(0, 0, pPA->getPlugNameLong().toCString(), 17, true);
+    m_pDisplay->changeText(0, 0, pPA->getPlugNameLong().toRawUTF8(), 17, true);
     m_pDisplay->changeText(
-        0, 19, pPA->getBankNameLong(pPA->getSelectedBank()).toCString(), 17,
+        0, 19, pPA->getBankNameLong(pPA->getSelectedBank()).toRawUTF8(), 17,
         true);
     m_pDisplay->changeText(
         0, 38,
         pPA->getPageNameLongInSelectedBank(pPA->getSelectedPageInSelectedBank())
-            .toCString(),
+            .toRawUTF8(),
         17, true);
   }
 }
@@ -64,7 +64,7 @@ void PlugSelector::fillPlugNames() {
 
   for (int i = 0; i < 6; i++)
     m_pDisplay->changeField(
-        1, i + 2, m_pPlugMode->getPlugNameShort(i + m_startWith).toCString());
+        1, i + 2, m_pPlugMode->getPlugNameShort(i + m_startWith).toRawUTF8());
 
   if (m_pPlugMode->getNumPlugsInSelectedTrack() == 0)
     m_pDisplay->changeTextFullLine(1, "No FX exist in selected track.", true);
@@ -130,7 +130,7 @@ void BankPagePlugSelector::updateDisplay() {
     writePlugBankPageTopLine();
     for (int i = 0; i < 8; i++) {
       if (pPA->isBankUsed(i))
-        m_pDisplay->changeField(1, i + 1, pPA->getBankNameShort(i).toCString(),
+        m_pDisplay->changeField(1, i + 1, pPA->getBankNameShort(i).toRawUTF8(),
                                 true);
     }
     m_pDisplay->resendRow(1);
@@ -140,7 +140,7 @@ void BankPagePlugSelector::updateDisplay() {
     for (int i = 0; i < 8; i++) {
       if (pPA->isPageUsedInSelectedBank(i))
         m_pDisplay->changeField(
-            1, i + 1, pPA->getPageNameShortInSelectedBank(i).toCString(), true);
+            1, i + 1, pPA->getPageNameShortInSelectedBank(i).toRawUTF8(), true);
     }
     m_pDisplay->resendRow(1);
     break;
@@ -152,7 +152,7 @@ void BankPagePlugSelector::updateDisplay() {
         m_pDisplay->changeField(
             1, i + 1,
             pPA->getPlugNameShort(m_pPlugMode->selectedTrack(), i + offset)
-                .toCString());
+                .toRawUTF8());
       }
     } else {
       int offset = m_pPlugMode->isModifierPressed(VK_SHIFT) ? 8 : 0;
@@ -167,7 +167,7 @@ void BankPagePlugSelector::updateDisplay() {
               1, i + 1,
               pPA->getPlugNameShort(CSurf_MCU::TrackFromGUID(fav.get<0>()),
                                     fav.get<1>())
-                  .toCString());
+                  .toRawUTF8());
         } else {
           m_pDisplay->changeField(0, i + 1, "");
           m_pDisplay->changeField(1, i + 1, "");

@@ -37,7 +37,7 @@
 //==============================================================================
 TrackStatesEditorComponent::TrackStatesEditorComponent() : component(0) {
   addAndMakeVisible(component = new TrackStatesTableComponent());
-  component->setName(T("new component"));
+  component->setName(String("new component"));
 
   //[UserPreSize]
   //[/UserPreSize]

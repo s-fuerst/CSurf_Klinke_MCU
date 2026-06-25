@@ -16,27 +16,27 @@
 
 CommandMode::Page::Page(CommandMode *pMode, int index)
     : m_pMode(pMode), m_iIndex(index) {
-  m_strPageName = JUCE_T("Bank ") + String(index + 1);
+  m_strPageName = String("Bank ") + String(index + 1);
   for (int i = 0; i < 2; i++) {
     for (int j = 0; j < 8; j++) {
       m_bRelative[i][j] = false;
       m_iNormalSpeed[i][j] = 1;
       m_iPressedSpeed[i][j] = 5;
-      m_strCommandName[i][j] = juce::String::empty;
+      m_strCommandName[i][j] = juce::String();
     }
   }
 }
 
-#define CM_NODE_PAGE JUCE_T("PAGE")
-#define CM_NODE_VPOT JUCE_T("VPOT")
+#define CM_NODE_PAGE String("PAGE")
+#define CM_NODE_VPOT String("VPOT")
 
-#define CM_ATT_NAME JUCE_T("name")
-#define CM_ATT_SHIFT JUCE_T("shift")
-#define CM_ATT_INDEX JUCE_T("index")
-#define CM_ATT_RELATIVE JUCE_T("relative")
-#define CM_ATT_NORMAL JUCE_T("normal")
-#define CM_ATT_FAST JUCE_T("fast")
-#define CM_ATT_VERSION JUCE_T("version")
+#define CM_ATT_NAME String("name")
+#define CM_ATT_SHIFT String("shift")
+#define CM_ATT_INDEX String("index")
+#define CM_ATT_RELATIVE String("relative")
+#define CM_ATT_NORMAL String("normal")
+#define CM_ATT_FAST String("fast")
+#define CM_ATT_VERSION String("version")
 
 void CommandMode::Page::writeToXml(XmlElement *pDoc) {
   XmlElement *pPageNode = new XmlElement(CM_NODE_PAGE);
@@ -114,7 +114,7 @@ bool CommandMode::readConfigFile() {
   if (!pXmlFile)
     return false;
 
-  XmlElement *pRootElement = pXmlFile->getDocumentElement();
+  XmlElement *pRootElement = pXmlFile->getDocumentElement().get();
   if (!pRootElement)
     return false;
 
@@ -141,7 +141,7 @@ void CommandMode::writeConfigFile() {
     m_pPage[iPage]->writeToXml(pRootElement);
   }
 
-  pRootElement->writeToFile(getConfigFile(), "", JUCE_T("UTF-8"));
+  pRootElement->writeToFile(getConfigFile(), "", String("UTF-8"));
 
   safe_delete(pRootElement);
 }
@@ -266,7 +266,7 @@ void CommandMode::updateDisplay() {
 		m_pDisplay->clearLine(1);
 		for (int i = 0; i < 8; i++)
 			m_pDisplay->changeField(
-							1, i + 1, m_pActivePage->getCommandName(shift, i).toCString());
+							1, i + 1, m_pActivePage->getCommandName(shift, i).toRawUTF8());
 	} else {
 		m_pDisplay->changeText(1, 0, "No actions are name for this bank (press Alt-EQ).", 55, true);
 	}
@@ -283,15 +283,15 @@ Component **CommandMode::createEditorComponent() {
 void CommandMode::deleteEditorComponent() { safe_delete(m_pMainComponent) }
 
 #ifdef EXT_B
-#define AM_FILE JUCE_T("\\ActionModeB.xml")
+#define AM_FILE String("\\ActionModeB.xml")
 #else
-#define AM_FILE JUCE_T("\\ActionMode.xml")
+#define AM_FILE String("\\ActionMode.xml")
 #endif
 
 File CommandMode::getConfigFile() {
   File configDir =
       File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() +
-      JUCE_T("\\Reaper\\MCU\\Config\\");
+      String("\\Reaper\\MCU\\Config\\");
   if (!configDir.exists() ||
       !File(configDir.getFullPathName() + AM_FILE).exists()) {
     configDir.createDirectory();

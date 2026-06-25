@@ -39,12 +39,12 @@ PlugModeBankReferenceComponent::PlugModeBankReferenceComponent(
     : groupComponent2(0), m_nameShort(0), m_nameLong(0), m_groupReference(0),
       m_referenceTo(0), m_offset(0), m_offsetLabel(0) {
   addAndMakeVisible(groupComponent2 =
-                        new GroupComponent(T("new group"), T("Name")));
+                        new GroupComponent(String("new group"), String("Name")));
   groupComponent2->setColour(GroupComponent::outlineColourId, Colour(0x0));
   groupComponent2->setColour(GroupComponent::textColourId, Colour(0x0));
 
-  addAndMakeVisible(m_nameShort = new Label(T("Name Short"), T("Bank x")));
-  m_nameShort->setTooltip(T("This short name of the selected bank"));
+  addAndMakeVisible(m_nameShort = new Label(String("Name Short"), String("Bank x")));
+  m_nameShort->setTooltip(String("This short name of the selected bank"));
   m_nameShort->setFont(
       Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
   m_nameShort->setJustificationType(Justification::centredLeft);
@@ -56,8 +56,8 @@ PlugModeBankReferenceComponent::PlugModeBankReferenceComponent(
   m_nameShort->addListener(this);
 
   addAndMakeVisible(m_nameLong =
-                        new Label(T("Name Long"), T("12345678901234567")));
-  m_nameLong->setTooltip(T("This long name of the selected bank"));
+                        new Label(String("Name Long"), String("12345678901234567")));
+  m_nameLong->setTooltip(String("This long name of the selected bank"));
   m_nameLong->setFont(
       Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
   m_nameLong->setJustificationType(Justification::centredLeft);
@@ -68,32 +68,32 @@ PlugModeBankReferenceComponent::PlugModeBankReferenceComponent(
   m_nameLong->setColour(TextEditor::backgroundColourId, Colour(0x0));
   m_nameLong->addListener(this);
 
-  addAndMakeVisible(m_groupReference = new GroupComponent(T("Group Reference"),
-                                                          T("Reference")));
+  addAndMakeVisible(m_groupReference = new GroupComponent(String("Group Reference"),
+                                                          String("Reference")));
   m_groupReference->setColour(GroupComponent::outlineColourId, Colours::black);
 
-  addAndMakeVisible(m_referenceTo = new ComboBox(T("Reference To")));
+  addAndMakeVisible(m_referenceTo = new ComboBox(String("Reference To")));
   m_referenceTo->setTooltip(
-      T("Use the page mappings of the selected bank. This can be useful if the "
+      String("Use the page mappings of the selected bank. This can be useful if the "
         "plugin has parameter groups, eq. a drum synth that has n-times the "
         "same synth engine. In this case you must map the parameters only for "
         "one synth engine and can then refer to it."));
   m_referenceTo->setEditableText(false);
   m_referenceTo->setJustificationType(Justification::centredLeft);
-  m_referenceTo->setTextWhenNothingSelected(T("something must be selected"));
-  m_referenceTo->setTextWhenNoChoicesAvailable(T("we have items"));
-  m_referenceTo->addItem(T("Bank 1"), 1);
-  m_referenceTo->addItem(T("Bank 2"), 2);
-  m_referenceTo->addItem(T("Bank 3"), 3);
-  m_referenceTo->addItem(T("Bank 4"), 4);
-  m_referenceTo->addItem(T("Bank 5"), 5);
-  m_referenceTo->addItem(T("Bank 6"), 6);
-  m_referenceTo->addItem(T("Bank 7"), 7);
-  m_referenceTo->addItem(T("Bank 8"), 8);
+  m_referenceTo->setTextWhenNothingSelected(String("something must be selected"));
+  m_referenceTo->setTextWhenNoChoicesAvailable(String("we have items"));
+  m_referenceTo->addItem(String("Bank 1"), 1);
+  m_referenceTo->addItem(String("Bank 2"), 2);
+  m_referenceTo->addItem(String("Bank 3"), 3);
+  m_referenceTo->addItem(String("Bank 4"), 4);
+  m_referenceTo->addItem(String("Bank 5"), 5);
+  m_referenceTo->addItem(String("Bank 6"), 6);
+  m_referenceTo->addItem(String("Bank 7"), 7);
+  m_referenceTo->addItem(String("Bank 8"), 8);
   m_referenceTo->addListener(this);
 
-  addAndMakeVisible(m_offset = new Label(T("Offset"), T("-20")));
-  m_offset->setTooltip(T("The offset is determined by the difference of the "
+  addAndMakeVisible(m_offset = new Label(String("Offset"), String("-20")));
+  m_offset->setTooltip(String("The offset is determined by the difference of the "
                          "ids of repeating parameter groups. The ReaEQ map "
                          "uses this feature, look at this as an example."));
   m_offset->setFont(
@@ -106,7 +106,7 @@ PlugModeBankReferenceComponent::PlugModeBankReferenceComponent(
   m_offset->setColour(TextEditor::backgroundColourId, Colour(0x0));
   m_offset->addListener(this);
 
-  addAndMakeVisible(m_offsetLabel = new Label(T("Offset Label"), T("Offset:")));
+  addAndMakeVisible(m_offsetLabel = new Label(String("Offset Label"), String("Offset:")));
   m_offsetLabel->setFont(
       Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
   m_offsetLabel->setJustificationType(Justification::centredLeft);
@@ -172,16 +172,16 @@ void PlugModeBankReferenceComponent::labelTextChanged(
   if (labelThatHasChanged == m_nameShort) {
     //[UserLabelCode_m_nameShort] -- add your label text handling code here..
     bool setLongAlso = (m_pBank->getNameShort() == m_pBank->getNameLong());
-    m_nameShort->setText(m_nameShort->getText().substring(0, 6), false);
+    m_nameShort->setText(m_nameShort->getText().substring(0, 6), dontSendNotification);
     if (setLongAlso)
-      m_nameLong->setText(m_nameShort->getText(), true);
+      m_nameLong->setText(m_nameShort->getText(), sendNotification);
 
     m_pBank->setNameShort(m_nameShort->getText());
     m_pPlugModeBankComponent->updateBankNames();
     //[/UserLabelCode_m_nameShort]
   } else if (labelThatHasChanged == m_nameLong) {
     //[UserLabelCode_m_nameLong] -- add your label text handling code here..
-    m_nameLong->setText(m_nameLong->getText().substring(0, 17), false);
+    m_nameLong->setText(m_nameLong->getText().substring(0, 17), dontSendNotification);
     m_pBank->setNameLong(m_nameLong->getText());
     //[/UserLabelCode_m_nameLong]
   } else if (labelThatHasChanged == m_offset) {
@@ -214,8 +214,8 @@ void PlugModeBankReferenceComponent::comboBoxChanged(
 //[MiscUserCode] You can add your own definitions of your custom methods or any
 //other code here...
 void PlugModeBankReferenceComponent::updateEverything() {
-  m_nameShort->setText(m_pBank->getNameShort(), false);
-  m_nameLong->setText(m_pBank->getNameLong(), false);
+  m_nameShort->setText(m_pBank->getNameShort(), dontSendNotification);
+  m_nameLong->setText(m_pBank->getNameLong(), dontSendNotification);
 
   int referTo = m_pBank->referTo();
   if (m_pBank->doesRefer()) {
@@ -223,7 +223,7 @@ void PlugModeBankReferenceComponent::updateEverything() {
     m_offset->setVisible(true);
     m_offsetLabel->setVisible(true);
     m_pPlugModeBankComponent->setTabVisible(false);
-    m_offset->setText(String::formatted(T("%d"), m_pBank->getParamIDOffset()),
+    m_offset->setText(String::formatted(String("%d"), m_pBank->getParamIDOffset()),
                       false);
   } else {
     m_referenceTo->setSelectedItemIndex(m_pBank->getId(), false);

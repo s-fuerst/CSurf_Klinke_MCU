@@ -59,8 +59,8 @@ class PlugMapManager;
  //[/Comments]
  */
 class PlugMapSaveDialog : public Component,
-                          public ButtonListener,
-                          public LabelListener {
+                          public Button::Listener,
+                          public Label::Listener {
 public:
   //==============================================================================
   PlugMapSaveDialog(PlugMapManager *pPMM);

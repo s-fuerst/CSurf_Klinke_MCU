@@ -84,7 +84,7 @@ private:
 //==============================================================================
 // This is a custom component containing a combo box, which we're going to put
 // inside our table's "rating" column.
-class TableLabel : public Component, LabelListener {
+class TableLabel : public Component, Label::Listener {
 public:
   TableLabel(PlugModeVPOTTableComponent &owner, PMVPot::tSteps *pMap);
 

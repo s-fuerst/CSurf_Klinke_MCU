@@ -41,8 +41,8 @@
 PlugModeParamComponent::PlugModeParamComponent(PlugModeComponent *pMC,
                                                PMParam *pParam)
     : m_nameShort(0), m_parameter(0), m_nameLong(0) {
-  addAndMakeVisible(m_nameShort = new Label(T("Name Short"), T("FilCut")));
-  m_nameShort->setTooltip(T("This short name of the selected parameter"));
+  addAndMakeVisible(m_nameShort = new Label(String("Name Short"), String("FilCut")));
+  m_nameShort->setTooltip(String("This short name of the selected parameter"));
   m_nameShort->setFont(
       Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
   m_nameShort->setJustificationType(Justification::centredLeft);
@@ -53,19 +53,19 @@ PlugModeParamComponent::PlugModeParamComponent(PlugModeComponent *pMC,
   m_nameShort->setColour(TextEditor::backgroundColourId, Colour(0x0));
   m_nameShort->addListener(this);
 
-  addAndMakeVisible(m_parameter = new ComboBox(T("Parameter")));
+  addAndMakeVisible(m_parameter = new ComboBox(String("Parameter")));
   m_parameter->setTooltip(
-      T("The parameter that is controlled by this fader/V-Pot"));
+      String("The parameter that is controlled by this fader/V-Pot"));
   m_parameter->setEditableText(false);
   m_parameter->setJustificationType(Justification::centredLeft);
-  m_parameter->setTextWhenNothingSelected(T("unknown"));
-  m_parameter->setTextWhenNoChoicesAvailable(T("Plug has no parameters"));
-  m_parameter->addItem(T("unknown"), 1);
+  m_parameter->setTextWhenNothingSelected(String("unknown"));
+  m_parameter->setTextWhenNoChoicesAvailable(String("Plug has no parameters"));
+  m_parameter->addItem(String("unknown"), 1);
   m_parameter->addListener(this);
 
   addAndMakeVisible(m_nameLong =
-                        new Label(T("Name Long"), T("12345678901234567")));
-  m_nameLong->setTooltip(T("This long name of the selected parameter"));
+                        new Label(String("Name Long"), String("12345678901234567")));
+  m_nameLong->setTooltip(String("This long name of the selected parameter"));
   m_nameLong->setFont(
       Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
   m_nameLong->setJustificationType(Justification::centredLeft);
@@ -125,15 +125,15 @@ void PlugModeParamComponent::labelTextChanged(Label *labelThatHasChanged) {
   if (labelThatHasChanged == m_nameShort) {
     //[UserLabelCode_m_nameShort] -- add your label text handling code here..
     bool setLongAlso = (m_pParam->getNameShort() == m_pParam->getNameLong());
-    m_nameShort->setText(m_nameShort->getText().substring(0, 6), false);
+    m_nameShort->setText(m_nameShort->getText().substring(0, 6), dontSendNotification);
     if (setLongAlso)
-      m_nameLong->setText(m_nameShort->getText(), true);
+      m_nameLong->setText(m_nameShort->getText(), sendNotification);
 
     m_pParam->setNameShort(m_nameShort->getText());
     //[/UserLabelCode_m_nameShort]
   } else if (labelThatHasChanged == m_nameLong) {
     //[UserLabelCode_m_nameLong] -- add your label text handling code here..
-    m_nameLong->setText(m_nameLong->getText().substring(0, 17), false);
+    m_nameLong->setText(m_nameLong->getText().substring(0, 17), dontSendNotification);
     m_pParam->setNameLong(m_nameLong->getText());
     //[/UserLabelCode_m_nameLong]
   }
@@ -168,15 +168,15 @@ void PlugModeParamComponent::mouseDown(const MouseEvent &e) {
 void PlugModeParamComponent::updateEverything() {
   updateParameterList();
 
-  m_nameShort->setText(m_pParam->getNameShort(), false);
-  m_nameLong->setText(m_pParam->getNameLong(), false);
+  m_nameShort->setText(m_pParam->getNameShort(), dontSendNotification);
+  m_nameLong->setText(m_pParam->getNameLong(), dontSendNotification);
 
   m_pMainComponent->updateLearnStatus();
 }
 
 void PlugModeParamComponent::updateParameterList() {
   m_parameter->clear();
-  m_parameter->addItem(T("No Parameter selected"),
+  m_parameter->addItem(String("No Parameter selected"),
                        NOT_ASSIGNED + PARAM_COMP_ID_OFFSET);
   PlugAccess *pPA = m_pMainComponent->getPlugAccess();
   if (pPA == NULL)
@@ -187,10 +187,10 @@ void PlugModeParamComponent::updateParameterList() {
     bool valid = TrackFX_GetParamName(pPA->getPlugTrack(), pPA->getPlugSlot(),
                                       i, paramName, 79);
     if (valid && (strnlen(paramName, 80) > 0)) {
-      m_parameter->addItem(String::formatted(T("%04d: "), i + 1) + paramName,
+      m_parameter->addItem(String::formatted(String("%04d: "), i + 1) + paramName,
                            i + PARAM_COMP_ID_OFFSET);
     } else {
-      m_parameter->addItem(String::formatted(T("%04d"), i + 1),
+      m_parameter->addItem(String::formatted(String("%04d"), i + 1),
                            i + PARAM_COMP_ID_OFFSET);
     }
   }
@@ -206,8 +206,8 @@ void PlugModeParamComponent::changeParamId(int paramId) {
   m_parameter->setSelectedId(paramId + PARAM_COMP_ID_OFFSET, true);
   if (m_pMainComponent->isUseParamName()) {
     if (paramId == NOT_ASSIGNED) {
-      m_pParam->setNameShort(String::empty);
-      m_pParam->setNameLong(String::empty);
+      m_pParam->setNameShort(String());
+      m_pParam->setNameLong(String());
       updateEverything();
     } else {
       PlugAccess *pPA = m_pMainComponent->getPlugAccess();

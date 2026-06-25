@@ -42,7 +42,7 @@ class PlugMap;
  Describe your class and how it works here!
  //[/Comments]
  */
-class PlugModeMapInfoComponent : public Component, public TextEditorListener {
+class PlugModeMapInfoComponent : public Component, public TextEditor::Listener {
 public:
   //==============================================================================
   PlugModeMapInfoComponent(PlugModeComponent *pMC, PlugMap *pMap);
@@ -51,7 +51,7 @@ public:
   //==============================================================================
   //[UserMethods]     -- You can add your own custom methods in this section.
   void updateEverything();
-  /** TextEditorListener callbacks */
+  /** TextEditor::Listener callbacks */
   void textEditorTextChanged(TextEditor &editor);
   void textEditorReturnKeyPressed(TextEditor &editor){};
   void textEditorEscapeKeyPressed(TextEditor &editor){};

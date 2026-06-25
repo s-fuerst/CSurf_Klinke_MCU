@@ -44,8 +44,8 @@ class PlugModeComponent;
  //[/Comments]
  */
 class PlugModeParamComponent : public Component,
-                               public LabelListener,
-                               public ComboBoxListener {
+                               public Label::Listener,
+                               public ComboBox::Listener {
 public:
   //==============================================================================
   PlugModeParamComponent(PlugModeComponent *pMC, PMParam *pParam);

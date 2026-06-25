@@ -12,7 +12,7 @@
 #include "JuceHeader.h"
 #include "PlugMoveWatcher.h"
 
-#define PMM_ATT_VERSION JUCE_T("version")
+#define PMM_ATT_VERSION String("version")
 
 // comparison, not case sensitive.
 bool compare_file(File first, File second) {
@@ -21,7 +21,7 @@ bool compare_file(File first, File second) {
 
 PlugMapManager::PlugMapManager(PlugMode *pMode)
     : m_pMap(NULL), m_pMode(pMode), m_mapType(MAP_NOT_EXIST),
-      m_pPlugTrack(NULL), m_iSlot(-1), m_mapName(String::empty),
+      m_pPlugTrack(NULL), m_iSlot(-1), m_mapName(String()),
       m_autoSave(false) {
   m_pMap = new PlugMap();
 
@@ -55,11 +55,11 @@ const File PlugMapManager::getUserMapsLocation() {
 #ifdef _WIN32
   File userMapDir =
       File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() +
-      JUCE_T("\\Reaper\\MCU\\PlugMaps\\");
+      String("\\Reaper\\MCU\\PlugMaps\\");
 #else
   File userMapDir =
       File::getSpecialLocation(File::userHomeDirectory).getFullPathName() +
-      JUCE_T("/.config/REAPER/MCU/PlugMaps/");
+      String("/.config/REAPER/MCU/PlugMaps/");
 #endif
 
   if (!userMapDir.exists()) {
@@ -71,9 +71,9 @@ const File PlugMapManager::getUserMapsLocation() {
 
 const File PlugMapManager::getInstalledMapsLocation() {
 #ifdef _WIN32
-  return File(String(GetResourcePath()) + JUCE_T("\\UserPlugins\\MCU\\PlugMaps\\"));
+  return File(String(GetResourcePath()) + String("\\UserPlugins\\MCU\\PlugMaps\\"));
 #else
-  return File(String(GetResourcePath()) + JUCE_T("/UserPlugins/MCU/PlugMaps/"));
+  return File(String(GetResourcePath()) + String("/UserPlugins/MCU/PlugMaps/"));
 #endif
 }
 
@@ -90,7 +90,7 @@ bool PlugMapManager::readMapFile(File mapFile) {
   if (!pXmlFile)
     return false;
 
-  XmlElement *pRootElement = pXmlFile->getDocumentElement();
+  XmlElement *pRootElement = pXmlFile->getDocumentElement().get();
   if (!pRootElement)
     return false;
 
@@ -107,19 +107,19 @@ bool PlugMapManager::writeMapFile(String mapFileName) {
   BOOST_FOREACH (File &f, m_userFiles) {
     if (mapFileName.equalsIgnoreCase(f.getFileNameWithoutExtension())) {
       if (!AlertWindow::showOkCancelBox(
-              AlertWindow::QuestionIcon, JUCE_T("Overwrite file"),
-              JUCE_T("Are you sure that you want to overwrite an already "
+              AlertWindow::QuestionIcon, String("Overwrite file"),
+              String("Are you sure that you want to overwrite an already "
                      "existing map?")))
         return false;
     }
   }
 
-  File writeFile = File(getUserMapsLocation().getFullPathName() + JUCE_T("\\") +
-                        mapFileName + JUCE_T(".xml"));
+  File writeFile = File(getUserMapsLocation().getFullPathName() + String("\\") +
+                        mapFileName + String(".xml"));
   if (!writeFile.create()) {
     AlertWindow::showMessageBox(
-        AlertWindow::WarningIcon, JUCE_T("Couldn't write file"),
-        JUCE_T("For whatever reason the file couldn't be saved (maybe the name "
+        AlertWindow::WarningIcon, String("Couldn't write file"),
+        String("For whatever reason the file couldn't be saved (maybe the name "
                "contains characters that are invalid for filenames)"));
     return false;
   }
@@ -140,10 +140,10 @@ void PlugMapManager::rewriteMapFile() {
 
   m_pMap->writeToXml(pRootElement);
 
-  File writeFile = File(getUserMapsLocation().getFullPathName() + JUCE_T("\\") +
-                        m_mapName + JUCE_T(".xml"));
+  File writeFile = File(getUserMapsLocation().getFullPathName() + String("\\") +
+                        m_mapName + String(".xml"));
 
-  pRootElement->writeToFile(writeFile, "", JUCE_T("UTF-8"));
+  pRootElement->writeToFile(writeFile, "", String("UTF-8"));
 
   safe_delete(pRootElement);
 
@@ -159,7 +159,7 @@ void PlugMapManager::scanDir(const File &dirToScan, tFiles &addFoundMaps) {
 
   search.add(dirToScan);
 
-  search.findChildFiles(results, File::findFiles, false, JUCE_T("*.xml"));
+  search.findChildFiles(results, File::findFiles, false, String("*.xml"));
 
   for (int i = 0; i < results.size(); i++)
     addFoundMaps.push_front(results[i]);
@@ -198,7 +198,7 @@ bool PlugMapManager::loadMapForPlug(MediaTrack *pMediaTrack, int iSlot) {
 
   m_pMap->initValues();
   m_pMode->getPlugAccess()->createDefaultMap();
-  m_mapName = String::empty;
+  m_mapName = String();
   m_mapType = MAP_NOT_EXIST;
   return false;
 }
@@ -258,7 +258,7 @@ void PlugMapManager::deselectMap() {
   }
 
   m_mapType = MAP_NOT_EXIST;
-  m_mapName = String::empty;
+  m_mapName = String();
 }
 
 void PlugMapManager::rescanDirs() {
@@ -283,10 +283,10 @@ void PlugMapManager::setLocalMap(bool localMap) {
   }
 }
 
-#define PLUGMAPMANAGER_NODE_ROOT JUCE_T("PLUGMAPMANAGER")
-#define PLUGMAPMANAGER_NODE_MAP JUCE_T("LOCALMAP")
-#define PLUGMAPMANAGER_NODE_ROOT_ATT_FAV_TRACK JUCE_T("track")
-#define PLUGMAPMANAGER_NODE_ROOT_ATT_FAV_SLOT JUCE_T("slot")
+#define PLUGMAPMANAGER_NODE_ROOT String("PLUGMAPMANAGER")
+#define PLUGMAPMANAGER_NODE_MAP String("LOCALMAP")
+#define PLUGMAPMANAGER_NODE_ROOT_ATT_FAV_TRACK String("track")
+#define PLUGMAPMANAGER_NODE_ROOT_ATT_FAV_SLOT String("slot")
 
 void PlugMapManager::projectChanged(XmlElement *pXmlElement,
                                     ProjectConfig::EAction action) {
@@ -385,7 +385,7 @@ void PlugMapManager::plugMoved(MediaTrack *pOldTrack, int oldSlot,
 
 void PlugMapManager::movePlugMap(tPlugMap &plugMaps, tPlugID oldPlugID,
                                  tPlugID newPlugID) {
-  if (newPlugID.get<0>() != String::empty) {
+  if (newPlugID.get<0>() != String()) {
     m_localMaps[newPlugID] = plugMaps[oldPlugID];
   } else {
     delete (plugMaps[oldPlugID]);

@@ -49,7 +49,7 @@ PlugModePageComponent::PlugModePageComponent(PlugModeComponent *pMC,
   for (int i = 0; i < 8; i++) {
     String tabName = pBank->getPage(i)->getNameShort();
     if (tabName.isEmpty()) {
-      tabName = String::formatted(T("Page %d"), i + 1);
+      tabName = String::formatted(String("Page %d"), i + 1);
     }
     m_tabbedPages->addTab(
         tabName, Colours::white,

@@ -36,14 +36,14 @@
 //==============================================================================
 CommandModeVPOTComponent::CommandModeVPOTComponent(CommandMode::Page *pPage,
                                                    int shift, int channel)
-    : Component(T("CommandModeVPOT")), groupComponent(0), actionLabel(0),
+    : Component(String("CommandModeVPOT")), groupComponent(0), actionLabel(0),
       relativeButton(0), normalSpeedSlider(0), pressedSpeedSlider(0) {
-  addAndMakeVisible(groupComponent = new GroupComponent(T("group"), T("1")));
+  addAndMakeVisible(groupComponent = new GroupComponent(String("group"), String("1")));
   groupComponent->setColour(GroupComponent::outlineColourId, Colours::black);
 
-  addAndMakeVisible(actionLabel = new Label(T("Action"), T("Action")));
+  addAndMakeVisible(actionLabel = new Label(String("Action"), String("Action")));
   actionLabel->setTooltip(
-      T("A short (max. 6 char long) description of the assigned action."));
+      String("A short (max. 6 char long) description of the assigned action."));
   actionLabel->setExplicitFocusOrder(10);
   actionLabel->setFont(
       Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
@@ -55,19 +55,19 @@ CommandModeVPOTComponent::CommandModeVPOTComponent(CommandMode::Page *pPage,
   actionLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
   actionLabel->addListener(this);
 
-  addAndMakeVisible(relativeButton = new ToggleButton(T("Relative")));
+  addAndMakeVisible(relativeButton = new ToggleButton(String("Relative")));
   relativeButton->setTooltip(
-      T("When enabled, the VPOT sends \"relative 2 mode\" messages. This "
+      String("When enabled, the VPOT sends \"relative 2 mode\" messages. This "
         "allows you to assign \"(midi cc only)\" actions to the VPOT, but you "
         "must select \"Relative 2\" in the \"MIDI CC:\" combo box. If this "
         "button is not selected, you must select \"Absolute\"."));
   relativeButton->setExplicitFocusOrder(11);
-  relativeButton->setButtonText(String::empty);
+  relativeButton->setButtonText(String());
   relativeButton->addListener(this);
 
-  addAndMakeVisible(normalSpeedSlider = new Slider(T("NormalSpeed")));
+  addAndMakeVisible(normalSpeedSlider = new Slider(String("NormalSpeed")));
   normalSpeedSlider->setTooltip(
-      T("The amount of change when the VPOT is rotated but not pressed. See "
+      String("The amount of change when the VPOT is rotated but not pressed. See "
         "also the tooltip of the button above."));
   normalSpeedSlider->setExplicitFocusOrder(12);
   normalSpeedSlider->setRange(1, 20, 1);
@@ -77,9 +77,9 @@ CommandModeVPOTComponent::CommandModeVPOTComponent(CommandMode::Page *pPage,
   normalSpeedSlider->setColour(Slider::trackColourId, Colour(0x0));
   normalSpeedSlider->addListener(this);
 
-  addAndMakeVisible(pressedSpeedSlider = new Slider(T("PressedSpeed")));
+  addAndMakeVisible(pressedSpeedSlider = new Slider(String("PressedSpeed")));
   pressedSpeedSlider->setTooltip(
-      T("The amount of change when the VPOT is rotated while pressed. See also "
+      String("The amount of change when the VPOT is rotated while pressed. See also "
         "the tooltip of the button above."));
   pressedSpeedSlider->setExplicitFocusOrder(13);
   pressedSpeedSlider->setRange(1, 30, 1);
@@ -92,9 +92,9 @@ CommandModeVPOTComponent::CommandModeVPOTComponent(CommandMode::Page *pPage,
   m_pPage = pPage;
   m_shift = shift;
   m_channel = channel;
-  groupComponent->setText((shift ? T("Shift ") : String::empty) +
-                          String::formatted(T("%d"), channel + 1));
-  actionLabel->setText(m_pPage->getCommandName(shift, channel), false);
+  groupComponent->setText((shift ? String("Shift ") : String()) +
+                          String::formatted(String("%d"), channel + 1));
+  actionLabel->setText(m_pPage->getCommandName(shift, channel), dontSendNotification);
   relativeButton->setToggleState(m_pPage->m_bRelative[shift][channel], false);
   normalSpeedSlider->setEnabled(m_pPage->m_bRelative[shift][channel]);
   normalSpeedSlider->setValue(m_pPage->m_iNormalSpeed[shift][channel], false);
@@ -151,7 +151,7 @@ void CommandModeVPOTComponent::labelTextChanged(Label *labelThatHasChanged) {
 
   if (labelThatHasChanged == actionLabel) {
     //[UserLabelCode_actionLabel] -- add your label text handling code here..
-    actionLabel->setText(actionLabel->getText().substring(0, 6), false);
+    actionLabel->setText(actionLabel->getText().substring(0, 6), dontSendNotification);
     m_pPage->setCommandName(m_shift, m_channel, actionLabel->getText());
     //[/UserLabelCode_actionLabel]
   }

@@ -21,7 +21,7 @@ void PluginWatcher::setPlugin(MediaTrack *pMediaTrack, int iSlot) {
   m_pMediaTrack = pMediaTrack;
   m_iSlot = iSlot;
   m_mapParamValues.clear();
-  m_plugName = String::empty;
+  m_plugName = String();
 }
 
 void PluginWatcher::frame(DWORD time) {
@@ -35,7 +35,7 @@ void PluginWatcher::frame(DWORD time) {
     String name = String(paramName);
 
     if (name != m_plugName) {
-      if (m_plugName != String::empty)
+      if (m_plugName != String())
         m_signalNameChanged(m_pMediaTrack, m_iSlot, name);
       m_plugName = name;
     }
@@ -69,7 +69,7 @@ String PluginWatcher::getParamString(MediaTrack *pMediaTrack, int iSlot,
   if (valid) {
     return PlugAccess::longNameFromCString(valueString);
   } else {
-    return String::formatted(JUCE_T("%.2f"), dValue);
+    return String::formatted(String("%.2f"), dValue);
   }
 }
 

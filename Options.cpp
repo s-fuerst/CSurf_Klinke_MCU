@@ -9,12 +9,12 @@
 #include "csurf_mcu.h"
 #endif
 
-#define OPT_NODE_OPTION JUCE_T("option")
+#define OPT_NODE_OPTION String("option")
 
-#define OPT_ATT_VERSION JUCE_T("version")
-#define OPT_ATT_NAME JUCE_T("name")
-#define OPT_ATT_SELECTED JUCE_T("selectedPos")
-#define OPT_ATT_SELECTED_NAME JUCE_T("selectedName")
+#define OPT_ATT_VERSION String("version")
+#define OPT_ATT_NAME String("name")
+#define OPT_ATT_SELECTED String("selectedPos")
+#define OPT_ATT_SELECTED_NAME String("selectedName")
 
 Options::Options(DisplayHandler *pDH) : Selector(pDH) {}
 
@@ -39,7 +39,7 @@ void Options::addAttribute(String optionName, String attribute,
 void Options::activateSelector() {
   m_pDisplay->clear();
   for (unsigned int i = 0; i < 4 && i < m_optionList.size(); ++i)
-    m_pDisplay->changeText(0, i * 14, m_optionList[i].first.toCString(), 13,
+    m_pDisplay->changeText(0, i * 14, m_optionList[i].first.toRawUTF8(), 13,
                            true);
 
   displaySelectedOptions();
@@ -99,27 +99,26 @@ String Options::getSelectedOptionAsString(const String &optionName) {
       return getSelectedOptionAsString(i);
     }
   }
-  return String::empty;
+  return String();
 }
 
-int Options::getSelectedOption(wchar_t *optionName) {
-  String strOptionName = String(optionName);
+int Options::getSelectedOption(const String &optionName) {
   for (unsigned int i = 0; i < 4 && i < m_optionList.size(); ++i) {
-    if (m_optionList[i].first == strOptionName) {
+    if (m_optionList[i].first == optionName) {
       return m_optionList[i].second.second;
     }
   }
   return -1;
 }
 
-bool Options::isOptionSetTo(const wchar_t *optionName,
-                            const wchar_t *attribute) {
-  return getSelectedOptionAsString(String(optionName)) == String(attribute);
+bool Options::isOptionSetTo(const String &optionName,
+                            const String &attribute) {
+  return getSelectedOptionAsString(optionName) == attribute;
 }
 
-void Options::setOptionTo(wchar_t *optionName, int attributeId) {
+void Options::setOptionTo(const String &optionName, int attributeId) {
   for (unsigned int i = 0; i < 4 && i < m_optionList.size(); ++i) {
-    if (m_optionList[i].first.equalsIgnoreCase(String(optionName))) {
+    if (m_optionList[i].first.equalsIgnoreCase(optionName)) {
       if (attributeId >= 0 &&
           attributeId < (int)m_optionList[i].second.first.size()) {
         m_optionList[i].second.second = attributeId;
@@ -133,7 +132,7 @@ void Options::displaySelectedOptions() {
   checkAndModifyOptions();
 
   for (unsigned int i = 0; i < 4 && i < m_optionList.size(); ++i) {
-    m_pDisplay->changeText(1, i * 14, getSelectedOptionAsString(i).toCString(),
+    m_pDisplay->changeText(1, i * 14, getSelectedOptionAsString(i).toRawUTF8(),
                            13, true);
   }
 }
@@ -146,7 +145,7 @@ void Options::writeConfigFile() {
     writeOptionToXml(pRootElement, m_optionList[i]);
   }
 
-  pRootElement->writeToFile(getConfigFile(), "", JUCE_T("UTF-8"));
+  pRootElement->writeToFile(getConfigFile(), "", String("UTF-8"));
 
   safe_delete(pRootElement);
 }
@@ -167,7 +166,7 @@ bool Options::readConfigFile() {
   if (!pXmlFile)
     return false;
 
-  XmlElement *pRootElement = pXmlFile->getDocumentElement();
+  XmlElement *pRootElement = pXmlFile->getDocumentElement().get();
   if (!pRootElement)
     return false;
 
@@ -209,25 +208,25 @@ File Options::getConfigFile() {
 #ifdef EXT_B
   File configDir =
       File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() +
-      JUCE_T("\\Reaper\\MCU_B\\Config\\");
+      String("\\Reaper\\MCU_B\\Config\\");
 #else
   File configDir =
       File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() +
-      JUCE_T("\\Reaper\\MCU\\Config\\");
+      String("\\Reaper\\MCU\\Config\\");
 #endif
   if (!configDir.exists())
     configDir.createDirectory();
-  return File(configDir.getFullPathName() + JUCE_T("\\") + getConfigFileName() +
-              JUCE_T(".xml"));
+  return File(configDir.getFullPathName() + String("\\") + getConfigFileName() +
+              String(".xml"));
 #else
 #ifdef EXT_B
-  File configDir = String(GetResourcePath()) + JUCE_T("/MCU_B/Config/");
+  File configDir = String(GetResourcePath()) + String("/MCU_B/Config/");
 #else
-  File configDir = String(GetResourcePath()) + JUCE_T("/MCU/Config/");
+  File configDir = String(GetResourcePath()) + String("/MCU/Config/");
 #endif
   if (!configDir.exists())
     configDir.createDirectory();
-  return File(configDir.getFullPathName() + JUCE_T("/") + getConfigFileName() +
-              JUCE_T(".xml"));
+  return File(configDir.getFullPathName() + String("/") + getConfigFileName() +
+              String(".xml"));
 #endif
 }

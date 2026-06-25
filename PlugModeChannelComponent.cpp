@@ -46,7 +46,7 @@ PlugModeChannelComponent::PlugModeChannelComponent(PlugModeComponent *pMC,
 
   //[UserPreSize]
   for (int i = 0; i < 8; i++) {
-    m_tabbedChannels->addTab(String::formatted(T("Channel %d"), i + 1),
+    m_tabbedChannels->addTab(String::formatted(String("Channel %d"), i + 1),
                              Colours::white,
                              new PlugModeSingleChannelComponent(
                                  pMC, pPage->getFader(i), pPage->getVPot(i)),

@@ -41,12 +41,12 @@ PlugModePageReferenceComponent::PlugModePageReferenceComponent(
     : groupComponent2(0), m_nameShort(0), m_nameLong(0), m_groupReference(0),
       m_referenceTo(0), m_offset(0), m_offsetLabel(0) {
   addAndMakeVisible(groupComponent2 =
-                        new GroupComponent(T("new group"), T("Name")));
+                        new GroupComponent(String("new group"), String("Name")));
   groupComponent2->setColour(GroupComponent::outlineColourId, Colour(0x0));
   groupComponent2->setColour(GroupComponent::textColourId, Colour(0x0));
 
-  addAndMakeVisible(m_nameShort = new Label(T("Name Short"), T("Page x")));
-  m_nameShort->setTooltip(T("This short name of the selected page"));
+  addAndMakeVisible(m_nameShort = new Label(String("Name Short"), String("Page x")));
+  m_nameShort->setTooltip(String("This short name of the selected page"));
   m_nameShort->setFont(
       Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
   m_nameShort->setJustificationType(Justification::centredLeft);
@@ -58,8 +58,8 @@ PlugModePageReferenceComponent::PlugModePageReferenceComponent(
   m_nameShort->addListener(this);
 
   addAndMakeVisible(m_nameLong =
-                        new Label(T("Name Long"), T("12345678901234567")));
-  m_nameLong->setTooltip(T("This long name of the selected page"));
+                        new Label(String("Name Long"), String("12345678901234567")));
+  m_nameLong->setTooltip(String("This long name of the selected page"));
   m_nameLong->setFont(
       Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
   m_nameLong->setJustificationType(Justification::centredLeft);
@@ -70,32 +70,32 @@ PlugModePageReferenceComponent::PlugModePageReferenceComponent(
   m_nameLong->setColour(TextEditor::backgroundColourId, Colour(0x0));
   m_nameLong->addListener(this);
 
-  addAndMakeVisible(m_groupReference = new GroupComponent(T("Group Reference"),
-                                                          T("Reference")));
+  addAndMakeVisible(m_groupReference = new GroupComponent(String("Group Reference"),
+                                                          String("Reference")));
   m_groupReference->setColour(GroupComponent::outlineColourId, Colours::black);
 
-  addAndMakeVisible(m_referenceTo = new ComboBox(T("Reference To")));
+  addAndMakeVisible(m_referenceTo = new ComboBox(String("Reference To")));
   m_referenceTo->setTooltip(
-      T("Use the channel mappings of the selected page. This can be useful if "
+      String("Use the channel mappings of the selected page. This can be useful if "
         "the plugin has parameter groups, eq. a drum synth that has n-times "
         "the same synth engine. In this case you must map the parameters only "
         "for one synth engine and can then refer to it."));
   m_referenceTo->setEditableText(false);
   m_referenceTo->setJustificationType(Justification::centredLeft);
-  m_referenceTo->setTextWhenNothingSelected(T("something must be selected"));
-  m_referenceTo->setTextWhenNoChoicesAvailable(T("we have items"));
-  m_referenceTo->addItem(T("Page 1"), 1);
-  m_referenceTo->addItem(T("Page 2"), 2);
-  m_referenceTo->addItem(T("Page 3"), 3);
-  m_referenceTo->addItem(T("Page 4"), 4);
-  m_referenceTo->addItem(T("Page 5"), 5);
-  m_referenceTo->addItem(T("Page 6"), 6);
-  m_referenceTo->addItem(T("Page 7"), 7);
-  m_referenceTo->addItem(T("Page 8"), 8);
+  m_referenceTo->setTextWhenNothingSelected(String("something must be selected"));
+  m_referenceTo->setTextWhenNoChoicesAvailable(String("we have items"));
+  m_referenceTo->addItem(String("Page 1"), 1);
+  m_referenceTo->addItem(String("Page 2"), 2);
+  m_referenceTo->addItem(String("Page 3"), 3);
+  m_referenceTo->addItem(String("Page 4"), 4);
+  m_referenceTo->addItem(String("Page 5"), 5);
+  m_referenceTo->addItem(String("Page 6"), 6);
+  m_referenceTo->addItem(String("Page 7"), 7);
+  m_referenceTo->addItem(String("Page 8"), 8);
   m_referenceTo->addListener(this);
 
-  addAndMakeVisible(m_offset = new Label(T("Offset"), T("-20")));
-  m_offset->setTooltip(T("The offset is determined by the difference of the "
+  addAndMakeVisible(m_offset = new Label(String("Offset"), String("-20")));
+  m_offset->setTooltip(String("The offset is determined by the difference of the "
                          "ids of repeating parameter groups. The ReaEQ map "
                          "uses this feature, look at this as an example."));
   m_offset->setFont(
@@ -108,7 +108,7 @@ PlugModePageReferenceComponent::PlugModePageReferenceComponent(
   m_offset->setColour(TextEditor::backgroundColourId, Colour(0x0));
   m_offset->addListener(this);
 
-  addAndMakeVisible(m_offsetLabel = new Label(T("Offset Label"), T("Offset:")));
+  addAndMakeVisible(m_offsetLabel = new Label(String("Offset Label"), String("Offset:")));
   m_offsetLabel->setFont(
       Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
   m_offsetLabel->setJustificationType(Justification::centredLeft);
@@ -174,16 +174,16 @@ void PlugModePageReferenceComponent::labelTextChanged(
   if (labelThatHasChanged == m_nameShort) {
     //[UserLabelCode_m_nameShort] -- add your label text handling code here..
     bool setLongAlso = (m_pPage->getNameShort() == m_pPage->getNameLong());
-    m_nameShort->setText(m_nameShort->getText().substring(0, 6), false);
+    m_nameShort->setText(m_nameShort->getText().substring(0, 6), dontSendNotification);
     if (setLongAlso)
-      m_nameLong->setText(m_nameShort->getText(), true);
+      m_nameLong->setText(m_nameShort->getText(), sendNotification);
 
     m_pPage->setNameShort(m_nameShort->getText());
     m_pPlugModePageComponent->updatePageNames();
     //[/UserLabelCode_m_nameShort]
   } else if (labelThatHasChanged == m_nameLong) {
     //[UserLabelCode_m_nameLong] -- add your label text handling code here..
-    m_nameLong->setText(m_nameLong->getText().substring(0, 17), false);
+    m_nameLong->setText(m_nameLong->getText().substring(0, 17), dontSendNotification);
     m_pPage->setNameLong(m_nameLong->getText());
     //[/UserLabelCode_m_nameLong]
   } else if (labelThatHasChanged == m_offset) {
@@ -216,8 +216,8 @@ void PlugModePageReferenceComponent::comboBoxChanged(
 //[MiscUserCode] You can add your own definitions of your custom methods or any
 //other code here...
 void PlugModePageReferenceComponent::updateEverything() {
-  m_nameShort->setText(m_pPage->getNameShort(), false);
-  m_nameLong->setText(m_pPage->getNameLong(), false);
+  m_nameShort->setText(m_pPage->getNameShort(), dontSendNotification);
+  m_nameLong->setText(m_pPage->getNameLong(), dontSendNotification);
 
   int referTo = m_pPage->referTo();
   if (m_pPage->doesRefer()) {
@@ -225,7 +225,7 @@ void PlugModePageReferenceComponent::updateEverything() {
     m_offset->setVisible(true);
     m_offsetLabel->setVisible(true);
     m_pPlugModePageComponent->setTabVisible(false);
-    m_offset->setText(String::formatted(T("%d"), m_pPage->getParamIDOffset()),
+    m_offset->setText(String::formatted(String("%d"), m_pPage->getParamIDOffset()),
                       false);
   } else {
     m_referenceTo->setSelectedItemIndex(m_pPage->getId(), false);

@@ -44,8 +44,8 @@
  //[/Comments]
  */
 class PlugModeBankReferenceComponent : public Component,
-                                       public LabelListener,
-                                       public ComboBoxListener {
+                                       public Label::Listener,
+                                       public ComboBox::Listener {
 public:
   //==============================================================================
   PlugModeBankReferenceComponent(PlugModeBankComponent *pPMBC, PMBank *pBank);

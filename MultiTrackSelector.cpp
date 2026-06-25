@@ -20,7 +20,7 @@ void MultiTrackSelector::activateSelector() {
     if (m_quickJumps[i]) {
       m_pDisplay->changeField(
           asRoot(m_quickJumps[i]) ? 0 : 1, i + 1,
-          m_quickJumps[i]->showQuickNameInDisplay().toCString());
+          m_quickJumps[i]->showQuickNameInDisplay().toRawUTF8());
     }
   }
   m_pDisplayHandler->switchTo(m_pDisplay);

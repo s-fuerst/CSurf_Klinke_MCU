@@ -37,29 +37,29 @@ class PlugMapManager;
 
 //==============================================================================
 PlugMapSaveDialog::PlugMapSaveDialog(PlugMapManager *pPMM)
-    : Component(T("PlugMapSaveDialog")), m_okButton(0), m_cancelButton(0),
+    : Component(String("PlugMapSaveDialog")), m_okButton(0), m_cancelButton(0),
       m_labelExisting(0), m_mapList(0), m_labelNameOfNewMap(0), m_mapName(0),
       m_fileDialog(0), m_labelConflict(0), m_labelExisting2(0),
       m_mapInstalled(0) {
-  addAndMakeVisible(m_okButton = new TextButton(T("Ok")));
+  addAndMakeVisible(m_okButton = new TextButton(String("Ok")));
   m_okButton->setExplicitFocusOrder(2);
   m_okButton->addListener(this);
 
-  addAndMakeVisible(m_cancelButton = new TextButton(T("Cancel")));
+  addAndMakeVisible(m_cancelButton = new TextButton(String("Cancel")));
   m_cancelButton->setExplicitFocusOrder(3);
   m_cancelButton->addListener(this);
 
   addAndMakeVisible(m_labelExisting =
-                        new Label(T("Existing"), T("Existing User-Maps:\n")));
+                        new Label(String("Existing"), String("Existing User-Maps:\n")));
   m_labelExisting->setFont(Font(15.0000f, Font::plain));
   m_labelExisting->setJustificationType(Justification::centredLeft);
   m_labelExisting->setEditable(false, false, false);
   m_labelExisting->setColour(TextEditor::textColourId, Colours::black);
   m_labelExisting->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-  addAndMakeVisible(m_mapList = new TextEditor(T("Map List")));
+  addAndMakeVisible(m_mapList = new TextEditor(String("Map List")));
   m_mapList->setTooltip(
-      T("The list of plugin maps that are created by the user (the are stored "
+      String("The list of plugin maps that are created by the user (the are stored "
         "in the \"My Documents/MCU/PlugMaps/\" directory)."));
   m_mapList->setExplicitFocusOrder(100);
   m_mapList->setMultiLine(true);
@@ -70,18 +70,18 @@ PlugMapSaveDialog::PlugMapSaveDialog(PlugMapManager *pPMM)
   m_mapList->setPopupMenuEnabled(false);
   m_mapList->setColour(TextEditor::outlineColourId, Colours::black);
   m_mapList->setColour(TextEditor::shadowColourId, Colour(0x0));
-  m_mapList->setText(String::empty);
+  m_mapList->setText(String());
 
   addAndMakeVisible(m_labelNameOfNewMap =
-                        new Label(T("Existing"), T("Name of new Map:\n")));
+                        new Label(String("Existing"), String("Name of new Map:\n")));
   m_labelNameOfNewMap->setFont(Font(15.0000f, Font::plain));
   m_labelNameOfNewMap->setJustificationType(Justification::centredLeft);
   m_labelNameOfNewMap->setEditable(false, false, false);
   m_labelNameOfNewMap->setColour(TextEditor::textColourId, Colours::black);
   m_labelNameOfNewMap->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-  addAndMakeVisible(m_mapName = new Label(T("Map Name"), String::empty));
-  m_mapName->setTooltip(T("The name of the map that should be created."));
+  addAndMakeVisible(m_mapName = new Label(String("Map Name"), String()));
+  m_mapName->setTooltip(String("The name of the map that should be created."));
   m_mapName->setExplicitFocusOrder(1);
   m_mapName->setFont(Font(15.0000f, Font::plain));
   m_mapName->setJustificationType(Justification::centredLeft);
@@ -91,14 +91,14 @@ PlugMapSaveDialog::PlugMapSaveDialog(PlugMapManager *pPMM)
   m_mapName->setColour(TextEditor::backgroundColourId, Colour(0x0));
   m_mapName->addListener(this);
 
-  addAndMakeVisible(m_fileDialog = new TextButton(T("FileDialog")));
+  addAndMakeVisible(m_fileDialog = new TextButton(String("FileDialog")));
   m_fileDialog->setTooltip(
-      T("Rescan the \"My Documents/MCU/PlugMaps/\" directory."));
+      String("Rescan the \"My Documents/MCU/PlugMaps/\" directory."));
   m_fileDialog->setExplicitFocusOrder(2);
-  m_fileDialog->setButtonText(T("Rescan"));
+  m_fileDialog->setButtonText(String("Rescan"));
   m_fileDialog->addListener(this);
 
-  addAndMakeVisible(m_labelConflict = new Label(T("Conflict"), String::empty));
+  addAndMakeVisible(m_labelConflict = new Label(String("Conflict"), String()));
   m_labelConflict->setFont(Font(15.0000f, Font::plain));
   m_labelConflict->setJustificationType(Justification::centredLeft);
   m_labelConflict->setEditable(false, false, false);
@@ -107,16 +107,16 @@ PlugMapSaveDialog::PlugMapSaveDialog(PlugMapManager *pPMM)
   m_labelConflict->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
   addAndMakeVisible(m_labelExisting2 =
-                        new Label(T("Existing"), T("Factory Maps:\n")));
+                        new Label(String("Existing"), String("Factory Maps:\n")));
   m_labelExisting2->setFont(Font(15.0000f, Font::plain));
   m_labelExisting2->setJustificationType(Justification::centredLeft);
   m_labelExisting2->setEditable(false, false, false);
   m_labelExisting2->setColour(TextEditor::textColourId, Colours::black);
   m_labelExisting2->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-  addAndMakeVisible(m_mapInstalled = new TextEditor(T("Map List")));
+  addAndMakeVisible(m_mapInstalled = new TextEditor(String("Map List")));
   m_mapInstalled->setTooltip(
-      T("The list of plugin maps that came with the distribution. They can\'t "
+      String("The list of plugin maps that came with the distribution. They can\'t "
         "cause name conflicts, so there is no need to modify them."));
   m_mapInstalled->setExplicitFocusOrder(100);
   m_mapInstalled->setMultiLine(true);
@@ -127,7 +127,7 @@ PlugMapSaveDialog::PlugMapSaveDialog(PlugMapManager *pPMM)
   m_mapInstalled->setPopupMenuEnabled(false);
   m_mapInstalled->setColour(TextEditor::outlineColourId, Colours::black);
   m_mapInstalled->setColour(TextEditor::shadowColourId, Colour(0x0));
-  m_mapInstalled->setText(String::empty);
+  m_mapInstalled->setText(String());
 
   //[UserPreSize]
   m_mapList->setText(pPMM->getUserMapsAsString());
@@ -198,8 +198,8 @@ void PlugMapSaveDialog::buttonClicked(Button *buttonThatWasClicked) {
         getParentComponent()->exitModalState(SAVEMAP_OK);
     } else {
       AlertWindow::showMessageBox(
-          AlertWindow::WarningIcon, JUCE_T("Name is invalid"),
-          JUCE_T("The name \'" + m_mapName->getText() +
+          AlertWindow::WarningIcon, String("Name is invalid"),
+          String("The name \'" + m_mapName->getText() +
                  "\' collide with the existing map \'" +
                  m_pPMM->nameIsInvalidBecauseOf() + "\'."));
     }

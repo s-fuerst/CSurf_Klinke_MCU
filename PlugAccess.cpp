@@ -23,7 +23,7 @@
 
 PlugAccess::PlugAccess(PlugMode *pMode)
     : m_pMode(pMode), m_selectedBank(0), m_pPlugTrack(NULL), m_iSlot(-1),
-      m_pMapManager(NULL), m_plugName(String::empty),
+      m_pMapManager(NULL), m_plugName(String()),
       m_GUIDplugTrack(GUID_NOT_ACTIVE) {
   m_pMapManager = new PlugMapManager(pMode);
   m_pWindowManager = new PlugWindowManager(pMode);
@@ -147,13 +147,13 @@ void PlugAccess::accessPlugin(MediaTrack *pMediaTrack, int iSlot,
 String PlugAccess::getPlugName(bool shortName, MediaTrack *pMediaTrack,
                                int slot) {
   if (!plugExist()) {
-    return String::empty;
+    return String();
   }
 
   char paramName[80];
   bool valid = TrackFX_GetFXName(pMediaTrack, slot, paramName, 79);
   if (!valid) {
-    return String::empty;
+    return String();
   }
 
   if (shortName) {
@@ -165,13 +165,13 @@ String PlugAccess::getPlugName(bool shortName, MediaTrack *pMediaTrack,
 
 String PlugAccess::getFullPlugName(MediaTrack *pMediaTrack, int slot) {
   if (!plugExist()) {
-    return String::empty;
+    return String();
   }
 
   char paramName[80];
   bool valid = TrackFX_GetFXName(pMediaTrack, slot, paramName, 79);
   if (!valid) {
-    return String::empty;
+    return String();
   }
 
   return String(paramName);
@@ -187,19 +187,19 @@ void PlugAccess::createDefaultMap() {
   for (desc.m_bank = 0; desc.m_bank < 8; desc.m_bank++) {
     getMap()
         ->getBank(desc.m_bank)
-        ->setNameLong(String::formatted(JUCE_T("Bank %d"), desc.m_bank + 1));
+        ->setNameLong(String::formatted(String("Bank %d"), desc.m_bank + 1));
     getMap()
         ->getBank(desc.m_bank)
-        ->setNameShort(String::formatted(JUCE_T("Bank %d"), desc.m_bank + 1));
+        ->setNameShort(String::formatted(String("Bank %d"), desc.m_bank + 1));
     for (desc.m_page = 0; desc.m_page < 8; desc.m_page++) {
       getMap()
           ->getBank(desc.m_bank)
           ->getPage(desc.m_page)
-          ->setNameLong(String::formatted(JUCE_T("Page %d"), desc.m_page + 1));
+          ->setNameLong(String::formatted(String("Page %d"), desc.m_page + 1));
       getMap()
           ->getBank(desc.m_bank)
           ->getPage(desc.m_page)
-          ->setNameShort(String::formatted(JUCE_T("Page %d"), desc.m_page + 1));
+          ->setNameShort(String::formatted(String("Page %d"), desc.m_page + 1));
       for (desc.m_channel = 0; desc.m_channel < 8; desc.m_channel++) {
         if (numParamsMapped >= numParamsExist)
           return;
@@ -459,7 +459,7 @@ String PlugAccess::getParamValueShort(ElementDesc::eType type, int channel) {
       if (index >= 0) {
         return getNthValueFromMap(index, steps).get<0>();
       } else
-        return String::empty;
+        return String();
     }
 
     char valueString[80];
@@ -468,12 +468,12 @@ String PlugAccess::getParamValueShort(ElementDesc::eType type, int channel) {
     if (valid) {
       return shortNameFromCString(valueString);
     } else {
-      return String::formatted(JUCE_T("%1.3f"),
+      return String::formatted(String("%1.3f"),
                                getParamValueDouble(type, channel));
     }
   }
 
-  return String::empty;
+  return String();
 }
 
 String PlugAccess::getParamValueLong(ElementDesc::eType type, int channel) {
@@ -496,12 +496,12 @@ String PlugAccess::getParamValueLong(ElementDesc::eType type, int channel) {
     if (valid) {
       return longNameFromCString(valueString);
     } else {
-      return String::formatted(JUCE_T("%1.3f"),
+      return String::formatted(String("%1.3f"),
                                getParamValueDouble(type, channel));
     }
   }
 
-  return String::empty;
+  return String();
 }
 
 void PlugAccess::trackRemoved(MediaTrack *pMT) {
@@ -679,17 +679,17 @@ void PlugAccess::openFX() {
   }
 }
 
-#define PLUGACCESS_NODE_ROOT JUCE_T("PLUGACCESS")
-#define PLUGACCESS_NODE_SLOTSTATE JUCE_T("SLOTSTATES")
-#define PLUGACCESS_ATT_SLOTSTATE_TRACK JUCE_T("track")
-#define PLUGACCESS_ATT_SLOTSTATE_SLOT JUCE_T("slot")
-#define PLUGACCESS_ATT_SLOTSTATE_PLUGNAME JUCE_T("plugname")
-#define PLUGACCESS_ATT_SLOTSTATE_BANK JUCE_T("bank")
-#define PLUGACCESS_NODE_SLOTSTATE_PAGE JUCE_T("PAGE")
-#define PLUGACCESS_ATT_SLOTSTATE_PAGE_INDEX JUCE_T("nr")
-#define PLUGACCESS_NODE_SELECTED_PLUG JUCE_T("SELECTED_PLUG")
-#define PLUGACCESS_ATT_SELECTED_PLUG_TRACK JUCE_T("track")
-#define PLUGACCESS_ATT_SELECTED_PLUG_SLOT JUCE_T("slot")
+#define PLUGACCESS_NODE_ROOT String("PLUGACCESS")
+#define PLUGACCESS_NODE_SLOTSTATE String("SLOTSTATES")
+#define PLUGACCESS_ATT_SLOTSTATE_TRACK String("track")
+#define PLUGACCESS_ATT_SLOTSTATE_SLOT String("slot")
+#define PLUGACCESS_ATT_SLOTSTATE_PLUGNAME String("plugname")
+#define PLUGACCESS_ATT_SLOTSTATE_BANK String("bank")
+#define PLUGACCESS_NODE_SLOTSTATE_PAGE String("PAGE")
+#define PLUGACCESS_ATT_SLOTSTATE_PAGE_INDEX String("nr")
+#define PLUGACCESS_NODE_SELECTED_PLUG String("SELECTED_PLUG")
+#define PLUGACCESS_ATT_SELECTED_PLUG_TRACK String("track")
+#define PLUGACCESS_ATT_SELECTED_PLUG_SLOT String("slot")
 
 void PlugAccess::projectChanged(XmlElement *pXmlElement,
                                 ProjectConfig::EAction action) {

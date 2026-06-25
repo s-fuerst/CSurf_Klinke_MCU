@@ -170,20 +170,20 @@ TSNode *TSGraph::nodeOfTrack(MediaTrack *pMT) {
 TrackState::TrackState()
     : m_pMediaTrack(NULL), m_isInSet(true), m_isOnMCU(false), m_onMCUChannel(0),
       m_anchorChannel(0), m_quickJumpChannel(0), m_isShownInMCP(true),
-      m_isShownInTCP(true), m_tcpHeight(16), m_quickJumpName(String::empty),
-      m_quickRoot(false), m_displayName(String::empty), m_vu(true),
-      m_guidAsString(String::empty) {}
+      m_isShownInTCP(true), m_tcpHeight(16), m_quickJumpName(String()),
+      m_quickRoot(false), m_displayName(String()), m_vu(true),
+      m_guidAsString(String()) {}
 
 TrackState::TrackState(MediaTrack *pMT)
     : m_pMediaTrack(NULL), m_isInSet(true), m_isOnMCU(false), m_onMCUChannel(0),
       m_anchorChannel(0), m_quickJumpChannel(0), m_isShownInMCP(true),
-      m_isShownInTCP(true), m_tcpHeight(16), m_quickJumpName(String::empty),
-      m_quickRoot(false), m_vu(true), m_displayName(String::empty) {
+      m_isShownInTCP(true), m_tcpHeight(16), m_quickJumpName(String()),
+      m_quickRoot(false), m_vu(true), m_displayName(String()) {
   m_pMediaTrack = pMT;
   if (pMT)
     m_guidAsString = GUID2String(GetTrackGUID(pMT));
   else
-    m_guidAsString = String::empty;
+    m_guidAsString = String();
 }
 
 bool TrackState::operator==(TrackState &other) {
@@ -220,8 +220,8 @@ String TrackState::showInDisplay() {
     return m_displayName;
   } else {
     String fullTrackName = MediaTrackInfo::getTrackName(m_pMediaTrack, true);
-    if (fullTrackName.contains(JUCE_T("|"))) {
-      return fullTrackName.fromFirstOccurrenceOf(JUCE_T("|"), false, false)
+    if (fullTrackName.contains(String("|"))) {
+      return fullTrackName.fromFirstOccurrenceOf(String("|"), false, false)
           .trimStart()
           .substring(0, 6);
     }
@@ -236,16 +236,16 @@ String TrackState::showQuickNameInDisplay() {
   return showInDisplay();
 }
 
-#define TRACKSTATE_NODE_SINGLE_STATE JUCE_T("STATE")
-#define TRACKSTATE_ATT_TRACK JUCE_T("track") // GUID as String
-#define TRACKSTATE_ATT_NAME JUCE_T("name")
-#define TRACKSTATE_ATT_TCP JUCE_T("tcp")
-#define TRACKSTATE_ATT_MCP JUCE_T("mcp")
-#define TRACKSTATE_ATT_MCU JUCE_T("mcu")
-#define TRACKSTATE_ATT_ANCHOR JUCE_T("anchor")
-#define TRACKSTATE_ATT_QUICK_JUMP JUCE_T("q_channel")
-#define TRACKSTATE_ATT_QUICK_NAME JUCE_T("q_name")
-#define TRACKSTATE_ATT_QUICK_ROOT JUCE_T("q_root")
+#define TRACKSTATE_NODE_SINGLE_STATE String("STATE")
+#define TRACKSTATE_ATT_TRACK String("track") // GUID as String
+#define TRACKSTATE_ATT_NAME String("name")
+#define TRACKSTATE_ATT_TCP String("tcp")
+#define TRACKSTATE_ATT_MCP String("mcp")
+#define TRACKSTATE_ATT_MCU String("mcu")
+#define TRACKSTATE_ATT_ANCHOR String("anchor")
+#define TRACKSTATE_ATT_QUICK_JUMP String("q_channel")
+#define TRACKSTATE_ATT_QUICK_NAME String("q_name")
+#define TRACKSTATE_ATT_QUICK_ROOT String("q_root")
 
 void TrackState::writeTrackStatesToProjectConfig(XmlElement *pNode) {
   XmlElement *pStateNode = new XmlElement(TRACKSTATE_NODE_SINGLE_STATE);
@@ -347,16 +347,16 @@ String MediaTrackInfo::getTrackName(MediaTrack *pMT,
                                     bool showTrackNumberIfEmpty) {
   assert(pMT != NULL);
   if (pMT == NULL)
-    return String::empty;
+    return String();
   char *pName = (char *)GetSetMediaTrackInfo(pMT, "P_NAME", NULL);
   if (pName == NULL)
-    return String::empty;
+    return String();
   if (testPtr(pName) && pName && *pName != 0) {
     return String(pName);
   }
 
   if (!showTrackNumberIfEmpty) {
-    return String::empty;
+    return String();
   }
 
   int nr = (int)GetSetMediaTrackInfo(pMT, "IP_TRACKNUMBER", NULL);
@@ -367,7 +367,7 @@ void MediaTrackInfo::setTrackName(MediaTrack *pMT, String strTrackname) {
   assert(pMT != NULL);
   if (pMT == NULL)
     return;
-  const char *pName = strTrackname.toCString();
+  const char *pName = strTrackname.toRawUTF8();
   GetSetMediaTrackInfo(pMT, "P_NAME", (void *)pName);
 }
 
@@ -1081,7 +1081,7 @@ void Tracks::disconnectTrackRemoved(int connectionId) {
   m_trackRemovedConnections.erase(m_trackRemovedConnections.find(connectionId));
 }
 
-#define TRACKSTATE_NODE_ROOT JUCE_T("TRACKSTATES")
+#define TRACKSTATE_NODE_ROOT String("TRACKSTATES")
 
 void Tracks::projectChanged(XmlElement *pXmlElement,
                             ProjectConfig::EAction action) {

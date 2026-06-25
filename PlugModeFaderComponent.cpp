@@ -39,7 +39,7 @@ PlugModeFaderComponent::PlugModeFaderComponent(PlugModeComponent *pMC,
                                                PMFader *pFader)
     : m_faderGroup(0), m_params(0) {
   addAndMakeVisible(m_faderGroup =
-                        new GroupComponent(T("FaderGroup"), T("Fader")));
+                        new GroupComponent(String("FaderGroup"), String("Fader")));
   m_faderGroup->setColour(GroupComponent::outlineColourId, Colours::black);
 
   addAndMakeVisible(m_params = new PlugModeParamComponent(pMC, pFader));

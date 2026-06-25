@@ -45,7 +45,7 @@ class PluginWatcher;
  Describe your class and how it works here!
  //[/Comments]
  */
-class PlugModeComponent : public Component, public ButtonListener {
+class PlugModeComponent : public Component, public Button::Listener {
 public:
   //==============================================================================
   PlugModeComponent(PlugAccess *pPA);

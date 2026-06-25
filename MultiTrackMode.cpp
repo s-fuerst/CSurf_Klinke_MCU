@@ -490,9 +490,9 @@ void MultiTrackMode::updateDisplay() {
     if (tr) {
       TrackState *pTS = Tracks::instance()->getTrackStateForMediaTrack(tr);
       if (pTS) {
-        m_pDisplay->changeField(0, x, pTS->showInDisplay().toCString());
+        m_pDisplay->changeField(0, x, pTS->showInDisplay().toRawUTF8());
 				if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX)) 
-					m_pDisplay->changeField(2, x, pTS->showInDisplay().toCString());
+					m_pDisplay->changeField(2, x, pTS->showInDisplay().toRawUTF8());
       }
     } else {
       m_pDisplay->changeField(0, x, "");

@@ -10,13 +10,13 @@
 // PMParam
 //////////////////////////////////////////////////
 
-#define PMAP_ATT_SNAME JUCE_T("short")
-#define PMAP_ATT_LNAME JUCE_T("long")
-#define PMAP_ATT_PARAMID JUCE_T("paramId")
+#define PMAP_ATT_SNAME String("short")
+#define PMAP_ATT_LNAME String("long")
+#define PMAP_ATT_PARAMID String("paramId")
 
 void PMParam::initValues() {
-  m_nameShort = String::empty;
-  m_nameLong = String::empty;
+  m_nameShort = String();
+  m_nameLong = String();
 
   m_paramID = NOT_ASSIGNED;
 }
@@ -46,7 +46,7 @@ bool PMParam::readFromXml(XmlElement *pElement) {
 // PMFader
 //////////////////////////////////////////////////
 
-#define PMAP_NODE_FADER JUCE_T("FADER")
+#define PMAP_NODE_FADER String("FADER")
 
 void PMFader::writeToXml(XmlElement *pElement) {
   XmlElement *pFaderNode = new XmlElement(PMAP_NODE_FADER);
@@ -62,9 +62,9 @@ bool PMFader::readFromXml(XmlElement *pElement) {
 // PMVPot
 //////////////////////////////////////////////////
 
-#define PMAP_NODE_VPOT JUCE_T("VPOT")
-#define PMAP_NODE_STEP JUCE_T("STEP")
-#define PMAP_ATT_STEPVALUE JUCE_T("value")
+#define PMAP_NODE_VPOT String("VPOT")
+#define PMAP_NODE_STEP String("STEP")
+#define PMAP_ATT_STEPVALUE String("value")
 
 PMVPot::PMVPot() { m_pStepsMap = new tSteps(); }
 
@@ -118,15 +118,15 @@ void PMVPot::initValues() {
 // PMPage
 //////////////////////////////////////////////////
 
-#define PMAP_NODE_PAGE JUCE_T("PAGE")
-#define PMAP_ATT_ID JUCE_T("id")
-#define PMAP_ATT_REFER_TO JUCE_T("referTo")
-#define PMAP_ATT_OFFSET JUCE_T("offset")
+#define PMAP_NODE_PAGE String("PAGE")
+#define PMAP_ATT_ID String("id")
+#define PMAP_ATT_REFER_TO String("referTo")
+#define PMAP_ATT_OFFSET String("offset")
 
 void PMPage::initValues(int id) {
   m_id = id;
-  m_nameShort = String::empty;
-  m_nameLong = String::empty;
+  m_nameShort = String();
+  m_nameLong = String();
   m_referTo = DOESNT_REFER;
   m_offset = 0;
 
@@ -195,12 +195,12 @@ bool PMPage::readFromXml(XmlElement *pPageNode) {
 // PMBank
 //////////////////////////////////////////////////
 
-#define PMAP_NODE_BANK JUCE_T("BANK")
+#define PMAP_NODE_BANK String("BANK")
 
 void PMBank::initValues(int id) {
   m_id = id;
-  m_nameShort = String::empty;
-  m_nameLong = String::empty;
+  m_nameShort = String();
+  m_nameLong = String();
   m_referTo = DOESNT_REFER;
   m_offset = 0;
 
@@ -267,8 +267,8 @@ PlugMap::PlugMap(void)
 }
 
 void PlugMap::initValues() {
-  m_creator = String::empty;
-  m_info = String::empty;
+  m_creator = String();
+  m_info = String();
 
   for (int i = 0; i < 8; i++) {
     m_banks[i].initValues(i);
@@ -277,8 +277,8 @@ void PlugMap::initValues() {
 
 PlugMap::~PlugMap(void) {}
 
-#define PMAP_NODE_MAPINFO JUCE_T("MAPINFO")
-#define PMAP_ATT_CREATOR JUCE_T("creator")
+#define PMAP_NODE_MAPINFO String("MAPINFO")
+#define PMAP_ATT_CREATOR String("creator")
 
 void PlugMap::writeToXml(XmlElement *pElement) {
   XmlElement *pInfoNode = new XmlElement(PMAP_NODE_MAPINFO);

@@ -90,11 +90,11 @@ public:
   // Parameter
   String getParamNameShort(ElementDesc::eType type, int channel) {
     return getPMParam(type, channel) ? getPMParam(type, channel)->getNameShort()
-                                     : String::empty;
+                                     : String();
   }
   String getParamNameLong(ElementDesc::eType type, int channel) {
     return getPMParam(type, channel) ? getPMParam(type, channel)->getNameLong()
-                                     : String::empty;
+                                     : String();
   }
   void setParamValueInt(
       ElementDesc::eType type, int channel,

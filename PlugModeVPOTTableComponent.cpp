@@ -14,7 +14,7 @@
 PlugModeVPOTTableComponent::PlugModeVPOTTableComponent(PMVPot::tSteps *pStepMap)
     : m_pStepMap(pStepMap) {
   // Create our table component and add it to this component..
-  addAndMakeVisible(m_table = new TableListBox(JUCE_T("demo table"), this));
+  addAndMakeVisible(m_table = new TableListBox(String("demo table"), this));
 
   m_table->setHeaderHeight(24);
 
@@ -22,13 +22,13 @@ PlugModeVPOTTableComponent::PlugModeVPOTTableComponent(PMVPot::tSteps *pStepMap)
   m_table->setColour(ListBox::outlineColourId, Colours::grey);
   m_table->setOutlineThickness(2);
 
-  m_table->getHeader().addColumn(JUCE_T("Value"), VPOT_COLUMN_VALUE, 100, 100,
+  m_table->getHeader().addColumn(String("Value"), VPOT_COLUMN_VALUE, 100, 100,
                                  100,
                                  TableHeaderComponent::notResizableOrSortable);
-  m_table->getHeader().addColumn(JUCE_T("Short Name"), VPOT_COLUMN_SHORTNAME,
+  m_table->getHeader().addColumn(String("Short Name"), VPOT_COLUMN_SHORTNAME,
                                  118, 118, 118,
                                  TableHeaderComponent::notResizableOrSortable);
-  m_table->getHeader().addColumn(JUCE_T("Long Name"), VPOT_COLUMN_LONGNAME, 271,
+  m_table->getHeader().addColumn(String("Long Name"), VPOT_COLUMN_LONGNAME, 271,
                                  271, 271,
                                  TableHeaderComponent::notResizableOrSortable);
 
@@ -88,7 +88,7 @@ void PlugModeVPOTTableComponent::paintCell(Graphics &g, int rowNumber,
   double key = getNthKeyFromMap(rowNumber, m_pStepMap);
 
   if (columnId == VPOT_COLUMN_VALUE) {
-    g.drawText(String::formatted(JUCE_T("%f"), key), 2, 1, width - 4, height,
+    g.drawText(String::formatted(String("%f"), key), 2, 1, width - 4, height,
                Justification::centredLeft, true);
   }
 }
@@ -96,7 +96,7 @@ void PlugModeVPOTTableComponent::paintCell(Graphics &g, int rowNumber,
 TableLabel::TableLabel(PlugModeVPOTTableComponent &owner, PMVPot::tSteps *pMap)
     : m_owner(owner), m_pMap(pMap) {
   addAndMakeVisible(m_label =
-                        new Label(JUCE_T("Parameter Value"), String::empty));
+                        new Label(String("Parameter Value"), String()));
   m_label->setFont(
       Font(Font::getDefaultMonospacedFontName(), 13.0000f, Font::plain));
   m_label->setJustificationType(Justification::centredLeft);
@@ -123,12 +123,12 @@ void TableLabel::labelTextChanged(Label *labelThatHasChanged) {
       } else // if the long name was the same as the short, than change it also
         (*m_pMap)[key] = boost::tuple<String, String>(newName, value.get<1>());
 
-      m_label->setText(newName, false);
+      m_label->setText(newName, dontSendNotification);
       break;
     case VPOT_COLUMN_LONGNAME:
       newName = labelThatHasChanged->getText().substring(0, 17);
       (*m_pMap)[key] = boost::tuple<String, String>(value.get<0>(), newName);
-      m_label->setText(newName, false);
+      m_label->setText(newName, dontSendNotification);
       break;
     }
   }
@@ -142,10 +142,10 @@ void TableLabel::setRowAndColumn(const int newRow, const int columnId) {
 
   switch (m_columnId) {
   case VPOT_COLUMN_SHORTNAME:
-    m_label->setText(getNthValueFromMap(m_row, m_pMap).get<0>(), false);
+    m_label->setText(getNthValueFromMap(m_row, m_pMap).get<0>(), dontSendNotification);
     break;
   case VPOT_COLUMN_LONGNAME:
-    m_label->setText(getNthValueFromMap(m_row, m_pMap).get<1>(), false);
+    m_label->setText(getNthValueFromMap(m_row, m_pMap).get<1>(), dontSendNotification);
     break;
   }
 }

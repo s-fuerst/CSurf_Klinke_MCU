@@ -199,14 +199,14 @@ static String GUID2String(GUID *guid) {
 }
 
 static void String2GUID(String &str, GUID *guid) {
-  stringToGuid(str.toCString(), guid);
+  stringToGuid(str.toRawUTF8(), guid);
 }
 
 static String GetPlugName(MediaTrack *pMediaTrack, int slot) {
   char paramName[80];
   bool valid = TrackFX_GetFXName(pMediaTrack, slot, paramName, 79);
   if (!valid) {
-    return String::empty;
+    return String();
   }
 
   return String(paramName);

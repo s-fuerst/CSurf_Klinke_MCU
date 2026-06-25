@@ -46,8 +46,8 @@ void ActionsDisplay::switchTo( int nr )
 
 void ActionsDisplay::updateDisplay() {
   for (int i = 0; i < 4; i++) {
-    changeText(0, i * 14, m_strLabel[m_shownModifier][i].toCString(), 13);
-    changeText(1, i * 14, m_strLabel[m_shownModifier][i+4].toCString(), 13);
+    changeText(0, i * 14, m_strLabel[m_shownModifier][i].toRawUTF8(), 13);
+    changeText(1, i * 14, m_strLabel[m_shownModifier][i+4].toRawUTF8(), 13);
   }
 }
 
@@ -72,37 +72,37 @@ void ActionsDisplay::setLabel( int modifiers, int nr, String& newText )
 
 File ActionsDisplay::getConfigFile(bool bLookAtProgramDir) {
 #ifdef _WIN32
-  File configDir = File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() + JUCE_T("\\Reaper\\MCU\\Config\\");
+  File configDir = File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() + String("\\Reaper\\MCU\\Config\\");
   if (!configDir.exists())
     configDir.createDirectory();
 #ifdef EXT_B
-  return File(configDir.getFullPathName() + JUCE_T("\\GlobalActionsB.xml"));
+  return File(configDir.getFullPathName() + String("\\GlobalActionsB.xml"));
 #else
-  return File(configDir.getFullPathName() + JUCE_T("\\GlobalActions.xml"));
+  return File(configDir.getFullPathName() + String("\\GlobalActions.xml"));
 #endif
 #else
-  File configDir = String(GetResourcePath()) + JUCE_T("/MCU/Config/");
+  File configDir = String(GetResourcePath()) + String("/MCU/Config/");
   if (!configDir.exists())
     configDir.createDirectory();
 #ifdef EXT_B
-  return File(configDir.getFullPathName() + JUCE_T("/GlobalActionsB.xml"));
+  return File(configDir.getFullPathName() + String("/GlobalActionsB.xml"));
 #else
-  return File(configDir.getFullPathName() + JUCE_T("/GlobalActions.xml"));
+  return File(configDir.getFullPathName() + String("/GlobalActions.xml"));
 #endif
 #endif
 }
 
-#define GA_ACTION JUCE_T("ACTION")
-#define GA_ATT_MOD JUCE_T("mod")
-#define GA_ATT_NR JUCE_T("nr")
-#define GA_ATT_LABEL JUCE_T("label")
+#define GA_ACTION String("ACTION")
+#define GA_ATT_MOD String("mod")
+#define GA_ATT_NR String("nr")
+#define GA_ATT_LABEL String("label")
 
 bool ActionsDisplay::readConfigFile() {
   XmlDocument* pXmlFile = new XmlDocument(getConfigFile(true));
   if (!pXmlFile)
     return false;
 
-  XmlElement* pRootElement = pXmlFile->getDocumentElement();
+  XmlElement* pRootElement = pXmlFile->getDocumentElement().get();
   if (!pRootElement) 
     return false;
 
@@ -130,7 +130,7 @@ void ActionsDisplay::writeConfigFile() {
     }
   }
  
-  pRootElement->writeToFile(getConfigFile(false), "", JUCE_T("UTF-8"));
+  pRootElement->writeToFile(getConfigFile(false), "", String("UTF-8"));
 
   delete(pRootElement);
 }

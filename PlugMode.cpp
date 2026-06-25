@@ -519,20 +519,20 @@ void PlugMode::updateParamsDisplay() {
 		for (int iChannel = 0; iChannel < 8; iChannel++) {
 			m_pParamsDisplay->changeField(1, iChannel + 1,
 				m_pAccess->getParamValueShort(PlugAccess::ElementDesc::VPOT, iChannel)
-																		.toCString());
+																		.toRawUTF8());
 
       m_pParamsDisplay->changeField(0, iChannel + 1,
           m_pAccess->getParamNameShort(PlugAccess::ElementDesc::VPOT, iChannel)
-              .toCString());
+              .toRawUTF8());
 
       m_pParamsDisplay->changeField(3, iChannel + 1,
           m_pAccess
               ->getParamValueShort(PlugAccess::ElementDesc::FADER, iChannel)
-              .toCString());
+              .toRawUTF8());
 
       m_pParamsDisplay->changeField(2, iChannel + 1,
           m_pAccess->getParamNameShort(PlugAccess::ElementDesc::FADER, iChannel)
-              .toCString());
+              .toRawUTF8());
 
 			m_pParamsDisplay->changeField(2, 9, " Wet");
 
@@ -550,12 +550,12 @@ void PlugMode::updateParamsDisplay() {
       m_pParamsDisplay->changeField(
           0, iChannel + 1,
           m_pAccess->getParamValueShort(PlugAccess::ElementDesc::VPOT, iChannel)
-              .toCString());
+              .toRawUTF8());
     else
       m_pParamsDisplay->changeField(
           0, iChannel + 1,
           m_pAccess->getParamNameShort(PlugAccess::ElementDesc::VPOT, iChannel)
-              .toCString());
+              .toRawUTF8());
 
     if (m_pCCSManager->getFaderTouched(iChannel + 1) ||
         m_buttonNameValuePressed)
@@ -563,12 +563,12 @@ void PlugMode::updateParamsDisplay() {
           1, iChannel + 1,
           m_pAccess
               ->getParamValueShort(PlugAccess::ElementDesc::FADER, iChannel)
-              .toCString());
+              .toRawUTF8());
     else
       m_pParamsDisplay->changeField(
           1, iChannel + 1,
           m_pAccess->getParamNameShort(PlugAccess::ElementDesc::FADER, iChannel)
-              .toCString());
+              .toRawUTF8());
   }
 }
 
@@ -587,24 +587,24 @@ void PlugMode::updateTouchedDisplay() {
 
 		
     m_pTouchedDisplay->changeText(0, 0,
-        m_pAccess->getBankNameLong(m_pAccess->getSelectedBank()).toCString(),
+        m_pAccess->getBankNameLong(m_pAccess->getSelectedBank()).toRawUTF8(),
         17, true);
     m_pTouchedDisplay->changeText(0, 19,
         m_pAccess
             ->getPageNameLongInSelectedBank(
                 m_pAccess->getSelectedPageInSelectedBank())
-            .toCString(),
+            .toRawUTF8(),
         17, true);
     m_pTouchedDisplay->changeText(0, 38,
-				m_pAccess->getParamNameLong(element, iChannel - 1).toCString(),
+				m_pAccess->getParamNameLong(element, iChannel - 1).toRawUTF8(),
         17, true);
     m_pTouchedDisplay->changeText(1, 0,
 				m_pCCSManager->getMCU()->GetTrackName(m_pAccess->getPlugTrack()),
         17, true);
     m_pTouchedDisplay->changeText(1, 19,
-			  m_pAccess->getPlugNameLong().toCString(), 17, true);
+			  m_pAccess->getPlugNameLong().toRawUTF8(), 17, true);
     m_pTouchedDisplay->changeText(1, 38,
-				m_pAccess->getParamValueLong(element, iChannel - 1).toCString(),
+				m_pAccess->getParamValueLong(element, iChannel - 1).toRawUTF8(),
         17, true);
   }
 }
@@ -629,67 +629,67 @@ void PlugMode::updateTouchedDisplayProX() {
 	
 	if (m_iSingleVPotTouched > 0) {
     m_pTouchedDisplay->changeText(0, 0,
-        m_pAccess->getBankNameLong(m_pAccess->getSelectedBank()).toCString(),
+        m_pAccess->getBankNameLong(m_pAccess->getSelectedBank()).toRawUTF8(),
         17, true);
     m_pTouchedDisplay->changeText(0, 19,
         m_pAccess->getPageNameLongInSelectedBank(
-                     m_pAccess->getSelectedPageInSelectedBank()).toCString(),
+                     m_pAccess->getSelectedPageInSelectedBank()).toRawUTF8(),
         17, true);
     m_pTouchedDisplay->changeText(0, 38,
-				m_pAccess->getParamNameLong(PlugAccess::ElementDesc::VPOT, m_iSingleVPotTouched - 1).toCString(),
+				m_pAccess->getParamNameLong(PlugAccess::ElementDesc::VPOT, m_iSingleVPotTouched - 1).toRawUTF8(),
         17, true);
     m_pTouchedDisplay->changeText(1, 0,
 				m_pCCSManager->getMCU()->GetTrackName(m_pAccess->getPlugTrack()),
         17, true);
     m_pTouchedDisplay->changeText(1, 19,
-			  m_pAccess->getPlugNameLong().toCString(), 17, true);
+			  m_pAccess->getPlugNameLong().toRawUTF8(), 17, true);
     m_pTouchedDisplay->changeText(1, 38,
-				m_pAccess->getParamValueLong(PlugAccess::ElementDesc::VPOT, m_iSingleVPotTouched - 1).toCString(),
+				m_pAccess->getParamValueLong(PlugAccess::ElementDesc::VPOT, m_iSingleVPotTouched - 1).toRawUTF8(),
         17, true);
 	} else {
 		for (int iChannel = 0; iChannel < 8; iChannel++) {
       m_pTouchedDisplay->changeField(1, iChannel + 1,
           m_pAccess
               ->getParamValueShort(PlugAccess::ElementDesc::VPOT, iChannel)
-              .toCString());
+              .toRawUTF8());
 
       m_pTouchedDisplay->changeField(0, iChannel + 1,
           m_pAccess->getParamNameShort(PlugAccess::ElementDesc::VPOT, iChannel)
-              .toCString());
+              .toRawUTF8());
 		}
 	}
 
 	if (m_iSingleFaderTouched > 0) {
     m_pTouchedDisplay->changeText(2, 0,
-        m_pAccess->getBankNameLong(m_pAccess->getSelectedBank()).toCString(),
+        m_pAccess->getBankNameLong(m_pAccess->getSelectedBank()).toRawUTF8(),
         17, true);
     m_pTouchedDisplay->changeText(2, 19,
         m_pAccess
             ->getPageNameLongInSelectedBank(
                 m_pAccess->getSelectedPageInSelectedBank())
-            .toCString(),
+            .toRawUTF8(),
         17, true);
     m_pTouchedDisplay->changeText(2, 38,
-				m_pAccess->getParamNameLong(PlugAccess::ElementDesc::FADER, m_iSingleFaderTouched - 1).toCString(),
+				m_pAccess->getParamNameLong(PlugAccess::ElementDesc::FADER, m_iSingleFaderTouched - 1).toRawUTF8(),
         17, true);
     m_pTouchedDisplay->changeText(3, 0,
 				m_pCCSManager->getMCU()->GetTrackName(m_pAccess->getPlugTrack()),
         17, true);
     m_pTouchedDisplay->changeText(3, 19,
-			  m_pAccess->getPlugNameLong().toCString(), 17, true);
+			  m_pAccess->getPlugNameLong().toRawUTF8(), 17, true);
     m_pTouchedDisplay->changeText(3, 38,
-				m_pAccess->getParamValueLong(PlugAccess::ElementDesc::FADER, m_iSingleFaderTouched - 1).toCString(),
+				m_pAccess->getParamValueLong(PlugAccess::ElementDesc::FADER, m_iSingleFaderTouched - 1).toRawUTF8(),
         17, true);
 	} else {
 		for (int iChannel = 0; iChannel < 8; iChannel++) {
       m_pTouchedDisplay->changeField(3, iChannel + 1,
           m_pAccess
               ->getParamValueShort(PlugAccess::ElementDesc::FADER, iChannel)
-              .toCString());
+              .toRawUTF8());
 
       m_pTouchedDisplay->changeField(2, iChannel + 1,
           m_pAccess->getParamNameShort(PlugAccess::ElementDesc::FADER, iChannel)
-              .toCString());
+              .toRawUTF8());
 
 			m_pParamsDisplay->changeField(2, 9, " Wet");
 
@@ -711,7 +711,7 @@ String PlugMode::getPlugNameShort(int iSlot) {
     }
   }
 
-  return String::empty;
+  return String();
 }
 
 int PlugMode::getNumPlugsInSelectedTrack() {
@@ -724,9 +724,9 @@ int PlugMode::getNumPlugsInSelectedTrack() {
 
 String PlugMode::shortPlugName(const char *pName) {
   String name = pName;
-  if (name.contains(JUCE_T(":")))
-    return name.fromFirstOccurrenceOf(JUCE_T(":"), false, false)
-        .upToFirstOccurrenceOf(JUCE_T("("), false, false)
+  if (name.contains(String(":")))
+    return name.fromFirstOccurrenceOf(String(":"), false, false)
+        .upToFirstOccurrenceOf(String("("), false, false)
         .substring(1, 7);
   else
     return name.substring(0, 6);
@@ -734,8 +734,8 @@ String PlugMode::shortPlugName(const char *pName) {
 
 String PlugMode::longPlugName(const char *pName) {
   String name = pName;
-  if (name.contains(JUCE_T(":")))
-    return name.fromFirstOccurrenceOf(JUCE_T(":"), false, false)
+  if (name.contains(String(":")))
+    return name.fromFirstOccurrenceOf(String(":"), false, false)
         .substring(1, 18);
   else
     return name.substring(0, 17);
@@ -1036,15 +1036,15 @@ PlugMode::tFav PlugMode::getFavorite(unsigned i) {
   return m_favPlugins[i];
 }
 
-#define PLUGMODE_NODE_ROOT JUCE_T("PLUGMODE")
-#define PLUGMODE_NODE_LAST_CALLED_PRESETS JUCE_T("LAST_CALLED_PRESETS")
-#define PLUGMODE_NODE_FAV JUCE_T("FAVORITE")
-#define PLUGMODE_NODE_LAST_CALLED_PRESET JUCE_T("PRESET")
-#define PLUGMODE_ATT_FAV_INDEX JUCE_T("index")
-#define PLUGMODE_ATT_FAV_TRACK JUCE_T("track")
-#define PLUGMODE_ATT_FAV_SLOT JUCE_T("slot")
-#define PLUGMODE_ATT_LAST_CALLED_PRESET_FXGUID JUCE_T("fxguid")
-#define PLUGMODE_ATT_LAST_CALLED_PRESET_PRESET JUCE_T("preset")
+#define PLUGMODE_NODE_ROOT String("PLUGMODE")
+#define PLUGMODE_NODE_LAST_CALLED_PRESETS String("LAST_CALLED_PRESETS")
+#define PLUGMODE_NODE_FAV String("FAVORITE")
+#define PLUGMODE_NODE_LAST_CALLED_PRESET String("PRESET")
+#define PLUGMODE_ATT_FAV_INDEX String("index")
+#define PLUGMODE_ATT_FAV_TRACK String("track")
+#define PLUGMODE_ATT_FAV_SLOT String("slot")
+#define PLUGMODE_ATT_LAST_CALLED_PRESET_FXGUID String("fxguid")
+#define PLUGMODE_ATT_LAST_CALLED_PRESET_PRESET String("preset")
 
 void PlugMode::projectChanged(XmlElement *pXmlElement,
                               ProjectConfig::EAction action) {

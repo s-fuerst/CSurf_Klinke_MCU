@@ -6,24 +6,24 @@
 #pragma once
 #include "Options.h"
 
-#define MTO2_TCP_ADJUCT JUCE_T("Adjust TCP")
-#define MTO2A_TCP_NO JUCE_T("don't adjust")
-#define MTO2A_TCP_BANK JUCE_T("hide non MCU")
-#define MTO2A_TCP_SELECTED JUCE_T("only selected")
-#define MTO2A_TCP_ALL JUCE_T("show all")
+#define MTO2_TCP_ADJUCT String("Adjust TCP")
+#define MTO2A_TCP_NO String("don't adjust")
+#define MTO2A_TCP_BANK String("hide non MCU")
+#define MTO2A_TCP_SELECTED String("only selected")
+#define MTO2A_TCP_ALL String("show all")
 
-#define MTO2_MCP_ADJUCT JUCE_T("Adjust Mixer")
-#define MTO2A_MCP_NO JUCE_T("don't adjust")
-#define MTO2A_MCP_BANK JUCE_T("hide non MCU")
-#define MTO2A_MCP_ALL JUCE_T("show all")
+#define MTO2_MCP_ADJUCT String("Adjust Mixer")
+#define MTO2A_MCP_NO String("don't adjust")
+#define MTO2A_MCP_BANK String("hide non MCU")
+#define MTO2A_MCP_ALL String("show all")
 
-#define MTO2_FOLLOW_REAPER JUCE_T("Follow Reaper")
-#define MTO2A_FOLLOW_REAPER_OFF JUCE_T("no")
-#define MTO2A_FOLLOW_REAPER_ON JUCE_T("yes")
+#define MTO2_FOLLOW_REAPER String("Follow Reaper")
+#define MTO2A_FOLLOW_REAPER_OFF String("no")
+#define MTO2A_FOLLOW_REAPER_ON String("yes")
 
-#define MTO2_AUTO_TOUCH JUCE_T("Touch select")
-#define MTO2A_AUTO_TOUCH_OFF JUCE_T("no")
-#define MTO2A_AUTO_TOUCH_ON JUCE_T("yes")
+#define MTO2_AUTO_TOUCH String("Touch select")
+#define MTO2A_AUTO_TOUCH_OFF String("no")
+#define MTO2A_AUTO_TOUCH_ON String("yes")
 
 class MultiTrackOptions2 : public Options {
 public:

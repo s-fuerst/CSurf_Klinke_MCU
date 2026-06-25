@@ -6,18 +6,18 @@
 #pragma once
 #include "Options.h"
 
-#define PMO2_MODE_CHANGE JUCE_T("Mode change")
-#define PMO2A_NOTHING JUCE_T("do nothing")
-#define PMO2A_OPEN_CLOSE JUCE_T("show/hide wnd")
-#define PMO2A_OPEN_CLOSE_MIXER JUCE_T("s/h wnd|mixer")
+#define PMO2_MODE_CHANGE String("Mode change")
+#define PMO2A_NOTHING String("do nothing")
+#define PMO2A_OPEN_CLOSE String("show/hide wnd")
+#define PMO2A_OPEN_CLOSE_MIXER String("s/h wnd|mixer")
 
-#define PMO2_MOVE JUCE_T("Move top left")
-#define PMO2A_OFF JUCE_T("off")
-#define PMO2A_ON JUCE_T("on")
+#define PMO2_MOVE String("Move top left")
+#define PMO2A_OFF String("off")
+#define PMO2A_ON String("on")
 
-#define PMO2_SHOW_DETAILS JUCE_T("Touch details")
+#define PMO2_SHOW_DETAILS String("Touch details")
 
-#define PMO2_FOLLOW_CHANGE JUCE_T("Follow change")
+#define PMO2_FOLLOW_CHANGE String("Follow change")
 
 class PlugMode2ndOptions : public Options {
 public:

@@ -8,10 +8,10 @@
 
 #ifdef EXT_B
 #define CONFIG_ID "<MCU_B_KLINKE"
-#define CONFIG_ID_JUCE JUCE_T("<MCU_B_KLINKE")
+#define CONFIG_ID_JUCE String("<MCU_B_KLINKE")
 #else
 #define CONFIG_ID "<MCU_KLINKE"
-#define CONFIG_ID_JUCE JUCE_T("<MCU_KLINKE")
+#define CONFIG_ID_JUCE String("<MCU_KLINKE")
 #endif
 
 bool ProcessExtensionLine(
@@ -90,9 +90,9 @@ bool ProjectConfig::processExtensionLine(
     // '<' and '>' can't be used in the project files, so i replace them with
     // |#{ and }#| before writing into the file and convert this back here
     XmlDocument *pTmpDoc =
-        new XmlDocument(buildString.replace(JUCE_T("|#{"), JUCE_T("<"))
-                            .replace(JUCE_T("}#|"), JUCE_T(">")));
-    XmlElement *pElement = pTmpDoc->getDocumentElement();
+        new XmlDocument(buildString.replace(String("|#{"), String("<"))
+                            .replace(String("}#|"), String(">")));
+    XmlElement *pElement = pTmpDoc->getDocumentElement().get();
     if (pElement) {
       m_signalProjectChanged(pElement, READ);
       delete (pElement);
@@ -113,8 +113,8 @@ void ProjectConfig::saveExtensionConfig(
   // and }#| before writing into the file and convert this back after reading
   // from it
   String xmlDocString = createXmlDocString()
-                            .replace(JUCE_T("<"), JUCE_T("|#{"))
-                            .replace(JUCE_T(">"), JUCE_T("}#|"));
+                            .replace(String("<"), String("|#{"))
+                            .replace(String(">"), String("}#|"));
 
   ctx->AddLine(CONFIG_ID);
   // the fucking buffer overwrite in ctx->AddLine took me two days of debugging
@@ -127,13 +127,13 @@ void ProjectConfig::saveExtensionConfig(
     if (to != -1) {
       if (to - from > 4000) {
         to = from + 4000;
-        ctx->AddLine(xmlDocString.substring(from, to).toCString());
+        ctx->AddLine(xmlDocString.substring(from, to).toRawUTF8());
       } else {
-        ctx->AddLine(xmlDocString.substring(from, to - 1).toCString());
+        ctx->AddLine(xmlDocString.substring(from, to - 1).toRawUTF8());
         from = to + 1;
       }
     } else {
-      ctx->AddLine(xmlDocString.substring(from).toCString());
+      ctx->AddLine(xmlDocString.substring(from).toRawUTF8());
       break;
     }
   } while (to != -1); // to < found
@@ -150,7 +150,7 @@ void ProjectConfig::beginLoadProjectState(
 }
 
 String ProjectConfig::createXmlDocString() {
-  XmlElement *root = new XmlElement(JUCE_T("PROJECT_CONFIG"));
+  XmlElement *root = new XmlElement(String("PROJECT_CONFIG"));
   m_signalProjectChanged(root, WRITE);
   String doc = root->createDocument("", false, false);
   delete (root);
@@ -166,7 +166,7 @@ void ProjectConfig::checkReaProjectChange() {
     if (m_xmlStorage.find(pActualMasterTrack) != m_xmlStorage.end()) {
       m_signalProjectChanged(NULL, FREE);
       XmlElement *pDocElement =
-          m_xmlStorage[pActualMasterTrack]->getDocumentElement();
+          m_xmlStorage[pActualMasterTrack]->getDocumentElement().get();
       m_signalProjectChanged(pDocElement, READ);
       delete (pDocElement);
     }

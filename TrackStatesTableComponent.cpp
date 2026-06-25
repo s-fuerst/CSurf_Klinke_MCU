@@ -45,7 +45,7 @@ TrackStatesTableComponent::TrackStatesTableComponent() {
   m_pTracks = Tracks::instance();
   // Create our table component and add it to this component..
   addAndMakeVisible(m_table =
-                        new TableListBox(JUCE_T("TrackStates table"), this));
+                        new TableListBox(String("TrackStates table"), this));
 
   m_table->setHeaderHeight(24);
 
@@ -53,31 +53,31 @@ TrackStatesTableComponent::TrackStatesTableComponent() {
   m_table->setColour(ListBox::outlineColourId, Colours::grey);
   m_table->setOutlineThickness(2);
 
-  m_table->getHeader().addColumn(String::empty, TS_COLUMN_ON_MCU, 15, 15, 15,
+  m_table->getHeader().addColumn(String(), TS_COLUMN_ON_MCU, 15, 15, 15,
                                  TableHeaderComponent::notResizableOrSortable);
-  m_table->getHeader().addColumn(JUCE_T("Nr."), TS_COLUMN_TRACKNR, 40, 40, 40,
+  m_table->getHeader().addColumn(String("Nr."), TS_COLUMN_TRACKNR, 40, 40, 40,
                                  TableHeaderComponent::notResizableOrSortable);
-  m_table->getHeader().addColumn(JUCE_T("Track Name"),
+  m_table->getHeader().addColumn(String("Track Name"),
                                  TS_COLUMN_TRACKNAME_REAPER, 140, 140, 140,
                                  TableHeaderComponent::notResizableOrSortable);
-  m_table->getHeader().addColumn(JUCE_T("Display"), TS_COLUMN_TRACKNAME_MCU, 60,
+  m_table->getHeader().addColumn(String("Display"), TS_COLUMN_TRACKNAME_MCU, 60,
                                  60, 60,
                                  TableHeaderComponent::notResizableOrSortable);
-  m_table->getHeader().addColumn(JUCE_T("TCP"), TS_COLUMN_TCP, 30, 30, 30,
+  m_table->getHeader().addColumn(String("TCP"), TS_COLUMN_TCP, 30, 30, 30,
                                  TableHeaderComponent::notResizableOrSortable);
-  m_table->getHeader().addColumn(JUCE_T("MCP"), TS_COLUMN_MCP, 30, 30, 30,
+  m_table->getHeader().addColumn(String("MCP"), TS_COLUMN_MCP, 30, 30, 30,
                                  TableHeaderComponent::notResizableOrSortable);
-  m_table->getHeader().addColumn(JUCE_T("MCU"), TS_COLUMN_MCU, 30, 30, 30,
+  m_table->getHeader().addColumn(String("MCU"), TS_COLUMN_MCU, 30, 30, 30,
                                  TableHeaderComponent::notResizableOrSortable);
-  m_table->getHeader().addColumn(JUCE_T("Anchor"), TS_COLUMN_ANCHOR, 80, 80, 80,
+  m_table->getHeader().addColumn(String("Anchor"), TS_COLUMN_ANCHOR, 80, 80, 80,
                                  TableHeaderComponent::notResizableOrSortable);
-  m_table->getHeader().addColumn(JUCE_T("Jump Slot"), TS_COLUMN_QUICK_JUMP, 80,
+  m_table->getHeader().addColumn(String("Jump Slot"), TS_COLUMN_QUICK_JUMP, 80,
                                  80, 80,
                                  TableHeaderComponent::notResizableOrSortable);
-  m_table->getHeader().addColumn(JUCE_T("J. Name"), TS_COLUMN_QUICK_NAME, 60,
+  m_table->getHeader().addColumn(String("J. Name"), TS_COLUMN_QUICK_NAME, 60,
                                  60, 60,
                                  TableHeaderComponent::notResizableOrSortable);
-  m_table->getHeader().addColumn(JUCE_T("Root"), TS_COLUMN_QUICK_ROOT, 30, 30,
+  m_table->getHeader().addColumn(String("Root"), TS_COLUMN_QUICK_ROOT, 30, 30,
                                  30,
                                  TableHeaderComponent::notResizableOrSortable);
 
@@ -191,7 +191,7 @@ void TrackStatesTableComponent::paintCell(Graphics &g, int rowNumber,
   }
 
   if (columnId == TS_COLUMN_TRACKNR) {
-    g.drawText(String::formatted(JUCE_T("%3d"), rowNumber + 1), 8, 1, width - 4,
+    g.drawText(String::formatted(String("%3d"), rowNumber + 1), 8, 1, width - 4,
                height, Justification::centredLeft, true);
   }
 }
@@ -259,7 +259,7 @@ MediaTrack *TrackStatesTableComponent::getRowMediaTrack(int row) {
 
 TableLabelTS::TableLabelTS(TrackStatesTableComponent &owner) : m_owner(owner) {
   addAndMakeVisible(m_label =
-                        new Label(JUCE_T("Parameter Value"), String::empty));
+                        new Label(String("Parameter Value"), String()));
   m_label->setFont(
       Font(Font::getDefaultMonospacedFontName(), 13.0000f, Font::plain));
   m_label->setJustificationType(Justification::centredLeft);
@@ -287,13 +287,13 @@ void TableLabelTS::labelTextChanged(Label *labelThatHasChanged) {
       newName = labelThatHasChanged->getText().substring(0, 6);
       Tracks::instance()->getTrackStateForMediaTrack(pMT)->setDisplayName(
           newName);
-      m_label->setText(newName, false);
+      m_label->setText(newName, dontSendNotification);
       break;
     case TS_COLUMN_QUICK_NAME:
       newName = labelThatHasChanged->getText().substring(0, 6);
       Tracks::instance()->getTrackStateForMediaTrack(pMT)->setQuickJumpName(
           newName);
-      m_label->setText(newName, false);
+      m_label->setText(newName, dontSendNotification);
       break;
     }
   }
@@ -309,7 +309,7 @@ void TableLabelTS::setRowAndColumn(const int newRow, const int columnId) {
 
   switch (m_columnId) {
   case TS_COLUMN_TRACKNAME_REAPER:
-    m_label->setText(MediaTrackInfo::getTrackName(pMT, false), false);
+    m_label->setText(MediaTrackInfo::getTrackName(pMT, false), dontSendNotification);
     break;
   case TS_COLUMN_TRACKNAME_MCU:
     m_label->setText(
@@ -330,10 +330,10 @@ void TableLabelTS::setRowAndColumn(const int newRow, const int columnId) {
 AnchorColumnCustomComponent::AnchorColumnCustomComponent(
     TrackStatesTableComponent &owner)
     : m_owner(owner) {
-  addAndMakeVisible(m_comboBox = new ComboBox(String::empty));
-  m_comboBox->addItem(JUCE_T("No Anchor"), -1);
+  addAndMakeVisible(m_comboBox = new ComboBox(String()));
+  m_comboBox->addItem(String("No Anchor"), -1);
   for (int i = 1; i <= 8; i++) {
-    m_comboBox->addItem(JUCE_T("Channel ") + String(i), i);
+    m_comboBox->addItem(String("Channel ") + String(i), i);
   }
 
   m_comboBox->setSelectedId(-1);
@@ -386,10 +386,10 @@ void AnchorColumnCustomComponent::comboBoxChanged(
 QuickJumpCustomComponent::QuickJumpCustomComponent(
     TrackStatesTableComponent &owner)
     : m_owner(owner) {
-  addAndMakeVisible(m_comboBox = new ComboBox(String::empty));
-  m_comboBox->addItem(JUCE_T("Inactive"), -1);
+  addAndMakeVisible(m_comboBox = new ComboBox(String()));
+  m_comboBox->addItem(String("Inactive"), -1);
   for (int i = 1; i <= 8; i++) {
-    m_comboBox->addItem(JUCE_T("Pad ") + String(i), i);
+    m_comboBox->addItem(String("Pad ") + String(i), i);
   }
 
   m_comboBox->setSelectedId(-1);
@@ -441,7 +441,7 @@ void QuickJumpCustomComponent::comboBoxChanged(
 ButtonColumnCustomComponent::ButtonColumnCustomComponent(
     TrackStatesTableComponent &owner)
     : m_owner(owner) {
-  addAndMakeVisible(m_toggleButton = new ToggleButton(String::empty));
+  addAndMakeVisible(m_toggleButton = new ToggleButton(String()));
 
   m_toggleButton->addListener(this);
   m_toggleButton->setWantsKeyboardFocus(true);

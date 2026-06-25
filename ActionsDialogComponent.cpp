@@ -14,24 +14,24 @@ m_control (0),
 m_alt (0),
 m_pActionDisplay (pAD)
 {
-  addAndMakeVisible (m_shift = new ToggleButton (JUCE_T("Shift")));
+  addAndMakeVisible (m_shift = new ToggleButton (String("Shift")));
   m_shift->setExplicitFocusOrder (1);
   m_shift->addListener (this);
   
-  addAndMakeVisible (m_option = new ToggleButton (JUCE_T("Option")));
+  addAndMakeVisible (m_option = new ToggleButton (String("Option")));
   m_option->setExplicitFocusOrder (2);
   m_option->addListener (this);
   
-  addAndMakeVisible (m_control = new ToggleButton (JUCE_T("Control")));
+  addAndMakeVisible (m_control = new ToggleButton (String("Control")));
   m_control->setExplicitFocusOrder (3);
   m_control->addListener (this);
   
-  addAndMakeVisible (m_alt = new ToggleButton (JUCE_T("Alt")));
+  addAndMakeVisible (m_alt = new ToggleButton (String("Alt")));
   m_alt->setExplicitFocusOrder (4);
   m_alt->addListener (this);
     
   for (int i = 0; i < 8; i++) {
-    addAndMakeVisible (m_labelAction[i] = new Label (JUCE_T("Action"), String::empty));
+    addAndMakeVisible (m_labelAction[i] = new Label (String("Action"), String()));
     m_labelAction[i]->setExplicitFocusOrder (5 + i);
     m_labelAction[i]->setFont (Font (Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
     m_labelAction[i]->setJustificationType (Justification::centredLeft);
@@ -85,7 +85,7 @@ void ActionsDialogComponent::labelTextChanged (Label* labelThatHasChanged)
     if (labelThatHasChanged == m_labelAction[i])
     {
       String newText =  m_labelAction[i]->getText().substring(0, 13);
-      m_labelAction[i]->setText(newText, false);
+      m_labelAction[i]->setText(newText, dontSendNotification);
       m_pActionDisplay->setLabel(modifier, i, newText);
     }
   }
@@ -101,6 +101,6 @@ void ActionsDialogComponent::fillActionLabels()
 {
   int modifier = (m_alt->getToggleState() << 3) + (m_control->getToggleState() << 2) + (m_option->getToggleState() << 1) + m_shift->getToggleState();
   for (int i = 0; i < 8; i++) {
-    m_labelAction[i]->setText(m_pActionDisplay->getLabel(modifier, i), false);
+    m_labelAction[i]->setText(m_pActionDisplay->getLabel(modifier, i), dontSendNotification);
   }
 }

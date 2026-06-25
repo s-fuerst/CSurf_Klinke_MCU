@@ -44,7 +44,7 @@
  Describe your class and how it works here!
  //[/Comments]
  */
-class CommandModePageComponent : public Component, public LabelListener {
+class CommandModePageComponent : public Component, public Label::Listener {
 public:
   //==============================================================================
   CommandModePageComponent(CommandMode::Page *pPage,

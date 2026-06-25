@@ -6,31 +6,31 @@
 #pragma once
 #include "Options.h"
 
-#define PMO_MCU_FOLLOW JUCE_T("MCU follow")
-#define PMO_GUI_FOLLOW JUCE_T("GUI follow")
-#define PMO_ALT_OPEN JUCE_T("ALT SELECT")
-#define PMO_LIMIT_FLOATING JUCE_T("Limit float")
+#define PMO_MCU_FOLLOW String("MCU follow")
+#define PMO_GUI_FOLLOW String("GUI follow")
+#define PMO_ALT_OPEN String("ALT SELECT")
+#define PMO_LIMIT_FLOATING String("Limit float")
 
 // MCU follow
-#define PMOA_OFF JUCE_T("off")
-#define PMOA_SAME_TRACK JUCE_T("same track")
-#define PMOA_ALWAYS JUCE_T("always")
+#define PMOA_OFF String("off")
+#define PMOA_SAME_TRACK String("same track")
+#define PMOA_ALWAYS String("always")
 
 // GUI follow
-#define PMOA_IF_CHAIN_OPEN JUCE_T("if chain open")
-#define PMOA_OPEN_CHAIN JUCE_T("open chain")
-#define PMOA_OPEN_FLOATING JUCE_T("open floating")
+#define PMOA_IF_CHAIN_OPEN String("if chain open")
+#define PMOA_OPEN_CHAIN String("open chain")
+#define PMOA_OPEN_FLOATING String("open floating")
 
 // ALT_OPEN
 // PMOA_OPEN_CHAIN
-#define PMOA_OPEN_CHAIN_CLOSE_FLOAT JUCE_T("chain -float")
+#define PMOA_OPEN_CHAIN_CLOSE_FLOAT String("chain -float")
 // PMOA_OPEN_FLOATING
 
 // LIMIT_FLOATING
 // PMOA_OFF
-#define PMOA_ONLY_ONE_MCU JUCE_T("only 1 MCU")
-#define PMOA_ONLY_ONE_GLOBAL JUCE_T("only selected")
-#define PMOA_ONLY_CHAIN JUCE_T("only chain")
+#define PMOA_ONLY_ONE_MCU String("only 1 MCU")
+#define PMOA_ONLY_ONE_GLOBAL String("only selected")
+#define PMOA_ONLY_CHAIN String("only chain")
 
 class PlugModeOptions : public Options {
 public:

@@ -51,13 +51,13 @@ PlugModeBankComponent::PlugModeBankComponent(PlugMap *pMap,
   for (int i = 0; i < 8; i++) {
     String tabName = pMap->getBank(i)->getNameShort();
     if (tabName.isEmpty()) {
-      tabName = String::formatted(T("Bank %d"), i + 1);
+      tabName = String::formatted(String("Bank %d"), i + 1);
     }
     m_tabbedBanks->addTab(
         tabName, Colours::white,
         new PlugModeSingleBankComponent(pMC, this, pMap->getBank(i)), true);
   }
-  m_tabbedBanks->addTab(JUCE_T("Map Info"), Colours::white,
+  m_tabbedBanks->addTab(String("Map Info"), Colours::white,
                         new PlugModeMapInfoComponent(pMC, pMap), true);
   //[/UserPreSize]
 

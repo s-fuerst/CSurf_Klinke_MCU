@@ -90,7 +90,7 @@ private:
 
 //==============================================================================
 
-class TableLabelTS : public Component, LabelListener {
+class TableLabelTS : public Component, Label::Listener {
 public:
   TableLabelTS(TrackStatesTableComponent &owner);
 
@@ -112,7 +112,7 @@ private:
 
 //==============================================================================
 
-class AnchorColumnCustomComponent : public Component, ComboBoxListener {
+class AnchorColumnCustomComponent : public Component, ComboBox::Listener {
 public:
   AnchorColumnCustomComponent(TrackStatesTableComponent &owner);
 
@@ -132,7 +132,7 @@ private:
 
 //==============================================================================
 
-class QuickJumpCustomComponent : public Component, ComboBoxListener {
+class QuickJumpCustomComponent : public Component, ComboBox::Listener {
 public:
   QuickJumpCustomComponent(TrackStatesTableComponent &owner);
 
@@ -152,7 +152,7 @@ private:
 
 //==============================================================================
 
-class ButtonColumnCustomComponent : public Component, ButtonListener {
+class ButtonColumnCustomComponent : public Component, Button::Listener {
 public:
   ButtonColumnCustomComponent(TrackStatesTableComponent &owner);
 

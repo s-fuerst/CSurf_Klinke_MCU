@@ -44,8 +44,8 @@ class PlugModePageComponent;
  //[/Comments]
  */
 class PlugModePageReferenceComponent : public Component,
-                                       public LabelListener,
-                                       public ComboBoxListener {
+                                       public Label::Listener,
+                                       public ComboBox::Listener {
 public:
   //==============================================================================
   PlugModePageReferenceComponent(PlugModePageComponent *pPMPC, PMPage *pPage);

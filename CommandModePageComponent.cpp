@@ -36,9 +36,9 @@
 //==============================================================================
 CommandModePageComponent::CommandModePageComponent(
     CommandMode::Page *pPage, CommandModeMainComponent *pMain)
-    : Component(T("CommandModePage")), pageNameLabel(0) {
-  addAndMakeVisible(pageNameLabel = new Label(T("PageName"), T("Page x")));
-  pageNameLabel->setTooltip(T("The name of the selected page (you can select a "
+    : Component(String("CommandModePage")), pageNameLabel(0) {
+  addAndMakeVisible(pageNameLabel = new Label(String("PageName"), String("Page x")));
+  pageNameLabel->setTooltip(String("The name of the selected page (you can select a "
                               "different page with the tabs above)."));
   pageNameLabel->setFont(
       Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
@@ -62,7 +62,7 @@ CommandModePageComponent::CommandModePageComponent(
     vpotComponent[0][channel]->setExplicitFocusOrder(channel * 2 + 10);
     vpotComponent[1][channel]->setExplicitFocusOrder(channel * 2 + 11);
   }
-  pageNameLabel->setText(m_pPage->m_strPageName, false);
+  pageNameLabel->setText(m_pPage->m_strPageName, dontSendNotification);
   //[/UserPreSize]
 
   setSize(810, 380);
@@ -94,42 +94,42 @@ void CommandModePageComponent::paint(Graphics &g) {
 
   g.setColour(Colours::black);
   g.setFont(Font(15.0000f, Font::bold));
-  g.drawText(T("Action Name"), 14, 60, 130, 24,
+  g.drawText(String("Action Name"), 14, 60, 130, 24,
              Justification::centredRight, true);
 
   g.setColour(Colours::black);
   g.setFont(Font(15.0000f, Font::bold));
-  g.drawText(T("Relative Mode"), 14, 90, 130, 24, Justification::centredRight,
+  g.drawText(String("Relative Mode"), 14, 90, 130, 24, Justification::centredRight,
              true);
 
   g.setColour(Colours::black);
   g.setFont(Font(15.0000f, Font::bold));
-  g.drawText(T("Normal Speed"), 14, 120, 130, 24, Justification::centredRight,
+  g.drawText(String("Normal Speed"), 14, 120, 130, 24, Justification::centredRight,
              true);
 
   g.setColour(Colours::black);
   g.setFont(Font(15.0000f, Font::bold));
-  g.drawText(T("Pressed Speed"), 14, 150, 130, 24, Justification::centredRight,
+  g.drawText(String("Pressed Speed"), 14, 150, 130, 24, Justification::centredRight,
              true);
 
   g.setColour(Colours::black);
   g.setFont(Font(15.0000f, Font::bold));
-  g.drawText(T("Action Name"), 14, 210, 130, 24,
+  g.drawText(String("Action Name"), 14, 210, 130, 24,
              Justification::centredRight, true);
 
   g.setColour(Colours::black);
   g.setFont(Font(15.0000f, Font::bold));
-  g.drawText(T("Relative Mode"), 14, 240, 130, 24, Justification::centredRight,
+  g.drawText(String("Relative Mode"), 14, 240, 130, 24, Justification::centredRight,
              true);
 
   g.setColour(Colours::black);
   g.setFont(Font(15.0000f, Font::bold));
-  g.drawText(T("Normal Speed"), 14, 270, 130, 24, Justification::centredRight,
+  g.drawText(String("Normal Speed"), 14, 270, 130, 24, Justification::centredRight,
              true);
 
   g.setColour(Colours::black);
   g.setFont(Font(15.0000f, Font::bold));
-  g.drawText(T("Pressed Speed"), 14, 300, 130, 24, Justification::centredRight,
+  g.drawText(String("Pressed Speed"), 14, 300, 130, 24, Justification::centredRight,
              true);
 
   //[UserPaint] Add your own custom painting code here..
@@ -152,7 +152,7 @@ void CommandModePageComponent::labelTextChanged(Label *labelThatHasChanged) {
 
   if (labelThatHasChanged == pageNameLabel) {
     //[UserLabelCode_pageNameLabel] -- add your label text handling code here..
-    pageNameLabel->setText(pageNameLabel->getText().substring(0, 6), false);
+    pageNameLabel->setText(pageNameLabel->getText().substring(0, 6), dontSendNotification);
     m_pPage->m_strPageName = pageNameLabel->getText();
     m_pMain->updateTabNames();
     //[/UserLabelCode_pageNameLabel]

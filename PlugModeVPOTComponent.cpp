@@ -44,27 +44,27 @@ PlugModeVPOTComponent::PlugModeVPOTComponent(PlugModeComponent *pMC,
     : m_vpotGroup(0), m_tableComponent(0), m_params(0), m_copyButton(0),
       m_pasteButton(0), m_clearButton(0) {
   addAndMakeVisible(m_vpotGroup =
-                        new GroupComponent(T("VPotGroup"), T("V-Pot")));
+                        new GroupComponent(String("VPotGroup"), String("V-Pot")));
   m_vpotGroup->setColour(GroupComponent::outlineColourId, Colours::black);
 
   addAndMakeVisible(m_tableComponent =
                         new PlugModeVPOTTableComponent(pVPot->getStepsMap()));
-  m_tableComponent->setName(T("Parameter Table"));
+  m_tableComponent->setName(String("Parameter Table"));
 
   addAndMakeVisible(m_params = new PlugModeParamComponent(pMC, pVPot));
-  addAndMakeVisible(m_copyButton = new TextButton(T("Copy Button")));
-  m_copyButton->setTooltip(T("Copy the table to the (local) clipboard"));
-  m_copyButton->setButtonText(T("Copy"));
+  addAndMakeVisible(m_copyButton = new TextButton(String("Copy Button")));
+  m_copyButton->setTooltip(String("Copy the table to the (local) clipboard"));
+  m_copyButton->setButtonText(String("Copy"));
   m_copyButton->addListener(this);
 
-  addAndMakeVisible(m_pasteButton = new TextButton(T("Paste Button")));
-  m_pasteButton->setTooltip(T("Paste the table"));
-  m_pasteButton->setButtonText(T("Paste"));
+  addAndMakeVisible(m_pasteButton = new TextButton(String("Paste Button")));
+  m_pasteButton->setTooltip(String("Paste the table"));
+  m_pasteButton->setButtonText(String("Paste"));
   m_pasteButton->addListener(this);
 
-  addAndMakeVisible(m_clearButton = new TextButton(T("Clear Button")));
-  m_clearButton->setTooltip(T("Clear the table"));
-  m_clearButton->setButtonText(T("Clear"));
+  addAndMakeVisible(m_clearButton = new TextButton(String("Clear Button")));
+  m_clearButton->setTooltip(String("Clear the table"));
+  m_clearButton->setButtonText(String("Clear"));
   m_clearButton->addListener(this);
 
   //[UserPreSize]
@@ -148,8 +148,8 @@ void PlugModeVPOTComponent::changeParamId(int paramId, double value,
   PMVPot::tSteps *pSteps = m_pVPot->getStepsMap();
 
   (*pSteps)[value] = boost::tuple<String, String>(
-      PlugAccess::shortNameFromCString(paramName.toCString()),
-      PlugAccess::longNameFromCString(paramName.toCString()));
+      PlugAccess::shortNameFromCString(paramName.toRawUTF8()),
+      PlugAccess::longNameFromCString(paramName.toRawUTF8()));
 
   int pos = findIndexFromKeyInMap(value, pSteps);
   m_tableComponent->setLastChangedRow(0);

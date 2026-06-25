@@ -44,25 +44,25 @@ PlugModeComponent::PlugModeComponent(PlugAccess *pPA)
       m_autosave(0), m_bankComponent(0), m_learn(0), m_saveAs(0),
       m_useParamName(0), m_clear(0), m_local(0) {
   addAndMakeVisible(
-      m_groupFile = new GroupComponent(T("mapping file"), T("mapping file")));
+      m_groupFile = new GroupComponent(String("mapping file"), String("mapping file")));
   m_groupFile->setColour(GroupComponent::outlineColourId, Colours::black);
 
   addAndMakeVisible(m_mappingFile =
-                        new Label(T("Mapping File"), T("no mapping file \n")));
-  m_mappingFile->setTooltip(T("The used mapping file"));
+                        new Label(String("Mapping File"), String("no mapping file \n")));
+  m_mappingFile->setTooltip(String("The used mapping file"));
   m_mappingFile->setFont(Font(15.0000f, Font::plain));
   m_mappingFile->setJustificationType(Justification::centredLeft);
   m_mappingFile->setEditable(false, false, false);
   m_mappingFile->setColour(TextEditor::textColourId, Colours::black);
   m_mappingFile->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-  addAndMakeVisible(m_save = new TextButton(T("Save")));
-  m_save->setTooltip(T("Save the current mapping to the current file"));
+  addAndMakeVisible(m_save = new TextButton(String("Save")));
+  m_save->setTooltip(String("Save the current mapping to the current file"));
   m_save->setExplicitFocusOrder(6);
   m_save->addListener(this);
 
-  addAndMakeVisible(m_autosave = new ToggleButton(T("Autosave")));
-  m_autosave->setTooltip(T("Save the mapping file automatical when the editor "
+  addAndMakeVisible(m_autosave = new ToggleButton(String("Autosave")));
+  m_autosave->setTooltip(String("Save the mapping file automatical when the editor "
                            "get closed or another mapping file is loaded."));
   m_autosave->setExplicitFocusOrder(8);
   m_autosave->addListener(this);
@@ -70,36 +70,36 @@ PlugModeComponent::PlugModeComponent(PlugAccess *pPA)
   addAndMakeVisible(m_bankComponent =
                         new PlugModeBankComponent(pPA->getMap(), this));
   m_bankComponent->setExplicitFocusOrder(9);
-  addAndMakeVisible(m_learn = new ToggleButton(T("Learn")));
+  addAndMakeVisible(m_learn = new ToggleButton(String("Learn")));
   m_learn->setTooltip(
-      T("If enabled, you can assign a parameter to a fader or vpot by changing "
+      String("If enabled, you can assign a parameter to a fader or vpot by changing "
         "the parameter value (e.g. in the plugin user interface)"));
   m_learn->setExplicitFocusOrder(3);
   m_learn->addListener(this);
 
-  addAndMakeVisible(m_saveAs = new TextButton(T("SaveAs")));
-  m_saveAs->setTooltip(T("Save the current mapping to a new file"));
+  addAndMakeVisible(m_saveAs = new TextButton(String("SaveAs")));
+  m_saveAs->setTooltip(String("Save the current mapping to a new file"));
   m_saveAs->setExplicitFocusOrder(7);
-  m_saveAs->setButtonText(T("As"));
+  m_saveAs->setButtonText(String("As"));
   m_saveAs->addListener(this);
 
-  addAndMakeVisible(m_useParamName = new ToggleButton(T("Use Param Name")));
+  addAndMakeVisible(m_useParamName = new ToggleButton(String("Use Param Name")));
   m_useParamName->setTooltip(
-      T("If enabled and a parameter assignment gets changed then the user "
+      String("If enabled and a parameter assignment gets changed then the user "
         "given parameter names will be overwritten with the names as given "
         "from the FX."));
   m_useParamName->setExplicitFocusOrder(4);
-  m_useParamName->setButtonText(T("Autoname"));
+  m_useParamName->setButtonText(String("Autoname"));
   m_useParamName->addListener(this);
 
-  addAndMakeVisible(m_clear = new TextButton(T("Clear")));
-  m_clear->setTooltip(T("Clear the parameter map"));
+  addAndMakeVisible(m_clear = new TextButton(String("Clear")));
+  m_clear->setTooltip(String("Clear the parameter map"));
   m_clear->setExplicitFocusOrder(2);
   m_clear->addListener(this);
 
-  addAndMakeVisible(m_local = new ToggleButton(T("Local")));
+  addAndMakeVisible(m_local = new ToggleButton(String("Local")));
   m_local->setTooltip(
-      T("If enabled, the map is bind to the actual selected plugin. This "
+      String("If enabled, the map is bind to the actual selected plugin. This "
         "allows to create different map for different instances of the same "
         "plugin. Eq. it possible to use the IX/Mixer script and name the "
         "channels to mix for each instance."));
@@ -246,17 +246,17 @@ void PlugModeComponent::updateEverything() {
 
   if (m_pPlugAccess->getMapManager()->getMapName().isEmpty() &&
       mapType != PlugMapManager::LOCAL_MAP) {
-    m_mappingFile->setText(T("no mapping file"), false);
+    m_mappingFile->setText(String("no mapping file"), dontSendNotification);
   } else {
     if (mapType == PlugMapManager::USER_MAP)
       m_mappingFile->setText(m_pPlugAccess->getMapManager()->getMapName(),
                              false);
     else if (mapType == PlugMapManager::INSTALLED_MAP)
       m_mappingFile->setText(m_pPlugAccess->getMapManager()->getMapName() +
-                                 JUCE_T(" (factory)"),
+                                 String(" (factory)"),
                              false);
     else
-      m_mappingFile->setText(JUCE_T(""), false);
+      m_mappingFile->setText(String(""), dontSendNotification);
   }
 
   m_save->setEnabled(mapType == PlugMapManager::USER_MAP);

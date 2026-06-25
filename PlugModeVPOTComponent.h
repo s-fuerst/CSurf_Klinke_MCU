@@ -44,7 +44,7 @@
  Describe your class and how it works here!
  //[/Comments]
  */
-class PlugModeVPOTComponent : public Component, public ButtonListener {
+class PlugModeVPOTComponent : public Component, public Button::Listener {
 public:
   //==============================================================================
   PlugModeVPOTComponent(PlugModeComponent *pMC, PMVPot *pVPot);

@@ -38,9 +38,9 @@
 PlugModeMapInfoComponent::PlugModeMapInfoComponent(PlugModeComponent *pMC,
                                                    PlugMap *pMap)
     : m_textCreator(0), m_labelCreator(0), m_textNotes(0), m_labelNotes(0) {
-  addAndMakeVisible(m_textCreator = new TextEditor(T("Creator text editor")));
+  addAndMakeVisible(m_textCreator = new TextEditor(String("Creator text editor")));
   m_textCreator->setTooltip(
-      T("The person how created the map can enter his name here (e.g. for "
+      String("The person how created the map can enter his name here (e.g. for "
         "request from other users, for fame etc.)"));
   m_textCreator->setMultiLine(false);
   m_textCreator->setReturnKeyStartsNewLine(false);
@@ -50,18 +50,18 @@ PlugModeMapInfoComponent::PlugModeMapInfoComponent(PlugModeComponent *pMC,
   m_textCreator->setPopupMenuEnabled(true);
   m_textCreator->setColour(TextEditor::outlineColourId, Colours::black);
   m_textCreator->setColour(TextEditor::shadowColourId, Colour(0x0));
-  m_textCreator->setText(String::empty);
+  m_textCreator->setText(String());
 
   addAndMakeVisible(m_labelCreator =
-                        new Label(T("Creator label"), T("Creator:\n")));
+                        new Label(String("Creator label"), String("Creator:\n")));
   m_labelCreator->setFont(Font(15.0000f, Font::plain));
   m_labelCreator->setJustificationType(Justification::centredLeft);
   m_labelCreator->setEditable(false, false, false);
   m_labelCreator->setColour(TextEditor::textColourId, Colours::black);
   m_labelCreator->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-  addAndMakeVisible(m_textNotes = new TextEditor(T("notes text editor")));
-  m_textNotes->setTooltip(T("A map related notepad"));
+  addAndMakeVisible(m_textNotes = new TextEditor(String("notes text editor")));
+  m_textNotes->setTooltip(String("A map related notepad"));
   m_textNotes->setMultiLine(true);
   m_textNotes->setReturnKeyStartsNewLine(true);
   m_textNotes->setReadOnly(false);
@@ -70,9 +70,9 @@ PlugModeMapInfoComponent::PlugModeMapInfoComponent(PlugModeComponent *pMC,
   m_textNotes->setPopupMenuEnabled(true);
   m_textNotes->setColour(TextEditor::outlineColourId, Colours::black);
   m_textNotes->setColour(TextEditor::shadowColourId, Colour(0x0));
-  m_textNotes->setText(String::empty);
+  m_textNotes->setText(String());
 
-  addAndMakeVisible(m_labelNotes = new Label(T("Notes label"), T("Notes:\n")));
+  addAndMakeVisible(m_labelNotes = new Label(String("Notes label"), String("Notes:\n")));
   m_labelNotes->setFont(Font(15.0000f, Font::plain));
   m_labelNotes->setJustificationType(Justification::centredLeft);
   m_labelNotes->setEditable(false, false, false);
@@ -150,7 +150,7 @@ void PlugModeMapInfoComponent::updateEverything() {
 		BEGIN_JUCER_METADATA
 
 		<JUCER_COMPONENT documentType="Component" className="PlugModeMapInfoComponent"
-		componentName="" parentClasses="public Component, public TextEditorListener"
+		componentName="" parentClasses="public Component, public TextEditor::Listener"
 		constructorParams="PlugModeComponent* pMC, PlugMap* pMap" variableInitialisers=""
 		snapPixels="8" snapActive="1" snapShown="1" overlayOpacity="0.330000013"
 		fixedSize="1" initialWidth="616" initialHeight="424">

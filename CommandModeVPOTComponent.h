@@ -44,9 +44,9 @@
  //[/Comments]
  */
 class CommandModeVPOTComponent : public Component,
-                                 public LabelListener,
-                                 public ButtonListener,
-                                 public SliderListener {
+                                 public Label::Listener,
+                                 public Button::Listener,
+                                 public Slider::Listener {
 public:
   //==============================================================================
   CommandModeVPOTComponent(CommandMode::Page *pPage, int shift, int channel);

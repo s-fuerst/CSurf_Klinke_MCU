@@ -41,8 +41,8 @@ class ActionsDisplay;
  //[/Comments]
  */
 class ActionsDialogComponent : public Component,
-                               public LabelListener,
-                               public ButtonListener {
+                               public Label::Listener,
+                               public Button::Listener {
 public:
   //==============================================================================
   ActionsDialogComponent(ActionsDisplay *pAD);

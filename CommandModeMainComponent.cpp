@@ -37,33 +37,33 @@
 
 //==============================================================================
 CommandModeMainComponent::CommandModeMainComponent(CommandMode *pCommandMode)
-    : Component(JUCE_T("CommandModeMain")), tabbedPages(0) {
+    : Component(String("CommandModeMain")), tabbedPages(0) {
   addAndMakeVisible(tabbedPages =
                         new TabbedComponent(TabbedButtonBar::TabsAtTop));
   tabbedPages->setTabBarDepth(30);
   tabbedPages->addTab(
-      JUCE_T("Page 1"), Colours::white,
+      String("Page 1"), Colours::white,
       new CommandModePageComponent(pCommandMode->getPage(0), this), true);
   tabbedPages->addTab(
-      JUCE_T("Page 2"), Colours::white,
+      String("Page 2"), Colours::white,
       new CommandModePageComponent(pCommandMode->getPage(1), this), true);
   tabbedPages->addTab(
-      JUCE_T("Page 3"), Colours::white,
+      String("Page 3"), Colours::white,
       new CommandModePageComponent(pCommandMode->getPage(2), this), true);
   tabbedPages->addTab(
-      JUCE_T("Page 4"), Colours::white,
+      String("Page 4"), Colours::white,
       new CommandModePageComponent(pCommandMode->getPage(3), this), true);
   tabbedPages->addTab(
-      JUCE_T("Page 5"), Colours::white,
+      String("Page 5"), Colours::white,
       new CommandModePageComponent(pCommandMode->getPage(4), this), true);
   tabbedPages->addTab(
-      JUCE_T("Page 6"), Colours::white,
+      String("Page 6"), Colours::white,
       new CommandModePageComponent(pCommandMode->getPage(5), this), true);
   tabbedPages->addTab(
-      JUCE_T("Page 7"), Colours::white,
+      String("Page 7"), Colours::white,
       new CommandModePageComponent(pCommandMode->getPage(6), this), true);
   tabbedPages->addTab(
-      JUCE_T("Page 8"), Colours::white,
+      String("Page 8"), Colours::white,
       new CommandModePageComponent(pCommandMode->getPage(7), this), true);
   tabbedPages->setCurrentTabIndex(0);
 

@@ -18,7 +18,7 @@ public:
   // called when the VPOT was moved, steps can be negativ, no wrap around
   virtual void move(unsigned int numOpt, int steps);
 
-  bool isOptionSetTo(const wchar_t *optionName, const wchar_t *attribute);
+  bool isOptionSetTo(const String &optionName, const String &attribute);
 
 protected:
   typedef std::vector<String> tOption;
@@ -33,8 +33,8 @@ protected:
 
   String getSelectedOptionAsString(const String &optionName);
   String getSelectedOptionAsString(int option);
-  int getSelectedOption(wchar_t *optionName);
-  void setOptionTo(wchar_t *optionName, int attributeId);
+  int getSelectedOption(const String &optionName);
+  void setOptionTo(const String &optionName, int attributeId);
 
   // this is called after a different option was selected but before the display
   // is updated. so the concrete implementation has a chance to add option

@@ -147,7 +147,7 @@ bool PlugPresetManager::deletePreset(String &fxGUID, int presetNr) {
   return false;
 }
 
-#define PLUGPRESETMANAGER_NODE_ROOT JUCE_T("PLUGPRESETMANAGER")
+#define PLUGPRESETMANAGER_NODE_ROOT String("PLUGPRESETMANAGER")
 
 void PlugPresetManager::projectChanged(XmlElement *pXmlElement,
                                        ProjectConfig::EAction action) {
@@ -170,12 +170,12 @@ void PlugPresetManager::projectChanged(XmlElement *pXmlElement,
   }
 }
 
-#define PLUGPRESETMANAGER_NODE_PRESET JUCE_T("PLUG-PRESET")
-#define PLUGPRESETMANAGER_ATT_FX JUCE_T("fxGUID")
-#define PLUGPRESETMANAGER_ATT_NR JUCE_T("nr")
+#define PLUGPRESETMANAGER_NODE_PRESET String("PLUG-PRESET")
+#define PLUGPRESETMANAGER_ATT_FX String("fxGUID")
+#define PLUGPRESETMANAGER_ATT_NR String("nr")
 
-#define PLUGPRESETMANAGER_NODE_PRESETDATA JUCE_T("DA")
-#define PLUGPRESETMANAGER_ATT_PRESETDATA JUCE_T("ta")
+#define PLUGPRESETMANAGER_NODE_PRESETDATA String("DA")
+#define PLUGPRESETMANAGER_ATT_PRESETDATA String("ta")
 
 void PlugPresetManager::writePresetsToProjectConfig(XmlElement *pNode) {
   BOOST_FOREACH (tPresetWithPos &presetWP, m_presetStorage) {
