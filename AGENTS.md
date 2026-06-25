@@ -166,9 +166,9 @@ The CMake build uses **SWELL** (WDL) for the surface-edit dialog on Linux
 
 ### Windows (Visual Studio — current source of truth)
 
-1. Install Visual Studio 2022 with the Windows SDK.
+1. Install Visual Studio 2019 (toolset `v142`) with the Windows SDK.
 2. The CMake build for Windows is not yet wired; use the .vcxproj with
-   VS 2022 for now (update if needed — the project was originally VS 2019).
+   VS 2019 for now (the project was originally built with VS 2019).
 
 **Build matrix** (`reaper_csurf.vcxproj`):
 - Configurations: `Debug`, `Release`, `Release_B`, `Klinke`
