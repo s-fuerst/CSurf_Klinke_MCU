@@ -30,7 +30,18 @@ struct ButtonHandler {
 };
 
 bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt) {
-  if ((evt->midi_message[0] & 0xf0) != 0x90)
+  unsigned char status = evt->midi_message[0] & 0xf0;
+
+  // MCU button release is Note-On velocity 0 (0x90). On Linux the
+  // MIDI stack sometimes rewrites that to Note-Off (0x80); normalise back.
+  bool is_note_off = (status == 0x80);
+  if (is_note_off) {
+    status = 0x90;
+    evt->midi_message[0] = (evt->midi_message[0] & 0x0f) | 0x90;
+    evt->midi_message[2] = 0;  // release: velocity 0
+  }
+
+  if (status != 0x90)
     return false;
 
   static const int nPressOnlyHandlers = 19;
