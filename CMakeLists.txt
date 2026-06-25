@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.10)
 #  CSurf_Klinke_MCU — cross-platform CMake build
 #
 #  Status:
-#    • Linux   — baseline build working (GCC, X11/JUCE 1.52, SWELL).
+#    • Linux   — baseline build working (GCC, X11/JUCE 8, SWELL).
 #    • Windows — NOT yet wired into CMake (the .vcxproj remains the source of
 #                truth until the WIN32 branch below is implemented; next
 #                milestone after the Linux baseline is confirmed).
@@ -232,11 +232,7 @@ target_link_libraries(reaper_csurf_mcu_klinke PRIVATE
 if(UNIX AND NOT APPLE)
     # --- Linux (baseline) ----------------------------------------------------
     # C++14: the ported source uses C++11+ features (auto, nullptr, lambdas) and
-    # builds under strict ISO C++14 (gnu++14 was previously used; c++14 was the
-    # portability target; now C++17 for JUCE 8). Verified 2026-06-25: builds
-    # clean on Linux/GCC with zero errors under strict ISO C++17, same warning
-    # set as c++14.
-    # JUCE 8 requires C++17 minimum; our source moved c++14 -> c++17 here.
+    # C++17 is the minimum for JUCE 8.
     # -fpermissive kept: the Jucer 1.11-generated *Component files are loose
     # about conversions; we will tighten this as the upgrade progresses.
     target_compile_options(reaper_csurf_mcu_klinke PRIVATE
