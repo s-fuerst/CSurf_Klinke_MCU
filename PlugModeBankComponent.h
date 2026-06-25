@@ -29,7 +29,7 @@
 
 //[Headers]     -- You can add your own extra header files here --
 #include "PlugAccess.h"
-#include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
+#include "JuceHeader.h"
 #include "TabbedComponentWithCallback.h"
 class PlugModeComponent;
 class PlugModeSingleBankComponent;

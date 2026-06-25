@@ -11,23 +11,25 @@ cmake_minimum_required(VERSION 3.10)
 #    • macOS   — NOT yet wired into CMake (planned after Windows).
 #
 #  Dependencies (gitignored; fetch with ./fetch_deps.sh, see AGENTS.md §2):
-#    juce_1_52/   reaper-sdk/sdk/  reaper-sdk/WDL/  boost_1_39_0/
+#    juce_8/      reaper-sdk/sdk/  reaper-sdk/WDL/  boost_1_39_0/
 #
 #  The same dependency versions as the original VS project are kept
-#  (JUCE 1.52, Boost 1.39). Do not "modernise" them without a decision.
+#  (Boost 1.39). JUCE is upgraded from 1.52 to 8 on this EXPERIMENTAL
+#  juce-upgrade branch (module build via add_subdirectory). Resulting binary
+#  is AGPLv3 (JUCE 8 made all modules AGPLv3/JUCE dual). Branch may be abandoned.
 # ─────────────────────────────────────────────────────────────────────────────
-project(reaper_csurf_mcu_klinke CXX)
+project(reaper_csurf_mcu_klinke C CXX)
 
 # --- Paths --------------------------------------------------------------------
 set(SRC_DIR   ${CMAKE_CURRENT_SOURCE_DIR})
-set(JUCE_DIR  ${SRC_DIR}/juce_1_52)
+set(JUCE_DIR  ${SRC_DIR}/juce_8)
 set(SDK_DIR   ${SRC_DIR}/reaper-sdk/sdk)
 set(WDL_DIR   ${SRC_DIR}/reaper-sdk/WDL)
 set(SWELL_DIR ${WDL_DIR}/swell)
 set(BOOST_DIR ${SRC_DIR}/boost_1_39_0)
 
 # --- Guard: bail early with a clear message if deps are missing --------------
-foreach(d juce_1_52 reaper-sdk boost_1_39_0)
+foreach(d juce_8 reaper-sdk boost_1_39_0)
     if(NOT EXISTS "${SRC_DIR}/${d}")
         message(FATAL_ERROR
             "\n  Dependency '${d}/' not found.\n"
@@ -88,21 +90,28 @@ message(STATUS "MCU version: ${MCU_VERSION_DISPLAY}")
 configure_file("${CMAKE_SOURCE_DIR}/Version.h.in" "${CMAKE_BINARY_DIR}/Version.h" @ONLY)
 
 # =============================================================================
-#  JUCE 1.52 amalgamated — compiled as a separate OBJECT library so the old
-#  C++03-era source gets its own (very permissive) flags and -w silencing.
+#  JUCE 8 (modern, module build) — added as a subdirectory and linked as
+#  juce::juce_gui_basics. That module pulls in juce_core / juce_events /
+#  juce_graphics / juce_data_structures transitively. EXCLUDE_FROM_ALL keeps
+#  the many JUCE targets we do not link from being built by default.
+#
+#  Module feature options are set as cache variables BEFORE add_subdirectory so
+#  JUCE picks them up. We turn off only what the plugin does not use or what is
+#  heavyweight on the build host; defaults are otherwise accepted.
 # =============================================================================
-find_package(Freetype REQUIRED)   # only the Linux X11 backend uses FreeType
-add_library(juce_amalgamated OBJECT ${JUCE_DIR}/juce_amalgamated.cpp)
-target_include_directories(juce_amalgamated PRIVATE
-    ${JUCE_DIR}
-    ${WDL_DIR}
-    ${FREETYPE_INCLUDE_DIRS})
-target_compile_definitions(juce_amalgamated PRIVATE
-    NDEBUG
-    JUCE_OPENGL=0
-    JUCE_USE_XINERAMA=0
-    JUCE_USE_XSHM=0
-    JUCE_USE_XCURSOR=0)
+set(JUCE_WEB_BROWSER        OFF CACHE BOOL "" FORCE)
+set(JUCE_USE_CDBURNER       OFF CACHE BOOL "" FORCE)
+set(JUCE_USE_CDREADER       OFF CACHE BOOL "" FORCE)
+set(JUCE_QUICKTIME          OFF CACHE BOOL "" FORCE)  # gone on modern macOS anyway
+set(JUCE_PLUGINHOST_VST     OFF CACHE BOOL "" FORCE)
+set(JUCE_PLUGINHOST_VST3    OFF CACHE BOOL "" FORCE)
+set(JUCE_PLUGINHOST_AU      OFF CACHE BOOL "" FORCE)
+set(JUCE_PLUGINHOST_LADSPA  OFF CACHE BOOL "" FORCE)
+set(JUCE_PLUGINHOST_LV2     OFF CACHE BOOL "" FORCE)
+set(JUCE_USE_FLAC           OFF CACHE BOOL "" FORCE)
+set(JUCE_USE_OGGVORBIS      OFF CACHE BOOL "" FORCE)
+set(JUCE_USE_CAMERA         OFF CACHE BOOL "" FORCE)
+add_subdirectory(${JUCE_DIR} juce_8_build EXCLUDE_FROM_ALL)
 
 # =============================================================================
 #  Plugin target
@@ -215,9 +224,9 @@ target_sources(reaper_csurf_mcu_klinke PRIVATE
     ${SWELL_DIR}/swell-modstub-generic.cpp   # binds SWELL funcs via REAPER
     res_linux.cpp)                           # SWELL dialog resources
 
-# JUCE object is always linked; system libs differ per platform (below).
+# JUCE 8 module (pulls core/events/graphics/data_structures transitively).
 target_link_libraries(reaper_csurf_mcu_klinke PRIVATE
-    $<TARGET_OBJECTS:juce_amalgamated>)
+    juce::juce_gui_basics)
 
 # =============================================================================
 #  Platform-specific flags / system libs / output name
@@ -234,10 +243,11 @@ if(UNIX AND NOT APPLE)
     # Verified 2026-06-23: builds clean on Linux/GCC with zero errors — the
     # code relies on no GNU extensions and no _GNU_SOURCE-only POSIX funcs
     # (no realpath()/strdup() etc. went missing). Same warning set as gnu++14.
-    target_compile_options(juce_amalgamated PRIVATE
-        -std=c++14 -fPIC -w -fpermissive -Wno-deprecated-declarations)
+    # JUCE 8 requires C++17 minimum; our source moves c++14 -> c++17 here.
+    # -fpermissive kept: the Jucer 1.11-generated *Component files are loose
+    # about conversions; we will tighten this as the upgrade progresses.
     target_compile_options(reaper_csurf_mcu_klinke PRIVATE
-        -std=c++14 -fPIC -fvisibility=hidden -fpermissive
+        -std=c++17 -fPIC -fvisibility=hidden -fpermissive
         -Wno-deprecated-declarations -Wno-unused-result
         -Wno-sign-compare -Wno-reorder -Wno-multichar)
     target_link_libraries(reaper_csurf_mcu_klinke PRIVATE X11 Xext pthread dl)

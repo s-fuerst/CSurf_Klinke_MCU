@@ -5,7 +5,7 @@
 
 #pragma once
 #include "MultiTrackMode.h"
-#include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
+#include "JuceHeader.h"
 #include "Selector.h"
 #include "Display.h"
 #include "csurf_mcu.h"

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
+#include "JuceHeader.h"
 
 class TabbedCallback {
 public:

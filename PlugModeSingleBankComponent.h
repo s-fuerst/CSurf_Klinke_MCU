@@ -28,7 +28,7 @@
 #define __JUCER_HEADER_PLUGMODESINGLEBANKCOMPONENT_PLUGMODESINGLEBANKCOMPONENT_257734C__
 
 //[Headers]     -- You can add your own extra header files here --
-#include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
+#include "JuceHeader.h"
 #include "PlugModeSinglePageComponent.h"
 //[/Headers]
 

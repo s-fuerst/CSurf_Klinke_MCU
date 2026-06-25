@@ -6,7 +6,7 @@
 #pragma once
 #include "boost/signals2.hpp"
 #include "reaper_plugin.h"
-#include "juce.h"
+#include "JuceHeader.h"
 #include <map>
 
 using boost::signals2::connection;

@@ -9,7 +9,7 @@
 #include "PlugMap.h"
 #include "PlugMode.h"
 #include "PlugModeComponent.h"
-#include "juce_amalgamated.h"
+#include "JuceHeader.h"
 #include "PlugMoveWatcher.h"
 
 #define PMM_ATT_VERSION JUCE_T("version")

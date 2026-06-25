@@ -28,7 +28,7 @@
 #define __JUCER_HEADER_ACTIONSDIALOGCOMPONENT_ACTIONSDIALOGCOMPONENT_722363D1__
 
 //[Headers]     -- You can add your own extra header files here --
-#include <src/juce_WithoutMacros.h>
+#include "JuceHeader.h"
 class ActionsDisplay;
 //[/Headers]
 

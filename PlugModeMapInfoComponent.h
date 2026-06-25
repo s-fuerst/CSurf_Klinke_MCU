@@ -28,7 +28,7 @@
 #define __JUCER_HEADER_PLUGMODEMAPINFOCOMPONENT_PLUGMODEMAPINFOCOMPONENT_6D9C6790__
 
 //[Headers]     -- You can add your own extra header files here --
-#include "src/juce_WithoutMacros.h"
+#include "JuceHeader.h"
 
 class PlugModeComponent;
 class PlugMap;

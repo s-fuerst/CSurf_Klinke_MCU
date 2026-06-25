@@ -11,7 +11,7 @@
 #ifdef _WIN32
 #include "swell\swell.h"
 #endif
-#include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
+#include "JuceHeader.h"
 #include "CommandModeMainComponent.h"
 
 CommandMode::Page::Page(CommandMode *pMode, int index)

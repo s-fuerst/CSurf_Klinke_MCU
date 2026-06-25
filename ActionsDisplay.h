@@ -5,7 +5,7 @@
 
 #pragma once
 #include "Display.h"
-#include <src/juce_WithoutMacros.h>
+#include "JuceHeader.h"
 
 class DisplayHandler;
 

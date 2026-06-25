@@ -8,7 +8,7 @@
 #include<vector>
 #include<boost/tuple/tuple.hpp>
 #include<boost/tuple/tuple_comparison.hpp>
-#include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
+#include "JuceHeader.h"
 #include "ProjectConfig.h"
 #include "PlugAccess.h"
 

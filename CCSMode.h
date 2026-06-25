@@ -3,7 +3,7 @@
  * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
  */
 
-#include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
+#include "JuceHeader.h"
 #include "csurf.h"
 #include "DisplayHandler.h"
 #include "VPOT_LED.h"

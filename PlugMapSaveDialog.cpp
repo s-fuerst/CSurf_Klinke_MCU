@@ -25,14 +25,13 @@
 */
 
 //[Headers] You can add your own extra header files here...
-#include <src/juce_WithoutMacros.h>
+#include "JuceHeader.h"
 //[/Headers]
 
 #include "PlugMapSaveDialog.h"
 
 
 //[MiscUserDefs] You can add your own user definitions and misc code here...
-#include <src/juce_DefineMacros.h>
 class PlugMapManager;
 //[/MiscUserDefs]
 

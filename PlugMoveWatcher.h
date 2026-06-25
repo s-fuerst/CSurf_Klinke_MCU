@@ -8,7 +8,7 @@
 #include <boost/signals2.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <boost/tuple/tuple_comparison.hpp>
-#include <src/juce_WithoutMacros.h> 
+#include "JuceHeader.h"
 #include <list>
 #include <set>
 #include "csurf.h"

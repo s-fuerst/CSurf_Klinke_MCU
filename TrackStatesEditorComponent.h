@@ -28,7 +28,7 @@
 #define __JUCER_HEADER_TRACKSTATESEDITORCOMPONENT_TRACKSTATESEDITORCOMPONENT_2F1DDE68__
 
 //[Headers]     -- You can add your own extra header files here --
-#include <src/juce_WithoutMacros.h>
+#include "JuceHeader.h"
 class TrackStatesTableComponent;
 //[/Headers]
 

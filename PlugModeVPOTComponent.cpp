@@ -36,7 +36,6 @@
 
 
 //[MiscUserDefs] You can add your own user definitions and misc code here...
-#include <src/juce_DefineMacros.h>
 //[/MiscUserDefs]
 
 //==============================================================================

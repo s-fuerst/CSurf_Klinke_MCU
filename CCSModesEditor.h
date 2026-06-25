@@ -6,7 +6,7 @@
 #pragma once
 
 #include "csurf_mcu.h"
-#include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
+#include "JuceHeader.h"
 #include "ProjectConfig.h"
 
 class CCSManager;

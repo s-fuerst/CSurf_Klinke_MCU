@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
+#include "JuceHeader.h"
 #include "PlugMap.h"
 #include <vector>
 #include "csurf_mcu.h"

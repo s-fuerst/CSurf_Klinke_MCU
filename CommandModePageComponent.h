@@ -29,8 +29,7 @@
 
 //[Headers]     -- You can add your own extra header files here --
 #include "csurf_mcu.h"
-#include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
-#include <src/juce_DefineMacros.h>
+#include "JuceHeader.h"
 #include "CommandMode.h"
 #include "CommandModeVPOTComponent.h"
 //[/Headers]

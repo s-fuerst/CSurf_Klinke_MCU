@@ -28,7 +28,7 @@
 #define __JUCER_HEADER_PLUGMODEFADERCOMPONENT_PLUGMODEFADERCOMPONENT_4644A0B1__
 
 //[Headers]     -- You can add your own extra header files here --
-#include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
+#include "JuceHeader.h"
 //[/Headers]
 
 #include "PlugModeParamComponent.h"

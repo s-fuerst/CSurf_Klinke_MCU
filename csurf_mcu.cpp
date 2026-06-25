@@ -23,7 +23,7 @@ namespace juce {
 #include "MultiTrackMode.h"
 #include "UndoEnd.h"
 #include "Tracks.h"
-#include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
+#include "JuceHeader.h"
 #include "boost/bind.hpp"
 #include "ProjectConfig.h"
 #include "PlugMoveWatcher.h"

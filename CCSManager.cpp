@@ -19,7 +19,7 @@
 #include "Assert.h"
 #include "CCSModesEditor.h"
 #include "Options.h"
-#include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
+#include "JuceHeader.h"
 
 #define TOUCHED_MS 2000;
 

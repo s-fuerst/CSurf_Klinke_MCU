@@ -29,7 +29,7 @@
 
 //[Headers]     -- You can add your own extra header files here --
 #include "PlugMapManager.h"
-#include "juce.h"
+#include "JuceHeader.h"
 
 #define SAVEMAP_OK 11
 #define SAVEMAP_CANCEL 12

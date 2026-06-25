@@ -8,7 +8,7 @@
 #include <boost/array.hpp>
 #include "csurf_mcu.h"
 #include <boost/scoped_ptr.hpp>
-#include <src/juce_WithoutMacros.h> // includes everything in juce.h, but
+#include "JuceHeader.h"
 
 #include "PlugMap.h"
 #include "PlugMode.h"
