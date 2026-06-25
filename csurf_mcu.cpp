@@ -1554,8 +1554,7 @@ createFunc(const char *type_string, const char *configString, int *errStats) {
 
   if (CSurf_MCU::s_iNumInstances == 0)
     return new CSurf_MCU(!strcmp(type_string, EXT_ID), parms[0], parms[1],
-                         parms[2], parms[3], parms[4], errStats);
-  else {
+                         parms[2], parms[3], parms[4], errStats); else {
     ::MessageBox(NULL,
                  "CSurf_MCU_Klinke instance is already active (and only a "
                  "single instance can be used).",

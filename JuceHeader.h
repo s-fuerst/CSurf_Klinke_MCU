@@ -23,9 +23,19 @@
 //  without this line every unqualified Component/Label/... reference in the
 //  existing source would fail to compile. Keeping it global minimises the
 //  source diff for the upgrade experiment.
+//
+//  klinkeInitLookAndFeel() applies the dark colour scheme to the default
+//  LookAndFeel (LookAndFeel_V4 in JUCE 8). MUST be called once before any
+//  JUCE window is created. JUCE 8's default light theme otherwise renders
+//  white text on white backgrounds for many components.
 // ===========================================================================
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
 
 using namespace juce;
+
+inline void klinkeInitLookAndFeel() {
+    auto& lf = dynamic_cast<LookAndFeel_V4&>(LookAndFeel::getDefaultLookAndFeel());
+    lf.setColourScheme(LookAndFeel_V4::getDarkColourScheme());
+}
