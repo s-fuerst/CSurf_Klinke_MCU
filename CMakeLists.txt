@@ -250,7 +250,7 @@ if(UNIX AND NOT APPLE)
         -std=c++17 -fPIC -fvisibility=hidden -fpermissive
         -Wno-deprecated-declarations -Wno-unused-result
         -Wno-sign-compare -Wno-reorder -Wno-multichar)
-    target_link_libraries(reaper_csurf_mcu_klinke PRIVATE X11 Xext pthread dl)
+    target_link_libraries(reaper_csurf_mcu_klinke PRIVATE X11 Xext pthread dl curl)
     set_target_properties(reaper_csurf_mcu_klinke PROPERTIES
         PREFIX "" OUTPUT_NAME "reaper_csurf_mcu_klinke" SUFFIX ".so")
 
