@@ -8,9 +8,9 @@
 // JUCE 1.52 internal event dispatcher — defined in juce_amalgamated.cpp
 // inside namespace juce.  Processes one pending X11/JUCE event and returns
 // true, or returns false immediately (no sleep) when the queue is empty.
-namespace juce {
-    bool juce_dispatchNextMessageOnSystemQueue(bool returnIfNoPendingMessages);
-}
+namespace juce { namespace detail {
+    bool dispatchNextMessageOnSystemQueue(bool returnIfNoPendingMessages);
+}}
 
 #include "csurf_mcu.h"
 #include "McuDebugLog.h"
@@ -1202,7 +1202,7 @@ void CSurf_MCU::Run() {
   // keyboard input, and handle WM_DELETE_WINDOW (the title-bar X button).
   // Each call processes one pending event and returns false when the queue is
   // empty — no blocking, negligible overhead when no windows are open.
-  for (int i = 0; i < 30 && juce::juce_dispatchNextMessageOnSystemQueue(true); ++i) {}
+  for (int i = 0; i < 30 && juce::detail::dispatchNextMessageOnSystemQueue(true); ++i) {}
 }
 
 void CSurf_MCU::SendMidi(unsigned char status, unsigned char d1,
