@@ -166,7 +166,8 @@ bool Options::readConfigFile() {
   if (!pXmlFile)
     return false;
 
-  XmlElement *pRootElement = pXmlFile->getDocumentElement().get();
+  auto docRoot = pXmlFile->getDocumentElement();  // keep unique_ptr alive
+  XmlElement *pRootElement = docRoot.get();
   if (!pRootElement)
     return false;
 
@@ -178,7 +179,6 @@ bool Options::readConfigFile() {
     i++;
   }
 
-  safe_delete(pRootElement);
   safe_delete(pXmlFile);
   return true;
 }

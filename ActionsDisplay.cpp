@@ -102,7 +102,8 @@ bool ActionsDisplay::readConfigFile() {
   if (!pXmlFile)
     return false;
 
-  XmlElement* pRootElement = pXmlFile->getDocumentElement().get();
+  auto docRoot = pXmlFile->getDocumentElement();
+  XmlElement* pRootElement = docRoot.get();
   if (!pRootElement) 
     return false;
 
@@ -112,7 +113,6 @@ bool ActionsDisplay::readConfigFile() {
     m_strLabel[mod][nr] = pNode->getStringAttribute(GA_ATT_LABEL);
   } 
 
-  delete(pRootElement);  
   delete(pXmlFile);
   return true;
 }

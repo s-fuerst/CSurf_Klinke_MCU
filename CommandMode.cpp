@@ -114,7 +114,8 @@ bool CommandMode::readConfigFile() {
   if (!pXmlFile)
     return false;
 
-  XmlElement *pRootElement = pXmlFile->getDocumentElement().get();
+  auto docRoot = pXmlFile->getDocumentElement();
+  XmlElement *pRootElement = docRoot.get();
   if (!pRootElement)
     return false;
 
@@ -122,13 +123,11 @@ bool CommandMode::readConfigFile() {
     bool success =
         m_pPage[pPage->getIntAttribute(CM_ATT_INDEX)]->readFromXML(pPage);
     if (!success) {
-      safe_delete(pRootElement);
       safe_delete(pXmlFile);
       return false;
     }
   }
 
-  safe_delete(pRootElement);
   safe_delete(pXmlFile);
   return true;
 }

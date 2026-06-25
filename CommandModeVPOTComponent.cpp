@@ -97,9 +97,9 @@ CommandModeVPOTComponent::CommandModeVPOTComponent(CommandMode::Page *pPage,
   actionLabel->setText(m_pPage->getCommandName(shift, channel), dontSendNotification);
   relativeButton->setToggleState(m_pPage->m_bRelative[shift][channel], false);
   normalSpeedSlider->setEnabled(m_pPage->m_bRelative[shift][channel]);
-  normalSpeedSlider->setValue(m_pPage->m_iNormalSpeed[shift][channel], false);
+  normalSpeedSlider->setValue(m_pPage->m_iNormalSpeed[shift][channel], dontSendNotification);
   pressedSpeedSlider->setEnabled(m_pPage->m_bRelative[shift][channel]);
-  pressedSpeedSlider->setValue(m_pPage->m_iPressedSpeed[shift][channel], false);
+  pressedSpeedSlider->setValue(m_pPage->m_iPressedSpeed[shift][channel], dontSendNotification);
 
   // actionLabel->setMinimumHorizontalScale(0.98);
   //[/UserPreSize]

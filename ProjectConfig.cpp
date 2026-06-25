@@ -92,10 +92,10 @@ bool ProjectConfig::processExtensionLine(
     XmlDocument *pTmpDoc =
         new XmlDocument(buildString.replace(String("|#{"), String("<"))
                             .replace(String("}#|"), String(">")));
-    XmlElement *pElement = pTmpDoc->getDocumentElement().get();
+    auto docRoot = pTmpDoc->getDocumentElement();
+    XmlElement *pElement = docRoot.get();
     if (pElement) {
       m_signalProjectChanged(pElement, READ);
-      delete (pElement);
     }
     delete (pTmpDoc);
     return true;
@@ -165,10 +165,9 @@ void ProjectConfig::checkReaProjectChange() {
     }
     if (m_xmlStorage.find(pActualMasterTrack) != m_xmlStorage.end()) {
       m_signalProjectChanged(NULL, FREE);
-      XmlElement *pDocElement =
-          m_xmlStorage[pActualMasterTrack]->getDocumentElement().get();
+      auto docRoot = m_xmlStorage[pActualMasterTrack]->getDocumentElement();
+      XmlElement *pDocElement = docRoot.get();
       m_signalProjectChanged(pDocElement, READ);
-      delete (pDocElement);
     }
     m_pLastMaster = pActualMasterTrack;
   }

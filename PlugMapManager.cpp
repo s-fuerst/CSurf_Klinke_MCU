@@ -90,13 +90,13 @@ bool PlugMapManager::readMapFile(File mapFile) {
   if (!pXmlFile)
     return false;
 
-  XmlElement *pRootElement = pXmlFile->getDocumentElement().get();
+  auto docRoot = pXmlFile->getDocumentElement();
+  XmlElement *pRootElement = docRoot.get();
   if (!pRootElement)
     return false;
 
   bool succeded = m_pMap->readFromXml(pRootElement);
 
-  safe_delete(pRootElement);
   safe_delete(pXmlFile);
   return succeded;
 }
