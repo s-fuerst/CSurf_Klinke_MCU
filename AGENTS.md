@@ -73,23 +73,6 @@ Following the build instructions from the Rothchild Linux port (we use the
 > `REAPER_EXTENSION_SDK`). The CMake build instead expects them at the repo
 > root, so the env vars are no longer needed for the CMake path.
 
-## 3. Tech stack & dependencies
-
-| Dependency | Env var | Required version | Notes |
-|---|---|---|---|
-| **Reaper Extension SDK** | `REAPER_EXTENSION_SDK` | matches `reaper_plugin_functions.h` (pinned in repo) | Provides `csurf.h`, `reaper_plugin_functions.h`, `ptrlist.h`, `IReaperControlSurface`, `reaper_csurf_reg_t`, `REAPER_PLUGIN_ENTRYPOINT`. |
-| **JUCE** | `JUCE_DIR` | **8.0.14** (modules via `add_subdirectory`) | GUI framework for all editor dialogs/components. Now licensed AGPLv3/JUCE dual. Modules: `juce_gui_basics` pulls `juce_core`/`juce_events`/`juce_graphics`/`juce_data_structures` transitively. |
-| **Boost** | `BOOST` | ≥ 1.39 (header-only) | Mainly `boost/signals2.hpp`. No compiled libs needed. |
-
-The three SDK roots are referenced by the Visual Studio project through the
-environment variables above. **All three must be set before building.**
-
-### `KlinkeLookAndFeel.h` (JUCE 8 specific)
-- `KlinkeLookAndFeel.h` — minimal `LookAndFeel_V4` subclass that forces
-  readable text and checkbox tick colours on JUCE 8 dialogs.
-  Applied per-window in `CCSModesEditor::setMainComponent()`.
-  Global `LookAndFeel::setColour()` is avoided — it breaks dialog interactivity.
-
 ## 4. How to build
 
 **Status:**
@@ -181,6 +164,23 @@ The CMake build uses **SWELL** (WDL) for the surface-edit dialog on Linux
 The `.vcxproj` is the reference for include paths, preprocessor defines
 (`EXT_B`, JUCE module flags), and the source-file set that `CMakeLists.txt`
 must reproduce (it does — all 65 files verified present).
+
+## 3. Tech stack & dependencies
+
+| Dependency               | Env var                | Required version                                     | Notes                                                                                                                                                                                           |
+|--------------------------+------------------------+------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Reaper Extension SDK** | `REAPER_EXTENSION_SDK` | matches `reaper_plugin_functions.h` (pinned in repo) | Provides `csurf.h`, `reaper_plugin_functions.h`, `ptrlist.h`, `IReaperControlSurface`, `reaper_csurf_reg_t`, `REAPER_PLUGIN_ENTRYPOINT`.                                                        |
+| **JUCE**                 | `JUCE_DIR`             | **8.0.14** (modules via `add_subdirectory`)          | GUI framework for all editor dialogs/components. Now licensed AGPLv3/JUCE dual. Modules: `juce_gui_basics` pulls `juce_core`/`juce_events`/`juce_graphics`/`juce_data_structures` transitively. |
+| **Boost**                | `BOOST`                | ≥ 1.39 (header-only)                                 | Mainly `boost/signals2.hpp`. No compiled libs needed.                                                                                                                                           |
+
+The three SDK roots are referenced by the Visual Studio project through the
+environment variables above. **All three must be set before building.**
+
+### `KlinkeLookAndFeel.h` (JUCE 8 specific)
+- `KlinkeLookAndFeel.h` — minimal `LookAndFeel_V4` subclass that forces
+  readable text and checkbox tick colours on JUCE 8 dialogs.
+  Applied per-window in `CCSModesEditor::setMainComponent()`.
+  Global `LookAndFeel::setColour()` is avoided — it breaks dialog interactivity.
 
 ## 5. Architecture & code map
 
