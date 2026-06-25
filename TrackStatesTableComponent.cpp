@@ -442,6 +442,8 @@ ButtonColumnCustomComponent::ButtonColumnCustomComponent(
     TrackStatesTableComponent &owner)
     : m_owner(owner) {
   addAndMakeVisible(m_toggleButton = new ToggleButton(String()));
+  m_toggleButton->setColour (ToggleButton::tickColourId, Colours::black);
+  m_toggleButton->setColour (ToggleButton::textColourId, Colours::black);
 
   m_toggleButton->addListener(this);
   m_toggleButton->setWantsKeyboardFocus(true);

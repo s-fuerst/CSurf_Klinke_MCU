@@ -4,6 +4,7 @@
 */
 
 #include "CCSModesEditor.h"
+#include "KlinkeLookAndFeel.h"
 #include "CommandMode.h"
 #include "McuDebugLog.h"
 #include <boost/bind.hpp>
@@ -59,6 +60,8 @@ void CCSModesEditor::setMainComponent(Component **ppComponent, bool visible) {
   m_pWindow->setUsingNativeTitleBar(true);
 
   m_pWindow->setContentComponent(*ppComponent, false, true);
+  static KlinkeLookAndFeel klf;  // keep alive while any window uses it
+  (*ppComponent)->setLookAndFeel (&klf);
   if (visible)
     m_pWindow->setVisible(visible);
   m_pWindow->setAlwaysOnTop(true);

@@ -376,7 +376,6 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
 
   fprintf(stderr, "[klinke] ReaperPluginEntry: all APIs resolved, registering csurf MCUM5\n");
   rec->Register("csurf", &csurf_mcu_modified_reg);
-  klinkeInitLookAndFeel();
   //  rec->Register("csurf",&csurf_mcuex_modified_reg);
   rec->Register("projectconfig", ProjectConfig::instance()->getRegisterInfo());
 
