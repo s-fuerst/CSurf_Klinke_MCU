@@ -41,9 +41,7 @@ ipch/
 
 # --- Vendored build dependencies (fetched by fetch_deps.sh, NOT committed) ---
 # Sourced from canonical upstream; see AGENTS.md §2 "Prerequisites".
-/juce_1_52/
 /juce_8/
-# JUCE 8 (modern) is used on the experimental juce-upgrade branch.
 /boost_1_39_0/
 /reaper-sdk/
 

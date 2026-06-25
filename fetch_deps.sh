@@ -3,22 +3,16 @@
 # fetch_deps.sh — download the three pinned build dependencies into the repo root.
 #
 # Produces (all at repo root, gitignored):
-#   juce_1_52/        JUCE 1.52 amalgamated  (github.com/julianstorer/JUCE tag 1.52)
-#   reaper-sdk/sdk/   REAPER plugin headers   (github.com/justinfrankel/reaper-sdk)
-#   reaper-sdk/WDL/   WDL + SWELL             (github.com/justinfrankel/WDL)
-#   boost_1_39_0/     Boost 1.39.0 headers    (archives.boost.io)
+#   juce_8/          JUCE 8 module build   (github.com/juce-framework/JUCE tag 8.0.14)
+#   reaper-sdk/sdk/   REAPER plugin headers  (github.com/justinfrankel/reaper-sdk)
+#   reaper-sdk/WDL/   WDL + SWELL            (github.com/justinfrankel/WDL)
+#   boost_1_39_0/     Boost 1.39.0 headers   (archives.boost.io)
 #
 # Idempotent: any dependency already present is skipped. Delete its folder to
 # re-fetch, or run with --force to re-fetch everything.
 #
-# NOTE: The original Klinke/Rothchild instructions pointed at a Bitbucket fork
-# (Stenzel/csurf_klinke_mcu) that bundled juce_1_52/ and reaper-sdk/ together.
-# That fork is no longer available (HTTP 404), so we source the IDENTICAL
-# artifacts from their canonical upstream repositories instead. The resulting
-# tree layout matches what CMakeLists.txt expects.
-#
 # Requirements: git, curl, tar. On the build host also install (Debian/Ubuntu):
-#   sudo apt install build-essential cmake libfreetype-dev libx11-dev libxext-dev
+#   sudo apt install build-essential cmake libfreetype-dev libx11-dev libxext-dev libcurl4-openssl-dev
 
 set -euo pipefail
 
@@ -52,17 +46,17 @@ for t in git curl tar; do
   command -v "$t" >/dev/null 2>&1 || { echo "error: '$t' not found in PATH" >&2; exit 1; }
 done
 
-# --- 1. JUCE 1.52 (amalgamated) → juce_1_52/ ---------------------------------
-section "JUCE 1.52  →  juce_1_52/"
-if [ "$FORCE" = 1 ]; then rm -rf juce_1_52; fi
-if [ -f juce_1_52/juce_amalgamated.cpp ]; then
+# --- 1. JUCE 8 (module build) → juce_8/ --------------------------------------
+section "JUCE 8  →  juce_8/"
+if [ "$FORCE" = 1 ]; then rm -rf juce_8; fi
+if [ -f juce_8/CMakeLists.txt ] && [ -d juce_8/modules/juce_gui_basics ]; then
   ok "already present, skipping (use --force to re-fetch)"
 else
-  clone_shallow https://github.com/julianstorer/JUCE juce_1_52 1.52
+  clone_shallow https://github.com/juce-framework/JUCE juce_8 8.0.14
   ok "fetched"
-  [ -f juce_1_52/juce_amalgamated.cpp ] && [ -f juce_1_52/juce.h ] \
-    || { echo "error: juce_amalgamated.cpp / juce.h missing after clone" >&2; exit 1; }
-  ok "verified: juce.h, juce_amalgamated.cpp, juce_Config.h"
+  [ -f juce_8/CMakeLists.txt ] && [ -d juce_8/modules/juce_gui_basics ] \
+    || { echo "error: juce_8/CMakeLists.txt or modules missing after clone" >&2; exit 1; }
+  ok "verified: CMakeLists.txt, modules/"
 fi
 
 # --- 2. REAPER SDK → reaper-sdk/sdk/  +  WDL/SWELL → reaper-sdk/WDL/ ----------
@@ -109,17 +103,6 @@ else
     sed -i 's|^#if defined( BOOST_HAS_RVALUE_REFS )$|#if defined( BOOST_HAS_RVALUE_REFS ) \&\& defined(BOOST_SHARED_PTR_ENABLE_MOVE_CTORS)|' "$sp_h"
     echo "  patched shared_ptr.hpp (disabled buggy 1.39 move ctors)"
   fi
-
-  # Patch JUCE 1.52: Linux popup windows (combo dropdowns, tooltips) need
-  # override-redirect on X11, otherwise the window manager withholds Expose
-  # events until focus — which a popup never gets → empty white rectangle.
-  juce_amal="juce_1_52/juce_amalgamated.cpp"
-  if ! grep -q 'CWOverrideRedirect' "$juce_amal"; then
-    sed -i '/swa\.event_mask = getAllEventsMask();/a\
-    swa.override_redirect = (styleFlags \& windowIsTemporary) ? True : False;' "$juce_amal"
-    sed -i 's/| CWEventMask,$/| CWEventMask | CWOverrideRedirect,/' "$juce_amal"
-    echo "  patched juce_amalgamated.cpp (override-redirect for popup windows)"
-  fi
   ok "fetched and verified"
 fi
 
@@ -129,10 +112,10 @@ cat <<'EOF'
 
   All dependencies are in place. Next, on the build host (Debian/Ubuntu):
 
-    sudo apt install build-essential cmake libfreetype-dev libx11-dev libxext-dev
+    sudo apt install build-essential cmake libfreetype-dev libx11-dev libxext-dev libcurl4-openssl-dev
     mkdir build && cd build
     cmake .. -DCMAKE_BUILD_TYPE=Release
-    cmake --build . -- -j"$(nproc)"
+    cmake --build . -j"$(nproc)"
 
   The plugin is output as build/reaper_csurf_mcu_klinke.so
 EOF

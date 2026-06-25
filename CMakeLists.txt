@@ -13,10 +13,8 @@ cmake_minimum_required(VERSION 3.10)
 #  Dependencies (gitignored; fetch with ./fetch_deps.sh, see AGENTS.md §2):
 #    juce_8/      reaper-sdk/sdk/  reaper-sdk/WDL/  boost_1_39_0/
 #
-#  The same dependency versions as the original VS project are kept
-#  (Boost 1.39). JUCE is upgraded from 1.52 to 8 on this EXPERIMENTAL
-#  juce-upgrade branch (module build via add_subdirectory). Resulting binary
-#  is AGPLv3 (JUCE 8 made all modules AGPLv3/JUCE dual). Branch may be abandoned.
+#  JUCE 8 uses the module build (add_subdirectory). Boost 1.39 is unchanged.
+#  Resulting binary is AGPLv3 (JUCE 8 made all modules AGPLv3/JUCE dual).
 # ─────────────────────────────────────────────────────────────────────────────
 project(reaper_csurf_mcu_klinke C CXX)
 
@@ -234,16 +232,11 @@ target_link_libraries(reaper_csurf_mcu_klinke PRIVATE
 if(UNIX AND NOT APPLE)
     # --- Linux (baseline) ----------------------------------------------------
     # C++14: the ported source uses C++11+ features (auto, nullptr, lambdas) and
-    # builds under strict ISO C++14 (gnu++14 was previously used; c++14 is the
-    # portability target). Boost 1.39's shared_ptr has a move-ctor bug under
-    # C++11+ (declares move ctors but no copy ctor → implicit copy ctor
-    # deleted → boost::signals2 breaks); we patch that in fetch_deps.sh.
-    # Same flag on both targets to avoid cross-TU ABI risk.
-    # -std=c++14 (strict ISO, no GNU extensions) is the portability target.
-    # Verified 2026-06-23: builds clean on Linux/GCC with zero errors — the
-    # code relies on no GNU extensions and no _GNU_SOURCE-only POSIX funcs
-    # (no realpath()/strdup() etc. went missing). Same warning set as gnu++14.
-    # JUCE 8 requires C++17 minimum; our source moves c++14 -> c++17 here.
+    # builds under strict ISO C++14 (gnu++14 was previously used; c++14 was the
+    # portability target; now C++17 for JUCE 8). Verified 2026-06-25: builds
+    # clean on Linux/GCC with zero errors under strict ISO C++17, same warning
+    # set as c++14.
+    # JUCE 8 requires C++17 minimum; our source moved c++14 -> c++17 here.
     # -fpermissive kept: the Jucer 1.11-generated *Component files are loose
     # about conversions; we will tighten this as the upgrade progresses.
     target_compile_options(reaper_csurf_mcu_klinke PRIVATE

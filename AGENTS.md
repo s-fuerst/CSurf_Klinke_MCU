@@ -41,7 +41,7 @@ selects in Reaper's *Preferences → Control/OSC/web*.
 
 The project has been largely dormant. The **goal of the revival is to make
 it build and run cross-platform — Windows, macOS, and Linux — while keeping
-the existing dependency versions (JUCE 1.52 and Boost) unchanged.** Reaper
+the existing dependency versions (JUCE 8 and Boost 1.39) unchanged.** Reaper
 itself runs on all three platforms and its csurf SDK is cross-platform, so
 this is primarily a build-system and platform-porting effort, not a rewrite.
 
@@ -56,14 +56,9 @@ this is primarily a build-system and platform-porting effort, not a rewrite.
 Following the build instructions from the Rothchild Linux port (we use the
 *instructions*, not their repo). All three deps live at the **repo root**:
 
-1. **JUCE 1.52** (amalgamated build) → `juce_1_52/`
-   - Simplest: clone the Stenzel Bitbucket fork and copy its bundled copy:
-     `hg clone https://bitbucket.org/Stenzel/csurf_klinke_mcu original-klinke`
-     then `cp -r original-klinke/juce_1_52 .`
-   - Alt (no Mercurial): download the Stenzel repo as a tarball/zip and
-     extract `juce_1_52/`; or `https://github.com/julianstorer/JUCE/tree/juce-1.52`.
-   - The CMake build needs the **amalgamated** files (`juce_amalgamated.cpp`),
-     so the Stenzel copy (known-good) is preferred over the modular GitHub tree.
+1. **JUCE 8** (module build) → `juce_8/`
+   - Fetched by `./fetch_deps.sh`: `git clone --branch 8.0.14 https://github.com/juce-framework/JUCE juce_8`
+   - The CMake build uses `add_subdirectory(juce_8)` to link `juce::juce_gui_basics`.
 2. **Boost 1.39.0** (headers only) → `boost_1_39_0/`
    - `https://archives.boost.io/release/1.39.0/source/boost_1_39_0.tar.bz2`
    - Only headers are used (smart pointers, `signals2`). No compiled libs.
@@ -71,7 +66,7 @@ Following the build instructions from the Rothchild Linux port (we use the
    - From the same Stenzel fork: `cp -r original-klinke/reaper-sdk .`
    - Alt: Cockos — `https://www.reaper.fm/sdk/plugin/plugin.php`
 4. **Linux system packages** (build host):
-   `sudo apt install build-essential cmake libfreetype-dev libx11-dev libxext-dev`
+   `sudo apt install build-essential cmake libfreetype-dev libx11-dev libxext-dev libcurl4-openssl-dev`
 
 > The original VS `.vcxproj` reads these via env vars (`JUCE`, `BOOST`,
 > `REAPER_EXTENSION_SDK`). The CMake build instead expects them at the repo
@@ -82,28 +77,17 @@ Following the build instructions from the Rothchild Linux port (we use the
 | Dependency | Env var | Required version | Notes |
 |---|---|---|---|
 | **Reaper Extension SDK** | `REAPER_EXTENSION_SDK` | matches `reaper_plugin_functions.h` (pinned in repo) | Provides `csurf.h`, `reaper_plugin_functions.h`, `ptrlist.h`, `IReaperControlSurface`, `reaper_csurf_reg_t`, `REAPER_PLUGIN_ENTRYPOINT`. |
-| **JUCE** | `JUCE` | **1.52 exactly** (not backward compatible with newer JUCE) | GUI framework for all editor dialogs/components. JUCE 1.52 predates official x64 support, so the repo ships patches in `JUCE-changes/` (see below). |
+| **JUCE** | `JUCE_DIR` | **8.0.14** (modules via `add_subdirectory`) | GUI framework for all editor dialogs/components. Now licensed AGPLv3/JUCE dual. Modules: `juce_gui_basics` pulls `juce_core`/`juce_events`/`juce_graphics`/`juce_data_structures` transitively. |
 | **Boost** | `BOOST` | ≥ 1.39 (header-only) | Mainly `boost/signals2.hpp`. No compiled libs needed. |
 
 The three SDK roots are referenced by the Visual Studio project through the
 environment variables above. **All three must be set before building.**
 
-### `JUCE-changes/` (important)
-- `JUCE-changes/juce_Config.h` — patched JUCE config; replace the one from
-  the JUCE 1.52 download with this.
-- `JUCE-changes/Builds/` — an updated JUCE project that adds the **x64**
-  target (JUCE 1.52 shipped only Win32).
-- **Linux ComboBox fix** (applied by `fetch_deps.sh`): JUCE 1.52's
-  `LinuxComponentPeer::createWindow()` creates popup windows (combo dropdowns,
-  tooltips) without `override_redirect` on X11, causing modern window managers
-  to withhold `Expose` paint events → empty white dropdown. `fetch_deps.sh`
-  patches `juce_1_52/juce_amalgamated.cpp` to add `swa.override_redirect =
-  True` + `CWOverrideRedirect` for `windowIsTemporary` windows. Idempotent,
-  auto-skipped if already present.
-
-These patches are why you cannot simply drop in a newer JUCE — the code is
-written against the 1.52 API and `juce_Config.h` enables a specific subset
-of JUCE modules.
+### `KlinkeLookAndFeel.h` (JUCE 8 specific)
+- `KlinkeLookAndFeel.h` — minimal `LookAndFeel_V4` subclass that forces
+  readable text and checkbox tick colours on JUCE 8 dialogs.
+  Applied per-window in `CCSModesEditor::setMainComponent()`.
+  Global `LookAndFeel::setColour()` is avoided — it breaks dialog interactivity.
 
 ## 4. How to build
 
@@ -120,8 +104,8 @@ of JUCE modules.
 # one-time: fetch the three pinned deps to the repo root
 ./fetch_deps.sh
 
-# build-host packages
-sudo apt install build-essential cmake libfreetype-dev libx11-dev libxext-dev
+# build-host packages (libcurl is new for JUCE 8)
+sudo apt install build-essential cmake libfreetype-dev libx11-dev libxext-dev libcurl4-openssl-dev
 
 # configure + build
 mkdir build && cd build
@@ -181,11 +165,9 @@ The CMake build uses **SWELL** (WDL) for the surface-edit dialog on Linux
 
 ### Windows (Visual Studio — current source of truth)
 
-1. Install Visual Studio 2019 (toolset `v142`) with the Windows 10 SDK.
-2. Set env vars `JUCE`, `REAPER_EXTENSION_SDK`, `BOOST` to each SDK's root.
-3. Apply `JUCE-changes/` to your JUCE 1.52 tree (replace `juce_Config.h`,
-   build the x64 JUCE libs using the included project).
-4. Open `reaper_csurf.sln` and build.
+1. Install Visual Studio 2022 with the Windows SDK.
+2. The CMake build for Windows is not yet wired; use the .vcxproj with
+   VS 2022 for now (update if needed — the project was originally VS 2019).
 
 **Build matrix** (`reaper_csurf.vcxproj`):
 - Configurations: `Debug`, `Release`, `Release_B`, `Klinke`
@@ -275,7 +257,7 @@ reaper loads the .dll
 - **Similar projects (good references):**
   - CSI (Control Surface Integrator) — https://github.com/reaper-csi/reaper_csurf_integrator
   - DrivenByMoss — https://github.com/git-moss/DrivenByMoss
-- **JUCE 1.52** — https://github.com/julianstorer/JUCE/releases (historical)
+- **JUCE 8** — https://github.com/juce-framework/JUCE (tag 8.0.14)
 
 ## 8. Repo layout (quick map)
 ```
@@ -289,7 +271,7 @@ Tracks.* Transport.* VPOT_LED.* Display*.* Region.*  core hardware/track glue
 Options.* ProjectConfig.*                      settings + project persistence
 mcu_button_defines.h csurf.h reaper_plugin_functions.h ptrlist.h  SDK headers
 manual/                                        LaTeX user manual (EN/DE)
-JUCE-changes/                                  patched juce_Config.h + x64 build
+KlinkeLookAndFeel.h                          JUCE 8 per-window LookAndFeel (text/checkbox fix)
 res.rc resource.h                              Windows surface-edit dialog
 reaper_csurf.sln/.vcxproj                      Visual Studio build (current)
 VERSION Version.h.in                          build-counter version source + template

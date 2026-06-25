@@ -11,19 +11,7 @@
 
 ## Active Context
 
-- Linux CMake baseline: WORKING END-TO-END. Build: `cd build && cmake .. -DCMAKE_BUILD_TYPE=Release && cmake --build . -- -j$(nproc)`
-- Deploy: `cp build/reaper_csurf_mcu_klinke.so ~/.config/REAPER/UserPlugins/`
-- Run: `cd /home/fuerst/opt/REAPER && GDK_BACKEND=x11 ./reaper`
-- Hardware: iCON QConPro X (2 displays à 2x55, CONFIG_FLAG_PROX). Verification complete.
-- Build-system TODOs: Windows CMake (MSVC), macOS CMake (Clang), cosmetic warnings.
-- Versioning: VERSION file + cmake configure increment → build/Version.h.
-- Open bugs: JUCE ComboBox (SWELL/JUCE-1.52-X11-PopupMenu).
-- Open TODOs: logging default OFF for release; possibly tune CHUNK larger; define release workflow.
-- SESSION-START REMINDER (high priority): open display bug — on switching to PlugMode the second (lower) display of the iCON QConPro X does not update (rows 2,3 stay stale). It worked in origin/master (ceaa4a5). Main suspected difference: SysEx chunking in DisplayHandler::sendDifferences (commit 35bf711, CHUNK=4) which replaced the diff-based master logic. TODO task #1 exists with analysis + 3 solution variants. User went to bed (2026-06-24); remind on next session start.
-- Two new runtime bugs after fix-1-revert (commit 814ae5d), TODO #2 and #3:
-- #2 Stuck modifier keys: SHIFT/OPTION/CONTROL/ALT stay pressed. Fix 3 (Rothchild) was justified — s_mackie_modifiers really does stick.
-- #3 Releasing the FX-mode button (VPOT assign): top display (rows 0,1) does not switch back to previous content.
-- Common suspected cause: the iCON QConPro X sends a real Note Off (0x80) for button-RELEASE, not the MCU-standard Note-On-Vel-0. After the fix-1-revert, ButtonManager::dispatchMidiEvent filters out 0x80 → OnKeyModifier/OnVPOTassign-release never run. If confirmed, variant 2 (Note-Off normalization only for the affected CCs, e.g. 0x46-0x49 modifier + 0x28-0x2d VPOT-assign) would likely fix BOTH bugs. Connection to the PlugMode rows-2/3 display bug (TODO #1) is unclear — that one is a SysEx-chunking suspicion.
+- JUCE 8 is now the baseline on cross-platform. build/ is clean, .so deployed. macOS port with JUCE 8 is the next platform milestone (much simpler than with 1.52 — JUCE 8 has native arm64 support, no Carbon issues). macos-juce-probe branch is obsolete (no longer needed — we tested JUCE 1.52 wasn't required). Root checkbox in Track Mode dialog is a known TODO (compare with Windows).
 
 ## Bugs & Fixes
 
@@ -70,6 +58,7 @@
 - 2026-06-23: Deploy convention: NO auto-deploy in CMake (keeps CI/Windows/macOS clean). The AGENT copies build/reaper_csurf_mcu_klinke.so to ~/.config/REAPER/UserPlugins/ after each successful Linux build (documented in AGENTS.md §4). Reaper needs full restart to reload the .so.
 - 2026-06-23: Integrated from origin/master (commits ed25356 + 5234947): feature "8 FX Favorites" (actions for opening FX favorites via CC 0x72-0x79) + bugfix "syncKnownStates" (prevents a wrong track switch when activating FX mode by resetting the chain/window-state detection). Version bumped to 0.9.1.4 (VERSION file). Build & deploy successful.
 - 2026-06-23: a2jmidid LED bug fixed. All LED-OFF messages (Note On velocity 0) are now sent as velocity 0x02 to work around the a2jmidid conversion (Note On vel 0 → Note Off). Affects: SetLED, EmulateBlinkingLEDs, all transport/auto-mode/display LEDs. DropState::updateMCU maps LED_OFF inline (CSurf_MCU is an incomplete type there).
+- 2026-06-25: JUCE 8 UPGRADE MERGED TO cross-platform. juce-upgrade branch (7 commits) merged. Key changes: JUCE 1.52 amalgamated → JUCE 8 modules (add_subdirectory + juce::juce_gui_basics), C++14→C++17, libcurl added, JuceHeader.h umbrella, per-window KlinkeLookAndFeel for colours, XML ownership fixes, dispatch forward decl fix, wchar_t→String migration. fetch_deps.sh updated for JUCE 8. AGENTS.md updated. Build is clean (0 errors), deployed and tested with iCON QConPro X. macOS port now much simpler (JUCE 8 has native arm64 support).
 
 ## Patterns
 
