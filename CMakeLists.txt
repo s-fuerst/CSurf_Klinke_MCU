@@ -134,9 +134,12 @@ target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE
     TIXML_USE_TICPP
     NDEBUG
     JUCE_MODAL_LOOPS_PERMITTED=1   # enable synchronous AlertWindow/DialogWindow APIs
-    SWELL_PROVIDED_BY_APP
     NOMINMAX                     # stop SWELL's min/max macros breaking <limits>
     WDL_NO_DEFINE_MINMAX)
+# SWELL_PROVIDED_BY_APP only on !WIN32 (REAPER provides SWELL on Linux/macOS; Windows uses native Win32)
+if(NOT WIN32)
+    target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE SWELL_PROVIDED_BY_APP)
+endif()
 
 if(MCU_DEBUG_LOG)
     target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE MCU_DEBUG_LOG)
@@ -209,8 +212,8 @@ target_sources(reaper_csurf_mcu_klinke PRIVATE
     Transport.cpp
     UndoEnd.cpp
     VPOT_LED.cpp
-    ${SWELL_DIR}/swell-modstub-generic.cpp   # binds SWELL funcs via REAPER
-    res_linux.cpp)                           # SWELL dialog resources
+    # Platform-specific sources appended below per-branch
+)
 
 # JUCE 8 module (pulls core/events/graphics/data_structures transitively).
 target_link_libraries(reaper_csurf_mcu_klinke PRIVATE
@@ -221,6 +224,9 @@ target_link_libraries(reaper_csurf_mcu_klinke PRIVATE
 # =============================================================================
 if(UNIX AND NOT APPLE)
     # --- Linux (baseline) ----------------------------------------------------
+    target_sources(reaper_csurf_mcu_klinke PRIVATE
+        ${SWELL_DIR}/swell-modstub-generic.cpp   # binds SWELL funcs via REAPER
+        res_linux.cpp)                           # SWELL dialog resources
     # C++17 is the minimum for JUCE 8.
     # -fpermissive kept: the Jucer 1.11-generated *Component files are loose
     # about conversions; we will tighten this as the upgrade progresses.
@@ -242,18 +248,28 @@ if(UNIX AND NOT APPLE)
         PREFIX "" OUTPUT_NAME "reaper_csurf_mcu_klinke" SUFFIX ".so")
 
 elseif(WIN32)
-    # --- Windows -------------------------------------------------------------
-    # TODO (next milestone): native MSVC build. Until then the .vcxproj remains
-    # the source of truth for Windows. Planned: MSVC toolset v142, link
-    # reaper_plugin_functions etc., output .dll (no lib prefix), compile res.rc
-    # via the resource compiler instead of SWELL/res_linux.cpp.
-    message(FATAL_ERROR
-        "\n  CMake build for Windows is not implemented yet.\n"
-        "  Build with reaper_csurf.vcxproj (Visual Studio) for now.\n"
-        "  This is the next milestone once the Linux baseline is confirmed.\n")
+    # --- Windows (MSVC, x64) ------------------------------------------------
+    # Builds reaper_csurf_mcu_klinke_x64.dll with MSVC toolset.
+    # The native res.rc is compiled by the MSVC resource compiler; the SWELL
+    # dialog shims (res_linux.cpp / swell-modstub-generic.cpp) are not needed.
+    target_sources(reaper_csurf_mcu_klinke PRIVATE res.rc)
+    target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE
+        _CRT_SECURE_NO_DEPRECATE)  # suppress strcpy/... deprecation (C4996)
+    target_compile_options(reaper_csurf_mcu_klinke PRIVATE
+        /std:c++17 /MP /EHsc /W3
+        $<$<CONFIG:Debug>:/Od /Zi>
+        $<$<CONFIG:Release>:/O2>)
+    # winmm.lib is needed for timeGetTime() in csurf_mcu.cpp, Transport.cpp, ButtonManager.cpp.
+    # JUCE 8 modules pull user32/gdi32/comctl32 etc. transitively via juce::juce_gui_basics.
+    target_link_libraries(reaper_csurf_mcu_klinke PRIVATE winmm)
+    set_target_properties(reaper_csurf_mcu_klinke PROPERTIES
+        PREFIX "" OUTPUT_NAME "reaper_csurf_mcu_klinke_x64" SUFFIX ".dll")
 
 elseif(APPLE)
     # --- macOS ----------------------------------------------------------------
+    target_sources(reaper_csurf_mcu_klinke PRIVATE
+        ${SWELL_DIR}/swell-modstub-generic.cpp   # SWELL_dllMain binding
+        res_linux.cpp)                           # SWELL dialog resources
     # Clang / Apple SDK. JUCE 8 provides native Cocoa + Metal backends.
     # SWELL is provided by REAPER at load time via SWELL_dllMain (the
     # swell-modstub-generic.cpp non-dlopen path).

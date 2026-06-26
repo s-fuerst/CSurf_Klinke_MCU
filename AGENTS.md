@@ -77,11 +77,39 @@ Following the build instructions from the Rothchild Linux port (we use the
 
 **Status:**
 - **Linux** — CMake build working (`CMakeLists.txt`, baseline). See below.
-- **Windows** — CMake build NOT yet wired in (the `WIN32` branch in
-  `CMakeLists.txt` fails with a clear message); use the VS `.vcxproj` for
-  now. Next milestone after the Linux baseline is confirmed.
+- **Windows** — CMake build wired (MSVC, native Win32, res.rc, JUCE 8).
+  Not yet compiled on a Windows host — next step.
 - **macOS** — CMake build wired (Clang, Cocoa/Metal, JUCE 8, SWELL);
   not yet compiled on a macOS host — next step.
+
+### Windows (CMake, MSVC)
+
+```powershell
+# one-time: fetch the three pinned deps to the repo root
+.\fetch_deps.sh   # Git Bash or WSL
+
+# Build host needs Visual Studio 2019 or later (MSVC toolset v142+)
+# and CMake 3.10+.
+
+# configure + build (from Developer Command Prompt or PowerShell with MSVC env)
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build . --config Release
+```
+
+Output: `build/Release/reaper_csurf_mcu_klinke_x64.dll`. Deploy by copying
+to `%APPDATA%\REAPER\UserPlugins\` and adding **"Mackie Control Protocol
+(Klinke)"** in Reaper → Preferences → Control/OSC/web. The Debug config
+yields `build/Debug/reaper_csurf_mcu_klinke_x64.dll`.
+
+Key differences from Linux:
+- **Native Win32 dialogs**: the surface-edit dialog is defined in `res.rc`
+  and compiled by the MSVC resource compiler. SWELL is not used on Windows;
+  `SWELL_PROVIDED_BY_APP` is not defined, and `swell-modstub-generic.cpp` /
+  `res_linux.cpp` are excluded.
+- **winmm.lib**: linked explicitly for `timeGetTime()` (used in
+  `csurf_mcu.cpp`, `Transport.cpp`, `ButtonManager.cpp`).
+- **Output name**: follows the .vcxproj convention — `reaper_csurf_mcu_klinke_x64.dll`.
 
 ### Linux (CMake, baseline)
 
@@ -146,9 +174,14 @@ On macOS it would run:
 cp build/reaper_csurf_mcu_klinke.dylib ~/Library/Application\ Support/REAPER/UserPlugins/
 ```
 
+On Windows:
+
+```powershell
+copy build\Release\reaper_csurf_mcu_klinke_x64.dll %APPDATA%\REAPER\UserPlugins\
+```
+
 Reaper must be **fully restarted** (not just reloaded) to pick up the new
-`.so`. On Windows/macOS the deploy target/path differs and the CMake build is
-not wired yet — so deploy only happens on Linux for now.
+`.so`/`.dll`/`.dylib`.
 
 The CMake build uses **SWELL** (WDL) for the surface-edit dialog on Linux
 (`res_linux.cpp` + `res.rc_mac_dlg`, generated from `res.rc` via
@@ -181,24 +214,6 @@ Key differences from Linux:
 - **Dialog resources**: SWELL's default FLIPPED|NOAUTOSIZE autogen flags are
   correct on macOS; no style/scaling overrides needed (unlike Linux).
 - **Frameworks**: all linked automatically by `juce::juce_gui_basics`.
-
-### Windows (Visual Studio — current source of truth)
-
-1. Install Visual Studio 2019 (toolset `v142`) with the Windows SDK.
-2. The CMake build for Windows is not yet wired; use the .vcxproj with
-   VS 2019 for now (the project was originally built with VS 2019).
-
-**Build matrix** (`reaper_csurf.vcxproj`):
-- Configurations: `Debug`, `Release`, `Release_B`, `Klinke`
-- Platforms: `Win32`, `x64`
-- Output type: `DynamicLibrary` → `reaper_csurf_mcu_klinke.dll`
-- `Release_B` / the `EXT_B` define build the **"Protocol B" extender**
-  variant (second MCU unit). The same source compiles two surface types via
-  the `EXT_B` preprocessor switch and the runtime `m_is_mcuex` flag.
-
-The `.vcxproj` is the reference for include paths, preprocessor defines
-(`EXT_B`, JUCE module flags), and the source-file set that `CMakeLists.txt`
-must reproduce (it does — all 65 files verified present).
 
 ## 3. Tech stack & dependencies
 
