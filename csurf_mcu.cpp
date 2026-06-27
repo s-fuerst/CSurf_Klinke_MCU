@@ -856,6 +856,17 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
       *errStats |= 2;
   }
 
+  // WORKAROUND: PipeWire JACK may crash (SIGSEGV in process_empty) when
+  // MIDI is sent immediately after opening a JACK MIDI output port.
+  // The data-loop thread accesses buffers that are not yet allocated.
+  if (m_midiout) {
+#ifdef _WIN32
+    //    Sleep(500);
+#else
+    usleep(200000);
+#endif
+  }
+
   MCUReset();
 
   if (m_midiin)
