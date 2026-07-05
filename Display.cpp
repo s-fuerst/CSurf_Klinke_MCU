@@ -5,7 +5,7 @@
 
 #include <boost/smart_ptr/scoped_ptr.hpp>
 #include "Display.h"
-#include "Assert.h"
+#include "McuAssert.h"
 #include "csurf_mcu.h"
 
 Display::Display(DisplayHandler *pDisplayHandler, int numRows) {

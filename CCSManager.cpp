@@ -16,7 +16,7 @@
 #include "ReceiveMode.h"
 #include "PlugMode.h"
 #include "csurf_mcu.h"
-#include "Assert.h"
+#include "McuAssert.h"
 #include "CCSModesEditor.h"
 #include "Options.h"
 #include "JuceHeader.h"

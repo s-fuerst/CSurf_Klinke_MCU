@@ -17,7 +17,7 @@ namespace juce { namespace detail {
 #include "math.h"
 #include "Transport.h"
 #include "Region.h"
-#include "Assert.h"
+#include "McuAssert.h"
 #include "DisplayHandler.h"
 #include "Display.h"
 #include "MultiTrackMode.h"
@@ -1213,7 +1213,13 @@ void CSurf_MCU::Run() {
   // keyboard input, and handle WM_DELETE_WINDOW (the title-bar X button).
   // Each call processes one pending event and returns false when the queue is
   // empty — no blocking, negligible overhead when no windows are open.
+  // Linux/X11 only: on macOS JUCE dispatches via the native NSRunLoop (driven
+  // by REAPER's main thread), and on Windows via the native message loop, so
+  // no manual pump is needed there (and dispatchNextMessageOnSystemQueue has
+  // no macOS implementation in JUCE 8).
+#if JUCE_LINUX
   for (int i = 0; i < 30 && juce::detail::dispatchNextMessageOnSystemQueue(true); ++i) {}
+#endif
 }
 
 void CSurf_MCU::SendMidi(unsigned char status, unsigned char d1,

@@ -6,7 +6,7 @@
 #include "PanMode.h"
 #include "reaper_plugin.h"
 #include "csurf_mcu.h"
-#include "Assert.h"
+#include "McuAssert.h"
 #include "Display.h"
 //#include "MultiTrackSelector.h"
 

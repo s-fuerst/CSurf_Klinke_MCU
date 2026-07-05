@@ -30,7 +30,7 @@ private:
   double m_repeatTime;
 
 public:
-  Transport::Transport(CSurf_MCU *p_mcu);
+  Transport(CSurf_MCU *p_mcu);
 
   void handleButton(Client button, bool buttonDown);
   void updateLeds();
@@ -49,11 +49,11 @@ public:
   DWORD getRewindPressTime() { return m_rewindPressTime; }
 
 private:
-  void Transport::setClient(Client new_client);
+  void setClient(Client new_client);
 
 private:
-  void Transport::startReel(Direction dir);
-  void Transport::endReel();
+  void startReel(Direction dir);
+  void endReel();
 };
 
 #endif

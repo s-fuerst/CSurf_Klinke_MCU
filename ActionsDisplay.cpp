@@ -5,7 +5,7 @@
 
 #include "ActionsDisplay.h"
 #include "DisplayHandler.h"
-#include "Assert.h"
+#include "McuAssert.h"
 #include "csurf_mcu.h"
 
 ActionsDisplay::ActionsDisplay(DisplayHandler* pDH) : Display(pDH, 4),

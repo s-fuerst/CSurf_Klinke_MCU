@@ -465,11 +465,11 @@ public:
 
   static bool IsFlagSet(int flag) { return (flag & s_cfg_flags) != 0; }
 
-  const char *CSurf_MCU::GetTypeString() {
+  const char *GetTypeString() {
     return m_is_mcuex ? EXT_ID : MAIN_ID;
   }
 
-  const char *CSurf_MCU::GetDescString() {
+  const char *GetDescString() {
 #ifdef EXT_B
     m_descspace.Set("Mackie Control Protocol B (Klinke " MCU_VERSION_STRING ")");
 #else
@@ -480,7 +480,7 @@ public:
     m_descspace.Append(tmp);
     return m_descspace.Get();
   }
-  const char *CSurf_MCU::GetConfigString() // string of configuration data
+  const char *GetConfigString() // string of configuration data
   {
     sprintf(m_configtmp, "%d %d %d %d %d", m_offset, m_size, m_midi_in_dev,
             m_midi_out_dev, s_cfg_flags);

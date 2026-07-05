@@ -1166,10 +1166,10 @@ void PlugMode::followChanges() {
 	for (int bank = 0; bank < 8; bank++) {
 		for (int page = 0; page < 8; page ++) {
 			for (int channel = 0; channel < 8; channel++) {
-				double faderVal = m_pAccess->getParamValueDouble(
-					   &PlugAccess::ElementDesc(bank, page, PlugAccess::ElementDesc::FADER, channel));
-				double vpotVal = m_pAccess->getParamValueDouble(
-					   &PlugAccess::ElementDesc(bank, page, PlugAccess::ElementDesc::VPOT, channel));
+				PlugAccess::ElementDesc faderDesc(bank, page, PlugAccess::ElementDesc::FADER, channel);
+				double faderVal = m_pAccess->getParamValueDouble(&faderDesc);
+				PlugAccess::ElementDesc vpotDesc(bank, page, PlugAccess::ElementDesc::VPOT, channel);
+				double vpotVal = m_pAccess->getParamValueDouble(&vpotDesc);
 				if (faderVal != lastFaderValues[bank][page][channel] ||
 						vpotVal != lastVPotValues[bank][page][channel]) {
 					numChangedValues++;

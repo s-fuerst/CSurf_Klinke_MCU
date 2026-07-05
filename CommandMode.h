@@ -10,7 +10,7 @@
 #include "Display.h"
 #include "csurf_mcu.h"
 #include "CCSManager.h"
-#include "Assert.h"
+#include "McuAssert.h"
 #include "CommandModeMainComponent.h"
 
 class CommandPageSelector;

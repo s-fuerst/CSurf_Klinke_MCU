@@ -6,7 +6,7 @@
 #pragma once
 
 #include "csurf_mcu.h"
-#include "Assert.h"
+#include "McuAssert.h"
 #include "JuceHeader.h"
 #include <boost/tuple/tuple.hpp>
 #include <map>

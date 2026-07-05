@@ -5,7 +5,7 @@
 
 #include "MeterBridge.h"
 #include "csurf_mcu.h"
-#include "Assert.h"
+#include "McuAssert.h"
 #include "Tracks.h"
 
 MeterBridge::MeterBridge() {

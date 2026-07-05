@@ -8,7 +8,7 @@
 #include "csurf_mcu.h"
 #include <boost/foreach.hpp>
 #include <boost/bind.hpp>
-#include "Assert.h"
+#include "McuAssert.h"
 #include "MultiTrackOptions.h"
 #include "MultiTrackOptions2.h"
 
@@ -336,7 +336,7 @@ int MediaTrackInfo::getTrackNr(MediaTrack *pMT) {
   assert(pMT != NULL);
   if (pMT == NULL)
     return 0;
-  return (int)GetSetMediaTrackInfo(pMT, "IP_TRACKNUMBER", NULL);
+  return (int)(intptr_t)GetSetMediaTrackInfo(pMT, "IP_TRACKNUMBER", NULL);
 }
 
 bool MediaTrackInfo::testPtr(char *pName) {
@@ -359,7 +359,7 @@ String MediaTrackInfo::getTrackName(MediaTrack *pMT,
     return String();
   }
 
-  int nr = (int)GetSetMediaTrackInfo(pMT, "IP_TRACKNUMBER", NULL);
+  int nr = (int)(intptr_t)GetSetMediaTrackInfo(pMT, "IP_TRACKNUMBER", NULL);
   return String(nr);
 }
 

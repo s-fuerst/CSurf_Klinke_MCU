@@ -43,6 +43,7 @@ ipch/
 # Sourced from canonical upstream; see AGENTS.md §2 "Prerequisites".
 /juce_8/
 /boost_1_39_0/
+/boost_1_91_0/
 /reaper-sdk/
 
 # --- Local-only (unused SWELL regen byproduct) ---

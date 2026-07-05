@@ -44,7 +44,9 @@ it build and run cross-platform — Windows, macOS, and Linux — while keeping
 dependency versions as close to the originals as feasible.** Originally built
 against JUCE 1.52, the project was upgraded to **JUCE 8** (module build)
 as part of the revival, because JUCE 1.52 could not target Apple Silicon
-and modern macOS. Boost 1.39 (headers only) remains unchanged.
+and modern macOS. Boost was upgraded from 1.39 to **1.91.0** (header-only):
+Boost 1.39 (2009) does not compile under modern libc++/C++17 without an
+ever-growing pile of patches; 1.91.0 compiles cleanly on all platforms.
 
 > The original build is **Windows + Visual Studio only**. A cross-platform
 > **CMake** build has now been added (see §4): **Linux** is the working
@@ -60,8 +62,8 @@ Following the build instructions from the Rothchild Linux port (we use the
 1. **JUCE 8** (module build) → `juce_8/`
    - Fetched by `./fetch_deps.sh`: `git clone --branch 8.0.14 https://github.com/juce-framework/JUCE juce_8`
    - The CMake build uses `add_subdirectory(juce_8)` to link `juce::juce_gui_basics`.
-2. **Boost 1.39.0** (headers only) → `boost_1_39_0/`
-   - `https://archives.boost.io/release/1.39.0/source/boost_1_39_0.tar.bz2`
+2. **Boost 1.91.0** (headers only) → `boost_1_91_0/`
+   - `https://archives.boost.io/release/1.91.0/source/boost_1_91_0.tar.bz2`
    - Only headers are used (smart pointers, `signals2`). No compiled libs.
 3. **REAPER SDK** (WDL + SWELL + plugin headers) → `reaper-sdk/`
    - From the same Stenzel fork: `cp -r original-klinke/reaper-sdk .`
@@ -221,7 +223,7 @@ Key differences from Linux:
 |--------------------------+------------------------+------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Reaper Extension SDK** | `REAPER_EXTENSION_SDK` | matches `reaper_plugin_functions.h` (pinned in repo) | Provides `csurf.h`, `reaper_plugin_functions.h`, `ptrlist.h`, `IReaperControlSurface`, `reaper_csurf_reg_t`, `REAPER_PLUGIN_ENTRYPOINT`.                                                        |
 | **JUCE**                 | `JUCE_DIR`             | **8.0.14** (modules via `add_subdirectory`)          | GUI framework for all editor dialogs/components. Now licensed AGPLv3/JUCE dual. Modules: `juce_gui_basics` pulls `juce_core`/`juce_events`/`juce_graphics`/`juce_data_structures` transitively. |
-| **Boost**                | `BOOST`                | ≥ 1.39 (header-only)                                 | Mainly `boost/signals2.hpp`. No compiled libs needed.                                                                                                                                           |
+| **Boost**                | `BOOST`                | **1.91.0** (header-only)                             | Mainly `boost/signals2.hpp`. No compiled libs needed. Upgraded from 1.39 (which did not compile under modern libc++/C++17).                                                                                                                                       |
 
 The three SDK roots are referenced by the Visual Studio project through the
 environment variables above. **All three must be set before building.**

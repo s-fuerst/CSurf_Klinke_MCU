@@ -7,7 +7,7 @@
 
 #include "McuDebugLog.h"
 #include "csurf_mcu.h"
-#include "Assert.h"
+#include "McuAssert.h"
 #include "Display.h"
 
 class MIDI_Message {

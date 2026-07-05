@@ -6,7 +6,7 @@
 #   juce_8/          JUCE 8 module build   (github.com/juce-framework/JUCE tag 8.0.14)
 #   reaper-sdk/sdk/   REAPER plugin headers  (github.com/justinfrankel/reaper-sdk)
 #   reaper-sdk/WDL/   WDL + SWELL            (github.com/justinfrankel/WDL)
-#   boost_1_39_0/     Boost 1.39.0 headers   (archives.boost.io)
+#   boost_1_91_0/    Boost 1.91.0 headers   (archives.boost.io)
 #
 # Idempotent: any dependency already present is skipped. Delete its folder to
 # re-fetch, or run with --force to re-fetch everything.
@@ -80,35 +80,55 @@ else
   ok "WDL + SWELL in place (swell-modstub-generic.cpp, ptrlist.h)"
 fi
 
-# --- 3. Boost 1.39.0 (headers only) → boost_1_39_0/ --------------------------
-section "Boost 1.39.0  →  boost_1_39_0/"
-if [ "$FORCE" = 1 ]; then rm -rf boost_1_39_0; fi
-if [ -f boost_1_39_0/boost/signals2.hpp ]; then
+# --- 3. Boost 1.91.0 (headers only) → boost_1_91_0/ --------------------------
+section "Boost 1.91.0  →  boost_1_91_0/"
+if [ "$FORCE" = 1 ]; then rm -rf boost_1_91_0; fi
+if [ -f boost_1_91_0/boost/signals2.hpp ]; then
   ok "already present, skipping (use --force to re-fetch)"
 else
-  echo "  downloading (~29 MB)..."
-  curl -fsSL -o boost_1_39_0.tar.bz2 \
-    https://archives.boost.io/release/1.39.0/source/boost_1_39_0.tar.bz2
-  tar xjf boost_1_39_0.tar.bz2
-  rm -f boost_1_39_0.tar.bz2
-  [ -f boost_1_39_0/boost/signals2.hpp ] \
+  echo "  downloading (~180 MB)..."
+  curl -fsSL -o boost_1_91_0.tar.bz2 \
+    https://archives.boost.io/release/1.91.0/source/boost_1_91_0.tar.bz2
+  tar xjf boost_1_91_0.tar.bz2
+  rm -f boost_1_91_0.tar.bz2
+  [ -f boost_1_91_0/boost/signals2.hpp ] \
     || { echo "error: boost/signals2.hpp missing after extract" >&2; exit 1; }
-
-  # Patch Boost 1.39 known bug: shared_ptr declares move ctors under
-  # BOOST_HAS_RVALUE_REFS without a copy ctor, so C++11 deletes the implicit
-  # copy ctor (breaks boost::signals2). Disable the move block unless
-  # BOOST_SHARED_PTR_ENABLE_MOVE_CTORS is defined. Fixed in later Boost.
-  sp_h="boost_1_39_0/boost/smart_ptr/shared_ptr.hpp"
-  if ! grep -q 'BOOST_SHARED_PTR_ENABLE_MOVE_CTORS' "$sp_h"; then
-    sed -i 's|^#if defined( BOOST_HAS_RVALUE_REFS )$|#if defined( BOOST_HAS_RVALUE_REFS ) \&\& defined(BOOST_SHARED_PTR_ENABLE_MOVE_CTORS)|' "$sp_h"
-    echo "  patched shared_ptr.hpp (disabled buggy 1.39 move ctors)"
-  fi
+  # Boost 1.91.0 compiles cleanly under C++17/Clang/libc++ and needs no patches
+  # (unlike the old 1.39.0, which required shared_ptr + signals2 fixes for
+  # modern compilers). Only headers are used (signals2, smart_ptr).
   ok "fetched and verified"
 fi
 
 # --- done --------------------------------------------------------------------
 section "done"
-cat <<'EOF'
+
+case "$(uname -s)" in
+  Darwin)
+    cat <<'EOF_macOS'
+
+  All dependencies are in place. Next, on this macOS host:
+
+    # 1. Install build tools (one-time)
+    xcode-select --install        # if not already done
+    brew install cmake             # or install cmake manually
+
+    # 2. Build
+    mkdir build && cd build
+    cmake .. -DCMAKE_BUILD_TYPE=Release
+    cmake --build . -- -j"$(sysctl -n hw.ncpu)"
+
+    # 3. Deploy
+    mkdir -p ~/Library/Application\ Support/REAPER/UserPlugins/
+    cp build/reaper_csurf_mcu_klinke.dylib ~/Library/Application\ Support/REAPER/UserPlugins/
+
+    Then restart REAPER and add "Mackie Control Protocol (Klinke)"
+    in Preferences → Control/OSC/web.
+
+  The plugin is output as build/reaper_csurf_mcu_klinke.dylib
+EOF_macOS
+    ;;
+  *)
+    cat <<'EOF_linux'
 
   All dependencies are in place. Next, on the build host (Debian/Ubuntu):
 
@@ -118,4 +138,6 @@ cat <<'EOF'
     cmake --build . -j"$(nproc)"
 
   The plugin is output as build/reaper_csurf_mcu_klinke.so
-EOF
+EOF_linux
+    ;;
+esac

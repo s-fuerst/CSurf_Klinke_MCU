@@ -8,7 +8,7 @@
 #include "MultiTrackMeterBridge.h"
 #include "CCSManager.h"
 #include "csurf_mcu.h"
-#include "assert.h"
+#include "McuAssert.h"
 #include "stdio.h"
 #include "Display.h"
 #include "MultiTrackOptions.h"
@@ -177,7 +177,7 @@ void MultiTrackMode::updateAssignmentDisplay() {
   int nr;
   MediaTrack *pMT = Tracks::instance()->getSelectedSingleTrack();
   if (pMT) {
-    nr = (int)GetSetMediaTrackInfo(pMT, "IP_TRACKNUMBER", NULL);
+    nr = (int)(intptr_t)GetSetMediaTrackInfo(pMT, "IP_TRACKNUMBER", NULL);
 
     char display[2];
     display[0] = '0' + ((nr / 10) % 10);

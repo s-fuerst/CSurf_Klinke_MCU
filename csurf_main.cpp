@@ -197,16 +197,25 @@ int __g_projectconfig_timemode2, __g_projectconfig_timemode;
 int __g_projectconfig_measoffs;
 int __g_projectconfig_timeoffs; // double
 
+// Diagnostic load marker: fires as soon as dyld maps this dylib (before any
+// REAPER entry point is called). Presence of the file proves REAPER loaded us.
+static void __klinke_load_marker() {
+  FILE *f = fopen("/tmp/klinke_loaded.txt", "w");
+  if (f) { fprintf(f, "dylib mapped\n"); fclose(f); }
+}
+__attribute__((constructor)) static void __klinke_ctor() { __klinke_load_marker(); }
+
 extern "C" {
 
 REAPER_PLUGIN_DLL_EXPORT int
 REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
                          reaper_plugin_info_t *rec) {
+  { FILE *f = fopen("/tmp/klinke_entry.txt", "w"); if (f) { fprintf(f, "entry called rec=%p caller_version=%d\n", (void*)rec, rec ? (int)rec->caller_version : -1); fclose(f); } }
   fprintf(stderr, "[klinke] ReaperPluginEntry called hInstance=%p rec=%p\n", hInstance, (void*)rec);
   g_hInst = hInstance;
 
   if (!rec || rec->caller_version != REAPER_PLUGIN_VERSION || !rec->GetFunc)
-    return 0;
+    { FILE *f = fopen("/tmp/klinke_entry.txt", "a"); if (f) { fprintf(f, "BAIL: early return 0\n"); fclose(f); } return 0; }
 
   g_hwnd = rec->hwnd_main;
   g_rec = rec;
@@ -370,15 +379,18 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   IMPVARP(__g_projectconfig_measoffs, "projmeasoffs", int);
 
   if (errcnt) {
+    { FILE *f = fopen("/tmp/klinke_entry.txt", "a"); if (f) { fprintf(f, "BAIL: %d API funcs missing\n", errcnt); fclose(f); } }
     fprintf(stderr, "[klinke] ReaperPluginEntry: %d API functions missing, returning 0\n", errcnt);
     return 0;
   }
 
+  { FILE *f = fopen("/tmp/klinke_entry.txt", "a"); if (f) { fprintf(f, "REGISTERING csurf\n"); fclose(f); } }
   fprintf(stderr, "[klinke] ReaperPluginEntry: all APIs resolved, registering csurf MCUM5\n");
   rec->Register("csurf", &csurf_mcu_modified_reg);
   //  rec->Register("csurf",&csurf_mcuex_modified_reg);
   rec->Register("projectconfig", ProjectConfig::instance()->getRegisterInfo());
 
+  { FILE *f = fopen("/tmp/klinke_entry.txt", "a"); if (f) { fprintf(f, "REGISTERED OK, returning 1\n"); fclose(f); } }
   return 1;
 }
 };

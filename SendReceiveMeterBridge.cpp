@@ -6,7 +6,7 @@
 #include "SendReceiveMeterBridge.h"
 #include "csurf.h"
 #include "csurf_mcu.h"
-#include "Assert.h"
+#include "McuAssert.h"
 #include "Tracks.h"
 #include <boost/foreach.hpp>
 #include "SendReceiveModeBase.h"

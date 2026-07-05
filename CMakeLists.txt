@@ -1,5 +1,22 @@
 cmake_minimum_required(VERSION 3.10)
 
+# On macOS, JUCE 8 must be built with Apple Clang. A Homebrew GCC is often set
+# as the default via the CC env var (e.g. CC=/opt/homebrew/bin/gcc-15), which
+# breaks the juceaide helper build with Clang-only warning flags
+# (-Wshadow-all, -Wshorten-64-to-32, ...). Force Clang on macOS unless the
+# user explicitly passed -DCMAKE_C_COMPILER / -DCMAKE_CXX_COMPILER.
+if(NOT DEFINED CMAKE_C_COMPILER AND NOT DEFINED CMAKE_CXX_COMPILER)
+  execute_process(
+    COMMAND uname -s
+    OUTPUT_VARIABLE _mcu_host_os
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(_mcu_host_os STREQUAL "Darwin")
+    set(CMAKE_C_COMPILER   clang)
+    set(CMAKE_CXX_COMPILER clang++)
+    message(STATUS "macOS detected: forcing Apple Clang for C/C++ (override with -DCMAKE_C_COMPILER=...)")
+  endif()
+endif()
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  CSurf_Klinke_MCU — cross-platform CMake build
 #
@@ -10,9 +27,9 @@ cmake_minimum_required(VERSION 3.10)
 #                truth until the WIN32 branch below is implemented).
 #
 #  Dependencies (gitignored; fetch with ./fetch_deps.sh, see AGENTS.md §2):
-#    juce_8/      reaper-sdk/sdk/  reaper-sdk/WDL/  boost_1_39_0/
+#    juce_8/      reaper-sdk/sdk/  reaper-sdk/WDL/  boost_1_91_0/
 #
-#  JUCE 8 uses the module build (add_subdirectory). Boost 1.39 is unchanged.
+#  JUCE 8 uses the module build (add_subdirectory). Boost 1.91 is header-only.
 #  Resulting binary is AGPLv3 (JUCE 8 made all modules AGPLv3/JUCE dual).
 # ─────────────────────────────────────────────────────────────────────────────
 project(reaper_csurf_mcu_klinke C CXX)
@@ -23,10 +40,10 @@ set(JUCE_DIR  ${SRC_DIR}/juce_8)
 set(SDK_DIR   ${SRC_DIR}/reaper-sdk/sdk)
 set(WDL_DIR   ${SRC_DIR}/reaper-sdk/WDL)
 set(SWELL_DIR ${WDL_DIR}/swell)
-set(BOOST_DIR ${SRC_DIR}/boost_1_39_0)
+set(BOOST_DIR ${SRC_DIR}/boost_1_91_0)
 
 # --- Guard: bail early with a clear message if deps are missing --------------
-foreach(d juce_8 reaper-sdk boost_1_39_0)
+foreach(d juce_8 reaper-sdk boost_1_91_0)
     if(NOT EXISTS "${SRC_DIR}/${d}")
         message(FATAL_ERROR
             "\n  Dependency '${d}/' not found.\n"
@@ -38,7 +55,7 @@ endforeach()
 option(MCU_DEBUG_LOG "Write button/window debug log to <REAPER_RESOURCE>/mcu_klinke_debug.log" ON)
 
 # =============================================================================
-#  Versioning — VERSION file at the repo root holds "<version> <build-count>".
+#  Versioning — VERSION.txt at the repo root holds "<version> <build-count>".
 #
 #  • version       (e.g. 0.9.1.3): bumped MANUALLY for a release; when bumped,
 #                  reset build-count to 1.
@@ -50,8 +67,12 @@ option(MCU_DEBUG_LOG "Write button/window debug log to <REAPER_RESOURCE>/mcu_kli
 #  generated header ${CMAKE_BINARY_DIR}/Version.h is included by csurf_mcu.h.
 #  Increment happens at CONFIGURE time (the build flow always runs `cmake ..`
 #  before `cmake --build`, so the count tracks one build cycle at a time).
+#
+#  NOTE: the file is named VERSION.txt (not VERSION) to avoid colliding with
+#  libc++'s <version> header on macOS's case-insensitive APFS filesystem,
+#  where the repo root is on the include search path.
 # =============================================================================
-set(MCU_VERSION_FILE "${CMAKE_SOURCE_DIR}/VERSION")
+set(MCU_VERSION_FILE "${CMAKE_SOURCE_DIR}/VERSION.txt")
 if(NOT EXISTS "${MCU_VERSION_FILE}")
     file(WRITE "${MCU_VERSION_FILE}" "0.9.1.3 0\n")
 endif()
@@ -268,12 +289,15 @@ elseif(WIN32)
 elseif(APPLE)
     # --- macOS ----------------------------------------------------------------
     target_sources(reaper_csurf_mcu_klinke PRIVATE
-        ${SWELL_DIR}/swell-modstub-generic.cpp   # SWELL_dllMain binding
-        res_linux.cpp)                           # SWELL dialog resources
+        ${SWELL_DIR}/swell-modstub.mm   # macOS SWELL binding (see note below)
+        res_linux.cpp)                  # SWELL dialog resources
+    # Force the .mm through the CXX compiler: project() only enables C/CXX, so
+    # CMake has no OBJCXX language to map a .mm onto. clang++ compiles .mm as
+    # Objective-C++ by extension, so LANGUAGE CXX routes it there correctly
+    # without us having to enable OBJCXX project-wide.
+    set_source_files_properties(${SWELL_DIR}/swell-modstub.mm PROPERTIES LANGUAGE CXX)
+
     # Clang / Apple SDK. JUCE 8 provides native Cocoa + Metal backends.
-    # SWELL is provided by REAPER at load time via SWELL_dllMain (the
-    # swell-modstub-generic.cpp non-dlopen path).
-    #
     # macOS framework dependencies (Cocoa, IOKit, Metal, QuartzCore, etc.) are
     # linked automatically by juce::juce_gui_basics via JUCE module metadata —
     # nothing to list here.
@@ -281,12 +305,23 @@ elseif(APPLE)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING
         "Minimum macOS version the plugin supports (JUCE 8 requires 10.15+)")
 
-    # macOS SWELL uses the default FLIPPED|NOAUTOSIZE autogen flags;
-    # no dialog style/scaling overrides needed (unlike Linux).
-    # No extra libraries: macOS frameworks (Cocoa, IOKit, Metal, etc.)
-    # are linked automatically by juce::juce_gui_basics (global link).
+    # SWELL on macOS: REAPER is itself a SWELL application. swell-modstub.mm
+    # contains a global SwellAPPInitializer whose constructor runs at dylib
+    # load time and binds every SWELL API function pointer by asking REAPER's
+    # NSApp delegate for its SWELLAPI_GetFunc ([del swellGetAPPAPIFunc]).
+    # This is why SWELL works even though REAPER calls our SWELL_dllMain with a
+    # NULL getfunc (it only calls SWELL_dllMain as a load probe; the real
+    # binding happens through the NSApp delegate in that constructor).
+    #
+    # NOTE: do NOT use swell-modstub-generic.cpp here. That stub is the Linux
+    # libSwell.so model — it binds SWELL via the getfunc passed to
+    # SWELL_dllMain, which REAPER leaves NULL on macOS, leaving every SWELL
+    # function pointer NULL and crashing on the first dialog (configFunc).
+    #
+    # No dialog style/scaling overrides needed on macOS: the default
+    # FLIPPED|NOAUTOSIZE autogen flags are correct (unlike Linux).
     target_compile_options(reaper_csurf_mcu_klinke PRIVATE
-        -std=c++17 -fPIC -fvisibility=hidden
+        $<$<COMPILE_LANGUAGE:CXX>:-std=c++17> -fPIC -fvisibility=hidden
         -Wno-deprecated-declarations -Wno-unused-result
         -Wno-sign-compare -Wno-reorder -Wno-multichar)
     set_target_properties(reaper_csurf_mcu_klinke PROPERTIES

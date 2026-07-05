@@ -5,7 +5,7 @@
 
 #include "VPOT_LED.h"
 #include "csurf_mcu.h"
-#include "Assert.h"
+#include "McuAssert.h"
 
 VPOT_LED::VPOT_LED()
     : m_value(0), m_mode(SINGLE), m_bottom(false), m_track(-1), m_pMCU(NULL),

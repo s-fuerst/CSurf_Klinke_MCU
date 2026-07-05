@@ -187,7 +187,7 @@ void PlugModeParamComponent::updateParameterList() {
     bool valid = TrackFX_GetParamName(pPA->getPlugTrack(), pPA->getPlugSlot(),
                                       i, paramName, 79);
     if (valid && (strnlen(paramName, 80) > 0)) {
-      m_parameter->addItem(String::formatted(String("%04d: "), i + 1) + paramName,
+      m_parameter->addItem(String::formatted(String("%04d: "), i + 1) + String(paramName),
                            i + PARAM_COMP_ID_OFFSET);
     } else {
       m_parameter->addItem(String::formatted(String("%04d"), i + 1),

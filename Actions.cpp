@@ -117,8 +117,8 @@ void Actions::addActions() {
 bool Actions::commandCallback(int command, int flag) {
   BOOST_FOREACH (Action *pAction, m_actions) {
     if (command == pAction->getCommand()) {
-      MIDI_event_t evt_down = {0, 3, {0x90, pAction->getButtonId(), 0x7F}};
-      MIDI_event_t evt_up = {0, 3, {0x90, pAction->getButtonId(), 0x00}};
+      MIDI_event_t evt_down = {0, 3, {0x90, static_cast<unsigned char>(pAction->getButtonId()), 0x7F}};
+      MIDI_event_t evt_up = {0, 3, {0x90, static_cast<unsigned char>(pAction->getButtonId()), 0x00}};
       if (pAction->isButtonAction()) {
         pAction->setButtonPressed(!pAction->isButtonPressed());
         m_pMCU->GetButtonManager()->dispatchMidiEvent(

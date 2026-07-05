@@ -11,11 +11,11 @@
 #include<vector>
 #include<map>
 #include<memory>
-#include"assert.h"
+#include <cassert>
 #include "JuceHeader.h"
 #include "ProjectConfig.h"
 #include "csurf_mcu.h"
-#include "Assert.h"
+#include "McuAssert.h"
 
 using boost::signals2::connection;
 
