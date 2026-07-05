@@ -133,6 +133,55 @@ Output: `build/reaper_csurf_mcu_klinke.so`. Deploy by copying it to
 (Klinke)"** in Reaper → Preferences → Control/OSC/web. Pass
 `-DMCU_DEBUG_LOG=OFF` to disable the debug log (on by default).
 
+#### Portable Linux build (the distribution artifact)
+
+A `.so` built on a modern distro (e.g. Arch/CachyOS, glibc 2.43) embeds high
+GLIBC symbol versions and will **not** load on Ubuntu LTS / Debian stable /
+Fedora — glibc is forward-compatible only ("build on old, run on new"). The
+native build above is for **local development**; for a **download artifact**
+that runs on essentially every current desktop Linux, build inside a container
+instead:
+
+```bash
+./scripts/build-portable-linux.sh     # → dist/reaper_csurf_mcu_klinke.so
+```
+
+What it does (`docker/release-linux.Dockerfile`):
+- Builds on **Debian 11 (bullseye)** → pins GLIBC requirement at ≤ 2.31.
+- Statically links the C++ runtime (`-static-libstdc++ -static-libgcc`) →
+  `libstdc++.so` / `libgcc_s.so` are **not** runtime dependencies.
+- Installs a current CMake from cmake.org (JUCE 8 needs ≥ 3.22; Debian 11
+  ships 3.18).
+- `MCU_DEBUG_LOG=OFF` (a release artifact should not spam the log).
+- Multi-stage build with a `scratch` export stage that emits just the `.so`
+  into `dist/`.
+
+Uses rootless **podman** (preferred — no daemon, no sudo), falls back to
+**docker**. Result: an 11 MB `.so` whose direct dependencies are only
+`libcurl`, `libfontconfig`, `libfreetype`, `libpthread`, `libdl`, `libm`,
+`libc` — all of which ship on every desktop Linux running Reaper.
+
+**Coverage** (glibc ≥ 2.30): Ubuntu 20.04+, Debian 11+, Fedora 31+, Arch,
+openSUSE Leap 15.4+, RHEL/Rocky/Alma 9+. The one gap is **RHEL/Rocky/Alma 8**
+(glibc 2.28) — an aging server/workstation distro rarely used for Reaper.
+
+**X11 note:** JUCE loads X11 dynamically at runtime (`dlopen`), so `libX11`
+is *not* a hard link-time dependency. The native build happens to list it in
+`NEEDED` only because CachyOS' gcc does not default to `-Wl,--as-needed`;
+Debian's gcc does, so the container build drops the unused entry. Both
+builds are symbol-identical regarding X11 and behave the same at runtime.
+
+**Known container build quirks** (documented so they are not re-debugged):
+- JUCE builds its `juceaide` codegen helper by **re-invoking CMake as a
+  subprocess** whose passthrough args do **not** include `CMAKE_C[XX]_FLAGS`,
+  so forcing `-I/usr/include/freetype2` via the outer flags does **not**
+  reach juceaide.
+- juceaide compiles `juce_graphics.cpp`, which needs `<ft2build.h>` (a flat
+  header living under `/usr/include/freetype2/`) and `<fontconfig/fontconfig.h>`.
+  Fix: symlink `/usr/include/ft2build.h` and `/usr/include/freetype` into the
+  default include path, and install `libfontconfig1-dev`. (Standard
+  JUCE-on-Debian/Ubuntu Docker workaround.)
+
 #### Versioning (VERSION file + build counter)
 
 The version string baked into the surface (shown in Reaper's surface list as
@@ -328,5 +377,8 @@ KlinkeLookAndFeel.h                          JUCE 8 per-window LookAndFeel (text
 res.rc resource.h                              Windows surface-edit dialog
 reaper_csurf.sln/.vcxproj                      Visual Studio build (current)
 VERSION Version.h.in                          build-counter version source + template
+docker/release-linux.Dockerfile              portable Debian 11 container build (the download artifact)
+scripts/build-portable-linux.sh              podman/docker wrapper → dist/reaper_csurf_mcu_klinke.so
+.dockerignore                                  keeps container build reproducible from upstream
 gplv3.txt notes.org whats_new.{org,txt} readme.txt   license + notes
 ```

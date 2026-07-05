@@ -1,0 +1,25 @@
+# Exclude build artifacts and host-local deps so the container build is
+# reproducible from upstream sources (deps are fetched fresh inside the image).
+# Keep source, fetch_deps.sh, CMakeLists.txt, VERSION.txt, *.rc, headers, etc.
+
+# local build output
+build/
+build-*/
+dist/
+
+# host-fetched deps (re-fetched inside the image for reproducibility)
+juce_8/
+reaper-sdk/
+boost_1_91_0/
+boost_*.tar.*
+
+# binaries / intermediates
+*.so
+*.dll
+*.dylib
+*.o
+*.obj
+
+# vcs + local-only
+.git/
+MEMD.md

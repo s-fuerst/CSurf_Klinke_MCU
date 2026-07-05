@@ -32,6 +32,7 @@ ipch/
 # --- CMake build (cross-platform port) ---
 /build/
 /cmake-build*/
+/dist/                 # portable Linux build output (scripts/build-portable-linux.sh)
 /compile_commands.json
 /CMakeFiles/
 /CMakeCache.txt
