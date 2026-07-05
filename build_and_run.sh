@@ -92,7 +92,7 @@ case "$LAUNCH_METHOD" in
     direct)
         # Linux: run the binary directly; Reaper's stdout goes to the terminal.
         # GDK_BACKEND=x11 forces X11 (not Wayland) for JUCE's native window.
-        $REAPER_ENV "$REAPER_EXE" &
+        env $REAPER_ENV "$REAPER_EXE" &
         REAPER_PID=$!
         wait $REAPER_PID 2>/dev/null
         ;;
