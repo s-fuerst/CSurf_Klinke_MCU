@@ -197,13 +197,18 @@ int __g_projectconfig_timemode2, __g_projectconfig_timemode;
 int __g_projectconfig_measoffs;
 int __g_projectconfig_timeoffs; // double
 
+#if !defined(_WIN32)
 // Diagnostic load marker: fires as soon as dyld maps this dylib (before any
 // REAPER entry point is called). Presence of the file proves REAPER loaded us.
+// Linux/macOS only: __attribute__((constructor)) is an ELF/Mach-O feature MSVC
+// does not understand, and /tmp is not a Windows path. Guarded so the Windows
+// build compiles; macOS/Linux behaviour is unchanged.
 static void __klinke_load_marker() {
   FILE *f = fopen("/tmp/klinke_loaded.txt", "w");
   if (f) { fprintf(f, "dylib mapped\n"); fclose(f); }
 }
 __attribute__((constructor)) static void __klinke_ctor() { __klinke_load_marker(); }
+#endif  // !defined(_WIN32)
 
 extern "C" {
 

@@ -113,6 +113,67 @@ Key differences from Linux:
   `csurf_mcu.cpp`, `Transport.cpp`, `ButtonManager.cpp`).
 - **Output name**: follows the .vcxproj convention — `reaper_csurf_mcu_klinke_x64.dll`.
 
+#### Building from WSL (the Windows host, driven from the Linux shell)
+
+If you develop inside WSL on a Windows machine, you do not need to leave the
+WSL shell to produce the Windows `.dll`. `scripts/build-windows.sh` drives the
+native MSVC toolchain from WSL and copies the result into REAPER's
+`UserPlugins`:
+
+```bash
+./fetch_deps.sh                        # one-time (see CRLF note below)
+scripts/build-windows.sh               # incremental: build + deploy (configure skipped after first run)
+scripts/build-windows.sh --clean       # wipe build_win/, configure + build from scratch
+scripts/build-windows.sh --reconfigure # re-run CMake (after CMakeLists.txt / source-list edits), then build
+scripts/build-windows.sh --debug       # Debug config -> build_win/Debug/
+scripts/build-windows.sh --no-deploy   # build only, do not copy to UserPlugins
+```
+
+**Incremental speed caveat**: with no flags the script is build-only (fast to
+launch), but an in-place incremental still takes ~45s because MSBuild rebuilds
+all sources on every run -- its up-to-date check fails over the
+`\\wsl.localhost`/9P source mount (it stats thousands of JUCE/Boost headers
+and a jittery mtime always wins). That is an inherent cost of building over
+the WSL->Windows bridge, not a bug; Linux reaches ~15s thanks to native ext4
++ Ninja. A `/mnt/c` build mode (rsync deps once + source per build onto native
+NTFS) would give Linux-like incremental speed; not yet implemented.
+
+How it works (the non-obvious bits, so they are not re-debugged):
+- **Interop**: the script locates Visual Studio + `vcvars64.bat` via
+  `vswhere.exe`, then runs a generated `.bat` through `cmd.exe` (invoked from
+  `/mnt/c` so cmd's current directory is a real drive, not a UNC path).
+- **UNC -> drive letter**: cmd.exe reaches the WSL repo via
+  `pushd \\wsl.localhost\<distro>\...`, which maps the UNC path to a temporary
+  drive letter (e.g. `Z:`). This is what lets MSVC / `rc.exe` / juceaide read
+  the source straight off the WSL filesystem -- no source copy to `/mnt/c`.
+- **Visual Studio generator, not Ninja**: Ninja's stat-based dependency model
+  breaks on the `\\wsl.localhost`/9P mount (CMake's try-compile source shows up
+  as "missing"). The VS generator uses MSBuild, which tolerates the mapped
+  drive. The generator is auto-picked from the installed VS major version
+  (override with `MCU_VS_GENERATOR='Visual Studio 17 2022'`).
+- **Portable CMake >= 3.22**: JUCE 8 requires CMake 3.22, but VS2019 bundles
+  only 3.20. The script downloads a portable CMake 3.31.6 once into
+  `~/.cache/csurf-klinke-mcu/` and reuses it.
+- **`CMAKE_SUPPRESS_REGENERATION=ON`**: silences the `MSB8064`/`MSB8065`
+  dependency-tracking warnings MSBuild emits on the UNC mount (the regen
+  step's dependency tracking is unreliable over 9P). The script always runs
+  configure before build, so disabling auto-regeneration costs nothing.
+
+Output: `build_win/Release/reaper_csurf_mcu_klinke_x64.dll`. The script
+auto-detects `%APPDATA%\REAPER\UserPlugins\` (under `/mnt/c/Users/*`) and
+copies the `.dll` there unless `--no-deploy` is given (set `MCU_USERPLUGINS=`
+to override the destination). Fully restart REAPER to load it.
+
+Requirements: Visual Studio 2019+ (Community or Build Tools) with the
+**MSVC v142/v143 x64** and **Windows 10/11 SDK** components, `vswhere.exe`
+(ships with the VS installer), and internet access on first run (the
+portable-CMake download is ~50 MB).
+
+> **CRLF note**: the repo is checked out with `core.autocrlf=true`, so shell
+> scripts are CRLF and `bash` will refuse them with `bash\r: No such file or
+> directory`. If that happens, strip once: `sed -i 's/\r$//' fetch_deps.sh`.
+`scripts/build-windows.sh` itself is committed LF.
+
 ### Linux (CMake, baseline)
 
 ```bash
