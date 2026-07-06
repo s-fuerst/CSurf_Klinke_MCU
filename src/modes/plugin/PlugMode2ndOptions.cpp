@@ -1,8 +1,7 @@
 /**
- * Copyright (C) 2009-2012 Steffen Fuerst 
- * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ * Copyright (C) 2009-2026 Steffen Fuerst
+ * Distributed under the GNU GPL v3. For full terms see the file gplv3.txt.
  */
-
 #include "PlugMode2ndOptions.h"
 
 PlugMode2ndOptions::PlugMode2ndOptions(DisplayHandler *pDH) : Options(pDH) {

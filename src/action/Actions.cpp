@@ -1,8 +1,7 @@
 /**
- * Copyright (C) 2009-2013 Steffen Fuerst 
- * Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+ * Copyright (C) 2009-2026 Steffen Fuerst
+ * Distributed under the GNU GPL v3. For full terms see the file gplv3.txt.
  */
-
 #ifdef _WIN32
 #include <windows.h>
 #else

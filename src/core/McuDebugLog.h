@@ -1,4 +1,9 @@
 /**
+ * Copyright (C) 2009-2026 Steffen Fuerst
+ * Distributed under the GNU GPL v3. For full terms see the file gplv3.txt.
+ */
+
+/**
  * Lightweight debug log for the MCU Klinke plugin.
  *
  * Define MCU_DEBUG_LOG before including this header (or in CMake) to enable.

@@ -1,3 +1,8 @@
+/**
+ * Copyright (C) 2009-2026 Steffen Fuerst
+ * Distributed under the GNU GPL v3. For full terms see the file gplv3.txt.
+ */
+
 // KlinkeLookAndFeel.h — minimal LookAndFeel_V4 override for JUCE 8
 // Fixes white-on-white text without affecting dialog interactivity.
 // Applied per-window, not globally.
