@@ -210,9 +210,20 @@ if(UNIX AND NOT APPLE)
         "SET_IDD_SURFACEEDIT_MCUEX_SCALE=1.0"
         "SWELL_DLG_WS_DEFAULT_SCALING=0")  # macOS macro; 0 so _BEGIN compiles
     target_compile_options(reaper_csurf_mcu_klinke PRIVATE
-        -std=c++17 -fPIC -fvisibility=hidden -fpermissive
-        -Wno-deprecated-declarations -Wno-unused-result
-        -Wno-sign-compare -Wno-reorder -Wno-multichar)
+        $<$<COMPILE_LANGUAGE:CXX>:-std=c++17> -fPIC -fvisibility=hidden
+        $<$<COMPILE_LANGUAGE:CXX>:-fpermissive>
+        $<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-declarations> $<$<COMPILE_LANGUAGE:CXX>:-Wno-unused-result>
+        $<$<COMPILE_LANGUAGE:CXX>:-Wno-sign-compare> $<$<COMPILE_LANGUAGE:CXX>:-Wno-reorder> $<$<COMPILE_LANGUAGE:CXX>:-Wno-multichar>)
+    # REAPER SDK's MIDI_event_t::midi_message[4] is documented to accept more
+    # than 4 bytes (SysEx). Silence the false-positive -Wstringop-overflow
+    # that GCC emits when writing past index 3 of the 4-element array.
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        set_source_files_properties(
+            ${SRC_DIR}/src/core/csurf_mcu.cpp
+            ${SRC_DIR}/src/hardware/display/DisplayHandler.cpp
+            PROPERTIES COMPILE_FLAGS "-Wno-stringop-overflow")
+    endif()
+
     target_link_libraries(reaper_csurf_mcu_klinke PRIVATE X11 Xext pthread dl curl)
     set_target_properties(reaper_csurf_mcu_klinke PROPERTIES
         PREFIX "" OUTPUT_NAME "reaper_csurf_mcu_klinke" SUFFIX ".so")

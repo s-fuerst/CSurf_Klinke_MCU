@@ -501,7 +501,7 @@ void CCSManager::setGlobalViewLED(CCSMode *pCaller, int state) {
   }
 }
 
-void CCSManager::setAssignmentDisplay(CCSMode *pCaller, char text[2]) {
+void CCSManager::setAssignmentDisplay(CCSMode *pCaller, const char text[2]) {
   CHECKMODE
 
   if (memcmp(text, m_stateAssignmentDisplay, 2) != 0) {

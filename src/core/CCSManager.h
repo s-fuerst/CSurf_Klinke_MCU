@@ -93,7 +93,7 @@ public:
   void setFlipLED(CCSMode *pCaller, int state);
   void setGlobalViewLED(CCSMode *pCaller, int state);
 
-  void setAssignmentDisplay(CCSMode *pCaller, char text[2]);
+  void setAssignmentDisplay(CCSMode *pCaller, const char text[2]);
 
   // touched information
   int getNumFadersTouched();

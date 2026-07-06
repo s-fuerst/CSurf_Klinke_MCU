@@ -188,7 +188,7 @@ void PlugModeComponent::buttonClicked(Button *buttonThatWasClicked) {
     } else {
       m_pPlugAccess->getPlugWatcher()->disconnectParamChange(
           m_paramChangedConnectionId);
-      m_paramChangedConnectionId = NULL;
+      m_paramChangedConnectionId = 0;
     }
     updateLearnStatus();
     //[/UserButtonCode_m_learn]

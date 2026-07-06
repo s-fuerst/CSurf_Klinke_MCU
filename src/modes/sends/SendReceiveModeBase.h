@@ -91,7 +91,7 @@ protected:
 
   Display *m_pDisplay;
 
-  char *m_pSendOrReceiveText;
+  const char *m_pSendOrReceiveText;
 
   std::vector<void *> m_sendInfos;
 
