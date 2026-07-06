@@ -17,11 +17,10 @@
 
 ## Active Context
 
-- Windows incremental-build speed is a KNOWN LIMITATION, intentionally left as-is (2026-07-05, maintainer will revisit if it becomes a pain). In-place (WSL ext4) incremental via `scripts/build-windows.sh` is ~45s because MSBuild rebuilds ALL sources every run: its FastUpToDateCheck fails over the `\\wsl.localhost`/9P source mount (it stats thousands of JUCE/Boost headers; jittery 9P mtime + a juceaide custom step → always "not up to date"). Putting only the build outputs on NTFS does NOT help (inputs stay on UNC). Verified working: configure-skip (saves ~26s); the rebuild-all remains. The UNIMPLEMENTED path to Linux-like (~15s) incremental is a `/mnt/c` build mode: rsync deps (JUCE/Boost/reaper-sdk, ~300-400 MB) once + source (~5 MB) per build onto native NTFS and build there (rsync -a preserves mtimes → correct MSBuild incremental).
-- ## Deferred TODO items (acknowledged 2026-07-06, NOT part of the directory reorg)
-- Upgrade reaper_plugin_functions.h from pinned v5.92 (root copy → vendor/) to reaper-sdk/sdk/ v7.74: delete the vendor/ copy, let the build resolve via ${SDK_DIR}. Separate deliberate step — it is a REAPER API version change with potential behavior impact, must not happen as a side-effect of the file reorg.
-- Remove EXT_B (extender variant) code: `EXT_B` compile-time switch + the B-unit build path. AGENTS §5 conventions note it.
-- Finish GPL migration: headers + manual text from GPLv2 → GPLv3 (also in AGENTS §6 "Known issues").
+- Upgrade reaper_plugin_functions.h from pinned v5.92 (vendor/) to reaper-sdk/sdk/ v7.74: delete the vendor/ copy, let the build resolve via ${SDK_DIR}. Separate deliberate step — it is a REAPER API version change with potential behavior impact.
+- GPL migration: headers done (134 files, commit 4350ee2). Manual .tex files already reference GPLv3 — double-check German version. notes.org still lists "Update Licence to GPLv3" as TODO — likely stale but verify.
+- PerformanceMode is an intentional stub — implement later.
+- ReaPack packaging desired but not done.
 
 ## Bugs & Fixes
 

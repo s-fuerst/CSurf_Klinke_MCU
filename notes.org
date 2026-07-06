@@ -1,4 +1,4 @@
-* TODO [11/16] v0.9.1 Release
+* TODO [12/16] v0.9.1 Release
 ** DONE [#A] #51 FX State is always shown as bypassed
 ** DONE [#A] CCSModesEditor without visible window (see also #50)
 ** TODO [#A] #46 Improved Documentation (also #49 add link to overlay)
@@ -14,7 +14,7 @@
 ** DONE [#A] Remove KLINKE_BUILD 
 ** DONE [#A] Fadertouch Problem
 ** [#B] Installation via ReaPack
-** TODO [#B] Update Licence to GPL3
+** DONE [#B] Update Licence to GPL3
 (auch in manual updaten)
 ** DONE Bugfix: Move to selected track when option button is pressed
 ** TODO [#A] Pull Request integrieren

@@ -78,11 +78,9 @@ Following the build instructions from the Rothchild Linux port (we use the
 ## 4. How to build
 
 **Status:**
-- **Linux** — CMake build working (`CMakeLists.txt`, baseline). See below.
-- **Windows** — CMake build wired (MSVC, native Win32, res.rc, JUCE 8).
-  Not yet compiled on a Windows host — next step.
-- **macOS** — CMake build wired (Clang, Cocoa/Metal, JUCE 8, SWELL);
-  not yet compiled on a macOS host — next step.
+- **Linux** — CMake build working (baseline).
+- **Windows** — CMake build working (MSVC, native Win32, res.rc, JUCE 8).
+- **macOS** — CMake build working (Clang, Cocoa/Metal, JUCE 8, SWELL).
 
 ### Windows (CMake, MSVC)
 
@@ -403,7 +401,6 @@ reaper loads the .dll
   (roughly 2-space indent, `m_` member prefix, `p` pointer-arg prefix).
 
 ## 6. Known issues & open work (from `notes.org`, `whats_new.org`)
-- **License:** finish migrating headers + manual text from GPLv2 to GPLv3.
 - **Distribution:** ReaPack packaging is desired but not done.
 - **PerformanceMode is a stub, intentionally kept.** `PerformanceMode.*`
   is allocated/freed by `CCSManager` but never activated — the
