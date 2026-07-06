@@ -74,20 +74,12 @@ File ActionsDisplay::getConfigFile(bool bLookAtProgramDir) {
   File configDir = File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() + String("\\Reaper\\MCU\\Config\\");
   if (!configDir.exists())
     configDir.createDirectory();
-#ifdef EXT_B
-  return File(configDir.getFullPathName() + String("\\GlobalActionsB.xml"));
-#else
   return File(configDir.getFullPathName() + String("\\GlobalActions.xml"));
-#endif
 #else
   File configDir = String(GetResourcePath()) + String("/MCU/Config/");
   if (!configDir.exists())
     configDir.createDirectory();
-#ifdef EXT_B
-  return File(configDir.getFullPathName() + String("/GlobalActionsB.xml"));
-#else
   return File(configDir.getFullPathName() + String("/GlobalActions.xml"));
-#endif
 #endif
 }
 

@@ -5,13 +5,8 @@
 #include "ProjectConfig.h"
 #include "csurf.h"
 
-#ifdef EXT_B
-#define CONFIG_ID "<MCU_B_KLINKE"
-#define CONFIG_ID_JUCE String("<MCU_B_KLINKE")
-#else
 #define CONFIG_ID "<MCU_KLINKE"
 #define CONFIG_ID_JUCE String("<MCU_KLINKE")
-#endif
 
 bool ProcessExtensionLine(
     const char *line, ProjectStateContext *ctx, bool isUndo,

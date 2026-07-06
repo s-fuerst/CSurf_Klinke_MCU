@@ -143,13 +143,8 @@ void Actions::addKeyAction(const char *description, int buttonId) {
   // the description and id literals must created on the heap
   char *_description = new char[200];
   char *_id = new char[100];
-#ifdef EXT_B
-  sprintf(_description, "Mackie Control Klinke B: %s (key)", description);
-  sprintf(_id, "MCUKLINKE%ikeyB", buttonId);
-#else
   sprintf(_description, "Mackie Control Klinke: %s (key)", description);
   sprintf(_id, "MCUKLINKE%ikey", buttonId);
-#endif
   m_literals.push_front(_description);
   m_literals.push_front(_id);
   m_actions.push_front(new Actions::Action(_description, _id, buttonId, false));
@@ -161,13 +156,8 @@ void Actions::addButtonAction(const char *description, int buttonId) {
   // the description and id literals must created on the heap
   char *_description = new char[200];
   char *_id = new char[100];
-#ifdef EXT_B
-  sprintf(_description, "Mackie Control Klinke B: %s (button)", description);
-  sprintf(_id, "MCUKLINKE%ibuttonB", buttonId);
-#else
   sprintf(_description, "Mackie Control Klinke: %s (button)", description);
   sprintf(_id, "MCUKLINKE%ibutton", buttonId);
-#endif
   m_literals.push_front(_description);
   m_literals.push_front(_id);
   m_actions.push_front(new Actions::Action(_description, _id, buttonId, true));

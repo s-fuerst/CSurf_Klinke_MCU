@@ -204,25 +204,15 @@ void Options::readOptionFromXml(XmlElement *pOptionNode,
 
 File Options::getConfigFile() {
 #ifdef _WIN32
-#ifdef EXT_B
-  File configDir =
-      File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() +
-      String("\\Reaper\\MCU_B\\Config\\");
-#else
   File configDir =
       File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() +
       String("\\Reaper\\MCU\\Config\\");
-#endif
   if (!configDir.exists())
     configDir.createDirectory();
   return File(configDir.getFullPathName() + String("\\") + getConfigFileName() +
               String(".xml"));
 #else
-#ifdef EXT_B
-  File configDir = String(GetResourcePath()) + String("/MCU_B/Config/");
-#else
   File configDir = String(GetResourcePath()) + String("/MCU/Config/");
-#endif
   if (!configDir.exists())
     configDir.createDirectory();
   return File(configDir.getFullPathName() + String("/") + getConfigFileName() +

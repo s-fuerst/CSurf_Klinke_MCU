@@ -280,11 +280,7 @@ Component **CommandMode::createEditorComponent() {
 
 void CommandMode::deleteEditorComponent() { safe_delete(m_pMainComponent) }
 
-#ifdef EXT_B
-#define AM_FILE String("\\ActionModeB.xml")
-#else
 #define AM_FILE String("\\ActionMode.xml")
-#endif
 
 File CommandMode::getConfigFile() {
   File configDir =

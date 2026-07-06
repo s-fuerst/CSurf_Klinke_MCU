@@ -1748,11 +1748,7 @@ static HWND configFunc(const char *type_string, HWND parent,
 
 reaper_csurf_reg_t csurf_mcu_modified_reg = {
 	MAIN_ID,
-#ifdef EXT_B
-	"Mackie Control Protocol B (Klinke)",
-#else
 	"Mackie Control Protocol (Klinke)",
-#endif
 	createFunc,
 	configFunc,
 };
