@@ -30,6 +30,8 @@
 ## Changelog
 
 - 2026-07-05: Added `scripts/build-windows.sh`: builds `reaper_csurf_mcu_klinke_x64.dll` from WSL using the native MSVC toolchain (VS2019) and auto-deploys it to `%APPDATA%\REAPER\UserPlugins\`. Verified: PE32+ x86-64 DLL, exports `ReaperPluginEntry`, clean build ~1m30s, incremental ~1m14s. Documented in AGENTS.md §4 ("Building from WSL"). `.gitignore` now ignores `build_win/`.
+- 2026-07-06: Directory restructure plan v3 executed (2026-07-06). Sources moved into src/ tree; no .cpp/.h remain in repo root. Tree layout: src/{core,state,display,ui,modes/{commands,multitrack,sends,plugin{,/editor}}}. Vendored headers → vendor/. Resources → resources/. All scripts → scripts/. Dead VS files → archive/vs-legacy/. JUCE-changes → archive/juce-1.52-patches/. Stale debug log removed. Linux build verified working. Include strategy: explicit subdir list (GLOB_RECURSE had ARG_MAX issues). 3 include files edited (res_linux.cpp + csurf_main.cpp: repo-root-relative paths → flat includes using SWELL_DIR/WDL_DIR). res.rc_mac_menu added to git (generated empty file, now in resources/).
+- 2026-07-06: Restructure refinements (2026-07-06): (a) Selector → hardware/display/ (belongs to display subsystem). (b) state/ dissolved, all files → core/ (boundaries too fuzzy). (c) src/action/ created: Actions, ActionsDisplay, ActionsDialogComponent extracted from modes/commands/ (maintainer: Actions ≠ CommandMode). (d) src/hardware/ created with display/ subdir: mcu_button_defines.h, ButtonManager, VPOT_LED → hardware/; Display, DisplayHandler, MeterBridge, Selector → hardware/display/. src/display/ dissolved. Build verified.
 
 ## Patterns
 

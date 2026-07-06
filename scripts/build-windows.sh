@@ -124,7 +124,7 @@ echo "CMake:       $("$CMAKE_EXE" --version | head -1 | tr -d '\r')"
 # --- guard: deps must be fetched first ---------------------------------------
 for d in juce_8 reaper-sdk boost_1_91_0; do
   if [ ! -d "$ROOT/$d" ]; then
-    echo "ERROR: dependency '$d/' is missing. Run ./fetch_deps.sh first." >&2
+    echo "ERROR: dependency '$d/' is missing. Run ./scripts/fetch_deps.sh first." >&2
     exit 1
   fi
 done

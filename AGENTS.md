@@ -60,7 +60,7 @@ Following the build instructions from the Rothchild Linux port (we use the
 *instructions*, not their repo). All three deps live at the **repo root**:
 
 1. **JUCE 8** (module build) → `juce_8/`
-   - Fetched by `./fetch_deps.sh`: `git clone --branch 8.0.14 https://github.com/juce-framework/JUCE juce_8`
+   - Fetched by `./scripts/fetch_deps.sh`: `git clone --branch 8.0.14 https://github.com/juce-framework/JUCE juce_8`
    - The CMake build uses `add_subdirectory(juce_8)` to link `juce::juce_gui_basics`.
 2. **Boost 1.91.0** (headers only) → `boost_1_91_0/`
    - `https://archives.boost.io/release/1.91.0/source/boost_1_91_0.tar.bz2`
@@ -88,7 +88,7 @@ Following the build instructions from the Rothchild Linux port (we use the
 
 ```powershell
 # one-time: fetch the three pinned deps to the repo root
-.\fetch_deps.sh   # Git Bash or WSL
+.\scripts\fetch_deps.sh   # Git Bash or WSL
 
 # Build host needs Visual Studio 2019 or later (MSVC toolset v142+)
 # and CMake 3.10+.
@@ -121,7 +121,7 @@ native MSVC toolchain from WSL and copies the result into REAPER's
 `UserPlugins`:
 
 ```bash
-./fetch_deps.sh                        # one-time (see CRLF note below)
+./scripts/fetch_deps.sh                        # one-time (see CRLF note below)
 scripts/build-windows.sh               # incremental: build + deploy (configure skipped after first run)
 scripts/build-windows.sh --clean       # wipe build_win/, configure + build from scratch
 scripts/build-windows.sh --reconfigure # re-run CMake (after CMakeLists.txt / source-list edits), then build
@@ -171,14 +171,14 @@ portable-CMake download is ~50 MB).
 
 > **CRLF note**: the repo is checked out with `core.autocrlf=true`, so shell
 > scripts are CRLF and `bash` will refuse them with `bash\r: No such file or
-> directory`. If that happens, strip once: `sed -i 's/\r$//' fetch_deps.sh`.
+> directory`. If that happens, strip once: `sed -i 's/\r$//' scripts/fetch_deps.sh`.
 `scripts/build-windows.sh` itself is committed LF.
 
 ### Linux (CMake, baseline)
 
 ```bash
 # one-time: fetch the three pinned deps to the repo root
-./fetch_deps.sh
+./scripts/fetch_deps.sh
 
 # build-host packages (libcurl is new for JUCE 8)
 sudo apt install build-essential cmake libfreetype-dev libx11-dev libxext-dev libcurl4-openssl-dev
@@ -303,7 +303,7 @@ The CMake build uses **SWELL** (WDL) for the surface-edit dialog on Linux
 
 ```bash
 # one-time: fetch the three pinned deps to the repo root
-./fetch_deps.sh
+./scripts/fetch_deps.sh
 
 # Build host needs Xcode Command Line Tools (or full Xcode) and cmake.
 # No additional system packages needed — JUCE 8 links macOS frameworks

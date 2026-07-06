@@ -401,18 +401,18 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
 };
 
 #ifndef _WIN32 // MAC resources
-#include "../../WDL/swell/swell-dlggen.h"
+#include "swell-dlggen.h"
 #include "res.rc_mac_dlg"
 #undef BEGIN
 #undef END
-#include "../../WDL/swell/swell-menugen.h"
+#include "swell-menugen.h"
 #include "res.rc_mac_menu"
 #endif
 
 #ifndef _WIN32 // let OS X use this threading step
 
-#include "../../WDL/mutex.h"
-#include "../../WDL/ptrlist.h"
+#include "mutex.h"
+#include "ptrlist.h"
 
 class threadedMIDIOutput : public midi_Output {
 public:

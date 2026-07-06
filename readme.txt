@@ -42,15 +42,9 @@ Variable Value = C:\boost
 All parts of the Boost Library are header-only based, so it's not
 necessary to compile the libs.
 
-For JUCE it's a little bit more complicated. It's important that you
-use JUCE 1.52, you can download it from
-https://github.com/julianstorer/JUCE/releases .
-
-The project file for Visual Studio 2010 doesn't contain the 64bit
-build, but I have added an updated project file in the JUCE-changes
-folder. There you can find also a file called juce_Config.h. It's a
-good idea to replace the files from the JUCE Download with the files
-from the JUCE-changes folder. Then load the Visual Studio project and
-compile the libraries.
+> **This section is superseded.** The project now uses JUCE 8, Boost 1.91,
+> and a cross-platform CMake build. See AGENTS.md for current build
+> instructions. The old JUCE 1.52 / VS2010 build files have been archived
+> to archive/vs-legacy/ and archive/juce-1.52-patches/.
 
 

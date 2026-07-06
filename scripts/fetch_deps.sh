@@ -22,7 +22,7 @@ case "${1:-}" in
   -h|--help)  sed -n '2,30p' "$0"; exit 0 ;;
 esac
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 # --- helpers -----------------------------------------------------------------

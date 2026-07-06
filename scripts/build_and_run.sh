@@ -11,7 +11,7 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD_DIR="$SCRIPT_DIR/build"
 BUILD_TYPE="Release"
 QUICK=true

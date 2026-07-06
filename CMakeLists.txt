@@ -23,10 +23,9 @@ endif()
 #  Status:
 #    • Linux   — build working (GCC, X11, JUCE 8, SWELL).
 #    • macOS   — build wired (Clang, Cocoa/Metal, JUCE 8, SWELL).
-#    • Windows — NOT yet wired into CMake (the .vcxproj remains the source of
-#                truth until the WIN32 branch below is implemented).
+#    • Windows — build wired (MSVC, native Win32, res.rc, JUCE 8).
 #
-#  Dependencies (gitignored; fetch with ./fetch_deps.sh, see AGENTS.md §2):
+#  Dependencies (gitignored; fetch with ./scripts/fetch_deps.sh, see AGENTS.md §2):
 #    juce_8/      reaper-sdk/sdk/  reaper-sdk/WDL/  boost_1_91_0/
 #
 #  JUCE 8 uses the module build (add_subdirectory). Boost 1.91 is header-only.
@@ -47,7 +46,7 @@ foreach(d juce_8 reaper-sdk boost_1_91_0)
     if(NOT EXISTS "${SRC_DIR}/${d}")
         message(FATAL_ERROR
             "\n  Dependency '${d}/' not found.\n"
-            "  Run ./fetch_deps.sh first (see AGENTS.md, §2 Prerequisites).\n")
+            "  Run ./scripts/fetch_deps.sh first (see AGENTS.md, §2 Prerequisites).\n")
     endif()
 endforeach()
 
@@ -136,9 +135,28 @@ add_subdirectory(${JUCE_DIR} juce_8_build EXCLUDE_FROM_ALL)
 # =============================================================================
 add_library(reaper_csurf_mcu_klinke SHARED)
 
+# Include-path strategy: add every src/ subdirectory explicitly so flat-name
+# #includes (e.g. "csurf_mcu.h", "PlugMode.h") keep resolving unchanged.
+# vendor/ and resources/ are added explicitly (csurf.h #includes resource.h;
+# res_linux.cpp #includes res.rc_mac_dlg).
 target_include_directories(reaper_csurf_mcu_klinke PRIVATE
     ${CMAKE_BINARY_DIR}   # generated Version.h (MCU_VERSION_STRING)
-    ${SRC_DIR}      # repo root first: csurf.h, reaper_plugin_functions.h, etc.
+    ${SRC_DIR}/src
+    ${SRC_DIR}/src/core
+    ${SRC_DIR}/src/ui
+    ${SRC_DIR}/src/hardware
+    ${SRC_DIR}/src/hardware/display
+    ${SRC_DIR}/src/action
+    ${SRC_DIR}/src/action/editor
+    ${SRC_DIR}/src/modes/commands
+    ${SRC_DIR}/src/modes/commands/editor
+    ${SRC_DIR}/src/modes/multitrack
+    ${SRC_DIR}/src/modes/multitrack/editor
+    ${SRC_DIR}/src/modes/sends
+    ${SRC_DIR}/src/modes/plugin
+    ${SRC_DIR}/src/modes/plugin/editor
+    ${SRC_DIR}/vendor     # checked-in vendored headers (csurf.h, reaper_plugin_functions.h @v5.92)
+    ${SRC_DIR}/resources  # dialog resources (resource.h, res.rc_mac_dlg)
     ${JUCE_DIR}
     ${SDK_DIR}
     ${WDL_DIR}      # ptrlist.h, ...
@@ -166,75 +184,12 @@ if(MCU_DEBUG_LOG)
     target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE MCU_DEBUG_LOG)
 endif()
 
-# --- Source files (full set from the .vcxproj; verified present) -------------
-target_sources(reaper_csurf_mcu_klinke PRIVATE
-    Actions.cpp
-    ActionsDialogComponent.cpp
-    ActionsDisplay.cpp
-    ButtonManager.cpp
-    CCSManager.cpp
-    CCSMode.cpp
-    CCSModesEditor.cpp
-    CommandMode.cpp
-    CommandModeMainComponent.cpp
-    CommandModePageComponent.cpp
-    CommandModeVPOTComponent.cpp
-    csurf_main.cpp
-    csurf_mcu.cpp
-    Display.cpp
-    DisplayHandler.cpp
-    MeterBridge.cpp
-    MultiTrackMeterBridge.cpp
-    MultiTrackMode.cpp
-    MultiTrackOptions.cpp
-    MultiTrackOptions2.cpp
-    MultiTrackSelector.cpp
-    Options.cpp
-    PanMode.cpp
-    PerformanceMode.cpp
-    PlugAccess.cpp
-    PluginWatcher.cpp
-    PlugMap.cpp
-    PlugMapManager.cpp
-    PlugMapSaveDialog.cpp
-    PlugMode.cpp
-    PlugMode2ndOptions.cpp
-    PlugModeBankComponent.cpp
-    PlugModeBankReferenceComponent.cpp
-    PlugModeChannelComponent.cpp
-    PlugModeComponent.cpp
-    PlugModeFaderComponent.cpp
-    PlugModeMapInfoComponent.cpp
-    PlugModeMeterBridge.cpp
-    PlugModeOptions.cpp
-    PlugModePageComponent.cpp
-    PlugModePageReferenceComponent.cpp
-    PlugModeParamComponent.cpp
-    PlugModeSelectors.cpp
-    PlugModeSingleBankComponent.cpp
-    PlugModeSingleChannelComponent.cpp
-    PlugModeSinglePageComponent.cpp
-    PlugModeVPOTComponent.cpp
-    PlugModeVPOTTableComponent.cpp
-    PlugMoveWatcher.cpp
-    PlugPresetManager.cpp
-    PlugWindowManager.cpp
-    ProjectConfig.cpp
-    ReceiveMode.cpp
-    Region.cpp
-    Selector.cpp
-    SendMode.cpp
-    SendReceiveMeterBridge.cpp
-    SendReceiveModeBase.cpp
-    TabbedComponentWithCallback.cpp
-    Tracks.cpp
-    TrackStatesEditorComponent.cpp
-    TrackStatesTableComponent.cpp
-    Transport.cpp
-    UndoEnd.cpp
-    VPOT_LED.cpp
-    # Platform-specific sources appended below per-branch
-)
+# --- Source files — GLOB_RECURSE all .cpp under src/ with CONFIGURE_DEPENDS.
+# res_linux.cpp is excluded from the glob (added conditionally per platform).
+# Platform-specific sources are appended below per-branch.
+file(GLOB_RECURSE MCU_SOURCES CONFIGURE_DEPENDS ${SRC_DIR}/src/*.cpp)
+list(FILTER MCU_SOURCES EXCLUDE REGEX "res_linux\\.cpp$")
+target_sources(reaper_csurf_mcu_klinke PRIVATE ${MCU_SOURCES})
 
 # JUCE 8 module (pulls core/events/graphics/data_structures transitively).
 target_link_libraries(reaper_csurf_mcu_klinke PRIVATE
@@ -247,7 +202,7 @@ if(UNIX AND NOT APPLE)
     # --- Linux (baseline) ----------------------------------------------------
     target_sources(reaper_csurf_mcu_klinke PRIVATE
         ${SWELL_DIR}/swell-modstub-generic.cpp   # binds SWELL funcs via REAPER
-        res_linux.cpp)                           # SWELL dialog resources
+        src/res_linux.cpp)                       # SWELL dialog resources
     # C++17 is the minimum for JUCE 8.
     # -fpermissive kept: the Jucer 1.11-generated *Component files are loose
     # about conversions; we will tighten this as the upgrade progresses.
@@ -273,7 +228,7 @@ elseif(WIN32)
     # Builds reaper_csurf_mcu_klinke_x64.dll with MSVC toolset.
     # The native res.rc is compiled by the MSVC resource compiler; the SWELL
     # dialog shims (res_linux.cpp / swell-modstub-generic.cpp) are not needed.
-    target_sources(reaper_csurf_mcu_klinke PRIVATE res.rc)
+    target_sources(reaper_csurf_mcu_klinke PRIVATE resources/res.rc)
     target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE
         _CRT_SECURE_NO_DEPRECATE)  # suppress strcpy/... deprecation (C4996)
     target_compile_options(reaper_csurf_mcu_klinke PRIVATE
@@ -290,7 +245,7 @@ elseif(APPLE)
     # --- macOS ----------------------------------------------------------------
     target_sources(reaper_csurf_mcu_klinke PRIVATE
         ${SWELL_DIR}/swell-modstub.mm   # macOS SWELL binding (see note below)
-        res_linux.cpp)                  # SWELL dialog resources
+        src/res_linux.cpp)              # SWELL dialog resources
     # Force the .mm through the CXX compiler: project() only enables C/CXX, so
     # CMake has no OBJCXX language to map a .mm onto. clang++ compiles .mm as
     # Objective-C++ by extension, so LANGUAGE CXX routes it there correctly
