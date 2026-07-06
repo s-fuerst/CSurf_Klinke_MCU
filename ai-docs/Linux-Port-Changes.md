@@ -64,8 +64,15 @@ Enthält zwei idempotente Patches:
 
 ### 1.3 Plattform-Shims
 
-#### `posix_shims/windows.h` *(14 Zeilen, neu)*
+#### `posix_shims/windows.h` *(14 Zeilen, neu — später entfernt)*
 Minimaler Win32-Shim für Nicht-Windows-Plattformen. Inkludiert `swell.h` (SWELL implementiert die Windows-API auf Linux/macOS). Nur aktiv wenn `!WIN32`.
+
+> **Update (2026-07-06):** Removed. The shim turned out to be dead code: every
+> `#include <windows.h>` in the sources is either gated by `#ifdef _WIN32`
+> (so it never applies on Linux/macOS) or already uses the explicit
+> `#ifdef _WIN32 … #else #include "swell.h" #endif` pattern. No TU ever
+> reached the shim, so the `-Iposix_shims` include path and the directory
+> were deleted outright. No source file needed changing.
 
 #### `res_linux.cpp` *(6 Zeilen, neu)*
 SWELL-basierte Linux-Implementierung der Surface-Edit-Dialog-Ressource. Bindet `res.rc_mac_dlg` ein.

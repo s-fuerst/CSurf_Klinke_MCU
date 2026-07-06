@@ -163,12 +163,6 @@ target_include_directories(reaper_csurf_mcu_klinke PRIVATE
     ${SWELL_DIR}    # swell.h, ...
     ${BOOST_DIR})   # boost/signals2.hpp, ...
 
-# posix_shims/windows.h → swell.h (only on !WIN32; on Windows the real
-# Windows SDK windows.h is used instead — no shadowing).
-if(NOT WIN32)
-    target_include_directories(reaper_csurf_mcu_klinke PRIVATE ${SRC_DIR}/posix_shims)
-endif()
-
 target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE
     TIXML_USE_TICPP
     NDEBUG
