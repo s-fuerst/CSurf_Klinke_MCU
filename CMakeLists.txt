@@ -166,6 +166,7 @@ target_include_directories(reaper_csurf_mcu_klinke PRIVATE
 target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE
     TIXML_USE_TICPP
     NDEBUG
+    BOOST_BIND_GLOBAL_PLACEHOLDERS  # suppress Boost 1.91 deprecation notes for global _1,_2
     JUCE_MODAL_LOOPS_PERMITTED=1   # enable synchronous AlertWindow/DialogWindow APIs
     NOMINMAX                     # stop SWELL's min/max macros breaking <limits>
     WDL_NO_DEFINE_MINMAX)
