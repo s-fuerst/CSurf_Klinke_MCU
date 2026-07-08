@@ -33,23 +33,23 @@ PlugMode::PlugMode(CCSManager *pManager)
   m_pPlugModeOptions = new PlugModeOptions(pManager->getDisplayHandler());
   m_pPlugMode2ndOptions = new PlugMode2ndOptions(pManager->getDisplayHandler());
 
-  m_pParamsDisplay = new Display(pManager->getDisplayHandler(), 4);
-  m_pTouchedDisplay = new Display(pManager->getDisplayHandler(), 4);
-  m_pValueDisplay = new Display(pManager->getDisplayHandler(), 2);
+  m_pParamsDisplay = pManager->createDisplay(4);
+  m_pTouchedDisplay = pManager->createDisplay(4);
+  m_pValueDisplay = pManager->createDisplay(2);
 
 	m_pMeterBridge = new PlugModeMeterBridge(this);
 
-  m_pSingleTrackMessage = new Display(pManager->getDisplayHandler(), 2);
+  m_pSingleTrackMessage = pManager->createDisplay(2);
   m_pSingleTrackMessage->changeTextFullLine(
       0, "You must select a single track.", true);
   m_pSingleTrackMessage->clearLine(1);
 
-  m_pNoPlugMessage = new Display(pManager->getDisplayHandler(), 2);
+  m_pNoPlugMessage = pManager->createDisplay(2);
   m_pNoPlugMessage->clearLine(0);
   m_pNoPlugMessage->changeTextFullLine(1, "No FX exist in selected track.",
                                        true);
 
-  m_pNoPlugSelectedMessage = new Display(pManager->getDisplayHandler(), 2);
+  m_pNoPlugSelectedMessage = pManager->createDisplay(2);
   m_pNoPlugSelectedMessage->clearLine(0);
   m_pNoPlugSelectedMessage->changeTextFullLine(1, "You must select a FX.",
                                                true);

@@ -34,6 +34,7 @@ public:
                            bool centered = false);
 
   char **getText() { return m_ppText; }
+  DisplayHandler* getDisplayHandler() const { return m_pDisplayHandler; }
 
   virtual void activate();
   virtual void clear();

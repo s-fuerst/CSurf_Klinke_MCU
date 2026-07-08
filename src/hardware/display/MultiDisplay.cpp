@@ -57,5 +57,7 @@ void MultiDisplay::resendAllRows() {
 }
 
 void MultiDisplay::switchToAll() {
-  // Step 7 wires the per-child handler switch.
+  for (size_t i = 0; i < m_children.size(); i++) {
+    m_children[i]->getDisplayHandler()->switchTo(m_children[i]);
+  }
 }

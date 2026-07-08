@@ -1548,15 +1548,11 @@ createFunc(const char *type_string, const char *configString, int *errStats) {
   int parms[NUM_DLG_PARAMS];
   parseParms(configString, parms);
 
-  if (CSurf_MCU::s_iNumInstances == 0)
-    return new CSurf_MCU(!strcmp(type_string, EXT_ID), parms[0], parms[1],
-                         parms[2], parms[3], parms[4], errStats); else {
-    ::MessageBox(NULL,
-                 "CSurf_MCU_Klinke instance is already active (and only a "
-                 "single instance can be used).",
-                 "CSurf_MCU_Klinke", MB_ICONSTOP);
-    return NULL;
-  }
+  // WP-A: always a single main unit (N=1). The extender register is dead;
+  // the legacy single-instance guard was removed as obsolete.
+  (void)type_string;
+  return new CSurf_MCU(false, parms[0], parms[1],
+                       parms[2], parms[3], parms[4], errStats);
 }
 
 // Reposition all controls to fill the actual dialog rect.
@@ -1714,13 +1710,10 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
 
 static HWND configFunc(const char *type_string, HWND parent,
                        const char *initConfigString) {
-  HWND ret;
-  if (!strcmp(type_string, EXT_ID))
-    ret = CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_SURFACEEDIT_MCUEX),
-                            parent, dlgProc, (LPARAM)initConfigString);
-  else
-    ret = CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_SURFACEEDIT_MCUMAIN),
-                            parent, dlgProc, (LPARAM)initConfigString);
+  // WP-A: only the MCUMAIN dialog is used (extender register is dead).
+  (void)type_string;
+  HWND ret = CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_SURFACEEDIT_MCUMAIN),
+                               parent, dlgProc, (LPARAM)initConfigString);
   if (ret) ShowWindow(ret, SW_SHOW);
   return ret;
 }
@@ -1728,12 +1721,6 @@ static HWND configFunc(const char *type_string, HWND parent,
 reaper_csurf_reg_t csurf_mcu_modified_reg = {
 	MAIN_ID,
 	"Mackie Control Protocol (Klinke)",
-	createFunc,
-	configFunc,
-};
-reaper_csurf_reg_t csurf_mcuex_modified_reg = {
-	EXT_ID,
-	"Mackie Control Extender (Klinke)",
 	createFunc,
 	configFunc,
 };

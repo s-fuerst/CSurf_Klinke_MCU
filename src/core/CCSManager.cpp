@@ -581,6 +581,11 @@ int CCSManager::getFaderPos(int channel) {
   return m_pMCU->getFaderPos(channel);
 }
 
+Display *CCSManager::createDisplay(int numRows) {
+  // WP-A N=1: plain Display. N>1: returns a MultiDisplay.
+  return new Display(getDisplayHandler(), numRows);
+}
+
 int CCSManager::getElementsTouched() {
   return getNumFadersTouched() + getNumVPotTouched();
 }

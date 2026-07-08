@@ -21,7 +21,7 @@ HardwareUnit::HardwareUnit(int unitIndex, const UnitConfig &cfg,
   for (int i = 0; i < 128; i++)
     m_led_state[i] = LED_OFF;
   for (int i = 0; i < 9; i++)
-    m_faderPos[i] = 0;
+    m_faderPos[i] = -1; // sentinel: force first send (original CCSManager behaviour)
 
   // create midi hardware access (moved verbatim from CSurf_MCU ctor)
   m_midiin = cfg.midiInDev >= 0 ? CreateMIDIInput(cfg.midiInDev) : NULL;

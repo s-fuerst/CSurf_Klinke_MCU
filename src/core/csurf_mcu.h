@@ -6,7 +6,6 @@
 #ifndef MCU_CSURF_MCU
 #define MCU_CSURF_MCU
 
-#define EXT_ID  "unused"
 #define MAIN_ID "MCUM5"
 // list of CCs that are send to reaper (for midi learn):
 // 
@@ -100,16 +99,6 @@ struct ScheduledAction {
 #define ARROW_STATE_SCRUB 0x80
 #define ARROW_STATE_ZOOM 0x40
 
-// todo: move this to MultiTrackMode.h
-#define FIXID(id)                                                              \
-  int id = CSurf_TrackToID(trackid, MultiTrackMode::getMCPMode());             \
-  int oid = id;                                                                \
-  if (id > 0) {                                                                \
-    id -= m_offset + Tracks::instance()->getGlobalOffset() + 1;                \
-    if (id == 8)                                                               \
-      id = -1;                                                                 \
-  } else if (id == 0)                                                          \
-    id = 8;
 
 static double charToVol(unsigned char val) {
   double pos = ((double)val * 1000.0) / 127.0;
@@ -483,7 +472,7 @@ public:
   static bool IsFlagSet(int flag) { return (flag & s_cfg_flags) != 0; }
 
   const char *GetTypeString() {
-    return m_is_mcuex ? EXT_ID : MAIN_ID;
+    return MAIN_ID;
   }
 
   const char *GetDescString() {
