@@ -6,7 +6,7 @@
 #define MCU_DISPLAYHANDLER
 
 //#include "csurf.h"
-class CSurf_MCU;
+class HardwareUnit;
 class Display;
 class MIDI_Message;
 
@@ -15,9 +15,10 @@ public:
   enum EnumMCUType { MCU = 0, MCU_EX, PROX };
 
 private:
-  CSurf_MCU *m_pMCU;
+  HardwareUnit *m_pUnit;
   Display *m_pActualDisplay;
   EnumMCUType m_mcuType;
+  bool m_isProX; // per-unit ProX flag (replaces global CONFIG_FLAG_PROX)
   bool m_metersEnabled[9];
   bool m_wait;
 
@@ -26,7 +27,7 @@ private:
   void addHeader(MIDI_Message *pmm, int row);
 
 public:
-  DisplayHandler(CSurf_MCU *pMCU, EnumMCUType mcuType);
+  DisplayHandler(HardwareUnit *pUnit, EnumMCUType mcuType, bool isProX);
   ~DisplayHandler();
   //      void init();
 
@@ -37,7 +38,7 @@ public:
   void enableMCUMeter(bool enable);
   void enableMCUMeter(int channel, bool enable); // channel is 1 based
   bool getMetersEnabled(int channel) const { return m_metersEnabled[channel]; }
-  CSurf_MCU *getMCU() const { return m_pMCU; }
+  HardwareUnit *getUnit() const { return m_pUnit; }
 
   void waitForMoreChanges(bool block);
   void sendDifferences(Display *pDisplay, int row, const char *text);

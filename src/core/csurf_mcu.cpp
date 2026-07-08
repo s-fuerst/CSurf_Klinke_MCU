@@ -284,7 +284,7 @@ void CSurf_MCU::MCUReset() {
 
     m_pSplashDisplay->changeTextFullLine(0, SPLASH_MESSAGE);
     m_pSplashDisplay->clearLine(1);
-    m_pDisplayHandler->switchTo(m_pSplashDisplay);
+    getDisplayHandler()->switchTo(m_pSplashDisplay);
   }
 }
 
@@ -806,8 +806,7 @@ void CSurf_MCU::OnMIDIEvent(MIDI_event_t *evt) {
       return;
 }
 
-CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
-                     int cfgflags, int *errStats)
+CSurf_MCU::CSurf_MCU(const SurfaceConfig &cfg, int *errStats)
 	: m_pActionsDialogComponent(NULL) {
   //_CrtSetBreakAlloc(6938);
   if (s_iNumInstances == 0) {
@@ -820,25 +819,55 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
 
   Tracks::instance()->setMCU(this);
 
-  m_is_mcuex = ismcuex;
-  m_offset = offset;
-  m_size = size;
-  m_midi_in_dev = indev;
-  m_midi_out_dev = outdev;
-  s_cfg_flags = cfgflags;
-  // create midi hardware access
-  m_midiin = m_midi_in_dev >= 0 ? CreateMIDIInput(m_midi_in_dev) : NULL;
-  m_midiout = m_midi_out_dev >= 0 ?
-		CreateThreadedMIDIOutput(CreateMIDIOutput(m_midi_out_dev, false, NULL)) :
-		NULL;
+  // Store the parsed config
+  m_surfaceConfig = cfg;
 
-  m_pDisplayHandler = new DisplayHandler(this, m_is_mcuex ?
-																				 DisplayHandler::MCU_EX :
-																				 DisplayHandler::MCU);
-  m_pSplashDisplay = new Display(m_pDisplayHandler, 2);
-  m_pActionDisplay = new ActionsDisplay(m_pDisplayHandler);
+  // Legacy compat shims (used by !m_is_mcuex gating, GetOffset/GetSize, etc.)
+  m_is_mcuex = false;
+  m_offset = 0;
+  m_size = availableChannels(); // = numUnits()*8, 8 for N=1
+  m_midi_in_dev = cfg.units[0].midiInDev;
+  m_midi_out_dev = cfg.units[0].midiOutDev;
+  s_cfg_flags = cfg.flags;
+
+  // WP-B: construct HardwareUnits for all configured units.
+  // Unit 1 (index 0) is always constructed even with MIDI None.
+  // Units 2–8: constructed only if real (non-(-1)) MIDI devices are assigned.
+  // Duplicate MIDI device checking: warn but don't block.
+  {
+    // Warn on duplicate MIDI device IDs across units
+    for (int i = 0; i < MAX_SURFACE_UNITS; i++) {
+      for (int j = i + 1; j < MAX_SURFACE_UNITS; j++) {
+        int inI = cfg.units[i].midiInDev, inJ = cfg.units[j].midiInDev;
+        int outI = cfg.units[i].midiOutDev, outJ = cfg.units[j].midiOutDev;
+        if (inI != -1 && inI == inJ)
+          MCU_LOG("WP-B: duplicate MIDI input device %d on units %d and %d", inI, i + 1, j + 1);
+        if (outI != -1 && outI == outJ)
+          MCU_LOG("WP-B: duplicate MIDI output device %d on units %d and %d", outI, i + 1, j + 1);
+      }
+    }
+
+    for (int i = 0; i < MAX_SURFACE_UNITS; i++) {
+      bool hasDevice = (cfg.units[i].midiInDev != -1 || cfg.units[i].midiOutDev != -1);
+      bool isUnit1 = (i == 0);
+
+      // Skip disabled units (both MIDI -1 and not a main unit)
+      if (!hasDevice && !isUnit1)
+        continue;
+
+      HardwareUnit *pUnit = new HardwareUnit(i, cfg.units[i], this, errStats);
+      m_units.push_back(pUnit);
+    }
+  }
+
+  // Cache port pointers from unit 1 (NON-OWNING, for legacy call sites)
+  m_midiin = (!m_units.empty()) ? m_units[0]->midiInput() : NULL;
+  m_midiout = (!m_units.empty()) ? m_units[0]->midiOutput() : NULL;
+
+  m_pSplashDisplay = new Display(getDisplayHandler(), 2);
+  m_pActionDisplay = new ActionsDisplay(getDisplayHandler());
   m_pCCSManager =
-		new CCSManager(this); // m_pDisplayHandler must be constructed before
+		new CCSManager(this); // DisplayHandler is constructed per-unit by HardwareUnit ctor
 
   m_repeatState = false;
 
@@ -849,38 +878,22 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
   m_mcu_timedisp_lastforce = 0;
   m_frameupd_lastrun = 0;
 
-  if (errStats) {
-    if (m_midi_in_dev >= 0 && !m_midiin)
-      *errStats |= 1;
-    if (m_midi_out_dev >= 0 && !m_midiout)
-      *errStats |= 2;
-  }
-
-  // WORKAROUND: PipeWire JACK may crash (SIGSEGV in process_empty) when
-  // MIDI is sent immediately after opening a JACK MIDI output port.
-  // The data-loop thread accesses buffers that are not yet allocated.
-  if (m_midiout) {
-#ifdef _WIN32
-    //    Sleep(500);
-#else
-    usleep(200000);
-#endif
-  }
+  // NOTE: MIDI open + JACK usleep workaround + errStats now live in the
+  // HardwareUnit ctor above.
 
   MCUReset();
 
-  if (m_midiin)
-    m_midiin->start();
+  // Start MIDI input on all constructed units
+  for (size_t ui = 0; ui < m_units.size(); ui++)
+    m_units[ui]->startInput();
 
   m_schedule = NULL;
 
   m_pCCSManager->init();
 
-	for(int i=0; i < 128; i++) {
-		m_led_state[i] = LED_ON;
-		SetLED(i, LED_OFF);
-		m_led_state[i] = LED_OFF;
-	}
+  // Force all LEDs off on all units
+  for (size_t ui = 0; ui < m_units.size(); ui++)
+    m_units[ui]->forceAllLEDsOff();
 
 
   m_pTransport = new Transport(this);
@@ -892,25 +905,9 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
 }
 
 CSurf_MCU::~CSurf_MCU() {
-  if (m_midiout) {
-		struct
-		{
-			MIDI_event_t evt;
-			char data[5];
-		}
-			poo;
-		poo.evt.frame_offset=0;
-		poo.evt.size=8;
-		poo.evt.midi_message[0]=0xF0;
-		poo.evt.midi_message[1]=0x00;
-		poo.evt.midi_message[2]=0x00;
-		poo.evt.midi_message[3]=0x66;
-		poo.evt.midi_message[4]=m_is_mcuex ? 0x15 : 0x14;
-		poo.evt.midi_message[5]=0x08;
-		poo.evt.midi_message[6]=0x00;
-		poo.evt.midi_message[7]=0xF7;
-		m_midiout->SendMsg(&poo.evt,-1);
-	}
+  // Send per-unit reset SysEx (F0 00 00 66 <devId> 08 00 F7) to ALL units.
+  for (size_t ui = 0; ui < m_units.size(); ui++)
+    m_units[ui]->reset();
 
 
 	// turn all leds off and move faders to the bottom, etc.
@@ -923,10 +920,10 @@ CSurf_MCU::~CSurf_MCU() {
 	// as DisplayHandler::sendDifferences). Full-line SysEx via CSurf_MCU::SendMsg()
 	// only delivers the first ~4 chars on the Linux JACK/MIDI path.
 	for (int pos = 0; pos < 55; pos += 4)
-		m_pDisplayHandler->sendToHardware(0, pos, &"                        Goodbye                          "[pos], std::min(4, 55 - pos));
+		getDisplayHandler()->sendToHardware(0, pos, &"                        Goodbye                          "[pos], std::min(4, 55 - pos));
 	for(int i=1; i<4; i++)
 		for (int pos = 0; pos < 55; pos += 4)
-			m_pDisplayHandler->sendToHardware(i, pos, &"                                                       "[pos], std::min(4, 55 - pos));
+			getDisplayHandler()->sendToHardware(i, pos, &"                                                       "[pos], std::min(4, 55 - pos));
 
 	// turn off the meter bridge
 	for(int i=0; i < 8; i++) {
@@ -942,12 +939,13 @@ CSurf_MCU::~CSurf_MCU() {
   delete m_pSplashDisplay;
   delete m_pActionsDialogComponent;
   delete m_pActionDisplay;
-  delete m_pDisplayHandler;
   delete m_pCCSManager;
 
   g_mcu_list.Delete(g_mcu_list.Find(this));
-	DELETE_ASYNC(m_midiout);
-  DELETE_ASYNC(m_midiin);
+  // WP-A: units own MIDI ports (dtors call DELETE_ASYNC on close).
+  for (size_t i = 0; i < m_units.size(); i++)
+    delete m_units[i];
+  m_units.clear();
   while (m_schedule != NULL) {
     ScheduledAction *temp = m_schedule;
     m_schedule = temp->next;
@@ -970,10 +968,12 @@ CSurf_MCU::~CSurf_MCU() {
 }
 
 void CSurf_MCU::CloseNoReset() {
-  delete m_midiout;
-  delete m_midiin;
-  m_midiout = 0;
-  m_midiin = 0;
+  // WP-A: units own MIDI ports now; close them through the unit.
+  for (size_t i = 0; i < m_units.size(); i++)
+    delete m_units[i];
+  m_units.clear();
+  m_midiout = NULL;
+  m_midiin = NULL;
 }
 
 void CSurf_MCU::Run() {
@@ -999,7 +999,7 @@ void CSurf_MCU::Run() {
 		if (IsFlagSet(CONFIG_FLAG_PROX) || IsFlagSet(CONFIG_FLAG_EMULATING_BLINKING))
 			EmulateBlinkingLEDs(now);
 
-    Tracks::instance()->adjust(g_mcu_list.GetSize() * 8);
+    Tracks::instance()->adjust(availableChannels());
 
     UpdateGlobalSoloLED();
     UpdateMetronomLED();
@@ -1171,12 +1171,33 @@ void CSurf_MCU::Run() {
   }
 
   if (m_midiin) {
-    m_midiin->SwapBufs(timeGetTime());
-    int l = 0;
-    MIDI_eventlist *list = m_midiin->GetReadBuf();
-    MIDI_event_t *evts;
-    while ((evts = list->EnumItems(&l)))
-      OnMIDIEvent(evts);
+    // WP-B: iterate over all units' MIDI inputs.
+    // Units beyond index 0: input is dropped with a debug log until
+    // WP-C + WP-F widen the channel bounds and per-unit state.
+    for (size_t ui = 0; ui < m_units.size(); ui++) {
+      midi_Input *in = m_units[ui]->midiInput();
+      if (!in) continue;
+      in->SwapBufs(timeGetTime());
+      if (ui > 0) {
+        // Input gate: silently drop all events from extenders until WP-C+WP-F
+        int l = 0;
+        MIDI_eventlist *list = in->GetReadBuf();
+        MIDI_event_t *evts;
+        bool warned = false;
+        while ((evts = list->EnumItems(&l))) {
+          if (!warned) {
+            MCU_LOG("WP-B: dropping input from unit %zu (channel bounds not yet widened)", ui);
+            warned = true;
+          }
+        }
+        continue;
+      }
+      int l = 0;
+      MIDI_eventlist *list = in->GetReadBuf();
+      MIDI_event_t *evts;
+      while ((evts = list->EnumItems(&l)))
+        OnMIDIEvent(evts);
+    }
 
     if (m_button_states || m_mackie_arrow_states) {
       DWORD now = timeGetTime();
@@ -1229,42 +1250,16 @@ void CSurf_MCU::SendMidi(unsigned char status, unsigned char d1,
 }
 
 void CSurf_MCU::SetLED(int button_nr, int led_state) {
-	if (!IsFlagSet(CONFIG_FLAG_PROX) && led_state == LED_BLINK_BYPASSED)
-		led_state = LED_ON;
-	
-  if (m_led_state[button_nr] != led_state) {
-    SendMidi(0x90, button_nr, led_state, -1);
-    m_led_state[button_nr] = led_state;
-  }
+  // WP-A N=1: strip notes 0x00-0x1F and global notes 0x28+ both go to unit 0.
+  // WP-F: strip->owning unit, global->all main units.
+  if (!m_units.empty())
+    m_units[0]->setLED(button_nr, led_state);
 }
 
 void CSurf_MCU::EmulateBlinkingLEDs(DWORD now) {
-	static short lastNowMod2 = 0;
-	static short blinkSometimes = 0;
-
-	if (lastNowMod2 == (now >> 8) % 2)
-		return;
-
-	lastNowMod2 = !lastNowMod2;
-
-	unsigned char blinkLedState = LED_OFF;
-	if (lastNowMod2 == 1)
-		blinkLedState = LED_ON;
-	
-	for (int i = 0; i < 128; i++) {
-		if (m_led_state[i] == LED_BLINK) {
-			SendMidi(0x90, i, blinkLedState, -1);
-		}
-	}
-
-	if (++blinkSometimes == 12) {
-		blinkSometimes = 0;
-	}
-	for (int i = 0; i < 128; i++) {
-		if (m_led_state[i] == LED_BLINK_BYPASSED) {
-			SendMidi(0x90, i, blinkSometimes > 2, -1);
-		}
-	}
+  // WP-A N=1: blink emulation moved to HardwareUnit (per-unit LED state).
+  if (!m_units.empty())
+    m_units[0]->emulateBlinkingLEDs(now);
 }
 
 
@@ -1439,6 +1434,28 @@ void CSurf_MCU::SendMsg(MIDI_event_t *message, int frame_offset) {
     m_midiout->SendMsg(message, frame_offset);
 }
 
+void CSurf_MCU::sendStripFader(int channel, int value) {
+  // WP-A N=1: route to the only unit. channel 0 = master, 1..8 = strips.
+  // WP-F: channel 0 → broadcast to all units; 1..N*8 → owning unit.
+  if (m_units.empty()) return;
+  if (channel == 0)
+    m_units[0]->setMasterFader(value);
+  else
+    m_units[0]->sendStripFader(channel - 1, value);
+}
+
+int CSurf_MCU::getFaderPos(int channel) {
+  if (m_units.empty()) return 0;
+  if (channel == 0)
+    return m_units[0]->getFaderPos(8);
+  return m_units[0]->getFaderPos(channel - 1);
+}
+
+void CSurf_MCU::broadcastMasterFader(int value) {
+  for (size_t i = 0; i < m_units.size(); i++)
+    m_units[i]->setMasterFader(value);
+}
+
 bool CSurf_MCU::OnNameValue(MIDI_event_t *evt) {
   if (IsModifierPressed(VK_ALT)) {
     if (!m_pActionsDialogComponent)
@@ -1537,224 +1554,3 @@ double CSurf_MCU::GetSurfacePan(MediaTrack *pMT) {
 double CSurf_MCU::GetSurfacePan(int channel) {
   return GetSurfacePan(Tracks::instance()->getMediaTrackForChannel(channel));
 }
-
-static void parseParms(const char *str, int parms[NUM_DLG_PARAMS]) {
-  parms[0] = 0;
-  parms[1] = 8;
-  parms[2] = parms[3] = -1;
-  parms[4] = 0;
-
-  const char *p = str;
-  if (p) {
-    int x = 0;
-    while (x < NUM_DLG_PARAMS) {
-      while (*p == ' ')
-        p++;
-      if ((*p < '0' || *p > '9') && *p != '-')
-        break;
-      parms[x++] = atoi(p);
-      while (*p && *p != ' ')
-        p++;
-    }
-  }
-
-  // since v0.8 we don't support extender, so i fix this setting to 0 offset and
-  // a banksize of 8
-  parms[0] = 0;
-  parms[1] = 8;
-}
-
-static IReaperControlSurface *
-createFunc(const char *type_string, const char *configString, int *errStats) {
-  int parms[NUM_DLG_PARAMS];
-  parseParms(configString, parms);
-
-  if (CSurf_MCU::s_iNumInstances == 0)
-    return new CSurf_MCU(!strcmp(type_string, EXT_ID), parms[0], parms[1],
-                         parms[2], parms[3], parms[4], errStats); else {
-    ::MessageBox(NULL,
-                 "CSurf_MCU_Klinke instance is already active (and only a "
-                 "single instance can be used).",
-                 "CSurf_MCU_Klinke", MB_ICONSTOP);
-    return NULL;
-  }
-}
-
-// Reposition all controls to fill the actual dialog rect.
-// Called from WM_SIZE so it works regardless of initial SWELL scale.
-static void layoutDlgControls(HWND hwndDlg) {
-  RECT cr;
-  GetClientRect(hwndDlg, &cr);
-  int W = cr.right, H = cr.bottom;
-  if (W < 40 || H < 40) return;
-
-  auto move = [&](int id, int x, int y, int w, int h) {
-    HWND c = GetDlgItem(hwndDlg, id);
-    if (c) SetWindowPos(c, NULL, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
-  };
-
-  // Enumerate static label windows in creation order (ID==0 for both)
-  auto nthStatic = [&](int n) -> HWND {
-    int count = 0;
-    HWND ch = GetWindow(hwndDlg, GW_CHILD);
-    while (ch) {
-      if (GetWindowLong(ch, GWL_ID) == 0 && count++ == n) return ch;
-      ch = GetWindow(ch, GW_HWNDNEXT);
-    }
-    return NULL;
-  };
-
-  const int mx = 8, label_w = 80, gap = 4;
-  const int combo_x = mx + label_w + gap;
-  const int combo_w = W - combo_x - mx;
-  const int row_h = 24, lbl_h = 18, check_h = 20, btn_w = 90, btn_h = 24;
-
-  // MIDI In row
-  HWND lbl1 = nthStatic(0);
-  if (lbl1) SetWindowPos(lbl1, NULL, mx, mx + 3, label_w, lbl_h, SWP_NOZORDER | SWP_NOACTIVATE);
-  move(IDC_COMBO2, combo_x, mx, combo_w, row_h);
-
-  // MIDI Out row
-  HWND lbl2 = nthStatic(1);
-  int row2_y = mx + row_h + gap;
-  if (lbl2) SetWindowPos(lbl2, NULL, mx, row2_y + 3, label_w, lbl_h, SWP_NOZORDER | SWP_NOACTIVATE);
-  move(IDC_COMBO3, combo_x, row2_y, combo_w, row_h);
-
-  // Checkboxes and buttons (MCUMAIN only)
-  if (GetDlgItem(hwndDlg, IDC_PROX)) {
-    int cy = mx + 2 * (row_h + gap) + gap;
-    int chk_w = W - 2 * mx;
-    move(IDC_PROX,              mx, cy, chk_w, check_h); cy += check_h + gap;
-    move(IDC_EMULATE_BLINKING,  mx, cy, chk_w, check_h); cy += check_h + gap;
-    move(IDC_KEYBOARD_MODIFIER, mx, cy, chk_w, check_h); cy += check_h + gap;
-    move(IDC_FAKE_TOUCH,        mx, cy, chk_w, check_h); cy += check_h + gap;
-    move(IDC_CHECK2,            mx, cy, W / 2, check_h);
-    move(BTN_OPEN_MANUAL, W - 2 * (btn_w + gap), H - btn_h - mx, btn_w, btn_h);
-    move(BTN_DONATE,      W - (btn_w + mx),       H - btn_h - mx, btn_w, btn_h);
-  }
-
-  InvalidateRect(hwndDlg, NULL, TRUE);
-}
-
-static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
-                          LPARAM lParam) {
-  switch (uMsg) {
-  case WM_INITDIALOG: {
-    int parms[NUM_DLG_PARAMS];
-    parseParms((const char *)lParam, parms);
-
-    int n = GetNumMIDIInputs();
-    LRESULT x = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_ADDSTRING, 0,
-                                   (LPARAM)"None");
-    SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_SETITEMDATA, x, -1);
-    x = SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_ADDSTRING, 0,
-                           (LPARAM)"None");
-    SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_SETITEMDATA, x, -1);
-    for (x = 0; x < n; x++) {
-      char buf[512];
-      if (GetMIDIInputName(x, buf, sizeof(buf))) {
-        LRESULT a = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_ADDSTRING, 0,
-                                       (LPARAM)buf);
-        SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_SETITEMDATA, a, x);
-        if (x == parms[2])
-          SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_SETCURSEL, a, 0);
-      }
-    }
-    n = GetNumMIDIOutputs();
-    for (x = 0; x < n; x++) {
-      char buf[512];
-      if (GetMIDIOutputName(x, buf, sizeof(buf))) {
-        LRESULT a = SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_ADDSTRING, 0,
-                                       (LPARAM)buf);
-        SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_SETITEMDATA, a, x);
-        if (x == parms[3])
-          SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_SETCURSEL, a, 0);
-      }
-    }
-
-    if (parms[4] & CONFIG_FLAG_FADER_TOUCH_FAKE)
-      CheckDlgButton(hwndDlg, IDC_FAKE_TOUCH, BST_CHECKED);
-    if (parms[4] & CONFIG_FLAG_PROX)
-      CheckDlgButton(hwndDlg, IDC_PROX, BST_CHECKED);
-    if (parms[4] & CONFIG_FLAG_SWAPZOOM)
-      CheckDlgButton(hwndDlg, IDC_CHECK2, BST_CHECKED);
-    if (parms[4] & CONFIG_FLAG_EMULATING_BLINKING)
-      CheckDlgButton(hwndDlg, IDC_EMULATE_BLINKING, BST_CHECKED);
-    if (parms[4] & CONFIG_FLAG_KEYBOARD_MODIFIER)
-      CheckDlgButton(hwndDlg, IDC_KEYBOARD_MODIFIER, BST_CHECKED);
-  } break;
-
-  case WM_SIZE:
-    layoutDlgControls(hwndDlg);
-    break;
-  case WM_COMMAND: {
-    switch (LOWORD(wParam)) {
-    case BTN_DONATE:
-      ShellExecute(NULL, "open",
-                   "https://www.paypal.com/cgi-bin/"
-                   "webscr?cmd=_s-xclick&hosted_button_id=LR54GZHGL6VHA",
-                   NULL, NULL, SW_SHOWDEFAULT);
-			break;
-    case BTN_OPEN_MANUAL:
-      ShellExecute(NULL, "open",
-                   "https://bitbucket.org/"
-                   "Klinkenstecker/csurf_klinke_mcu/downloads/mcu_klinke_manual.pdf",
-                   NULL, NULL, SW_SHOWDEFAULT);
-			break;
-    }
-  } break;
-  case WM_USER + 1024:
-    if (wParam > 1 && lParam) {
-      LRESULT indev = -1, outdev = -1, offs = 0, size = 8;
-      LRESULT r = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_GETCURSEL, 0, 0);
-      if (r != CB_ERR)
-        indev = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_GETITEMDATA, r, 0);
-      r = SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_GETCURSEL, 0, 0);
-      if (r != CB_ERR)
-        outdev = SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_GETITEMDATA, r, 0);
-      int cflags = 0;
-      if (IsDlgButtonChecked(hwndDlg, IDC_FAKE_TOUCH))
-        cflags |= CONFIG_FLAG_FADER_TOUCH_FAKE;
-      if (IsDlgButtonChecked(hwndDlg, IDC_PROX))
-        cflags |= CONFIG_FLAG_PROX;
-      if (IsDlgButtonChecked(hwndDlg, IDC_CHECK2))
-        cflags |= CONFIG_FLAG_SWAPZOOM;
-      if (IsDlgButtonChecked(hwndDlg, IDC_EMULATE_BLINKING))
-        cflags |= CONFIG_FLAG_EMULATING_BLINKING;
-      if (IsDlgButtonChecked(hwndDlg, IDC_KEYBOARD_MODIFIER))
-        cflags |= CONFIG_FLAG_KEYBOARD_MODIFIER;
-
-      char tmp[512];
-      sprintf(tmp, "%ld %ld %ld %ld %d", (long)offs, (long)size, (long)indev, (long)outdev, cflags);
-      lstrcpyn((char *)lParam, tmp, wParam);
-    }
-    break;
-  }
-  return 0;
-}
-
-static HWND configFunc(const char *type_string, HWND parent,
-                       const char *initConfigString) {
-  HWND ret;
-  if (!strcmp(type_string, EXT_ID))
-    ret = CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_SURFACEEDIT_MCUEX),
-                            parent, dlgProc, (LPARAM)initConfigString);
-  else
-    ret = CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_SURFACEEDIT_MCUMAIN),
-                            parent, dlgProc, (LPARAM)initConfigString);
-  if (ret) ShowWindow(ret, SW_SHOW);
-  return ret;
-}
-
-reaper_csurf_reg_t csurf_mcu_modified_reg = {
-	MAIN_ID,
-	"Mackie Control Protocol (Klinke)",
-	createFunc,
-	configFunc,
-};
-reaper_csurf_reg_t csurf_mcuex_modified_reg = {
-	EXT_ID,
-	"Mackie Control Extender (Klinke)",
-	createFunc,
-	configFunc,
-};

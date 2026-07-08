@@ -222,6 +222,7 @@ if(UNIX AND NOT APPLE)
         set_source_files_properties(
             ${SRC_DIR}/src/core/csurf_mcu.cpp
             ${SRC_DIR}/src/hardware/display/DisplayHandler.cpp
+            ${SRC_DIR}/src/hardware/HardwareUnit.cpp
             PROPERTIES COMPILE_FLAGS "-Wno-stringop-overflow")
     endif()
 

@@ -10,7 +10,7 @@
 #include "csurf_mcu.h"
 
 PerformanceMode::PerformanceMode(CCSManager *pManager) : CCSMode(pManager) {
-  m_pDisplay = new Display(pManager->getDisplayHandler(), 2);
+  m_pDisplay = pManager->createDisplay(2);
   m_pDisplay->changeText(0, 0, "Performance Mode", 55);
 }
 

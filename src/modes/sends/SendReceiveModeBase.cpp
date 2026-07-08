@@ -14,7 +14,7 @@
 SendReceiveModeBase::SendReceiveModeBase(CCSManager *pManager)
     : CCSMode(pManager), m_flip(false), m_pLastSelectedTrack(NULL),
       m_startWithSend(0) {
-  m_pDisplay = new Display(pManager->getDisplayHandler(), 4);
+  m_pDisplay = pManager->createDisplay(4);
 	m_pMeterBridge = new SendReceiveMeterBridge(this);
 }
 

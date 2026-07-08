@@ -8,7 +8,7 @@
 #include "csurf.h"
 #include "ProjectConfig.h"
 
-extern reaper_csurf_reg_t csurf_mcu_modified_reg;//,csurf_mcuex_modified_reg;
+extern reaper_csurf_reg_t csurf_mcu_modified_reg;
 
 REAPER_PLUGIN_HINSTANCE g_hInst; // used for dialogs, if any
 HWND g_hwnd;
@@ -392,7 +392,6 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   { FILE *f = fopen("/tmp/klinke_entry.txt", "a"); if (f) { fprintf(f, "REGISTERING csurf\n"); fclose(f); } }
   fprintf(stderr, "[klinke] ReaperPluginEntry: all APIs resolved, registering csurf MCUM5\n");
   rec->Register("csurf", &csurf_mcu_modified_reg);
-  //  rec->Register("csurf",&csurf_mcuex_modified_reg);
   rec->Register("projectconfig", ProjectConfig::instance()->getRegisterInfo());
 
   { FILE *f = fopen("/tmp/klinke_entry.txt", "a"); if (f) { fprintf(f, "REGISTERED OK, returning 1\n"); fclose(f); } }

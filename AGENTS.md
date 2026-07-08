@@ -49,15 +49,13 @@ Boost 1.39 (2009) does not compile under modern libc++/C++17 without an
 ever-growing pile of patches; 1.91.0 compiles cleanly on all platforms.
 
 > The original build is **Windows + Visual Studio only**. A cross-platform
-> **CMake** build has now been added (see §4): **Linux** is the working
-> baseline; the Windows and macOS CMake paths are stubbed and come next. The
-> VS `.vcxproj` remains the source of truth for the **Windows** build until
-> its CMake branch is filled in.
+> **CMake** build has been added (see §4) and is now the source of truth for
+> all three platforms. The old VS `.vcxproj` / `.sln` files are archived in
+> `archive/vs-legacy/`.
 
 ### Prerequisites for the CMake build (exact versions pinned)
 
-Following the build instructions from the Rothchild Linux port (we use the
-*instructions*, not their repo). All three deps live at the **repo root**:
+All three deps live at the **repo root**:
 
 1. **JUCE 8** (module build) → `juce_8/`
    - Fetched by `./scripts/fetch_deps.sh`: `git clone --branch 8.0.14 https://github.com/juce-framework/JUCE juce_8`
@@ -71,9 +69,8 @@ Following the build instructions from the Rothchild Linux port (we use the
 4. **Linux system packages** (build host):
    `sudo apt install build-essential cmake libfreetype-dev libx11-dev libxext-dev libcurl4-openssl-dev`
 
-> The original VS `.vcxproj` reads these via env vars (`JUCE`, `BOOST`,
-> `REAPER_EXTENSION_SDK`). The CMake build instead expects them at the repo
-> root, so the env vars are no longer needed for the CMake path.
+> The CMake build expects all three deps at the repo root; no environment
+> variables are needed.
 
 ## 4. How to build
 
@@ -297,7 +294,7 @@ The CMake build uses **SWELL** (WDL) for the surface-edit dialog on Linux
 (`res_linux.cpp` + `res.rc_mac_dlg`, generated from `res.rc` via
 `WDL/swell/swell_resgen.pl`).
 
-### macOS (CMake, Clang — wired, not yet compiled)
+### macOS (CMake, Clang — working)
 
 ```bash
 # one-time: fetch the three pinned deps to the repo root
@@ -333,8 +330,8 @@ Key differences from Linux:
 | **JUCE**                 | `JUCE_DIR`             | **8.0.14** (modules via `add_subdirectory`)          | GUI framework for all editor dialogs/components. Now licensed AGPLv3/JUCE dual. Modules: `juce_gui_basics` pulls `juce_core`/`juce_events`/`juce_graphics`/`juce_data_structures` transitively. |
 | **Boost**                | `BOOST`                | **1.91.0** (header-only)                             | Mainly `boost/signals2.hpp`. No compiled libs needed. Upgraded from 1.39 (which did not compile under modern libc++/C++17).                                                                                                                                       |
 
-The three SDK roots are referenced by the Visual Studio project through the
-environment variables above. **All three must be set before building.**
+The per-platform build instructions are in §4. No environment variables are
+required for the CMake build — it finds all three deps at the repo root.
 
 ### `KlinkeLookAndFeel.h` (JUCE 8 specific)
 - `KlinkeLookAndFeel.h` — minimal `LookAndFeel_V4` subclass that forces
@@ -345,14 +342,17 @@ environment variables above. **All three must be set before building.**
 ## 5. Architecture & code map
 
 ### Plugin lifecycle & event flow
+
+All sources live under `src/` in the tree described in §8.
+
 ```
-reaper loads the .dll
-  → csurf_main.cpp: REAPER_PLUGIN_ENTRYPOINT
+reaper loads the .dll/.so/.dylib
+  → src/csurf_main.cpp: REAPER_PLUGIN_ENTRYPOINT
       registers csurf_mcu_modified_reg  ("csurf")
-  → CSurf_MCU  (csurf_mcu.cpp/.h)  implements IReaperControlSurface
+  → CSurf_MCU  (src/core/csurf_mcu.cpp/.h)  implements IReaperControlSurface
       owns: Transport, DisplayHandler, Display(s), Region, CCSManager
       handles: MIDI in/out to the MCU, per-frame updates, config, surface-edit dialog
-  → CCSManager (CCSManager.cpp/.h)
+  → CCSManager (src/core/CCSManager.cpp/.h)
       routes hardware events (buttons/faders/VPOTs/LEDs) to the active CCSMode
       manages touch state, LED state, mode switching
   → CCSMode subclasses  (the actual features)
@@ -369,17 +369,17 @@ reaper loads the .dll
 | **PlugMode** ("FX Mode") | `PlugMode.*`, `PlugMode*Component.*`, `PlugAccess.*`, `PlugMap*`, `PlugPresetManager.*`, `PlugWindowManager.*`, `Plugin*Watcher.*` | The largest subsystem: maps plugin/FX parameters to faders & VPOTs, with banks/pages, parameter maps, presets, and an auto-opening FX window watcher. |
 
 ### Other key subsystems
-- **`Tracks.*`** — track state tracking (selection, mute/solo, name, level).
-- **`Transport.*`** — play/stop/record/rewind/FFWD, markers, loop.
-- **`VPOT_LED.*`** — models the V-Pot LED ring state/mode sent to hardware.
-- **`mcu_button_defines.h`** — the MIDI CC ↔ MCU button/VPOT mapping table.
-- **`Display.*` / `DisplayHandler.*`** — the two 2x55-char MCU displays.
-- **`CCSModesEditor.*`** + all `*Component.*` files — JUCE-based GUI editors
+- **`src/core/Tracks.*`** — track state tracking (selection, mute/solo, name, level).
+- **`src/core/Transport.*`** — play/stop/record/rewind/FFWD, markers, loop.
+- **`src/hardware/VPOT_LED.*`** — models the V-Pot LED ring state/mode sent to hardware.
+- **`src/hardware/mcu_button_defines.h`** — the MIDI CC ↔ MCU button/VPOT mapping table.
+- **`src/hardware/display/Display.*` / `DisplayHandler.*`** — the two 2x55-char MCU displays.
+- **`src/ui/CCSModesEditor.*`** + all `*Component.*` files — JUCE-based GUI editors
   for each mode's settings (shown on screen, not on the controller).
-- **`Options.*` / `ProjectConfig.*`** — global options and per-project config
+- **`src/core/Options.*` / `ProjectConfig.*`** — global options and per-project config
   persistence (saved inside the Reaper project).
-- **`Region.*`** — store loop/time selections as Reaper regions.
-- **`res.rc` / `resource.h`** — Windows resources for the surface-edit dialog
+- **`src/core/Region.*`** — store loop/time selections as Reaper regions.
+- **`resources/res.rc` / `resource.h`** — Windows resources for the surface-edit dialog
   (the Reaper preferences panel for this surface).
 
 ### Conventions & gotchas
@@ -390,15 +390,37 @@ reaper loads the .dll
 - **Sentinel GUIDs:** `GUID_NOT_ACTIVE` (all-zero) and `GUID_MASTER` mark
   "no track" and the master track throughout the plug/track code.
 - **1-based channel arrays:** many `[9]` arrays are 1-based; index 0 is the
-  master fader. `ASSERT` (in `Assert.h`) guards channel ranges.
+  master fader. `ASSERT` (in `src/core/McuAssert.h`) guards channel ranges.
 - **`EXT_B`** is a *compile-time* switch for the extender variant; build the
   main unit and the B unit from the same source.
-- **Version string** comes from the `VERSION` file (repo root) — see §4. The
+- **Version string** comes from the `VERSION.txt` file (repo root) — see §4. The
   build counter auto-increments; bump the version part manually for a release.
   `csurf_mcu.h` uses `MCU_VERSION_STRING` (from generated `Version.h`) in
   `GetDescString()`.
 - **No auto-format style is enforced;** match the surrounding file's style
   (roughly 2-space indent, `m_` member prefix, `p` pointer-arg prefix).
+- **Config format (WP-B):** `SurfaceConfig` (in `src/core/SurfaceConfig.h/cpp`)
+  handles two formats:
+  - **Legacy:** `"0 8 <midiIn> <midiOut> <flags>"` — parsed, never re-emitted.
+    Becomes unit 1 populated, units 2–8 at defaults (Mackie extender, MIDI None).
+  - **KLINKE2:** `"KLINKE2 flags=<N> <in>,<out>,<type> ..."` (8 fixed entries).
+    Type tokens: `mackie-main`, `mackie-ext`, `prox-main`, `prox-ext`.
+    `GetConfigString()` always emits `KLINKE2` with all 8 entries.
+  - `CONFIG_FLAG_PROX` is **derived** from unit 1's device type (ProX model),
+    not stored independently. The `IDC_PROX` checkbox in the dialog is hidden.
+  - `src/core/SurfaceConfig.h` exports: `parseSurfaceConfig()`,
+    `serializeSurfaceConfig()`, `makeDefaultSurfaceConfig()`,
+    `unitConfigFromType()`, `unitTypeToken()`.
+  - The dialog shows 8 fixed rows (Unit 1–8) each with: device type combo,
+    MIDI input combo, MIDI output combo. Unit 1 type combo is main-only
+    (Mackie Main / QCon ProX); Units 2–8 offer all four presets.
+  - `createFunc()` constructs `HardwareUnit` for every unit with real MIDI
+    devices (unit 1 always constructed even with MIDI None). Input from
+    units 2+ is dropped with a debug log until WP-C + WP-F widen channel
+    bounds.
+  - Dialog resources: `res.rc` and `res.rc_mac_dlg` (350×310).
+  - Unit type encoding (CB_SETITEMDATA and KLINKE2 tokens):
+    0 = mackie-main, 1 = mackie-ext, 2 = prox-main, 3 = prox-ext.
 
 ## 6. Known issues & open work (from `notes.org`, `whats_new.org`)
 - **Distribution:** ReaPack packaging is desired but not done.
@@ -420,23 +442,105 @@ reaper loads the .dll
 - **JUCE 8** — https://github.com/juce-framework/JUCE (tag 8.0.14)
 
 ## 8. Repo layout (quick map)
+
 ```
-csurf_main.cpp / csurf_mcu.{cpp,h}   plugin entry + main control-surface class
-CCSManager.{cpp,h} / CCSMode.{cpp,h} mode dispatcher + mode base class
-MultiTrack*.{cpp,h} PanMode.* Send*.* Receive*.*   mixer/routing modes
-CommandMode.* Actions*.*                       Action Mode (VPOTs → actions)
-PlugMode.* Plug*Component.* PlugAccess.* PlugMap*.* PlugPreset*.* Plugin*.*  FX mode
-Tracks.* Transport.* VPOT_LED.* Display*.* Region.*  core hardware/track glue
-*Component.{cpp,h} CCSModesEditor.*            JUCE on-screen editors
-Options.* ProjectConfig.*                      settings + project persistence
-mcu_button_defines.h csurf.h reaper_plugin_functions.h ptrlist.h  SDK headers
-manual/                                        LaTeX user manual (EN/DE)
-KlinkeLookAndFeel.h                          JUCE 8 per-window LookAndFeel (text/checkbox fix)
-res.rc resource.h                              Windows surface-edit dialog
-reaper_csurf.sln/.vcxproj                      Visual Studio build (current)
-VERSION Version.h.in                          build-counter version source + template
-docker/release-linux.Dockerfile              portable Debian 11 container build (the download artifact)
-scripts/build-portable-linux.sh              podman/docker wrapper → dist/reaper_csurf_mcu_klinke.so
-.dockerignore                                  keeps container build reproducible from upstream
-gplv3.txt notes.org whats_new.{org,txt} readme.txt   license + notes
+# === Build-system files (repo root) ===
+CMakeLists.txt Version.h.in VERSION.txt  build config + version counter
+AGENTS.md gplv3.txt readme.txt notes.org  docs, license, dev notes
+
+# === External dependencies (fetched by scripts/fetch_deps.sh) ===
+juce_8/                 JUCE 8.0.14 (modules, add_subdirectory)
+boost_1_91_0/           Boost 1.91.0 (headers only)
+reaper-sdk/             REAPER SDK + WDL/SWELL
+
+# === Project source tree ===
+src/
+├── csurf_main.cpp      REAPER_PLUGIN_ENTRYPOINT
+├── JuceHeader.h        JUCE module umbrella include
+├── res_linux.cpp       Linux SWELL dialog resources
+├── core/               plugin core + config + state
+│   ├── csurf_mcu.{cpp,h}    CSurf_MCU — main IReaperControlSurface impl
+│   ├── SurfaceConfig.{h,cpp}  multi-unit config model + KLINKE2 parser/serializer
+│   ├── SurfaceConfigDialog.cpp  config dialog: dlgProc, layout, createFunc, configFunc, reaper_csurf_reg
+│   ├── CCSManager.{cpp,h}   mode dispatcher, LED/touch state
+│   ├── CCSMode.{cpp,h}      mode base class (CCSMode)
+│   ├── Tracks.{cpp,h}       track state (selection, mute/solo, level)
+│   ├── Transport.{cpp,h}    play/stop/record/rewind/FFWD, markers, loop
+│   ├── Options.{cpp,h}      global options persistence
+│   ├── ProjectConfig.{cpp,h} per-project config (saved in .rpp)
+│   ├── Region.{cpp,h}       loop/time selection → Reaper regions
+│   ├── UndoEnd.{cpp,h}      undo-end sentinel
+│   ├── McuAssert.h          ASSERT/ASSERT_M/DBOUT macros
+│   ├── McuDebugLog.h        MCU_LOG(…) debug logging (compile-time ON/OFF)
+│   └── std_helper.h         erase_if, findByPtr template helpers
+├── hardware/           low-level MCU I/O
+│   ├── ButtonManager.{cpp,h}  incoming MIDI → button events
+│   ├── VPOT_LED.{cpp,h}       V-Pot LED ring state/model
+│   ├── mcu_button_defines.h   MIDI CC ↔ MCU button/VPOT mapping table
+│   ├── MeterBridge.{cpp,h}    abstract meter-bridge base class
+│   └── display/
+│       ├── Display.{cpp,h}        per-unit LCD rendering
+│       ├── DisplayHandler.{cpp,h} display routing & update logic
+│       └── Selector.{cpp,h}       parameter selector ring
+├── ui/                 JUCE on-screen editors (shared)
+│   ├── CCSModesEditor.{cpp,h}    surface-edit master dialog
+│   ├── KlinkeLookAndFeel.h       JUCE 8 colour overrides
+│   └── TabbedComponentWithCallback.{cpp,h}
+├── action/             Action Mode (VPOTs → Reaper actions)
+│   ├── Actions.{cpp,h}
+│   ├── ActionsDisplay.{cpp,h}
+│   └── editor/
+│       └── ActionsDialogComponent.{cpp,h}
+├── modes/              MCU feature modes
+│   ├── multitrack/     mixer: faders, VPOT params, select/mute/solo/rec
+│   │   ├── MultiTrackMode.{cpp,h}  MultiTrackOptions*.{cpp,h}
+│   │   ├── MultiTrackSelector.{cpp,h}
+│   │   ├── MultiTrackMeterBridge.{cpp,h}
+│   │   ├── PanMode.{cpp,h}
+│   │   ├── PerformanceMode.{cpp,h}  (intentional stub — see §6)
+│   │   └── editor/
+│   │       ├── TrackStatesEditorComponent.{cpp,h}
+│   │       └── TrackStatesTableComponent.{cpp,h}
+│   ├── commands/       Command (Action) Mode — 8 VPOTs × 6 CCs × 2 (Shift) × 8 banks
+│   │   ├── CommandMode.{cpp,h}
+│   │   └── editor/
+│   │       ├── CommandModeMainComponent.{cpp,h}
+│   │       ├── CommandModePageComponent.{cpp,h}
+│   │       └── CommandModeVPOTComponent.{cpp,h}
+│   ├── plugin/         FX Mode — plugin parameter control
+│   │   ├── PlugMode.{cpp,h}  PlugAccess.{cpp,h}  PlugMap*.{cpp,h}
+│   │   ├── PlugPresetManager.{cpp,h}  PlugWindowManager.{cpp,h}
+│   │   ├── PluginWatcher.{cpp,h}  PlugMoveWatcher.{cpp,h}
+│   │   ├── PlugModeMeterBridge.{cpp,h}  PlugModeSelectors.{cpp,h}
+│   │   └── editor/
+│   │       └── PlugMode*Component.{cpp,h}  (14 editor files)
+│   └── sends/          Send/Receive Mode
+│       ├── SendReceiveModeBase.{cpp,h}  SendMode.{cpp,h}  ReceiveMode.{cpp,h}
+│       └── SendReceiveMeterBridge.{cpp,h}
+
+# === Vendored / static resources (not source, on include path) ===
+vendor/                 csurf.h
+resources/              res.rc  resource.h  res.rc_mac_dlg  res.rc_mac_menu
+
+# === Build infrastructure ===
+scripts/
+├── fetch_deps.sh         one-time: clone/download JUCE + Boost + REAPER SDK
+├── build-portable-linux.sh  podman/docker → dist/reaper_csurf_mcu_klinke.so
+├── build-windows.sh      WSL native MSVC build → %APPDATA%\REAPER\UserPlugins\
+├── build-windows-fast.sh  WSL /mnt/c copy-build (experimental)
+├── build_and_run.sh      Linux: build + deploy + start REAPER
+├── debug_reaper.sh       launch REAPER with GDB attached
+└── start_reaper.sh       launch REAPER for testing
+docker/                 release-linux.Dockerfile (Debian 11 container build)
+
+# === Archives (historical, not built) ===
+archive/vs-legacy/      dead .vcxproj/.sln/.dsp (replaced by CMake)
+archive/juce-1.52-patches/  old JUCE 1.52 build files
+
+# === Other ===
+manual/                 LaTeX user manual (EN/DE)
+ai-docs/                extender-support planning documents
+dist/                   portable-Linux .so artifact output
+build/  build_win/      local build outputs (gitignored)
+.prettierrc             (not currently enforced — see §5 conventions)
 ```

@@ -6,7 +6,6 @@
 #ifndef MCU_CSURF_MCU
 #define MCU_CSURF_MCU
 
-#define EXT_ID  "unused"
 #define MAIN_ID "MCUM5"
 // list of CCs that are send to reaper (for midi learn):
 // 
@@ -19,8 +18,11 @@
 #include "mcu_button_defines.h"
 #include "Region.h"
 #include "CCSManager.h"
+#include "HardwareUnit.h"
+#include "SurfaceConfig.h"
 #include "boost/signals2.hpp"
 #include "Version.h"   // generated: MCU_VERSION_STRING (v<version> build <count>)
+#include <vector>
 
 using boost::signals2::connection;
 
@@ -98,16 +100,6 @@ struct ScheduledAction {
 #define ARROW_STATE_SCRUB 0x80
 #define ARROW_STATE_ZOOM 0x40
 
-// todo: move this to MultiTrackMode.h
-#define FIXID(id)                                                              \
-  int id = CSurf_TrackToID(trackid, MultiTrackMode::getMCPMode());             \
-  int oid = id;                                                                \
-  if (id > 0) {                                                                \
-    id -= m_offset + Tracks::instance()->getGlobalOffset() + 1;                \
-    if (id == 8)                                                               \
-      id = -1;                                                                 \
-  } else if (id == 0)                                                          \
-    id = 8;
 
 static double charToVol(unsigned char val) {
   double pos = ((double)val * 1000.0) / 127.0;
@@ -293,7 +285,6 @@ class SelectedTrack;
 class CSurf_MCU : public IReaperControlSurface {
 private:
   Transport *m_pTransport;
-  DisplayHandler *m_pDisplayHandler;
   Display *m_pSplashDisplay;
   CCSManager *m_pCCSManager;
   DropState m_dropstate;
@@ -303,6 +294,12 @@ private:
   bool m_is_mcuex;
   int m_midi_in_dev, m_midi_out_dev;
   int m_offset, m_size;
+  SurfaceConfig m_surfaceConfig;       // WP-B: parsed config (all 8 units)
+  std::vector<HardwareUnit *> m_units; // WP-A: N physical units (N=1 in WP-A)
+  // m_midiout/m_midiin are NON-OWNING cached pointers into m_units[0]'s
+  // ports. Ownership moved to HardwareUnit (WP-A Step 2). Kept so the many
+  // legacy call sites (MCUReset/Run/SetPlayState/...) stay unchanged; they
+  // will be removed once all sites route through the unit.
   midi_Output *m_midiout;
   midi_Input *m_midiin;
 
@@ -326,7 +323,6 @@ private:
   unsigned int m_frameupd_lastrun;
   ScheduledAction *m_schedule;
 
-  int m_led_state[128];
   std::map<MediaTrack *, double> m_surface_volume;
   std::map<MediaTrack *, double> m_surface_pan;
 
@@ -352,8 +348,7 @@ public:
   }
 
 public:
-  CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
-            int cfgflags, int *errStats);
+  CSurf_MCU(const SurfaceConfig &cfg, int *errStats);
   virtual ~CSurf_MCU();
 
   void ScheduleAction(DWORD time, ScheduleFunc func);
@@ -438,7 +433,19 @@ public:
   }
   void UnselectAllTracks();
   midi_Output *GetMidiOutput() { return m_midiout; }
-  DisplayHandler *GetDisplayHandler() { return m_pDisplayHandler; }
+  DisplayHandler *getDisplayHandler() {
+    return m_units.empty() ? NULL : m_units[0]->displayHandler();
+  }
+
+  void sendStripFader(int channel, int value); // routes to owning unit (N=1: unit 0)
+  int  getFaderPos(int channel);              // reads unit's cached position
+
+  // WP-A translation helpers (N-generic plumbing, N=1 for now)
+  int  numUnits() const { return (int)m_units.size(); }
+  HardwareUnit *unitForChannel(int g) { return m_units[(g - 1) / 8]; } // g is 1-based
+  static int localOf(int g) { return (g - 1) % 8 + 1; }                 // 1-based→local 1..8
+  int  availableChannels() const { return numUnits() * 8; }
+  void broadcastMasterFader(int value); // all units setMasterFader(value)
 
   // these will be called by the host when states change etc
   void SetTrackListChange();
@@ -466,20 +473,20 @@ public:
   static bool IsFlagSet(int flag) { return (flag & s_cfg_flags) != 0; }
 
   const char *GetTypeString() {
-    return m_is_mcuex ? EXT_ID : MAIN_ID;
+    return MAIN_ID;
   }
 
   const char *GetDescString() {
     m_descspace.Set("Mackie Control Protocol (Klinke " MCU_VERSION_STRING ")");
-    char tmp[512];
-    sprintf(tmp, " (dev %d,%d)", m_midi_in_dev, m_midi_out_dev);
+    char tmp[64];
+    sprintf(tmp, " [%d units]", numUnits());
     m_descspace.Append(tmp);
     return m_descspace.Get();
   }
   const char *GetConfigString() // string of configuration data
   {
-    sprintf(m_configtmp, "%d %d %d %d %d", m_offset, m_size, m_midi_in_dev,
-            m_midi_out_dev, s_cfg_flags);
+    snprintf(m_configtmp, sizeof(m_configtmp), "%s",
+             serializeSurfaceConfig(m_surfaceConfig).c_str());
     return m_configtmp;
   }
 

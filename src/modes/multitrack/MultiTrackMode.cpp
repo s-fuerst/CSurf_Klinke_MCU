@@ -20,7 +20,7 @@ bool MultiTrackMode::s_mcpmode = false;
 
 MultiTrackMode::MultiTrackMode(CCSManager *pManager)
     : CCSMode(pManager), m_pTrackStatesEditor(NULL), m_lastSelectedTrackNr(-1) {
-  m_pDisplay = new Display(pManager->getDisplayHandler(), 4);
+  m_pDisplay = pManager->createDisplay(4);
   m_pSelector = new MultiTrackSelector(pManager->getDisplayHandler());
 	m_pMeterBridge = new MultiTrackMeterBridge();
   s_mcpmode = CSurf_MCU::IsFlagSet(CONFIG_FLAG_STARTGLOBALVIEW);
