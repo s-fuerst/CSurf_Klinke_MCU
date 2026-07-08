@@ -478,13 +478,9 @@ public:
 
   const char *GetDescString() {
     m_descspace.Set("Mackie Control Protocol (Klinke " MCU_VERSION_STRING ")");
-    char tmp[512];
-    sprintf(tmp, " (dev %d,%d)", m_midi_in_dev, m_midi_out_dev);
+    char tmp[64];
+    sprintf(tmp, " [%d units]", numUnits());
     m_descspace.Append(tmp);
-    if (numUnits() > 1) {
-      sprintf(tmp, " [%d units]", numUnits());
-      m_descspace.Append(tmp);
-    }
     return m_descspace.Get();
   }
   const char *GetConfigString() // string of configuration data

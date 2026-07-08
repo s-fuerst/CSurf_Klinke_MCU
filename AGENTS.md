@@ -461,6 +461,7 @@ src/
 ├── core/               plugin core + config + state
 │   ├── csurf_mcu.{cpp,h}    CSurf_MCU — main IReaperControlSurface impl
 │   ├── SurfaceConfig.{h,cpp}  multi-unit config model + KLINKE2 parser/serializer
+│   ├── SurfaceConfigDialog.cpp  config dialog: dlgProc, layout, createFunc, configFunc, reaper_csurf_reg
 │   ├── CCSManager.{cpp,h}   mode dispatcher, LED/touch state
 │   ├── CCSMode.{cpp,h}      mode base class (CCSMode)
 │   ├── Tracks.{cpp,h}       track state (selection, mute/solo, level)
