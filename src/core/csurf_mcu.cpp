@@ -284,7 +284,7 @@ void CSurf_MCU::MCUReset() {
 
     m_pSplashDisplay->changeTextFullLine(0, SPLASH_MESSAGE);
     m_pSplashDisplay->clearLine(1);
-    m_pDisplayHandler->switchTo(m_pSplashDisplay);
+    getDisplayHandler()->switchTo(m_pSplashDisplay);
   }
 }
 
@@ -840,13 +840,10 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
   m_midiin  = pUnit->midiInput();
   m_midiout = pUnit->midiOutput();
 
-  m_pDisplayHandler = new DisplayHandler(this, m_is_mcuex ?
-																				 DisplayHandler::MCU_EX :
-																				 DisplayHandler::MCU);
-  m_pSplashDisplay = new Display(m_pDisplayHandler, 2);
-  m_pActionDisplay = new ActionsDisplay(m_pDisplayHandler);
+  m_pSplashDisplay = new Display(getDisplayHandler(), 2);
+  m_pActionDisplay = new ActionsDisplay(getDisplayHandler());
   m_pCCSManager =
-		new CCSManager(this); // m_pDisplayHandler must be constructed before
+		new CCSManager(this); // DisplayHandler is constructed per-unit by HardwareUnit ctor
 
   m_repeatState = false;
 
@@ -902,10 +899,10 @@ CSurf_MCU::~CSurf_MCU() {
 	// as DisplayHandler::sendDifferences). Full-line SysEx via CSurf_MCU::SendMsg()
 	// only delivers the first ~4 chars on the Linux JACK/MIDI path.
 	for (int pos = 0; pos < 55; pos += 4)
-		m_pDisplayHandler->sendToHardware(0, pos, "                        Goodbye                          " + pos, std::min(4, 55 - pos));
+		getDisplayHandler()->sendToHardware(0, pos, "                        Goodbye                          " + pos, std::min(4, 55 - pos));
 	for(int i=1; i<4; i++)
 		for (int pos = 0; pos < 55; pos += 4)
-			m_pDisplayHandler->sendToHardware(i, pos, "                                                       " + pos, std::min(4, 55 - pos));
+			getDisplayHandler()->sendToHardware(i, pos, "                                                       " + pos, std::min(4, 55 - pos));
 
 	// turn off the meter bridge
 	for(int i=0; i < 8; i++) {
@@ -921,7 +918,6 @@ CSurf_MCU::~CSurf_MCU() {
   delete m_pSplashDisplay;
   delete m_pActionsDialogComponent;
   delete m_pActionDisplay;
-  delete m_pDisplayHandler;
   delete m_pCCSManager;
 
   g_mcu_list.Delete(g_mcu_list.Find(this));

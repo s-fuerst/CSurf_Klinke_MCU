@@ -6,6 +6,7 @@
  * CSurf_MCU holds one unit (N=1) and forwards via shims.
  */
 #include "HardwareUnit.h"
+#include "DisplayHandler.h"
 #include "McuAssert.h"
 
 #ifndef _WIN32
@@ -47,6 +48,13 @@ HardwareUnit::HardwareUnit(int unitIndex, const UnitConfig &cfg,
     usleep(200000);
 #endif
   }
+
+  // per-unit DisplayHandler: one center LCD per MCU unit, now owned here.
+  // isProX is derived from DeviceModel (QConProX→true, Mackie→false);
+  // mcuType is derived from isMain (→MCU) / !isMain (→MCU_EX).
+  m_display = new DisplayHandler(
+      this, m_cfg.isMain ? DisplayHandler::MCU : DisplayHandler::MCU_EX,
+      m_cfg.model == QConProX);
 }
 
 HardwareUnit::~HardwareUnit() {

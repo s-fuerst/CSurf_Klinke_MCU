@@ -295,7 +295,6 @@ class SelectedTrack;
 class CSurf_MCU : public IReaperControlSurface {
 private:
   Transport *m_pTransport;
-  DisplayHandler *m_pDisplayHandler;
   Display *m_pSplashDisplay;
   CCSManager *m_pCCSManager;
   DropState m_dropstate;
@@ -445,7 +444,9 @@ public:
   }
   void UnselectAllTracks();
   midi_Output *GetMidiOutput() { return m_midiout; }
-  DisplayHandler *GetDisplayHandler() { return m_pDisplayHandler; }
+  DisplayHandler *getDisplayHandler() {
+    return m_units.empty() ? NULL : m_units[0]->displayHandler();
+  }
 
   // these will be called by the host when states change etc
   void SetTrackListChange();

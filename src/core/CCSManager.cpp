@@ -168,7 +168,7 @@ bool CCSManager::buttonVPOTassign(int button, bool pressed) {
 void CCSManager::switchToDisplay(CCSMode *pMode, Display *pDisplay) {
   if (pMode == m_pActualMode && !m_selectorActive && !m_optionActive &&
       !m_pMCU->IsButtonPressed(B_NAME_VALUE)) {
-    m_pMCU->GetDisplayHandler()->switchTo(pDisplay);
+    m_pMCU->getDisplayHandler()->switchTo(pDisplay);
   }
 }
 
@@ -598,7 +598,7 @@ void CCSManager::trackName(MediaTrack *trackid, const char *pName) {
 }
 
 DisplayHandler *CCSManager::getDisplayHandler() {
-  return m_pMCU->GetDisplayHandler();
+  return m_pMCU->getDisplayHandler();
 }
 
 int CCSManager::getElementsTouched() {

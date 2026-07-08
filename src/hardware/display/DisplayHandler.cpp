@@ -2,10 +2,11 @@
  * Copyright (C) 2009-2026 Steffen Fuerst
  * Distributed under the GNU GPL v3. For full terms see the file gplv3.txt.
  */
+#include "csurf_mcu.h"
 #include "DisplayHandler.h"
 
 #include "McuDebugLog.h"
-#include "csurf_mcu.h"
+#include "HardwareUnit.h"
 #include "McuAssert.h"
 #include "Display.h"
 
@@ -20,10 +21,12 @@ public:
   char data[512];
 };
 
-DisplayHandler::DisplayHandler(CSurf_MCU *pMCU, EnumMCUType mcuType) {
-  m_pMCU = pMCU;
+DisplayHandler::DisplayHandler(HardwareUnit *pUnit, EnumMCUType mcuType,
+                               bool isProX) {
+  m_pUnit = pUnit;
   m_pActualDisplay = NULL;
   m_mcuType = mcuType;
+  m_isProX = isProX;
   m_wait = false;
   for (int i = 0; i < 9; i++) {
     m_metersEnabled[i] = false;
@@ -76,7 +79,7 @@ void DisplayHandler::sendToHardware(int row, int pos, char const *text,
   if (!m_pActualDisplay)
     return;
 
-	if (row > 1 && !m_pMCU->IsFlagSet(CONFIG_FLAG_PROX))
+	if (row > 1 && !m_isProX)
 		return;
 
 	pos += m_pActualDisplay->getRowLength(row) * (row % 2) +
@@ -100,7 +103,7 @@ void DisplayHandler::sendToHardware(int row, int pos, char const *text,
     cnt++;
   }
   mm.evt.midi_message[mm.evt.size++] = 0xF7;
-  m_pMCU->SendMsg(&mm.evt, -1);
+  m_pUnit->sendMsg(&mm.evt, -1);
 }
 
 void DisplayHandler::switchTo(Display *pDisplay) {
@@ -134,7 +137,7 @@ void DisplayHandler::enableMCUMeter(int channel, bool enable) // channel is 1 ba
   mm.evt.midi_message[mm.evt.size++] = enable ? 0x03 : 0x01;
   mm.evt.midi_message[mm.evt.size++] = 0xF7;
   MCU_LOG("METER ch=%d enable=%d -> 0x20 sent", channel, (int)enable);
-  m_pMCU->SendMsg(&mm.evt, -1);
+  m_pUnit->sendMsg(&mm.evt, -1);
 
   //  F0 00 00 66 14 21 01 F7       : Vertical Line Meter
   MIDI_Message mm2;
@@ -144,7 +147,7 @@ void DisplayHandler::enableMCUMeter(int channel, bool enable) // channel is 1 ba
   mm2.evt.midi_message[mm2.evt.size++] = 0x21;
   mm2.evt.midi_message[mm2.evt.size++] = 0x01;
   mm2.evt.midi_message[mm2.evt.size++] = 0xF7;
-  m_pMCU->SendMsg(&mm2.evt, -1);
+  m_pUnit->sendMsg(&mm2.evt, -1);
 
 }
 

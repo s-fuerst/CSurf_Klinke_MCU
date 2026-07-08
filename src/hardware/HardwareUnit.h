@@ -56,6 +56,8 @@ class HardwareUnit {
 public:
   // pMCU is the owning logical surface (kept for legacy global code paths
   // during the migration; will be replaced by the listener only).
+  // Constructed: midiOut/midiIn + usleep (ctor body start) →
+  //   DisplayHandler (ctor body end). See HardwareUnit.cpp.
   HardwareUnit(int unitIndex, const UnitConfig &cfg, CSurf_MCU *pMCU,
                int *errStats);
   ~HardwareUnit();
@@ -73,6 +75,7 @@ public:
   void startInput(); // begin reading m_midiin (called after the splash/reset)
 
   void setListener(HardwareEventListener *l) { m_pListener = l; }
+  CSurf_MCU *surface() const { return m_pMCU; } // for DisplayHandler::getUnit()->surface()
 
   // --- outgoing, LOCAL indices (CSurf_MCU translates global->local first) ---
   void sendStripFader(int local, int value); // 0xE0 + local  (local 0..7)
