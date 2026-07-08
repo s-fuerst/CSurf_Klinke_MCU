@@ -117,7 +117,7 @@ public:
   VPOT_LED *getVPOT(int channel) { return &m_pVPOTS[channel]; }
   // getFaderPos this is the last pos send to Reaper, if the fader is updated
   // from Reaper, the new value is not reflected here
-  int getFaderPos(int channel) { return m_faderPos[channel]; }
+  int getFaderPos(int channel);
   void setMode(CCSManager::EMode mode);
   CCSMode *getActualMode() { return m_pActualMode; }
   DWORD getLastTime() { return m_lastTime; }
@@ -159,16 +159,11 @@ private:
   ReceiveMode *m_pReceiveMode;
   PlugMode *m_pPlugMode;
 
-  // all the following stuff is one based ([0] is only used for m_faderPos,
-  // their it's the master fader)
+  // all the following stuff is one based ([0] is the master fader)
   VPOT_LED *m_pVPOTS;
-  int m_stateRec[9];
-  int m_stateSolo[9];
-  int m_stateMute[9];
-  int m_stateSelect[9];
+  // per-strip LED dedup moved to HardwareUnit::m_led_state (WP-A Step 4)
   int m_stateFlip;
   int m_stateGlobalView;
-  int m_faderPos[9];
   char m_stateAssignmentDisplay[2];
 
   bool m_faderTouched[9];

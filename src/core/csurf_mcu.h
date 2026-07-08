@@ -332,7 +332,6 @@ private:
   unsigned int m_frameupd_lastrun;
   ScheduledAction *m_schedule;
 
-  int m_led_state[128];
   std::map<MediaTrack *, double> m_surface_volume;
   std::map<MediaTrack *, double> m_surface_pan;
 
@@ -447,6 +446,16 @@ public:
   DisplayHandler *getDisplayHandler() {
     return m_units.empty() ? NULL : m_units[0]->displayHandler();
   }
+
+  void sendStripFader(int channel, int value); // routes to owning unit (N=1: unit 0)
+  int  getFaderPos(int channel);              // reads unit's cached position
+
+  // WP-A translation helpers (N-generic plumbing, N=1 for now)
+  int  numUnits() const { return (int)m_units.size(); }
+  HardwareUnit *unitForChannel(int g) { return m_units[(g - 1) / 8]; } // g is 1-based
+  static int localOf(int g) { return (g - 1) % 8 + 1; }                 // 1-based→local 1..8
+  int  availableChannels() const { return numUnits() * 8; }
+  void broadcastMasterFader(int value); // all units setMasterFader(value)
 
   // these will be called by the host when states change etc
   void SetTrackListChange();

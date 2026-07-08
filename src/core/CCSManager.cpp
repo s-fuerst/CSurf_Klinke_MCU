@@ -43,11 +43,6 @@ CCSManager::CCSManager(CSurf_MCU *pMCU) {
   m_pVPOTS = new VPOT_LED[9];
   for (int i = 0; i < 9; i++) {
     m_pVPOTS[i].init(getMCU(), i);
-    m_stateRec[i] = LED_UNKNOWN;
-    m_stateSolo[i] = LED_UNKNOWN;
-    m_stateMute[i] = LED_UNKNOWN;
-    m_stateSelect[i] = LED_UNKNOWN;
-    m_faderPos[i] = -1;
     m_faderTouched[i] = false;
     m_vpotTouchedTill[i] = 0;
     m_faderTouchedTill[i] = 0;
@@ -435,52 +430,33 @@ void CCSManager::updateAssignmentDisplay() {
 void CCSManager::setFader(CCSMode* pCaller, int channel, int value) {
   CHECKMODEANDCHANNEL
 
-  if (m_faderPos[channel] != value) {
-		m_faderPos[channel] = value;
-		//		if (!m_faderTouched[channel]) {
-			if (channel == 0) {
-				m_pMCU->SendMidi(0xe8,value&0x7f,(value>>7)&0x7f,-1);
-			} else {
-				m_pMCU->SendMidi(0xdf + channel,value&0x7f,(value>>7)&0x7f,-1);
-			}
-		}
-	//  }
+  // dedup and send through CSurf_MCU -> HardwareUnit (WP-A Step 4)
+  m_pMCU->sendStripFader(channel, value);
 }
 
 void CCSManager::setRecLED(CCSMode *pCaller, int channel, int state) {
   CHECKMODEANDCHANNEL
 
-  if (m_stateRec[channel] != state) {
-    m_pMCU->SetLED(channel - 1, state);
-    m_stateRec[channel] = state;
-  }
+  // dedup is now in HardwareUnit::setLED (WP-A Step 4)
+  m_pMCU->SetLED(channel - 1, state);
 }
 
 void CCSManager::setSoloLED(CCSMode *pCaller, int channel, int state) {
   CHECKMODEANDCHANNEL
 
-  if (m_stateSolo[channel] != state) {
-    m_pMCU->SetLED(0x07 + channel, state);
-    m_stateSolo[channel] = state;
-  }
+  m_pMCU->SetLED(0x07 + channel, state);
 }
 
 void CCSManager::setMuteLED(CCSMode *pCaller, int channel, int state) {
   CHECKMODEANDCHANNEL
 
-  if (m_stateMute[channel] != state) {
-    m_pMCU->SetLED(0x0F + channel, state);
-    m_stateMute[channel] = state;
-  }
+  m_pMCU->SetLED(0x0F + channel, state);
 }
 
 void CCSManager::setSelectLED(CCSMode *pCaller, int channel, int state) {
   CHECKMODEANDCHANNEL
 
-  if (m_stateSelect[channel] != state) {
-    m_pMCU->SetLED(0x17 + channel, state);
-    m_stateSelect[channel] = state;
-  }
+  m_pMCU->SetLED(0x17 + channel, state);
 }
 
 void CCSManager::setFlipLED(CCSMode *pCaller, int state) {
@@ -599,6 +575,10 @@ void CCSManager::trackName(MediaTrack *trackid, const char *pName) {
 
 DisplayHandler *CCSManager::getDisplayHandler() {
   return m_pMCU->getDisplayHandler();
+}
+
+int CCSManager::getFaderPos(int channel) {
+  return m_pMCU->getFaderPos(channel);
 }
 
 int CCSManager::getElementsTouched() {

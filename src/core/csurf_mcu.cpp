@@ -867,11 +867,8 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
 
   m_pCCSManager->init();
 
-	for(int i=0; i < 128; i++) {
-		m_led_state[i] = LED_ON;
-		SetLED(i, LED_OFF);
-		m_led_state[i] = LED_OFF;
-	}
+  if (!m_units.empty())
+    m_units[0]->forceAllLEDsOff();
 
 
   m_pTransport = new Transport(this);
@@ -978,7 +975,7 @@ void CSurf_MCU::Run() {
 		if (IsFlagSet(CONFIG_FLAG_PROX) || IsFlagSet(CONFIG_FLAG_EMULATING_BLINKING))
 			EmulateBlinkingLEDs(now);
 
-    Tracks::instance()->adjust(g_mcu_list.GetSize() * 8);
+    Tracks::instance()->adjust(availableChannels());
 
     UpdateGlobalSoloLED();
     UpdateMetronomLED();
@@ -1150,12 +1147,19 @@ void CSurf_MCU::Run() {
   }
 
   if (m_midiin) {
-    m_midiin->SwapBufs(timeGetTime());
-    int l = 0;
-    MIDI_eventlist *list = m_midiin->GetReadBuf();
-    MIDI_event_t *evts;
-    while ((evts = list->EnumItems(&l)))
-      OnMIDIEvent(evts);
+    // WP-A: iterate over all units' MIDI inputs (N=1 for now).
+    // OnMIDIEvent still dispatches all parsers (strip + global); the per-strip
+    // parser move to HardwareUnit with listener-emit is deferred to a later pass.
+    for (size_t ui = 0; ui < m_units.size(); ui++) {
+      midi_Input *in = m_units[ui]->midiInput();
+      if (!in) continue;
+      in->SwapBufs(timeGetTime());
+      int l = 0;
+      MIDI_eventlist *list = in->GetReadBuf();
+      MIDI_event_t *evts;
+      while ((evts = list->EnumItems(&l)))
+        OnMIDIEvent(evts);
+    }
 
     if (m_button_states || m_mackie_arrow_states) {
       DWORD now = timeGetTime();
@@ -1208,42 +1212,16 @@ void CSurf_MCU::SendMidi(unsigned char status, unsigned char d1,
 }
 
 void CSurf_MCU::SetLED(int button_nr, int led_state) {
-	if (!IsFlagSet(CONFIG_FLAG_PROX) && led_state == LED_BLINK_BYPASSED)
-		led_state = LED_ON;
-	
-  if (m_led_state[button_nr] != led_state) {
-    SendMidi(0x90, button_nr, led_state, -1);
-    m_led_state[button_nr] = led_state;
-  }
+  // WP-A N=1: strip notes 0x00-0x1F and global notes 0x28+ both go to unit 0.
+  // WP-F: strip->owning unit, global->all main units.
+  if (!m_units.empty())
+    m_units[0]->setLED(button_nr, led_state);
 }
 
 void CSurf_MCU::EmulateBlinkingLEDs(DWORD now) {
-	static short lastNowMod2 = 0;
-	static short blinkSometimes = 0;
-
-	if (lastNowMod2 == (now >> 8) % 2)
-		return;
-
-	lastNowMod2 = !lastNowMod2;
-
-	unsigned char blinkLedState = LED_OFF;
-	if (lastNowMod2 == 1)
-		blinkLedState = LED_ON;
-	
-	for (int i = 0; i < 128; i++) {
-		if (m_led_state[i] == LED_BLINK) {
-			SendMidi(0x90, i, blinkLedState, -1);
-		}
-	}
-
-	if (++blinkSometimes == 12) {
-		blinkSometimes = 0;
-	}
-	for (int i = 0; i < 128; i++) {
-		if (m_led_state[i] == LED_BLINK_BYPASSED) {
-			SendMidi(0x90, i, blinkSometimes > 2, -1);
-		}
-	}
+  // WP-A N=1: blink emulation moved to HardwareUnit (per-unit LED state).
+  if (!m_units.empty())
+    m_units[0]->emulateBlinkingLEDs(now);
 }
 
 
@@ -1416,6 +1394,28 @@ bool CSurf_MCU::OnGlobalViewKeys(MIDI_event_t *evt) {
 void CSurf_MCU::SendMsg(MIDI_event_t *message, int frame_offset) {
   if (m_midiout)
     m_midiout->SendMsg(message, frame_offset);
+}
+
+void CSurf_MCU::sendStripFader(int channel, int value) {
+  // WP-A N=1: route to the only unit. channel 0 = master, 1..8 = strips.
+  // WP-F: channel 0 → broadcast to all units; 1..N*8 → owning unit.
+  if (m_units.empty()) return;
+  if (channel == 0)
+    m_units[0]->setMasterFader(value);
+  else
+    m_units[0]->sendStripFader(channel - 1, value);
+}
+
+int CSurf_MCU::getFaderPos(int channel) {
+  if (m_units.empty()) return 0;
+  if (channel == 0)
+    return m_units[0]->getFaderPos(8);
+  return m_units[0]->getFaderPos(channel - 1);
+}
+
+void CSurf_MCU::broadcastMasterFader(int value) {
+  for (size_t i = 0; i < m_units.size(); i++)
+    m_units[i]->setMasterFader(value);
 }
 
 bool CSurf_MCU::OnNameValue(MIDI_event_t *evt) {

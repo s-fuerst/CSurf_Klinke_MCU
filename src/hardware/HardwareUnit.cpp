@@ -17,7 +17,7 @@ HardwareUnit::HardwareUnit(int unitIndex, const UnitConfig &cfg,
                            CSurf_MCU *pMCU, int *errStats)
     : m_unitIndex(unitIndex), m_cfg(cfg), m_deviceId(cfg.isMain ? 0x14 : 0x15),
       m_midiout(NULL), m_midiin(NULL), m_display(NULL), m_pMCU(pMCU),
-      m_pListener(NULL) {
+      m_pListener(NULL), m_lastNowMod2(0), m_blinkSometimes(0) {
   for (int i = 0; i < 128; i++)
     m_led_state[i] = LED_OFF;
   for (int i = 0; i < 9; i++)
@@ -69,13 +69,17 @@ void HardwareUnit::startInput() {
 }
 
 void HardwareUnit::sendStripFader(int local, int value) {
-  if (m_midiout)
+  if (m_midiout && m_faderPos[local] != value) {
+    m_faderPos[local] = value;
     m_midiout->Send(0xe0 + local, value & 0x7f, (value >> 7) & 0x7f, -1);
+  }
 }
 
 void HardwareUnit::setMasterFader(int value) {
-  if (m_midiout)
+  if (m_midiout && m_faderPos[8] != value) {
+    m_faderPos[8] = value;
     m_midiout->Send(0xe8, value & 0x7f, (value >> 7) & 0x7f, -1);
+  }
 }
 
 void HardwareUnit::sendMidi(unsigned char status, unsigned char d1,
@@ -90,13 +94,51 @@ void HardwareUnit::sendMsg(MIDI_event_t *msg, int frame_offset) {
 }
 
 void HardwareUnit::setLED(int button_nr, int led_state) {
-  // filled in Step 4 (per-unit LED dedup + ProX quirk)
-  sendMidi(0x90, button_nr, led_state, -1);
+  // ProX quirk: LED_BLINK_BYPASSED is not supported on some hardware.
+  if (!isProX() && led_state == LED_BLINK_BYPASSED)
+    led_state = LED_ON;
+
+  // per-unit dedup (was CCSManager::m_stateRec/Solo/Mute/Select + CSurf_MCU::m_led_state)
+  if (m_led_state[button_nr] != led_state) {
+    sendMidi(0x90, button_nr, led_state, -1);
+    m_led_state[button_nr] = led_state;
+  }
 }
 
 void HardwareUnit::emulateBlinkingLEDs(DWORD now) {
-  // filled in Step 4 (per-unit blink emulation)
-  (void)now;
+  if (m_lastNowMod2 == (now >> 8) % 2)
+    return;
+
+  m_lastNowMod2 = !m_lastNowMod2;
+
+  unsigned char blinkLedState = LED_OFF;
+  if (m_lastNowMod2 == 1)
+    blinkLedState = LED_ON;
+
+  for (int i = 0; i < 128; i++) {
+    if (m_led_state[i] == LED_BLINK) {
+      sendMidi(0x90, i, blinkLedState, -1);
+    }
+  }
+
+  if (++m_blinkSometimes == 12) {
+    m_blinkSometimes = 0;
+  }
+  for (int i = 0; i < 128; i++) {
+    if (m_led_state[i] == LED_BLINK_BYPASSED) {
+      sendMidi(0x90, i, m_blinkSometimes > 2, -1);
+    }
+  }
+}
+
+void HardwareUnit::forceAllLEDsOff() {
+  // Send LED_OFF to all 128 notes and reset the internal cache.
+  // Replaces the old CSurf_MCU ctor trick:
+  //   for(i) { m_led_state[i]=LED_ON; SetLED(i,LED_OFF); m_led_state[i]=LED_OFF; }
+  for (int i = 0; i < 128; i++) {
+    m_led_state[i] = LED_ON;
+    setLED(i, LED_OFF);
+  }
 }
 
 void HardwareUnit::reset() {

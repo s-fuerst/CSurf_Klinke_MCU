@@ -89,6 +89,7 @@ public:
   // per-unit LED dedup + ProX quirk + blink emulation
   void setLED(int button_nr, int led_state);
   void emulateBlinkingLEDs(DWORD now);
+  void forceAllLEDsOff(); // send LED_OFF to all 128 notes, reset cache
 
   // reset (F0 00 00 66 <devId> 08 00 F7) + host-query handshake, per unit
   void reset();
@@ -105,6 +106,9 @@ private:
 
   int m_led_state[128]; // per-unit LED dedup
   int m_faderPos[9];    // local 0..7 strips + [8]=master (per-unit cache)
+
+  short m_lastNowMod2;
+  short m_blinkSometimes;
 
   CSurf_MCU *m_pMCU; // owning logical surface (migration shim)
   HardwareEventListener *m_pListener;
