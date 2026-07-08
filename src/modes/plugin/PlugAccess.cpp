@@ -277,6 +277,11 @@ PMParam *PlugAccess::getPMParam(ElementDesc *pElement) {
         ->getBank(pElement->m_bank)
         ->getPage(pElement->m_page)
         ->getVPot(pElement->m_channel);
+  case ElementDesc::DRYWET:
+  case ElementDesc::BYPASS:
+  case ElementDesc::UNKNOWN:
+  case ElementDesc::DELTA:
+    break;
   }
   ASSERT_M(false, "type is unknown");
   return NULL;

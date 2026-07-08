@@ -615,7 +615,7 @@ bool CSurf_MCU::OnSave(MIDI_event_t *evt) {
   if (m_midiout)
     m_midiout->Send(0x90, 0x50, 0x7f, -1);
   SendMessage(g_hwnd, WM_COMMAND,
-              IsModifierPressed(VK_SHIFT) | IsModifierPressed(VK_ALT)
+              (IsModifierPressed(VK_SHIFT) | IsModifierPressed(VK_ALT))
 							? ID_FILE_SAVEAS
 							: ID_FILE_SAVEPROJECT,
               0);
@@ -923,10 +923,10 @@ CSurf_MCU::~CSurf_MCU() {
 	// as DisplayHandler::sendDifferences). Full-line SysEx via CSurf_MCU::SendMsg()
 	// only delivers the first ~4 chars on the Linux JACK/MIDI path.
 	for (int pos = 0; pos < 55; pos += 4)
-		m_pDisplayHandler->sendToHardware(0, pos, "                        Goodbye                          " + pos, std::min(4, 55 - pos));
+		m_pDisplayHandler->sendToHardware(0, pos, &"                        Goodbye                          "[pos], std::min(4, 55 - pos));
 	for(int i=1; i<4; i++)
 		for (int pos = 0; pos < 55; pos += 4)
-			m_pDisplayHandler->sendToHardware(i, pos, "                                                       " + pos, std::min(4, 55 - pos));
+			m_pDisplayHandler->sendToHardware(i, pos, &"                                                       "[pos], std::min(4, 55 - pos));
 
 	// turn off the meter bridge
 	for(int i=0; i < 8; i++) {

@@ -31,7 +31,7 @@ void MultiTrackMeterBridge::updateMeterBridge(CSurf_MCU * pMCU) {
   for (x = 1; x < 9; x++) {
     MediaTrack *t;
 
-    if (t = Tracks::instance()->getMediaTrackForChannel(x)) {
+    if ((t = Tracks::instance()->getMediaTrackForChannel(x))) {
 			updateMeter(x, t, pMCU, decay, -1);
     }
   }

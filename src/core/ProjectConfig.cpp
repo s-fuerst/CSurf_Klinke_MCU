@@ -121,13 +121,13 @@ void ProjectConfig::saveExtensionConfig(
     if (to != -1) {
       if (to - from > 4000) {
         to = from + 4000;
-        ctx->AddLine(xmlDocString.substring(from, to).toRawUTF8());
+        ctx->AddLine("%s", xmlDocString.substring(from, to).toRawUTF8());
       } else {
-        ctx->AddLine(xmlDocString.substring(from, to - 1).toRawUTF8());
+        ctx->AddLine("%s", xmlDocString.substring(from, to - 1).toRawUTF8());
         from = to + 1;
       }
     } else {
-      ctx->AddLine(xmlDocString.substring(from).toRawUTF8());
+      ctx->AddLine("%s", xmlDocString.substring(from).toRawUTF8());
       break;
     }
   } while (to != -1); // to < found

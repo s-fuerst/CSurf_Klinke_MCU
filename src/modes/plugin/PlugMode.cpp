@@ -177,7 +177,7 @@ void PlugMode::handlePresetChange(int presetNr, int slot, int randomPresetNr) {
       return;
     }
     m_pPresetManager->deletePreset(fxGUID, presetNr);
-    if (presetNr = m_lastCalledPreset[fxGUID])
+    if ((presetNr = m_lastCalledPreset[fxGUID]))
       m_lastCalledPreset[fxGUID] = -1;
     return;
   }
@@ -319,6 +319,8 @@ bool PlugMode::vpotMoved(int channel, int numSteps) {
 bool PlugMode::vpotPressed(int channel, bool pressed) {
   if (pressed) {
     switch (m_pBankPagePlugSelector->getWhatToSelect()) {
+    case BankPagePlugSelector::NOTHING:
+      break;
     case BankPagePlugSelector::BANK:
       buttonSolo(channel, true);
       break;

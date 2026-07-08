@@ -125,6 +125,8 @@ void BankPagePlugSelector::updateDisplay() {
   PlugAccess *pPA = m_pPlugMode->getPlugAccess();
 
   switch (m_selectWhat) {
+  case NOTHING:
+    break;
   case BANK:
     writePlugBankPageTopLine();
     for (int i = 0; i < 8; i++) {

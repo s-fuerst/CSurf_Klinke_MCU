@@ -15,6 +15,7 @@ class CSurf_MCU;
 class MeterBridge {
 public:
   MeterBridge();
+  virtual ~MeterBridge() {}
   virtual bool alsoOnDisplay() { return false; }
   virtual void updateMeterBridge(CSurf_MCU *pMCU) = 0;
 

@@ -173,6 +173,9 @@ void DisplayHandler::addHeader(MIDI_Message *pmm, int row) {
 			pmm->evt.midi_message[pmm->evt.size++] = 0x67; //0x66
 			pmm->evt.midi_message[pmm->evt.size++] = 0x15; // 0x14
 		}
+    break;
+  case PROX:
+    break;
   }
 }
 

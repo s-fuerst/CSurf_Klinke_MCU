@@ -47,6 +47,8 @@ int TSNode::numChilds(EFilter filter) {
 
 bool TSNode::showTrack(MediaTrack *pMT, EFilter filter) {
   switch (filter) {
+  case OFF:
+    return true;
   case TCP:
     return (*((bool *)GetSetMediaTrackInfo(pMT, "B_SHOWINTCP", NULL)));
   case MCP:
@@ -569,7 +571,7 @@ MediaTrack *Tracks::getMediaTrackForChannel(int channel) {
 
 int Tracks::getChannelForMediaTrack(MediaTrack *pMT) {
   for (int i = 1; i < 9; i++) {
-    if (m_channelTracks[i] = pMT) {
+    if ((m_channelTracks[i] = pMT)) {
       return i;
     }
   }

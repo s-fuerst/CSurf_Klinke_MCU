@@ -37,11 +37,15 @@ void VPOT_LED::updateLEDs() {
   }
 
   switch (m_mode) {
+  case SINGLE:
+    break;
   case FROM_LEFT:
     byte3 += 2 << 4;
     break;
   case FROM_MIDDLE_POINT:
     byte3 += 1 << 4;
+    break;
+  case OFF:
     break;
   }
   if (m_track >

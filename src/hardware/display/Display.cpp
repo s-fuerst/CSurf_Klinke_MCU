@@ -58,7 +58,7 @@ void Display::changeText(int row, int pos, const char *text, int pad,
     m_ppForwardToDisplay[row]->changeText(m_pForwardToRow[row], pos,
                                           m_ppText[row], pad);
 
-  safe_delete(pCenteredText);
+  safe_delete_array(pCenteredText);
 }
 
 void Display::activate() { resendAllRows(); }

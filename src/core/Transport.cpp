@@ -26,11 +26,12 @@ void Transport::handleButton(Client button, bool buttonDown) {
     m_clientButtonPressed = button;
   else {
     m_clientButtonPressed = POSITION;
-    if (m_pMCU->IsLastButton(B_MARKER) || m_pMCU->IsLastButton(B_NUDGE))
+    if (m_pMCU->IsLastButton(B_MARKER) || m_pMCU->IsLastButton(B_NUDGE)) {
       if (button != m_client)
         setClient(button);
       else
         setClient(POSITION);
+    }
   }
 }
 
@@ -159,6 +160,8 @@ void Transport::rewindButton(bool down) {
       }
     }
     break;
+  case NUDGE:
+    break;
   }
 }
 
@@ -193,6 +196,8 @@ void Transport::forwardButton(bool down) {
         SendMessage(g_hwnd, WM_COMMAND, ID_MARKER_NEXT, 0);
       }
     }
+    break;
+  case NUDGE:
     break;
   }
 }

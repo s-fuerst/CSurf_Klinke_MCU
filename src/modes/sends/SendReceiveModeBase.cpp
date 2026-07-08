@@ -314,6 +314,8 @@ void SendReceiveModeBase::updateDisplayProX() {
 
 const char *SendReceiveModeBase::stringForESendInfo(ESendInfo sendInfo) {
   switch (sendInfo) {
+  case TRACK:
+    return "";
   case MUTE:
     return "B_MUTE";
   case PHASE:
