@@ -19,8 +19,10 @@
 #include "mcu_button_defines.h"
 #include "Region.h"
 #include "CCSManager.h"
+#include "HardwareUnit.h"
 #include "boost/signals2.hpp"
 #include "Version.h"   // generated: MCU_VERSION_STRING (v<version> build <count>)
+#include <vector>
 
 using boost::signals2::connection;
 
@@ -303,6 +305,11 @@ private:
   bool m_is_mcuex;
   int m_midi_in_dev, m_midi_out_dev;
   int m_offset, m_size;
+  std::vector<HardwareUnit *> m_units; // WP-A: N physical units (N=1 in WP-A)
+  // m_midiout/m_midiin are NON-OWNING cached pointers into m_units[0]'s
+  // ports. Ownership moved to HardwareUnit (WP-A Step 2). Kept so the many
+  // legacy call sites (MCUReset/Run/SetPlayState/...) stay unchanged; they
+  // will be removed once all sites route through the unit.
   midi_Output *m_midiout;
   midi_Input *m_midiin;
 

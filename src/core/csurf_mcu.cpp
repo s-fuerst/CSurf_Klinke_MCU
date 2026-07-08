@@ -826,11 +826,19 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
   m_midi_in_dev = indev;
   m_midi_out_dev = outdev;
   s_cfg_flags = cfgflags;
-  // create midi hardware access
-  m_midiin = m_midi_in_dev >= 0 ? CreateMIDIInput(m_midi_in_dev) : NULL;
-  m_midiout = m_midi_out_dev >= 0 ?
-		CreateThreadedMIDIOutput(CreateMIDIOutput(m_midi_out_dev, false, NULL)) :
-		NULL;
+
+  // WP-A: build the single hardware unit (opens MIDI + usleep + errStats).
+  // Cache its port pointers so legacy sites (MCUReset/Run/SetPlayState/...)
+  // stay unchanged — these are NON-OWNING (ownership in HardwareUnit dtor).
+  UnitConfig unitCfg;
+  unitCfg.midiInDev = m_midi_in_dev;
+  unitCfg.midiOutDev = m_midi_out_dev;
+  unitCfg.isMain = true;
+  unitCfg.model = IsFlagSet(CONFIG_FLAG_PROX) ? QConProX : Mackie;
+  HardwareUnit* pUnit = new HardwareUnit(0, unitCfg, this, errStats);
+  m_units.push_back(pUnit);
+  m_midiin  = pUnit->midiInput();
+  m_midiout = pUnit->midiOutput();
 
   m_pDisplayHandler = new DisplayHandler(this, m_is_mcuex ?
 																				 DisplayHandler::MCU_EX :
@@ -849,28 +857,14 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
   m_mcu_timedisp_lastforce = 0;
   m_frameupd_lastrun = 0;
 
-  if (errStats) {
-    if (m_midi_in_dev >= 0 && !m_midiin)
-      *errStats |= 1;
-    if (m_midi_out_dev >= 0 && !m_midiout)
-      *errStats |= 2;
-  }
-
-  // WORKAROUND: PipeWire JACK may crash (SIGSEGV in process_empty) when
-  // MIDI is sent immediately after opening a JACK MIDI output port.
-  // The data-loop thread accesses buffers that are not yet allocated.
-  if (m_midiout) {
-#ifdef _WIN32
-    //    Sleep(500);
-#else
-    usleep(200000);
-#endif
-  }
+  // NOTE: MIDI open + JACK usleep workaround + errStats now live in the
+  // HardwareUnit ctor above. WP-A preserves the original ordering:
+  // open → usleep → MCUReset(splash) → startInput.
 
   MCUReset();
 
-  if (m_midiin)
-    m_midiin->start();
+  if (!m_units.empty())
+    m_units[0]->startInput();
 
   m_schedule = NULL;
 
@@ -892,25 +886,10 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
 }
 
 CSurf_MCU::~CSurf_MCU() {
-  if (m_midiout) {
-		struct
-		{
-			MIDI_event_t evt;
-			char data[5];
-		}
-			poo;
-		poo.evt.frame_offset=0;
-		poo.evt.size=8;
-		poo.evt.midi_message[0]=0xF0;
-		poo.evt.midi_message[1]=0x00;
-		poo.evt.midi_message[2]=0x00;
-		poo.evt.midi_message[3]=0x66;
-		poo.evt.midi_message[4]=m_is_mcuex ? 0x15 : 0x14;
-		poo.evt.midi_message[5]=0x08;
-		poo.evt.midi_message[6]=0x00;
-		poo.evt.midi_message[7]=0xF7;
-		m_midiout->SendMsg(&poo.evt,-1);
-	}
+  // Send per-unit reset SysEx (F0 00 00 66 <devId> 08 00 F7).
+  // Moved to HardwareUnit; uses per-unit deviceId.
+  if (!m_units.empty())
+    m_units[0]->reset();
 
 
 	// turn all leds off and move faders to the bottom, etc.
@@ -946,8 +925,10 @@ CSurf_MCU::~CSurf_MCU() {
   delete m_pCCSManager;
 
   g_mcu_list.Delete(g_mcu_list.Find(this));
-	DELETE_ASYNC(m_midiout);
-  DELETE_ASYNC(m_midiin);
+  // WP-A: units own MIDI ports (dtors call DELETE_ASYNC on close).
+  for (size_t i = 0; i < m_units.size(); i++)
+    delete m_units[i];
+  m_units.clear();
   while (m_schedule != NULL) {
     ScheduledAction *temp = m_schedule;
     m_schedule = temp->next;
@@ -970,10 +951,12 @@ CSurf_MCU::~CSurf_MCU() {
 }
 
 void CSurf_MCU::CloseNoReset() {
-  delete m_midiout;
-  delete m_midiin;
-  m_midiout = 0;
-  m_midiin = 0;
+  // WP-A: units own MIDI ports now; close them through the unit.
+  for (size_t i = 0; i < m_units.size(); i++)
+    delete m_units[i];
+  m_units.clear();
+  m_midiout = NULL;
+  m_midiin = NULL;
 }
 
 void CSurf_MCU::Run() {
