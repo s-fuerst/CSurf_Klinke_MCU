@@ -806,8 +806,7 @@ void CSurf_MCU::OnMIDIEvent(MIDI_event_t *evt) {
       return;
 }
 
-CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
-                     int cfgflags, int *errStats)
+CSurf_MCU::CSurf_MCU(const SurfaceConfig &cfg, int *errStats)
 	: m_pActionsDialogComponent(NULL) {
   //_CrtSetBreakAlloc(6938);
   if (s_iNumInstances == 0) {
@@ -820,25 +819,50 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
 
   Tracks::instance()->setMCU(this);
 
-  m_is_mcuex = ismcuex;
-  m_offset = offset;
-  m_size = size;
-  m_midi_in_dev = indev;
-  m_midi_out_dev = outdev;
-  s_cfg_flags = cfgflags;
+  // Store the parsed config
+  m_surfaceConfig = cfg;
 
-  // WP-A: build the single hardware unit (opens MIDI + usleep + errStats).
-  // Cache its port pointers so legacy sites (MCUReset/Run/SetPlayState/...)
-  // stay unchanged — these are NON-OWNING (ownership in HardwareUnit dtor).
-  UnitConfig unitCfg;
-  unitCfg.midiInDev = m_midi_in_dev;
-  unitCfg.midiOutDev = m_midi_out_dev;
-  unitCfg.isMain = true;
-  unitCfg.model = IsFlagSet(CONFIG_FLAG_PROX) ? QConProX : Mackie;
-  HardwareUnit* pUnit = new HardwareUnit(0, unitCfg, this, errStats);
-  m_units.push_back(pUnit);
-  m_midiin  = pUnit->midiInput();
-  m_midiout = pUnit->midiOutput();
+  // Legacy compat shims (used by !m_is_mcuex gating, GetOffset/GetSize, etc.)
+  m_is_mcuex = false;
+  m_offset = 0;
+  m_size = availableChannels(); // = numUnits()*8, 8 for N=1
+  m_midi_in_dev = cfg.units[0].midiInDev;
+  m_midi_out_dev = cfg.units[0].midiOutDev;
+  s_cfg_flags = cfg.flags;
+
+  // WP-B: construct HardwareUnits for all configured units.
+  // Unit 1 (index 0) is always constructed even with MIDI None.
+  // Units 2–8: constructed only if real (non-(-1)) MIDI devices are assigned.
+  // Duplicate MIDI device checking: warn but don't block.
+  {
+    // Warn on duplicate MIDI device IDs across units
+    for (int i = 0; i < MAX_SURFACE_UNITS; i++) {
+      for (int j = i + 1; j < MAX_SURFACE_UNITS; j++) {
+        int inI = cfg.units[i].midiInDev, inJ = cfg.units[j].midiInDev;
+        int outI = cfg.units[i].midiOutDev, outJ = cfg.units[j].midiOutDev;
+        if (inI != -1 && inI == inJ)
+          MCU_LOG("WP-B: duplicate MIDI input device %d on units %d and %d", inI, i + 1, j + 1);
+        if (outI != -1 && outI == outJ)
+          MCU_LOG("WP-B: duplicate MIDI output device %d on units %d and %d", outI, i + 1, j + 1);
+      }
+    }
+
+    for (int i = 0; i < MAX_SURFACE_UNITS; i++) {
+      bool hasDevice = (cfg.units[i].midiInDev != -1 || cfg.units[i].midiOutDev != -1);
+      bool isUnit1 = (i == 0);
+
+      // Skip disabled units (both MIDI -1 and not a main unit)
+      if (!hasDevice && !isUnit1)
+        continue;
+
+      HardwareUnit *pUnit = new HardwareUnit(i, cfg.units[i], this, errStats);
+      m_units.push_back(pUnit);
+    }
+  }
+
+  // Cache port pointers from unit 1 (NON-OWNING, for legacy call sites)
+  m_midiin = (!m_units.empty()) ? m_units[0]->midiInput() : NULL;
+  m_midiout = (!m_units.empty()) ? m_units[0]->midiOutput() : NULL;
 
   m_pSplashDisplay = new Display(getDisplayHandler(), 2);
   m_pActionDisplay = new ActionsDisplay(getDisplayHandler());
@@ -855,20 +879,21 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
   m_frameupd_lastrun = 0;
 
   // NOTE: MIDI open + JACK usleep workaround + errStats now live in the
-  // HardwareUnit ctor above. WP-A preserves the original ordering:
-  // open → usleep → MCUReset(splash) → startInput.
+  // HardwareUnit ctor above.
 
   MCUReset();
 
-  if (!m_units.empty())
-    m_units[0]->startInput();
+  // Start MIDI input on all constructed units
+  for (size_t ui = 0; ui < m_units.size(); ui++)
+    m_units[ui]->startInput();
 
   m_schedule = NULL;
 
   m_pCCSManager->init();
 
-  if (!m_units.empty())
-    m_units[0]->forceAllLEDsOff();
+  // Force all LEDs off on all units
+  for (size_t ui = 0; ui < m_units.size(); ui++)
+    m_units[ui]->forceAllLEDsOff();
 
 
   m_pTransport = new Transport(this);
@@ -880,10 +905,9 @@ CSurf_MCU::CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
 }
 
 CSurf_MCU::~CSurf_MCU() {
-  // Send per-unit reset SysEx (F0 00 00 66 <devId> 08 00 F7).
-  // Moved to HardwareUnit; uses per-unit deviceId.
-  if (!m_units.empty())
-    m_units[0]->reset();
+  // Send per-unit reset SysEx (F0 00 00 66 <devId> 08 00 F7) to ALL units.
+  for (size_t ui = 0; ui < m_units.size(); ui++)
+    m_units[ui]->reset();
 
 
 	// turn all leds off and move faders to the bottom, etc.
@@ -1147,13 +1171,27 @@ void CSurf_MCU::Run() {
   }
 
   if (m_midiin) {
-    // WP-A: iterate over all units' MIDI inputs (N=1 for now).
-    // OnMIDIEvent still dispatches all parsers (strip + global); the per-strip
-    // parser move to HardwareUnit with listener-emit is deferred to a later pass.
+    // WP-B: iterate over all units' MIDI inputs.
+    // Units beyond index 0: input is dropped with a debug log until
+    // WP-C + WP-F widen the channel bounds and per-unit state.
     for (size_t ui = 0; ui < m_units.size(); ui++) {
       midi_Input *in = m_units[ui]->midiInput();
       if (!in) continue;
       in->SwapBufs(timeGetTime());
+      if (ui > 0) {
+        // Input gate: silently drop all events from extenders until WP-C+WP-F
+        int l = 0;
+        MIDI_eventlist *list = in->GetReadBuf();
+        MIDI_event_t *evts;
+        bool warned = false;
+        while ((evts = list->EnumItems(&l))) {
+          if (!warned) {
+            MCU_LOG("WP-B: dropping input from unit %zu (channel bounds not yet widened)", ui);
+            warned = true;
+          }
+        }
+        continue;
+      }
       int l = 0;
       MIDI_eventlist *list = in->GetReadBuf();
       MIDI_event_t *evts;
@@ -1517,46 +1555,125 @@ double CSurf_MCU::GetSurfacePan(int channel) {
   return GetSurfacePan(Tracks::instance()->getMediaTrackForChannel(channel));
 }
 
-static void parseParms(const char *str, int parms[NUM_DLG_PARAMS]) {
-  parms[0] = 0;
-  parms[1] = 8;
-  parms[2] = parms[3] = -1;
-  parms[4] = 0;
+// --- WP-B unit-selector dialog helpers ---
 
-  const char *p = str;
-  if (p) {
-    int x = 0;
-    while (x < NUM_DLG_PARAMS) {
-      while (*p == ' ')
-        p++;
-      if ((*p < '0' || *p > '9') && *p != '-')
-        break;
-      parms[x++] = atoi(p);
-      while (*p && *p != ' ')
-        p++;
+// Device type presets for the type combo.
+static const char *s_deviceTypeNames[] = {
+    "Mackie Main",          // 0 = UNIT_TYPE_MACKIE_MAIN
+    "Mackie Extender",      // 1 = UNIT_TYPE_MACKIE_EXT
+    "QCon ProX",            // 2 = UNIT_TYPE_PROX_MAIN
+    "QCon ProX Extender",   // 3 = UNIT_TYPE_PROX_EXT
+    "Disabled",             // 4 = UNIT_TYPE_DISABLED
+};
+
+// Every physical position can be main-capable or extender-only. The first
+// configured main unit may sit to the right of an extender.
+static const int s_validTypesAll[] = {0, 1, 2, 3, 4, -1};
+
+// Populate MIDI device combo with "None" + all device names.
+static void populateMidiCombo(HWND hwnd, int nDevices,
+    bool (*getNameFunc)(int, char*, int), int targetDevId) {
+  LRESULT idx = SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)"None");
+  SendMessage(hwnd, CB_SETITEMDATA, idx, -1);
+  for (int i = 0; i < nDevices; i++) {
+    char buf[512];
+    if (getNameFunc(i, buf, sizeof(buf))) {
+      LRESULT a = SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)buf);
+      SendMessage(hwnd, CB_SETITEMDATA, a, i);
+      if (i == targetDevId)
+        SendMessage(hwnd, CB_SETCURSEL, a, 0);
     }
   }
+  // If target is -1 (None), select first item
+  if (targetDevId == -1)
+    SendMessage(hwnd, CB_SETCURSEL, 0, 0);
+}
 
-  // since v0.8 we don't support extender, so i fix this setting to 0 offset and
-  // a banksize of 8
-  parms[0] = 0;
-  parms[1] = 8;
+// Populate device type combo with specific valid type indices.
+static void populateTypeCombo(HWND hwnd, int selectedType, const int *validTypes) {
+  for (int i = 0; validTypes[i] >= 0; i++) {
+    int ti = validTypes[i];
+    LRESULT a = SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)s_deviceTypeNames[ti]);
+    SendMessage(hwnd, CB_SETITEMDATA, a, ti);
+    if (ti == selectedType)
+      SendMessage(hwnd, CB_SETCURSEL, a, 0);
+  }
+}
+
+// Read current unit shown in the unit selector. Returns 0-based index.
+static int currentUnitIndex(HWND hwndDlg) {
+  LRESULT u = SendDlgItemMessage(hwndDlg, IDC_UNIT_SELECT, CB_GETCURSEL, 0, 0);
+  return (u == CB_ERR) ? 0 : (int)u;
+}
+
+// Save combos for the unit at index `i` into cfg.
+static void saveUnitFromDialog(HWND hwndDlg, SurfaceConfig *cfg, int i) {
+  LRESULT r = SendDlgItemMessage(hwndDlg, IDC_UNIT_TYPE, CB_GETCURSEL, 0, 0);
+  int typeIdx = UNIT_TYPE_DISABLED;
+  if (r != CB_ERR) {
+    typeIdx = (int)SendDlgItemMessage(hwndDlg, IDC_UNIT_TYPE, CB_GETITEMDATA, r, 0);
+    if (typeIdx < 0 || typeIdx > 4) typeIdx = UNIT_TYPE_DISABLED;
+  }
+  int inDev = -1;
+  r = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_GETCURSEL, 0, 0);
+  if (r != CB_ERR)
+    inDev = (int)SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_GETITEMDATA, r, 0);
+  int outDev = -1;
+  r = SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_GETCURSEL, 0, 0);
+  if (r != CB_ERR)
+    outDev = (int)SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_GETITEMDATA, r, 0);
+  cfg->units[i] = unitConfigFromType(typeIdx, inDev, outDev);
+}
+
+// Load combos for the unit at index `i` from cfg.
+static void loadUnitIntoDialog(HWND hwndDlg, const SurfaceConfig *cfg, int i,
+                               int nIn, int nOut) {
+  const UnitConfig &u = cfg->units[i];
+
+  // Is this unit disabled?
+  bool disabled = (u.midiInDev == -1 && u.midiOutDev == -1 && !u.isMain);
+
+  // Type combo: clear + repopulate with valid types for this unit
+  HWND typeCb = GetDlgItem(hwndDlg, IDC_UNIT_TYPE);
+  SendMessage(typeCb, CB_RESETCONTENT, 0, 0);
+  int typeIdx;
+  if (disabled) {
+    typeIdx = UNIT_TYPE_DISABLED;
+  } else {
+    typeIdx = (u.model == QConProX)
+        ? (u.isMain ? UNIT_TYPE_PROX_MAIN : UNIT_TYPE_PROX_EXT)
+        : (u.isMain ? UNIT_TYPE_MACKIE_MAIN : UNIT_TYPE_MACKIE_EXT);
+  }
+  populateTypeCombo(typeCb, typeIdx, s_validTypesAll);
+
+  // Show/hide MIDI combos based on disabled state
+  HWND inCb  = GetDlgItem(hwndDlg, IDC_COMBO2);
+  HWND outCb = GetDlgItem(hwndDlg, IDC_COMBO3);
+  int show = disabled ? SW_HIDE : SW_SHOW;
+  ShowWindow(inCb, show);
+  ShowWindow(outCb, show);
+  // Also hide/show the static labels for MIDI input/output
+  // (they have IDC_STATIC which is 0 — find by enumeration or use SWELL)
+  // For simplicity, we hide the combo itself; labels are small and harmless.
+
+  if (!disabled) {
+    // MIDI input
+    SendMessage(inCb, CB_RESETCONTENT, 0, 0);
+    populateMidiCombo(inCb, nIn, GetMIDIInputName, u.midiInDev);
+    // MIDI output
+    SendMessage(outCb, CB_RESETCONTENT, 0, 0);
+    populateMidiCombo(outCb, nOut, GetMIDIOutputName, u.midiOutDev);
+  }
 }
 
 static IReaperControlSurface *
 createFunc(const char *type_string, const char *configString, int *errStats) {
-  int parms[NUM_DLG_PARAMS];
-  parseParms(configString, parms);
-
-  // WP-A: always a single main unit (N=1). The extender register is dead;
-  // the legacy single-instance guard was removed as obsolete.
   (void)type_string;
-  return new CSurf_MCU(false, parms[0], parms[1],
-                       parms[2], parms[3], parms[4], errStats);
+  SurfaceConfig cfg = parseSurfaceConfig(configString);
+  return new CSurf_MCU(cfg, errStats);
 }
 
-// Reposition all controls to fill the actual dialog rect.
-// Called from WM_SIZE so it works regardless of initial SWELL scale.
+// Layout all controls to fill the dialog client area.
 static void layoutDlgControls(HWND hwndDlg) {
   RECT cr;
   GetClientRect(hwndDlg, &cr);
@@ -1568,7 +1685,7 @@ static void layoutDlgControls(HWND hwndDlg) {
     if (c) SetWindowPos(c, NULL, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
   };
 
-  // Enumerate static label windows in creation order (ID==0 for both)
+  // Enumerate static labels by creation order
   auto nthStatic = [&](int n) -> HWND {
     int count = 0;
     HWND ch = GetWindow(hwndDlg, GW_CHILD);
@@ -1579,138 +1696,217 @@ static void layoutDlgControls(HWND hwndDlg) {
     return NULL;
   };
 
-  const int mx = 8, label_w = 80, gap = 4;
-  const int combo_x = mx + label_w + gap;
-  const int combo_w = W - combo_x - mx;
-  const int row_h = 24, lbl_h = 18, check_h = 20, btn_w = 90, btn_h = 24;
+  const int mx = 8, gap = 4;
+  const int rowH = 22, comboH = 20, lblH = 18;
+  int y = mx;
 
-  // MIDI In row
-  HWND lbl1 = nthStatic(0);
-  if (lbl1) SetWindowPos(lbl1, NULL, mx, mx + 3, label_w, lbl_h, SWP_NOZORDER | SWP_NOACTIVATE);
-  move(IDC_COMBO2, combo_x, mx, combo_w, row_h);
+  // Row 0: Unit selector + Type combo
+  // Label order in resource: "Unit:" (static 0), IDC_UNIT_SELECT, "Type:" (static 1), IDC_UNIT_TYPE
+  const int unitLabelX = mx;
+  const int unitLabelW = 30;
+  const int unitComboX = unitLabelX + unitLabelW + 4;
+  const int unitComboW = 68;
+  const int typeLabelX = unitComboX + unitComboW + 12;
+  const int typeLabelW = 32;
+  const int typeComboX = typeLabelX + typeLabelW + 4;
+  const int typeComboW = 106;
+  HWND lblUnit = nthStatic(0);
+  if (lblUnit) SetWindowPos(lblUnit, NULL, unitLabelX, y + 3, unitLabelW, lblH, SWP_NOZORDER | SWP_NOACTIVATE);
+  move(IDC_UNIT_SELECT, unitComboX, y, unitComboW, comboH);
+  HWND lblType = nthStatic(1);
+  if (lblType) SetWindowPos(lblType, NULL, typeLabelX, y + 3, typeLabelW, lblH, SWP_NOZORDER | SWP_NOACTIVATE);
+  move(IDC_UNIT_TYPE, typeComboX, y, typeComboW, comboH);
+  y += rowH + gap;
 
-  // MIDI Out row
-  HWND lbl2 = nthStatic(1);
-  int row2_y = mx + row_h + gap;
-  if (lbl2) SetWindowPos(lbl2, NULL, mx, row2_y + 3, label_w, lbl_h, SWP_NOZORDER | SWP_NOACTIVATE);
-  move(IDC_COMBO3, combo_x, row2_y, combo_w, row_h);
+  // Row 1: MIDI input — "MIDI input:" (static 2) + IDC_COMBO2
+  const int midiLabelX = mx;
+  const int midiLabelW = 78;
+  const int midiComboX = midiLabelX + midiLabelW + 6;
+  const int midiComboW = std::max(120, std::min(170, W - midiComboX - mx));
+  HWND lblIn = nthStatic(2);
+  if (lblIn) SetWindowPos(lblIn, NULL, midiLabelX, y + 3, midiLabelW, lblH, SWP_NOZORDER | SWP_NOACTIVATE);
+  move(IDC_COMBO2, midiComboX, y, midiComboW, comboH);
+  y += rowH + gap;
 
-  // Checkboxes and buttons (MCUMAIN only)
-  if (GetDlgItem(hwndDlg, IDC_PROX)) {
-    int cy = mx + 2 * (row_h + gap) + gap;
-    int chk_w = W - 2 * mx;
-    move(IDC_PROX,              mx, cy, chk_w, check_h); cy += check_h + gap;
-    move(IDC_EMULATE_BLINKING,  mx, cy, chk_w, check_h); cy += check_h + gap;
-    move(IDC_KEYBOARD_MODIFIER, mx, cy, chk_w, check_h); cy += check_h + gap;
-    move(IDC_FAKE_TOUCH,        mx, cy, chk_w, check_h); cy += check_h + gap;
-    move(IDC_CHECK2,            mx, cy, W / 2, check_h);
-    move(BTN_OPEN_MANUAL, W - 2 * (btn_w + gap), H - btn_h - mx, btn_w, btn_h);
-    move(BTN_DONATE,      W - (btn_w + mx),       H - btn_h - mx, btn_w, btn_h);
-  }
+  // Row 2: MIDI output — "MIDI output:" (static 3) + IDC_COMBO3
+  HWND lblOut = nthStatic(3);
+  if (lblOut) SetWindowPos(lblOut, NULL, midiLabelX, y + 3, midiLabelW, lblH, SWP_NOZORDER | SWP_NOACTIVATE);
+  move(IDC_COMBO3, midiComboX, y, midiComboW, comboH);
+  y += rowH + gap + gap;
+
+  // Checkboxes
+  int chkW = W - 2 * mx;
+  int checkH = 16;
+  move(IDC_EMULATE_BLINKING,  mx, y, chkW, checkH); y += checkH;
+  move(IDC_KEYBOARD_MODIFIER, mx, y, chkW, checkH); y += checkH;
+  move(IDC_FAKE_TOUCH,        mx, y, chkW, checkH); y += checkH;
+  move(IDC_CHECK2,            mx, y, W / 2, checkH);
+
+  // Buttons at bottom
+  int btnW = 90, btnH = 20;
+  move(BTN_OPEN_MANUAL, W - 2 * (btnW + gap), H - btnH - mx, btnW, btnH);
+  move(BTN_DONATE,      W - (btnW + mx),       H - btnH - mx, btnW, btnH);
 
   InvalidateRect(hwndDlg, NULL, TRUE);
 }
+
+// Track which unit is currently shown (only one dialog open at a time).
+static int s_dlgCurrentUnit = 0;
 
 static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
                           LPARAM lParam) {
   switch (uMsg) {
   case WM_INITDIALOG: {
-    int parms[NUM_DLG_PARAMS];
-    parseParms((const char *)lParam, parms);
+    // Allocate SurfaceConfig on heap; store pointer in GWLP_USERDATA.
+    SurfaceConfig *cfg = new SurfaceConfig(parseSurfaceConfig((const char *)lParam));
+    SetWindowLongPtr(hwndDlg, GWLP_USERDATA, (LONG_PTR)cfg);
+    s_dlgCurrentUnit = 0;
 
-    int n = GetNumMIDIInputs();
-    LRESULT x = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_ADDSTRING, 0,
-                                   (LPARAM)"None");
-    SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_SETITEMDATA, x, -1);
-    x = SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_ADDSTRING, 0,
-                           (LPARAM)"None");
-    SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_SETITEMDATA, x, -1);
-    for (x = 0; x < n; x++) {
-      char buf[512];
-      if (GetMIDIInputName(x, buf, sizeof(buf))) {
-        LRESULT a = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_ADDSTRING, 0,
-                                       (LPARAM)buf);
-        SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_SETITEMDATA, a, x);
-        if (x == parms[2])
-          SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_SETCURSEL, a, 0);
-      }
-    }
-    n = GetNumMIDIOutputs();
-    for (x = 0; x < n; x++) {
-      char buf[512];
-      if (GetMIDIOutputName(x, buf, sizeof(buf))) {
-        LRESULT a = SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_ADDSTRING, 0,
-                                       (LPARAM)buf);
-        SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_SETITEMDATA, a, x);
-        if (x == parms[3])
-          SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_SETCURSEL, a, 0);
-      }
-    }
+    // Build MIDI device lists once
+    int nIn = GetNumMIDIInputs();
+    int nOut = GetNumMIDIOutputs();
 
-    if (parms[4] & CONFIG_FLAG_FADER_TOUCH_FAKE)
+    // Populate unit selector: "Unit 1".."Unit 8"
+    HWND unitSel = GetDlgItem(hwndDlg, IDC_UNIT_SELECT);
+    for (int i = 0; i < 8; i++) {
+      char buf[16];
+      sprintf(buf, "Unit %d", i + 1);
+      SendMessage(unitSel, CB_ADDSTRING, 0, (LPARAM)buf);
+    }
+    SendMessage(unitSel, CB_SETCURSEL, 0, 0); // Start with Unit 1
+
+    // Load Unit 1 into the combos
+    loadUnitIntoDialog(hwndDlg, cfg, 0, nIn, nOut);
+
+    // Hide IDC_PROX — ProX is now per-unit via device type combo.
+    HWND proxChk = GetDlgItem(hwndDlg, IDC_PROX);
+    if (proxChk) ShowWindow(proxChk, SW_HIDE);
+
+    // Remaining checkboxes from cfg->flags
+    if (cfg->flags & CONFIG_FLAG_FADER_TOUCH_FAKE)
       CheckDlgButton(hwndDlg, IDC_FAKE_TOUCH, BST_CHECKED);
-    if (parms[4] & CONFIG_FLAG_PROX)
-      CheckDlgButton(hwndDlg, IDC_PROX, BST_CHECKED);
-    if (parms[4] & CONFIG_FLAG_SWAPZOOM)
+    if (cfg->flags & CONFIG_FLAG_SWAPZOOM)
       CheckDlgButton(hwndDlg, IDC_CHECK2, BST_CHECKED);
-    if (parms[4] & CONFIG_FLAG_EMULATING_BLINKING)
+    if (cfg->flags & CONFIG_FLAG_EMULATING_BLINKING)
       CheckDlgButton(hwndDlg, IDC_EMULATE_BLINKING, BST_CHECKED);
-    if (parms[4] & CONFIG_FLAG_KEYBOARD_MODIFIER)
+    if (cfg->flags & CONFIG_FLAG_KEYBOARD_MODIFIER)
       CheckDlgButton(hwndDlg, IDC_KEYBOARD_MODIFIER, BST_CHECKED);
+
+    // Runtime size guard
+    RECT rc;
+    GetClientRect(hwndDlg, &rc);
+    if (rc.right < 268 || rc.bottom < 114) {
+      SetWindowPos(hwndDlg, NULL, 0, 0, 268, 130, SWP_NOMOVE | SWP_NOZORDER);
+    }
+
+    layoutDlgControls(hwndDlg);
   } break;
 
-  case WM_SIZE:
-    layoutDlgControls(hwndDlg);
-    break;
   case WM_COMMAND: {
+    // When unit selector changes, save old unit, load new unit.
+    if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == IDC_UNIT_SELECT) {
+      SurfaceConfig *cfg = (SurfaceConfig *)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
+      if (cfg) {
+        int nIn = GetNumMIDIInputs();
+        int nOut = GetNumMIDIOutputs();
+        // Save the unit we're leaving
+        saveUnitFromDialog(hwndDlg, cfg, s_dlgCurrentUnit);
+        // Select new unit
+        s_dlgCurrentUnit = currentUnitIndex(hwndDlg);
+        // Load it
+        loadUnitIntoDialog(hwndDlg, cfg, s_dlgCurrentUnit, nIn, nOut);
+      }
+    }
+    // When type combo changes, show/hide MIDI combos based on Disabled state.
+    if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == IDC_UNIT_TYPE) {
+      LRESULT r = SendDlgItemMessage(hwndDlg, IDC_UNIT_TYPE, CB_GETCURSEL, 0, 0);
+      int typeIdx = (r != CB_ERR)
+          ? (int)SendDlgItemMessage(hwndDlg, IDC_UNIT_TYPE, CB_GETITEMDATA, r, 0)
+          : -1;
+      bool disabled = (typeIdx == UNIT_TYPE_DISABLED);
+      ShowWindow(GetDlgItem(hwndDlg, IDC_COMBO2), disabled ? SW_HIDE : SW_SHOW);
+      ShowWindow(GetDlgItem(hwndDlg, IDC_COMBO3), disabled ? SW_HIDE : SW_SHOW);
+      // Reload MIDI combos if newly enabled (they were reset in loadUnitIntoDialog)
+      if (!disabled) {
+        SurfaceConfig *cfg = (SurfaceConfig *)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
+        if (cfg) {
+          int nIn = GetNumMIDIInputs();
+          int nOut = GetNumMIDIOutputs();
+          const UnitConfig &u = cfg->units[s_dlgCurrentUnit];
+          HWND inCb = GetDlgItem(hwndDlg, IDC_COMBO2);
+          SendMessage(inCb, CB_RESETCONTENT, 0, 0);
+          populateMidiCombo(inCb, nIn, GetMIDIInputName, u.midiInDev);
+          HWND outCb = GetDlgItem(hwndDlg, IDC_COMBO3);
+          SendMessage(outCb, CB_RESETCONTENT, 0, 0);
+          populateMidiCombo(outCb, nOut, GetMIDIOutputName, u.midiOutDev);
+        }
+      }
+    }
     switch (LOWORD(wParam)) {
     case BTN_DONATE:
       ShellExecute(NULL, "open",
                    "https://www.paypal.com/cgi-bin/"
                    "webscr?cmd=_s-xclick&hosted_button_id=LR54GZHGL6VHA",
                    NULL, NULL, SW_SHOWDEFAULT);
-			break;
+      break;
     case BTN_OPEN_MANUAL:
       ShellExecute(NULL, "open",
                    "https://bitbucket.org/"
                    "Klinkenstecker/csurf_klinke_mcu/downloads/mcu_klinke_manual.pdf",
                    NULL, NULL, SW_SHOWDEFAULT);
-			break;
+      break;
     }
   } break;
-  case WM_USER + 1024:
-    if (wParam > 1 && lParam) {
-      LRESULT indev = -1, outdev = -1, offs = 0, size = 8;
-      LRESULT r = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_GETCURSEL, 0, 0);
-      if (r != CB_ERR)
-        indev = SendDlgItemMessage(hwndDlg, IDC_COMBO2, CB_GETITEMDATA, r, 0);
-      r = SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_GETCURSEL, 0, 0);
-      if (r != CB_ERR)
-        outdev = SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_GETITEMDATA, r, 0);
-      int cflags = 0;
-      if (IsDlgButtonChecked(hwndDlg, IDC_FAKE_TOUCH))
-        cflags |= CONFIG_FLAG_FADER_TOUCH_FAKE;
-      if (IsDlgButtonChecked(hwndDlg, IDC_PROX))
-        cflags |= CONFIG_FLAG_PROX;
-      if (IsDlgButtonChecked(hwndDlg, IDC_CHECK2))
-        cflags |= CONFIG_FLAG_SWAPZOOM;
-      if (IsDlgButtonChecked(hwndDlg, IDC_EMULATE_BLINKING))
-        cflags |= CONFIG_FLAG_EMULATING_BLINKING;
-      if (IsDlgButtonChecked(hwndDlg, IDC_KEYBOARD_MODIFIER))
-        cflags |= CONFIG_FLAG_KEYBOARD_MODIFIER;
 
-      char tmp[512];
-      sprintf(tmp, "%ld %ld %ld %ld %d", (long)offs, (long)size, (long)indev, (long)outdev, cflags);
-      lstrcpyn((char *)lParam, tmp, wParam);
-    }
+  case WM_SIZE:
+    layoutDlgControls(hwndDlg);
     break;
+
+  case WM_USER + 1024: {
+    if (wParam > 1 && lParam) {
+      SurfaceConfig *cfg = (SurfaceConfig *)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
+      if (!cfg) break;
+
+      // Save the currently visible unit
+      int cur = currentUnitIndex(hwndDlg);
+      saveUnitFromDialog(hwndDlg, cfg, cur);
+
+      // Read flags from checkboxes (skip IDC_PROX — hidden)
+      cfg->flags = 0;
+      if (IsDlgButtonChecked(hwndDlg, IDC_FAKE_TOUCH))
+        cfg->flags |= CONFIG_FLAG_FADER_TOUCH_FAKE;
+      if (IsDlgButtonChecked(hwndDlg, IDC_CHECK2))
+        cfg->flags |= CONFIG_FLAG_SWAPZOOM;
+      if (IsDlgButtonChecked(hwndDlg, IDC_EMULATE_BLINKING))
+        cfg->flags |= CONFIG_FLAG_EMULATING_BLINKING;
+      if (IsDlgButtonChecked(hwndDlg, IDC_KEYBOARD_MODIFIER))
+        cfg->flags |= CONFIG_FLAG_KEYBOARD_MODIFIER;
+
+      // Derive PROX flag from unit 1's model
+      if (cfg->units[0].model == QConProX)
+        cfg->flags |= CONFIG_FLAG_PROX;
+      cfg->valid = true;
+
+      std::string s = serializeSurfaceConfig(*cfg);
+      lstrcpyn((char *)lParam, s.c_str(), (int)wParam);
+
+      delete cfg;
+      SetWindowLongPtr(hwndDlg, GWLP_USERDATA, 0);
+    }
+  } break;
+
+  case WM_DESTROY: {
+    SurfaceConfig *cfg = (SurfaceConfig *)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
+    delete cfg;
+    SetWindowLongPtr(hwndDlg, GWLP_USERDATA, 0);
+  } break;
   }
   return 0;
 }
 
 static HWND configFunc(const char *type_string, HWND parent,
                        const char *initConfigString) {
-  // WP-A: only the MCUMAIN dialog is used (extender register is dead).
+  // WP-B: only the MCUMAIN dialog is used (extender register is dead).
   (void)type_string;
   HWND ret = CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_SURFACEEDIT_MCUMAIN),
                                parent, dlgProc, (LPARAM)initConfigString);

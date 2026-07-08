@@ -27,6 +27,10 @@
 #define IDC_EDIT2_LBL                   1277
 #define IDC_EDIT2_LBL2                  1278
 
+// WP-B: unit selector + per-unit type combo
+#define IDC_UNIT_SELECT                 1200
+#define IDC_UNIT_TYPE                   1201
+
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED

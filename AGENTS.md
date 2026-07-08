@@ -399,6 +399,28 @@ reaper loads the .dll/.so/.dylib
   `GetDescString()`.
 - **No auto-format style is enforced;** match the surrounding file's style
   (roughly 2-space indent, `m_` member prefix, `p` pointer-arg prefix).
+- **Config format (WP-B):** `SurfaceConfig` (in `src/core/SurfaceConfig.h/cpp`)
+  handles two formats:
+  - **Legacy:** `"0 8 <midiIn> <midiOut> <flags>"` — parsed, never re-emitted.
+    Becomes unit 1 populated, units 2–8 at defaults (Mackie extender, MIDI None).
+  - **KLINKE2:** `"KLINKE2 flags=<N> <in>,<out>,<type> ..."` (8 fixed entries).
+    Type tokens: `mackie-main`, `mackie-ext`, `prox-main`, `prox-ext`.
+    `GetConfigString()` always emits `KLINKE2` with all 8 entries.
+  - `CONFIG_FLAG_PROX` is **derived** from unit 1's device type (ProX model),
+    not stored independently. The `IDC_PROX` checkbox in the dialog is hidden.
+  - `src/core/SurfaceConfig.h` exports: `parseSurfaceConfig()`,
+    `serializeSurfaceConfig()`, `makeDefaultSurfaceConfig()`,
+    `unitConfigFromType()`, `unitTypeToken()`.
+  - The dialog shows 8 fixed rows (Unit 1–8) each with: device type combo,
+    MIDI input combo, MIDI output combo. Unit 1 type combo is main-only
+    (Mackie Main / QCon ProX); Units 2–8 offer all four presets.
+  - `createFunc()` constructs `HardwareUnit` for every unit with real MIDI
+    devices (unit 1 always constructed even with MIDI None). Input from
+    units 2+ is dropped with a debug log until WP-C + WP-F widen channel
+    bounds.
+  - Dialog resources: `res.rc` and `res.rc_mac_dlg` (350×310).
+  - Unit type encoding (CB_SETITEMDATA and KLINKE2 tokens):
+    0 = mackie-main, 1 = mackie-ext, 2 = prox-main, 3 = prox-ext.
 
 ## 6. Known issues & open work (from `notes.org`, `whats_new.org`)
 - **Distribution:** ReaPack packaging is desired but not done.
@@ -438,6 +460,7 @@ src/
 ├── res_linux.cpp       Linux SWELL dialog resources
 ├── core/               plugin core + config + state
 │   ├── csurf_mcu.{cpp,h}    CSurf_MCU — main IReaperControlSurface impl
+│   ├── SurfaceConfig.{h,cpp}  multi-unit config model + KLINKE2 parser/serializer
 │   ├── CCSManager.{cpp,h}   mode dispatcher, LED/touch state
 │   ├── CCSMode.{cpp,h}      mode base class (CCSMode)
 │   ├── Tracks.{cpp,h}       track state (selection, mute/solo, level)

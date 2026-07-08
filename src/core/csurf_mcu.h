@@ -19,6 +19,7 @@
 #include "Region.h"
 #include "CCSManager.h"
 #include "HardwareUnit.h"
+#include "SurfaceConfig.h"
 #include "boost/signals2.hpp"
 #include "Version.h"   // generated: MCU_VERSION_STRING (v<version> build <count>)
 #include <vector>
@@ -293,6 +294,7 @@ private:
   bool m_is_mcuex;
   int m_midi_in_dev, m_midi_out_dev;
   int m_offset, m_size;
+  SurfaceConfig m_surfaceConfig;       // WP-B: parsed config (all 8 units)
   std::vector<HardwareUnit *> m_units; // WP-A: N physical units (N=1 in WP-A)
   // m_midiout/m_midiin are NON-OWNING cached pointers into m_units[0]'s
   // ports. Ownership moved to HardwareUnit (WP-A Step 2). Kept so the many
@@ -346,8 +348,7 @@ public:
   }
 
 public:
-  CSurf_MCU(bool ismcuex, int offset, int size, int indev, int outdev,
-            int cfgflags, int *errStats);
+  CSurf_MCU(const SurfaceConfig &cfg, int *errStats);
   virtual ~CSurf_MCU();
 
   void ScheduleAction(DWORD time, ScheduleFunc func);
@@ -480,12 +481,16 @@ public:
     char tmp[512];
     sprintf(tmp, " (dev %d,%d)", m_midi_in_dev, m_midi_out_dev);
     m_descspace.Append(tmp);
+    if (numUnits() > 1) {
+      sprintf(tmp, " [%d units]", numUnits());
+      m_descspace.Append(tmp);
+    }
     return m_descspace.Get();
   }
   const char *GetConfigString() // string of configuration data
   {
-    sprintf(m_configtmp, "%d %d %d %d %d", m_offset, m_size, m_midi_in_dev,
-            m_midi_out_dev, s_cfg_flags);
+    snprintf(m_configtmp, sizeof(m_configtmp), "%s",
+             serializeSurfaceConfig(m_surfaceConfig).c_str());
     return m_configtmp;
   }
 
