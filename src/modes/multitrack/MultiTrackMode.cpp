@@ -43,14 +43,8 @@ void MultiTrackMode::frameUpdate() {
 	
   updateEverything();
 
-  int msize = Tracks::instance()->getNumMediaTracksOnMCU();
-
-  if (Tracks::instance()->getGlobalOffset() >= msize &&
-      Tracks::instance()->getGlobalOffset() > 0) {
-    Tracks::instance()->setGlobalOffset(std::max(msize - 8, 0));
-    // update all of the sliders
+  if (Tracks::instance()->clampCurrentGlobalOffset()) {
     TrackList_UpdateAllExternalSurfaces();
-
     updateAssignmentDisplay();
   }
 }
@@ -62,6 +56,7 @@ void MultiTrackMode::activate() {
 }
 
 void MultiTrackMode::updateRecLEDs() {
+  // WP-F: widen to 1..Tracks::getNumberOfChannelStrips()
   for (int channel = 1; channel < 9; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
       int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
@@ -91,6 +86,7 @@ void MultiTrackMode::updateRecLEDs() {
 }
 
 void MultiTrackMode::updateSoloLEDs() {
+  // WP-F: widen to 1..Tracks::getNumberOfChannelStrips()
   for (int channel = 1; channel < 9; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
       int *pSolo = (int *)GetSetMediaTrackInfo(tr, "I_SOLO", NULL);
@@ -102,6 +98,7 @@ void MultiTrackMode::updateSoloLEDs() {
 }
 
 void MultiTrackMode::updateMuteLEDs() {
+  // WP-F: widen to 1..Tracks::getNumberOfChannelStrips()
   for (int channel = 1; channel < 9; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
       bool *pMute = (bool *)GetSetMediaTrackInfo(tr, "B_MUTE", NULL);
@@ -113,6 +110,7 @@ void MultiTrackMode::updateMuteLEDs() {
 }
 
 void MultiTrackMode::updateSelectLEDs() {
+  // WP-F: widen to 1..Tracks::getNumberOfChannelStrips()
   for (int channel = 1; channel < 9; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
       int *pSelect = (int *)GetSetMediaTrackInfo(tr, "I_SELECTED", NULL);
@@ -133,6 +131,7 @@ void MultiTrackMode::updateGlobalViewLED() {
 }
 
 void MultiTrackMode::updateFaders() {
+  // WP-F: widen to 1..Tracks::getNumberOfChannelStrips()
   for (int channel = 1; channel < 9; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
       if (!s_flipmode)
@@ -151,6 +150,7 @@ void MultiTrackMode::updateFaders() {
 }
 
 void MultiTrackMode::updateVPOTs() {
+  // WP-F: widen to 1..Tracks::getNumberOfChannelStrips()
   for (int channel = 1; channel < 9; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
 			if (s_flipmode)
@@ -208,65 +208,36 @@ bool MultiTrackMode::buttonFaderBanks(int button, bool pressed) {
   if (!pressed)
     return false;
 
-  int movesize;
+  int move;
   switch (button) {
   case B_BANK_DOWN:
     if (isModifierPressed(VK_SHIFT))
-      movesize = -8;
+      move = -Tracks::instance()->getLegacyPageStep();
     else
-      movesize = -m_pCCSManager->getMCU()->GetSize();
-    movesize += Tracks::instance()->getNumberOfAnchors();
+      move = -Tracks::instance()->getEffectiveBankStep();
     break;
   case B_CHANNEL_DOWN:
-    movesize = -1;
+    move = -1;
     break;
   case B_CHANNEL_UP:
-    movesize = 1;
+    move = 1;
     break;
   case B_BANK_UP:
     if (isModifierPressed(VK_SHIFT))
-      movesize = 8;
+      move = Tracks::instance()->getLegacyPageStep();
     else
-      movesize = m_pCCSManager->getMCU()->GetSize();
-    movesize -= Tracks::instance()->getNumberOfAnchors();
+      move = Tracks::instance()->getEffectiveBankStep();
     break;
   default:
     ASSERT_M(true, "unknown button");
-    break;
+    return false;
   }
 
-  // TODO: check this (g_mcu_list is always empty so maxfaderpos is zero, but
-  // what should this code do anyway?)
-  int maxfaderpos = 0;
-  for (int x = 0; x < g_mcu_list.GetSize(); x++) {
-    CSurf_MCU *item = g_mcu_list.Get(x);
-    if (item) {
-      if (item->GetOffset() + 8 > maxfaderpos)
-        maxfaderpos = item->GetOffset() + 8;
-    }
-  }
+  bool changed = Tracks::instance()->setGlobalOffset(
+      move + Tracks::instance()->getGlobalOffset());
 
-  int msize = Tracks::instance()->getNumMediaTracksOnMCU();
-  if (movesize > 1 &&
-      (Tracks::instance()->getGlobalOffset() + maxfaderpos >= msize))
-    return true;
-
-  if (movesize > 1 &&
-      (Tracks::instance()->getGlobalOffset() + movesize + 1 > msize))
-    return true;
-
-  Tracks::instance()->setGlobalOffset(movesize +
-                                      Tracks::instance()->getGlobalOffset());
-
-  if (Tracks::instance()->getGlobalOffset() >= msize)
-    Tracks::instance()->setGlobalOffset(msize - 1);
-  if (Tracks::instance()->getGlobalOffset() < 0)
-    Tracks::instance()->setGlobalOffset(0);
-
-  // update all of the sliders
-  TrackList_UpdateAllExternalSurfaces();
-
-  //  updateAssignmentDisplay();
+  if (changed)
+    TrackList_UpdateAllExternalSurfaces();
 
   return true;
 }
@@ -453,6 +424,7 @@ void MultiTrackMode::trackListChange() { updateEverything(); }
 
 void MultiTrackMode::trackVolume(int id, double volume) {
   MIDIOUT
+  // WP-F: widen to id < Tracks::getNumberOfChannelStrips()
   if (id >= 0 && id < 9) {
     if (s_flipmode) {
       unsigned char volch = volToChar(volume);
@@ -472,6 +444,7 @@ void MultiTrackMode::trackVolume(int id, double volume) {
 
 void MultiTrackMode::trackPan(int id, double pan) {
   MIDIOUT
+  // WP-F: widen to id < Tracks::getNumberOfChannelStrips()
   if (id >= 0 && id < 9) {
     if (!s_flipmode) {
       unsigned char volch = panToChar(pan);
@@ -484,6 +457,7 @@ void MultiTrackMode::trackPan(int id, double pan) {
 }
 
 void MultiTrackMode::updateDisplay() {
+  // WP-F: widen to 1..Tracks::getNumberOfChannelStrips()
   for (int x = 1; x < 9; x++) {
     MediaTrack *tr = getMediaTrackForChannel(x);
     if (tr) {

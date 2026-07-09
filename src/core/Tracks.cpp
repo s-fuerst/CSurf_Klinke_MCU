@@ -8,6 +8,7 @@
 #include <boost/foreach.hpp>
 #include <boost/bind.hpp>
 #include "McuAssert.h"
+#include "McuDebugLog.h"
 #include "MultiTrackOptions.h"
 #include "MultiTrackOptions2.h"
 
@@ -395,7 +396,7 @@ Tracks *Tracks::instance() {
 
 Tracks::Tracks(void)
     : m_pCurrentBaseTrack(NULL), m_pOptions1(NULL), m_pOptions2(NULL),
-      m_globalOffset(0) {
+      m_globalOffset(0), m_numMCUChannels(8) {
   m_selectedTracks.clear();
   m_pAllTracksBefore = new tTrackSet();
   m_pAllTracksNow = new tTrackSet();
@@ -435,7 +436,7 @@ void Tracks::selectionChanged() {
 
 void Tracks::moveSelectedTrack2MCU() {
   // without this check we will never leave the while loop below
-  if (getNumberOfAnchors() == 8)
+  if (getNumberOfActiveAnchors() == m_numMCUChannels)
     return;
 
   MediaTrack *trackid = getSelectedSingleTrack();
@@ -447,7 +448,10 @@ void Tracks::moveSelectedTrack2MCU() {
 			MediaTrack *newParent = Tracks::instance()->getParentForMediaTrack(trackid);
 			Tracks::instance()->moveBaseTrack(newParent);
       int tracknr = MediaTrackInfo::getTrackNr(trackid);
-      int numChannels = 8 - Tracks::instance()->getNumberOfAnchors();
+      int numChannels = m_numMCUChannels - Tracks::instance()->getNumberOfActiveAnchors();
+
+      if (numChannels <= 0)
+        return;
 
       int originalOffset = Tracks::instance()->getGlobalOffset();
       Tracks::instance()->setGlobalOffset(0);
@@ -553,25 +557,24 @@ MediaTrack *Tracks::getSelectedSingleTrack(bool includeMaster) {
 
 void Tracks::createChannelTrackVector() {
   m_channelTracks.clear();
-  m_channelTracks.resize(9);
+  m_channelTracks.resize(m_numMCUChannels + 1);
   m_channelTracks[0] = CSurf_TrackFromID(0, false);
 
-  for (int i = 1; i < 9; i++) {
+  for (int i = 1; i <= m_numMCUChannels; i++) {
     m_channelTracks[i] = findMediaTrackForChannel(i);
   }
-  //  TrackList_UpdateAllExternalSurfaces();
 }
 
 MediaTrack *Tracks::getMediaTrackForChannel(int channel) {
-  if (channel < 9)
+  if (channel >= 0 && channel <= m_numMCUChannels)
     return m_channelTracks[channel];
   else
     return NULL;
 }
 
 int Tracks::getChannelForMediaTrack(MediaTrack *pMT) {
-  for (int i = 1; i < 9; i++) {
-    if ((m_channelTracks[i] = pMT)) {
+  for (int i = 1; i <= m_numMCUChannels; i++) {
+    if (m_channelTracks[i] == pMT) {
       return i;
     }
   }
@@ -609,22 +612,24 @@ std::vector<MediaTrack *> Tracks::getChildredForMediaTrack(MediaTrack * pMT) {
 
 
 MediaTrack *Tracks::findMediaTrackForChannel(int channel) {
+  if (channel < 1 || channel > m_numMCUChannels)
+    return NULL;
+
   // find anchor and count anchors with lower channel
   int numAnchorsWithLowerChannel = 0;
   if (Tracks::instance()->getOptions()->isOptionSetTo(MTO_DISABLE_ANCHORS,
                                                       MTOA_ANCHORS_YES)) {
     BOOST_FOREACH (tTrackStates::value_type &v, m_trackStates) {
       int anchor = v.second->getAnchorChannel();
-      if (anchor == channel)
+      // only active anchors (within the current surface range) are direct hits
+      if (anchor == channel && anchor <= m_numMCUChannels)
         return v.second->getMediaTrack();
-      else if (anchor != 0 && anchor < channel)
+      else if (anchor >= 1 && anchor < channel && anchor <= m_numMCUChannels)
         numAnchorsWithLowerChannel++;
     }
   }
 
-  // TODO: this can't work with extenders, because the m_pMCU offset will be set
-  // multiple times (each for every unit)
-  int channelWithOffset = channel + m_pMCU->GetOffset() +
+  int channelWithOffset = channel +
                           Tracks::instance()->getGlobalOffset() -
                           numAnchorsWithLowerChannel;
 
@@ -715,7 +720,12 @@ void Tracks::setDisplayHandler(DisplayHandler *pDH) {
 }
 
 void Tracks::adjust(int numMCUChannels) {
-  updateTrackStates(numMCUChannels);
+  int clampedChannels = std::max(8, std::min(numMCUChannels, 64));
+  if (m_numMCUChannels != clampedChannels) {
+    m_numMCUChannels = clampedChannels;
+    setGlobalOffset(m_globalOffset);  // WP-D: clamp to new valid range
+  }
+  updateTrackStates(m_numMCUChannels);
 
   if (m_pLastSelectedSingleTrack != getSelectedSingleTrack()) {
     m_pLastSelectedSingleTrack = getSelectedSingleTrack();
@@ -887,6 +897,9 @@ int Tracks::calcTCPSizeInPixel() {
 }
 
 void Tracks::updateTrackStates(int numMCUChannels) {
+  if (numMCUChannels <= 0)
+    return;
+
   BOOST_FOREACH (tTrackStates::value_type &v, m_trackStates) {
     if (!v.second->getMediaTrack())
       continue;
@@ -946,6 +959,22 @@ int Tracks::getNumberOfAnchors() {
   int numAnchors = 0;
   BOOST_FOREACH (tTrackStates::value_type &v, m_trackStates) {
     if (v.second->getAnchorChannel() > 0)
+      numAnchors++;
+  }
+
+  return numAnchors;
+}
+
+int Tracks::getNumberOfActiveAnchors(int maxChannel /* = -1 */) {
+	if (Tracks::instance()->getOptions()->isOptionSetTo(MTO_DISABLE_ANCHORS,
+																																	MTOA_ANCHORS_NO))
+		return 0;
+
+  int effectiveMax = (maxChannel < 0) ? m_numMCUChannels : maxChannel;
+  int numAnchors = 0;
+  BOOST_FOREACH (tTrackStates::value_type &v, m_trackStates) {
+    int anchor = v.second->getAnchorChannel();
+    if (anchor >= 1 && anchor <= effectiveMax)
       numAnchors++;
   }
 
@@ -1173,10 +1202,11 @@ bool Tracks::moveTrackToLeftMostChannel(MediaTrack *pMT) {
     pMTForChannel = findMediaTrackForChannel(++childWithTrack);
     if (pMTForChannel == pMT) {
       int numAnchors = 0;
-      for (int j = 1; j < childWithTrack; j++) {
-        if (getTrackStateForMediaTrack(findMediaTrackForChannel(j)) &&
-						getTrackStateForMediaTrack(findMediaTrackForChannel(j))
-                    ->getAnchorChannel() > 0 &&
+      for (int j = 1; j < childWithTrack && j <= m_numMCUChannels; j++) {
+        MediaTrack *pAnchorMT = findMediaTrackForChannel(j);
+        TrackState *pAnchorTS = getTrackStateForMediaTrack(pAnchorMT);
+        if (pAnchorTS && pAnchorTS->getAnchorChannel() > 0 &&
+            pAnchorTS->getAnchorChannel() <= m_numMCUChannels &&
             m_pOptions1->isOptionSetTo(MTO_DISABLE_ANCHORS, MTOA_ANCHORS_YES)) {
           numAnchors++;
         }
@@ -1192,19 +1222,78 @@ bool Tracks::moveTrackToLeftMostChannel(MediaTrack *pMT) {
   return false;
 }
 
-void Tracks::setGlobalOffset(int globalOffset) {
-  m_globalOffset = globalOffset;
+bool Tracks::setGlobalOffset(int globalOffset) {
+  int clamped = clampGlobalOffset(globalOffset);
+  if (m_globalOffset == clamped)
+    return false;
+
+  m_globalOffset = clamped;
   createChannelTrackVector();
   updateTrackStates(getNumberOfChannelStrips());
+  return true;
+}
+
+int Tracks::getEffectiveBankStep() {
+  int activeAnchors = getNumberOfActiveAnchors();
+  return std::max(1, m_numMCUChannels - activeAnchors);
+}
+
+int Tracks::getLegacyPageStep() {
+  int activeAnchors = getNumberOfActiveAnchors(8);
+  return std::max(1, 8 - activeAnchors);
+}
+
+int Tracks::getMaxUsefulGlobalOffset() {
+  int activeAnchors = getNumberOfActiveAnchors();
+  int freeSlots = std::max(1, m_numMCUChannels - activeAnchors);
+  return std::max(0, getNumMediaTracksOnMCU() - freeSlots);
+}
+
+int Tracks::clampGlobalOffset(int offset) {
+  if (offset < 0)
+    return 0;
+
+  int maxOffset = getMaxUsefulGlobalOffset();
+  if (offset > maxOffset)
+    return maxOffset;
+
+  return offset;
+}
+
+bool Tracks::clampCurrentGlobalOffset() {
+  int clamped = clampGlobalOffset(m_globalOffset);
+  if (clamped != m_globalOffset) {
+    return setGlobalOffset(clamped);
+  }
+  return false;
 }
 
 int Tracks::getNumMediaTracksTotal() { return CSurf_NumTracks(false); }
 
 int Tracks::getNumberOfChannelStrips() {
-  // TODO extender: implement this
-  return 8;
+  return m_numMCUChannels;
 }
 
 bool Tracks::isTrackInFilter(MediaTrack *pMT) {
   return TSNode::showTrack(pMT, getFilter());
+}
+
+void Tracks::dumpMappingState() {
+  MCU_LOG("=== Tracks mapping state ===");
+  MCU_LOG("  numMCUChannels = %d", m_numMCUChannels);
+  MCU_LOG("  globalOffset = %d", m_globalOffset);
+  MCU_LOG("  channelTracks size = %zu", m_channelTracks.size());
+  MCU_LOG("  total anchors = %d", getNumberOfAnchors());
+  MCU_LOG("  active anchors = %d", getNumberOfActiveAnchors());
+
+  for (int c = 0; c <= m_numMCUChannels; c++) {
+    MediaTrack *pMT = getMediaTrackForChannel(c);
+    if (pMT) {
+      int trackNr = MediaTrackInfo::getTrackNr(pMT);
+      String name = MediaTrackInfo::getTrackName(pMT, true);
+      MCU_LOG("  ch[%d] = track %d \"%s\"", c, trackNr, name.toRawUTF8());
+    } else {
+      MCU_LOG("  ch[%d] = (empty)", c);
+    }
+  }
 }

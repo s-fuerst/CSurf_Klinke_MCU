@@ -7,6 +7,12 @@
 >
 > **This is a plan, not code.** No source changes have been made.
 >
+> **Revised 2026-07-09** per
+> `ai-docs/extender-wp-c-critical-review.md`: active-anchor infrastructure now
+> precedes offset removal, `adjust()` explicitly rebuilds the channel vector
+> when the runtime width changes, and the exit criteria cover the N>1
+> data-flow gaps found in review.
+>
 > WP-C is the first real logical-channel-width change. WP-A extracted the
 > physical-unit layer. WP-B can persist/configure up to 8 rows. WP-C makes the
 > `Tracks` singleton understand the logical surface width (`N * 8`) instead of
@@ -105,8 +111,22 @@ state and display/mixer updates driven by `Tracks`.
   of hard-coded `8`.
 - **Change `adjust(int numMCUChannels)`:**
   - clamp to at least `8` and at most `64` for now;
-  - if the value changes, store it and rebuild `m_channelTracks`;
+  - if the value changes, store it and explicitly call
+    `createChannelTrackVector()`;
   - continue to call `updateTrackStates(m_numMCUChannels)`.
+- **Required sequence inside `adjust()`:**
+
+  ```cpp
+  int clampedChannels = std::max(8, std::min(numMCUChannels, 64));
+  if (m_numMCUChannels != clampedChannels) {
+    m_numMCUChannels = clampedChannels;
+    createChannelTrackVector();
+  }
+  updateTrackStates(m_numMCUChannels);
+  ```
+
+  `updateTrackStates()` reads the mapping through `getMediaTrackForChannel()`;
+  without the rebuild, channels above the old vector size stay unmapped.
 - **N=1 checkpoint:** `m_numMCUChannels == 8`; behavior unchanged.
 
 ### Step 2 - Resize `m_channelTracks` dynamically
@@ -128,32 +148,7 @@ state and display/mixer updates driven by `Tracks`.
   - return `-1` if not mapped.
 - **N=1 checkpoint:** vector size remains 9; reverse lookup bug is fixed.
 
-### Step 3 - Remove per-MCU offset from track mapping
-
-**Goal:** logical channel `g` maps directly to slot `g` of the combined
-surface. No `CSurf_MCU::GetOffset()` is involved.
-
-- **Files:** `src/core/Tracks.cpp`.
-- **Change `findMediaTrackForChannel(int channel)`:**
-  - remove `m_pMCU->GetOffset()` from `channelWithOffset`;
-  - new formula:
-
-    ```cpp
-    int channelWithOffset =
-        channel + m_globalOffset - numActiveAnchorsWithLowerChannel;
-    ```
-
-  - count lower anchors only when they are active in the current range
-    (`1 <= anchor <= m_numMCUChannels`).
-- **Out-of-range anchors:** if a track has `anchor > m_numMCUChannels`, ignore
-  it for the current mapping but do not clear or clamp it.
-- **Keep `m_pMCU` for now:** it is still used by other `Tracks` methods
-  (`updateVUactive()` calls `m_pMCU->SomethingSoloed()`, editor code uses
-  `Tracks::getMCU()`). Removing that pointer is not required for WP-C.
-- **N=1 checkpoint:** with `m_globalOffset` unchanged, mapping should match
-  today exactly for channels 1..8.
-
-### Step 4 - Split total anchors from active anchors
+### Step 3 - Split total anchors from active anchors
 
 **Goal:** calculations that depend on visible surface capacity must count only
 anchors whose slot exists right now.
@@ -165,13 +160,42 @@ anchors whose slot exists right now.
   - if anchors are disabled, return `0`;
   - default `maxChannel` to `m_numMCUChannels`;
   - count anchors with `1 <= anchor <= maxChannel`.
-- **Update internal capacity logic:**
-  - `moveSelectedTrack2MCU()` uses
-    `m_numMCUChannels - getNumberOfActiveAnchors()`;
-  - bank-size-sensitive logic in `Tracks` uses active anchors, not total
-    anchors.
+- **N=1 identity guarantee:** because current N=1 UI only creates anchors in
+  slots `1..8`, `getNumberOfActiveAnchors()` and `getNumberOfAnchors()` return
+  the same value under a normal single-unit project.
 - **Do not destroy persisted values:** anchor `17` is inactive on an 8-channel
   setup and becomes active again when the surface has at least 17 channels.
+
+### Step 4 - Remove per-MCU offset from track mapping
+
+**Goal:** logical channel `g` maps directly to slot `g` of the combined
+surface. No `CSurf_MCU::GetOffset()` is involved.
+
+- **Files:** `src/core/Tracks.cpp`.
+- **Change `findMediaTrackForChannel(int channel)`:**
+  - return `NULL` immediately when `channel < 1` or
+    `channel > m_numMCUChannels`;
+  - remove `m_pMCU->GetOffset()` from `channelWithOffset`;
+  - new formula:
+
+    ```cpp
+    int channelWithOffset =
+        channel + m_globalOffset - numActiveAnchorsWithLowerChannel;
+    ```
+
+  - count lower anchors only when they are active in the current range
+    (`1 <= anchor <= m_numMCUChannels`).
+- **Filter anchor direct hits too:** the early `anchor == channel` return must
+  only fire for active anchors. `findMediaTrackForChannel(channel >
+  m_numMCUChannels)` must return `NULL` even if a persisted anchor uses that
+  channel.
+- **Out-of-range anchors:** if a track has `anchor > m_numMCUChannels`, ignore
+  it for the current mapping but do not clear or clamp it.
+- **Keep `m_pMCU` for now:** it is still used by other `Tracks` methods
+  (`updateVUactive()` calls `m_pMCU->SomethingSoloed()`, editor code uses
+  `Tracks::getMCU()`). Removing that pointer is not required for WP-C.
+- **N=1 checkpoint:** with `m_globalOffset` unchanged, mapping should match
+  today exactly for channels 1..8.
 
 ### Step 5 - Make selected-track-follow N-aware
 
@@ -184,7 +208,10 @@ current surface width minus active anchors.
     `m_numMCUChannels`;
   - replace `int numChannels = 8 - getNumberOfAnchors();` with
     `int numChannels = m_numMCUChannels - getNumberOfActiveAnchors();`;
-  - if `numChannels <= 0`, return early to avoid an infinite loop.
+  - if `numChannels <= 0`, return early to avoid an infinite loop;
+  - the `numChannels <= 0` guard must run before `setGlobalOffset(0)`, so a
+    fully anchored or otherwise invalid effective capacity does not reset the
+    current bank as a side effect.
 - **Verify:** selecting a track outside the visible bank moves the bank by 8
   for N=1, by 16 for two configured units, etc.
 
@@ -196,26 +223,30 @@ logical surface.
 - **Files:** `src/core/Tracks.cpp`.
 - **Current code already accepts `numMCUChannels`:**
   `updateTrackStates(int numMCUChannels)` loops `1..numMCUChannels`.
-- **Verify after Steps 1-3:**
+- **Verify after Steps 1-4:**
   - `getMediaTrackForChannel(c)` now works for channels above 8;
   - `setIsOnMCUChannel(c)` receives absolute slots `1..N*8`;
   - TCP/MCP adjustment based on `isOnMCU()` can include tracks shown on
     extender slots.
 - **Add guards:** if `numMCUChannels <= 0`, no track should be marked on MCU.
 
-### Step 7 - Make `moveTrackToLeftMostChannel()` bounded and anchor-aware
+### Step 7 - Make `moveTrackToLeftMostChannel()` anchor-aware
 
-**Goal:** avoid accidental assumptions that `findMediaTrackForChannel()` will
-eventually return `NULL` at an 8-channel boundary.
+**Goal:** preserve the existing track-search semantics while making the offset
+calculation respect only active anchors.
 
 - **Files:** `src/core/Tracks.cpp`.
 - **Review loop:**
   - it increments `childWithTrack` and calls `findMediaTrackForChannel()`;
   - keep the semantic goal: move the selected track to logical slot 1 of the
     current bank;
-  - bound any search that depends on visible slots to `m_numMCUChannels`;
-  - use `getNumberOfActiveAnchors()` where the code currently derives an
-    offset from anchor count.
+  - keep the outer search bounded by track graph exhaustion (`NULL` from
+    `findMediaTrackForChannel()`), not by `m_numMCUChannels`, because this
+    function may need to find a track beyond the currently visible surface;
+  - in the nested anchor-counting loop inside the found-track branch, count
+    only anchors whose channel is active in `1..m_numMCUChannels`;
+  - do not count persisted anchors above `m_numMCUChannels`, because they
+    would inflate the computed `m_globalOffset`.
 - **N=1 checkpoint:** quick-jump / selector behavior unchanged.
 
 ### Step 8 - Minimize legacy `GetOffset()` dependency
@@ -302,7 +333,7 @@ inactive in calculations only.
 
 Any loop that advances by "available channels minus anchors" must handle the
 case where active anchors fill the whole surface. Mitigation: if effective
-capacity is `<= 0`, return early.
+capacity is `<= 0`, return early before changing the global offset.
 
 ### R4 - Existing behavior depends on total anchor count
 
@@ -323,14 +354,22 @@ bug more damaging. Verify all current callers after the fix.
 WP-C is done when:
 
 - `Tracks::getNumberOfChannelStrips()` returns the runtime channel count.
+- `Tracks::adjust()` calls `createChannelTrackVector()` when
+  `m_numMCUChannels` changes.
 - `m_channelTracks` maps `0..numMCUChannels`.
+- A mapping smoke test or debug check confirms `m_channelTracks.size()` equals
+  `m_numMCUChannels + 1` after `adjust(N)`.
 - `getMediaTrackForChannel(9)` can return a valid track when
   `numMCUChannels >= 9`.
+- `findMediaTrackForChannel(channel > m_numMCUChannels)` returns `NULL` even
+  when a persisted anchor is set to that channel.
 - `getChannelForMediaTrack()` searches the dynamic range and uses comparison,
   not assignment.
 - `Tracks` no longer calls `m_pMCU->GetOffset()`.
 - active-anchor calculations ignore anchors outside `1..numMCUChannels`
   without deleting them.
+- `moveTrackToLeftMostChannel()` counts only active anchors in its
+  `numAnchors` calculation inside the found-track branch.
 - N=1 behavior is unchanged in REAPER.
 - A local N>1 mapping smoke test shows logical slots above 8 can be populated
   without `Tracks` returning `NULL` solely because the channel is above 8.

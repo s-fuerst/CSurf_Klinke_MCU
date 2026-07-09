@@ -245,6 +245,7 @@ public:
   void setMCP2TrackStates();
 
   int getNumberOfAnchors();
+  int getNumberOfActiveAnchors(int maxChannel = -1);
 
   void setMCU(CSurf_MCU *pMCU) { m_pMCU = pMCU; }
   // extreme ugly hack for the TrackStatesTableComponent. This can't work with
@@ -256,10 +257,19 @@ public:
   void projectChanged(XmlElement *pXmlElement, ProjectConfig::EAction action);
 
   int getGlobalOffset() { return m_globalOffset; }
-  void setGlobalOffset(int globalOffset);
+  bool setGlobalOffset(int globalOffset);
 
   int getNumberOfChannelStrips();
+
+  // WP-D banking helpers
+  int getEffectiveBankStep();
+  int getLegacyPageStep();
+  int getMaxUsefulGlobalOffset();
+  int clampGlobalOffset(int offset);
+  bool clampCurrentGlobalOffset();
   void moveSelectedTrack2MCU();
+
+  void dumpMappingState();
 
   bool isTrackInFilter(MediaTrack *pMT);
 
@@ -303,6 +313,7 @@ private:
   int m_projectChangedConnectionId;
 
   int m_globalOffset;
+  int m_numMCUChannels;
 
   TSGraph m_structure;
 	TSGraph m_structureVU;
