@@ -361,8 +361,6 @@ reaper loads the .dll/.so/.dylib
   "no track" and the master track throughout the plug/track code.
 - **1-based channel arrays:** many `[9]` arrays are 1-based; index 0 is the
   master fader. `ASSERT` (in `src/core/McuAssert.h`) guards channel ranges.
-- **`EXT_B`** is a *compile-time* switch for the extender variant; build the
-  main unit and the B unit from the same source.
 - **Version string** comes from the `VERSION.txt` file (repo root) — see §4. The
   build counter auto-increments; bump the version part manually for a release.
   `csurf_mcu.h` uses `MCU_VERSION_STRING` (from generated `Version.h`) in
@@ -376,8 +374,6 @@ reaper loads the .dll/.so/.dylib
   - **KLINKE2:** `"KLINKE2 flags=<N> <in>,<out>,<type> ..."` (8 fixed entries).
     Type tokens: `mackie-main`, `mackie-ext`, `prox-main`, `prox-ext`.
     `GetConfigString()` always emits `KLINKE2` with all 8 entries.
-  - `CONFIG_FLAG_PROX` is **derived** from unit 1's device type (ProX model),
-    not stored independently. The `IDC_PROX` checkbox in the dialog is hidden.
   - `src/core/SurfaceConfig.h` exports: `parseSurfaceConfig()`,
     `serializeSurfaceConfig()`, `makeDefaultSurfaceConfig()`,
     `unitConfigFromType()`, `unitTypeToken()`.
