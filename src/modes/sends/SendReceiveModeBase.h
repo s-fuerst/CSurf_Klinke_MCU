@@ -102,5 +102,5 @@ protected:
 
   bool m_flip;
 
-	bool m_recButtonPressed[8];
+  std::vector<bool> m_recButtonPressed; // WP-F: indexed by channel-1, sized to nStrips
 };

@@ -76,6 +76,11 @@ void HardwareUnit::sendStripFader(int local, int value) {
 }
 
 void HardwareUnit::setMasterFader(int value) {
+  // The master fader is a physical control only on main units.
+  // Extenders have no master fader, so never send 0xE8 to them.
+  if (!isMain())
+    return;
+
   if (m_midiout && m_faderPos[8] != value) {
     m_faderPos[8] = value;
     m_midiout->Send(0xe8, value & 0x7f, (value >> 7) & 0x7f, -1);

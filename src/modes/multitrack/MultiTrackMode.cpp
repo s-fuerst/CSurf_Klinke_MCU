@@ -496,13 +496,22 @@ void MultiTrackMode::updateDisplay() {
     }
   }
 
-  // Master display on ProX units only
-  HardwareUnit *u1 = m_pCCSManager->getMCU()->unitForChannel(1);
-  if (u1 && u1->isProX()) {
-    m_pDisplay->changeField(2, 9, "Master");
-    m_pDisplay->showDB(3, 9,
-                 *((double *)GetSetMediaTrackInfo(getMediaTrackForChannel(0),
-                                                  "D_VOL", NULL)));
+  // Master display: only the main unit has a master fader, and only a
+  // ProX main unit has the 9th display column (field 9). Route field 9 to
+  // the main unit's child (N>1) or this display (N=1). Going through
+  // MultiDisplay::changeField would misroute field 9 to the extender.
+  HardwareUnit *mainU = m_pCCSManager->getMCU()->firstTransportUnit();
+  if (mainU && mainU->isProX()) {
+    Display *pMainDisp = m_pDisplay;
+    if (MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pDisplay))
+      pMainDisp = md->mainChild();
+    if (pMainDisp) {
+      pMainDisp->changeField(2, 9, "Master");
+      pMainDisp->showDB(
+          3, 9,
+          *((double *)GetSetMediaTrackInfo(getMediaTrackForChannel(0), "D_VOL",
+                                           NULL)));
+    }
   }
 }
 

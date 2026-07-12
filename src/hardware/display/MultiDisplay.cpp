@@ -5,6 +5,8 @@
  * WP-A stub. Fleshed out in Step 7.
  */
 #include "MultiDisplay.h"
+#include "DisplayHandler.h"
+#include "HardwareUnit.h"
 
 MultiDisplay::MultiDisplay(DisplayHandler *pDH, int numRows)
     : Display(pDH, numRows) {}
@@ -47,6 +49,15 @@ void MultiDisplay::broadcastField(int row, int field, const char *text,
                                   bool centered) {
   for (size_t i = 0; i < m_children.size(); i++)
     m_children[i]->changeField(row, field, text, centered);
+}
+
+Display *MultiDisplay::mainChild() {
+  for (size_t i = 0; i < m_children.size(); i++) {
+    DisplayHandler *dh = m_children[i]->getDisplayHandler();
+    if (dh && dh->getUnit() && dh->getUnit()->isMain())
+      return m_children[i];
+  }
+  return NULL;
 }
 
 void MultiDisplay::clearLine(int row) {

@@ -35,10 +35,9 @@ void SendReceiveMeterBridge::updateMeterBridge(CSurf_MCU *pMCU) {
 
   unsigned offset = m_pSendMode->getChannelOffset();
 
-  // Mode-level: SendReceive still iterates 1-8. Widened when SendReceive mode
-  // is designed for N*8 (per-mode WP). iInfo is a position within the mode's
-  // 8-channel window, not a global channel.
-  for (int iInfo = 0; iInfo < 8; iInfo++) {
+  // WP-F: widened from 8 to availableChannels() (matches MultiTrackMeterBridge)
+  const int nStrips = pMCU->availableChannels();
+  for (int iInfo = 0; iInfo < nStrips; iInfo++) {
     if ((offset + iInfo) < sendInfos.size()) {
       MediaTrack *t = (MediaTrack *)sendInfos[offset + iInfo];
       updateMeter(iInfo + 1, t, pMCU, decay, -1);

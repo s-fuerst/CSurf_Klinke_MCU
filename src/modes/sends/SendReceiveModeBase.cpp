@@ -34,9 +34,9 @@ void SendReceiveModeBase::activate() {
     m_pLastSelectedTrack = selectedTrack();
   }
 
-	for (int i = 0; i < 8; i++) {
-		m_recButtonPressed[i] = false;
-	}
+  // WP-F: size rec-button state to the surface channel count.
+  m_recButtonPressed.assign(
+      Tracks::instance()->getNumberOfChannelStrips(), false);
 
   // WP-F: MultiDisplay needs switchToAll for N>1
   MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pDisplay);
@@ -49,7 +49,9 @@ void SendReceiveModeBase::activate() {
 
 void SendReceiveModeBase::updateRecLEDs() {
   getSendInfos(&m_sendInfos, AUTOMODE);
-  for (unsigned int iInfo = 0; iInfo < 8; iInfo++) {
+  // WP-F: widened from 8 to nStrips
+  const int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+  for (int iInfo = 0; iInfo < nStrips; iInfo++) {
     if (m_startWithSend + iInfo < m_sendInfos.size()) {
 			int mode = *((int *)m_sendInfos[m_startWithSend + iInfo]);
 			if (mode == -1) {
@@ -68,7 +70,9 @@ void SendReceiveModeBase::updateRecLEDs() {
 
 void SendReceiveModeBase::updateSoloLEDs() {
   getSendInfos(&m_sendInfos, MONO);
-  for (unsigned int iInfo = 0; iInfo < 8; iInfo++) {
+  // WP-F: widened from 8 to nStrips
+  const int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+  for (int iInfo = 0; iInfo < nStrips; iInfo++) {
     if (m_startWithSend + iInfo < m_sendInfos.size())
       m_pCCSManager->setSoloLED(
           this, iInfo + 1,
@@ -80,7 +84,9 @@ void SendReceiveModeBase::updateSoloLEDs() {
 
 void SendReceiveModeBase::updateMuteLEDs() {
   getSendInfos(&m_sendInfos, MUTE);
-  for (unsigned int iInfo = 0; iInfo < 8; iInfo++) {
+  // WP-F: widened from 8 to nStrips
+  const int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+  for (int iInfo = 0; iInfo < nStrips; iInfo++) {
     if (m_startWithSend + iInfo < m_sendInfos.size())
       m_pCCSManager->setMuteLED(
           this, iInfo + 1,
@@ -98,7 +104,9 @@ void SendReceiveModeBase::updateFaders() {
   double vol;
   double pan;
 
-  for (unsigned int iInfo = 1; iInfo < 9; iInfo++) {
+  // WP-F: widened from 8 to nStrips
+  const int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+  for (int iInfo = 1; iInfo <= nStrips; iInfo++) {
     if (m_startWithSend + iInfo <= m_sendInfos.size()) {
       int sendIdx = calcSendIdxGet(m_startWithSend + iInfo - 1);
       if (m_flip) {
@@ -129,7 +137,9 @@ void SendReceiveModeBase::updateVPOTs() {
   else
     getSendInfos(&m_sendInfos, PAN);
 
-  for (unsigned int iInfo = 0; iInfo < 8; iInfo++) {
+  // WP-F: widened from 8 to nStrips
+  const int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+  for (int iInfo = 0; iInfo < nStrips; iInfo++) {
 
     VPOT_LED *pVPOT = m_pCCSManager->getVPOT(iInfo + 1);
     if (m_startWithSend + iInfo < m_sendInfos.size()) {
@@ -178,14 +188,17 @@ void SendReceiveModeBase::updateDisplay() {
 
 		
     getSendInfos(&m_sendInfos, TRACK);
+    // WP-F: widened from 8 to nStrips
+    const int nStrips = Tracks::instance()->getNumberOfChannelStrips();
     unsigned int iInfo;
-    for (iInfo = 0; (m_startWithSend + iInfo) < m_sendInfos.size() && iInfo < 8;
+    for (iInfo = 0;
+         (m_startWithSend + iInfo) < m_sendInfos.size() && iInfo < nStrips;
          iInfo++) {
       if (m_pCCSManager->getNumFadersTouched()) {
 				m_pDisplay->clearLine(0);
 
 				getSendInfos(&m_sendInfos, AUTOMODE);
-				for (unsigned int iInfo = 0; iInfo < 8; iInfo++) {
+				for (unsigned int iInfo = 0; iInfo < nStrips; iInfo++) {
 					if (m_startWithSend + iInfo < m_sendInfos.size()) {
 						int mode = *((int *)m_sendInfos[m_startWithSend + iInfo]);
 
@@ -232,7 +245,7 @@ void SendReceiveModeBase::updateDisplay() {
                 (MediaTrack *)m_sendInfos[m_startWithSend + iInfo]));
       }
     }
-    while (iInfo < 8) {
+    while (iInfo < nStrips) {
       m_pDisplay->changeField(1, iInfo + 1, "");
       iInfo++;
     }
@@ -245,8 +258,10 @@ void SendReceiveModeBase::updateDisplayProX() {
 	writeTrackName(strlen(m_pSendOrReceiveText));
 	m_pDisplay->changeText(2, 34, "solo=mono", 19);
 
+  // WP-F: widened from 8 to nStrips
+  const int nStrips = Tracks::instance()->getNumberOfChannelStrips();
   getSendInfos(&m_sendInfos, AUTOMODE);
-  for (unsigned int iInfo = 0; iInfo < 8; iInfo++) {
+  for (unsigned int iInfo = 0; iInfo < nStrips; iInfo++) {
     if (m_startWithSend + iInfo < m_sendInfos.size()) {
 			int mode = *((int *)m_sendInfos[m_startWithSend + iInfo]);
 
@@ -288,7 +303,8 @@ void SendReceiveModeBase::updateDisplayProX() {
 	getSendInfos(&m_sendInfos, TRACK);
 	
 	unsigned int iInfo;
-	for (iInfo = 0; (m_startWithSend + iInfo) < m_sendInfos.size() && iInfo < 8;
+	for (iInfo = 0;
+			 (m_startWithSend + iInfo) < m_sendInfos.size() && iInfo < nStrips;
 			 iInfo++) {
 		double vol;
 		double pan;
@@ -305,17 +321,25 @@ void SendReceiveModeBase::updateDisplayProX() {
 														m_pCCSManager->getMCU()->GetTrackName(
 										      (MediaTrack *)m_sendInfos[m_startWithSend + iInfo]));
 	}
-	while (iInfo < 8) {
+	while (iInfo < nStrips) {
 		m_pDisplay->changeField(0, iInfo + 1, "");
 		m_pDisplay->changeField(1, iInfo + 1, "");
 		m_pDisplay->changeField(3, iInfo + 1, "");
 		iInfo++;
 	}
 
-	m_pDisplay->changeField(2, 9,
-												m_pCCSManager->getMCU()->GetTrackName(selectedTrack()));
-	double vol = m_pCCSManager->getMCU()->GetSurfaceVolume(selectedTrack());
-	m_pDisplay->showDB(3, 9, vol);
+	// Master fader display: field 9 belongs to the main unit. Route it to the
+	// main unit's child (N>1) or this display (N=1); MultiDisplay::changeField
+	// would otherwise misroute field 9 to the extender.
+	Display *pMainDisp = m_pDisplay;
+	if (MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pDisplay))
+		pMainDisp = md->mainChild();
+	if (pMainDisp) {
+		pMainDisp->changeField(
+			2, 9, m_pCCSManager->getMCU()->GetTrackName(selectedTrack()));
+		double vol = m_pCCSManager->getMCU()->GetSurfaceVolume(selectedTrack());
+		pMainDisp->showDB(3, 9, vol);
+	}
 }
 
 const char *SendReceiveModeBase::stringForESendInfo(ESendInfo sendInfo) {
@@ -339,7 +363,10 @@ const char *SendReceiveModeBase::stringForESendInfo(ESendInfo sendInfo) {
 }
 
 bool SendReceiveModeBase::buttonRec(int channel, bool pressed) {
-	ASSERT(channel > 0 && channel < 9);
+	// WP-F: bound to availableChannels(); state array is sized in activate().
+	ASSERT(channel > 0 && channel <= m_pCCSManager->getMCU()->availableChannels());
+	if ((int)m_recButtonPressed.size() < channel)
+		m_recButtonPressed.resize(channel, false); // defensive (e.g. future dynamic width)
 	m_recButtonPressed[channel - 1] = pressed;
 	
   if (pressed) {
@@ -363,14 +390,17 @@ bool SendReceiveModeBase::buttonFaderBanks(int button, bool pressed) {
   if (pressed == false)
     return true;
 
+  // WP-F: bank window widened from 8 to nStrips (channel scroll stays ±1).
+  const int nStrips = Tracks::instance()->getNumberOfChannelStrips();
   switch (button) {
   case B_BANK_UP:
-    if ((m_startWithSend + 9) > (int)m_sendInfos.size())
+    // No more sends beyond the current window -> ignore.
+    if (m_startWithSend + nStrips >= (int)m_sendInfos.size())
       return true;
-    m_startWithSend += 8;
+    m_startWithSend += nStrips;
     break;
   case B_BANK_DOWN:
-    m_startWithSend -= 8;
+    m_startWithSend -= nStrips;
     break;
   case B_CHANNEL_UP:
     m_startWithSend++;
@@ -379,6 +409,8 @@ bool SendReceiveModeBase::buttonFaderBanks(int button, bool pressed) {
     m_startWithSend--;
     break;
   }
+  // Clamp kept identical to the original (operates on m_sendInfos.size(),
+  // width-independent) so N=1 is provably unchanged.
   if (m_startWithSend < 0)
     m_startWithSend = 0;
   else if (m_startWithSend + 1 > (int)m_sendInfos.size())
@@ -531,9 +563,10 @@ int SendReceiveModeBase::getNumSends() {
 bool SendReceiveModeBase::setAutoMode(AutoMode mode) {
 	bool ret = false;
 
-  for (unsigned int i = 1; i < 9; i++) {
-		if (m_recButtonPressed[i-1]) {
-			int sendNr = m_startWithSend + i - 1;
+  // WP-F: iterate actual pressed-state (sized to nStrips), not a fixed 1..8.
+  for (size_t i = 0; i < m_recButtonPressed.size(); i++) {
+		if (m_recButtonPressed[i]) {
+			int sendNr = m_startWithSend + (int)i;
 
 			setSendInfo(AUTOMODE, sendNr, (void *)&mode);
 

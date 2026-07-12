@@ -58,6 +58,12 @@ public:
   void broadcastField(int row, int field, const char *text,
                       bool centered = false);
 
+  // Returns the child Display whose owning unit is the main unit, or NULL
+  // if there is none. The master/assignment column (field 9) belongs to
+  // the main unit, but children are ordered by channel position, so the
+  // main unit can sit at any index.
+  Display *mainChild();
+
 private:
   std::vector<Display *> m_children;
 };
