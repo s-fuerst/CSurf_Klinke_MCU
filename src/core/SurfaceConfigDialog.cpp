@@ -9,6 +9,7 @@
 
 #include "csurf_mcu.h"
 #include "SurfaceConfig.h"
+#include "McuDebugLog.h"
 
 // --- dialog helpers ---
 
@@ -20,9 +21,16 @@ static const char *s_deviceTypeNames[] = {
     "Disabled",             // 4 = UNIT_TYPE_DISABLED
 };
 
-// All five types valid for units 2-8 (unit 1 also uses this — main-only
-// restriction is enforced elsewhere via supportedUnitTypes).
+// All five types (incl. Disabled) are valid for EVERY unit position.
+// Unit position (channel-strip order) and main/extender role are
+// orthogonal — a main unit may sit at any position, not just unit 1.
+// Configs with zero main units are allowed (no validation).
 static const int s_validTypesAll[] = {0, 1, 2, 3, 4, -1};
+
+// Unit 0 (channels 1-8) may NOT be disabled — the first 8 channel slots
+// must always exist. The 4 hardware types (Main/Extender × Mackie/ProX)
+// are still unrestricted.
+static const int s_validTypesUnit0[] = {0, 1, 2, 3, -1};
 
 static void populateMidiCombo(HWND hwnd, int nDevices,
     bool (*getNameFunc)(int, char*, int), int targetDevId) {
@@ -78,7 +86,7 @@ static void loadUnitIntoDialog(HWND hwndDlg, const SurfaceConfig *cfg, int i,
                                int nIn, int nOut) {
   const UnitConfig &u = cfg->units[i];
 
-  bool disabled = (u.midiInDev == -1 && u.midiOutDev == -1 && !u.isMain);
+  bool disabled = (i == 0) ? false : (u.midiInDev == -1 && u.midiOutDev == -1 && !u.isMain);
 
   HWND typeCb = GetDlgItem(hwndDlg, IDC_UNIT_TYPE);
   SendMessage(typeCb, CB_RESETCONTENT, 0, 0);
@@ -90,7 +98,7 @@ static void loadUnitIntoDialog(HWND hwndDlg, const SurfaceConfig *cfg, int i,
         ? (u.isMain ? UNIT_TYPE_PROX_MAIN : UNIT_TYPE_PROX_EXT)
         : (u.isMain ? UNIT_TYPE_MACKIE_MAIN : UNIT_TYPE_MACKIE_EXT);
   }
-  populateTypeCombo(typeCb, typeIdx, s_validTypesAll);
+  populateTypeCombo(typeCb, typeIdx, i == 0 ? s_validTypesUnit0 : s_validTypesAll);
 
   HWND inCb  = GetDlgItem(hwndDlg, IDC_COMBO2);
   HWND outCb = GetDlgItem(hwndDlg, IDC_COMBO3);
@@ -112,6 +120,15 @@ static IReaperControlSurface *
 createFunc(const char *type_string, const char *configString, int *errStats) {
   (void)type_string;
   SurfaceConfig cfg = parseSurfaceConfig(configString);
+
+  // WP-EF-0a: validate dense unit topology.
+  // A hand-edited or stale KLINKE2 string that is non-dense is logged and
+  // replaced with the safe default before constructing CSurf_MCU.
+  if (!hasDenseUnitTopology(cfg)) {
+    MCU_LOG("createFunc: non-dense unit topology, replacing with default config");
+    cfg = makeDefaultSurfaceConfig();
+  }
+
   return new CSurf_MCU(cfg, errStats);
 }
 
@@ -312,6 +329,15 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
       if (cfg->units[0].model == QConProX)
         cfg->flags |= CONFIG_FLAG_PROX;
       cfg->valid = true;
+
+      // WP-EF-0a: reject non-dense unit topology (gaps not allowed).
+      if (!hasDenseUnitTopology(*cfg)) {
+        MessageBox(hwndDlg,
+                   "Unit positions must be contiguous from Unit 1. "
+                   "Disable Unit N only if all units after it are also disabled.",
+                   "Invalid configuration", MB_OK | MB_ICONWARNING);
+        break;
+      }
 
       std::string s = serializeSurfaceConfig(*cfg);
       lstrcpyn((char *)lParam, s.c_str(), (int)wParam);

@@ -124,36 +124,6 @@ scripts/build-windows.sh --debug       # Debug config -> build_win/Debug/
 scripts/build-windows.sh --no-deploy   # build only, do not copy to UserPlugins
 ```
 
-**Incremental speed caveat**: with no flags the script is build-only (fast to
-launch), but an in-place incremental still takes ~45s because MSBuild rebuilds
-all sources on every run -- its up-to-date check fails over the
-`\\wsl.localhost`/9P source mount (it stats thousands of JUCE/Boost headers
-and a jittery mtime always wins). That is an inherent cost of building over
-the WSL->Windows bridge, not a bug; Linux reaches ~15s thanks to native ext4
-+ Ninja. A `/mnt/c` build mode (rsync deps once + source per build onto native
-NTFS) would give Linux-like incremental speed; not yet implemented.
-
-How it works (the non-obvious bits, so they are not re-debugged):
-- **Interop**: the script locates Visual Studio + `vcvars64.bat` via
-  `vswhere.exe`, then runs a generated `.bat` through `cmd.exe` (invoked from
-  `/mnt/c` so cmd's current directory is a real drive, not a UNC path).
-- **UNC -> drive letter**: cmd.exe reaches the WSL repo via
-  `pushd \\wsl.localhost\<distro>\...`, which maps the UNC path to a temporary
-  drive letter (e.g. `Z:`). This is what lets MSVC / `rc.exe` / juceaide read
-  the source straight off the WSL filesystem -- no source copy to `/mnt/c`.
-- **Visual Studio generator, not Ninja**: Ninja's stat-based dependency model
-  breaks on the `\\wsl.localhost`/9P mount (CMake's try-compile source shows up
-  as "missing"). The VS generator uses MSBuild, which tolerates the mapped
-  drive. The generator is auto-picked from the installed VS major version
-  (override with `MCU_VS_GENERATOR='Visual Studio 17 2022'`).
-- **Portable CMake >= 3.22**: JUCE 8 requires CMake 3.22, but VS2019 bundles
-  only 3.20. The script downloads a portable CMake 3.31.6 once into
-  `~/.cache/csurf-klinke-mcu/` and reuses it.
-- **`CMAKE_SUPPRESS_REGENERATION=ON`**: silences the `MSB8064`/`MSB8065`
-  dependency-tracking warnings MSBuild emits on the UNC mount (the regen
-  step's dependency tracking is unreliable over 9P). The script always runs
-  configure before build, so disabling auto-regeneration costs nothing.
-
 Output: `build_win/Release/reaper_csurf_mcu_klinke_x64.dll`. The script
 auto-detects `%APPDATA%\REAPER\UserPlugins\` (under `/mnt/c/Users/*`) and
 copies the `.dll` there unless `--no-deploy` is given (set `MCU_USERPLUGINS=`
@@ -412,12 +382,15 @@ reaper loads the .dll/.so/.dylib
     `serializeSurfaceConfig()`, `makeDefaultSurfaceConfig()`,
     `unitConfigFromType()`, `unitTypeToken()`.
   - The dialog shows 8 fixed rows (Unit 1–8) each with: device type combo,
-    MIDI input combo, MIDI output combo. Unit 1 type combo is main-only
-    (Mackie Main / QCon ProX); Units 2–8 offer all four presets.
+    MIDI input combo, MIDI output combo. Unit 0 (channels 1-8) offers the
+    four hardware types (Mackie Main / Extender, QCon ProX / ProX Extender)
+    but **not** "Disabled" — the first 8 channels must always exist.
+    Units 1-7 offer all five types including Disabled. Unit position and
+    main/extender role are **orthogonal** — a main unit may sit at any
+    position. Configs with zero main units are allowed (no validation).
   - `createFunc()` constructs `HardwareUnit` for every unit with real MIDI
     devices (unit 1 always constructed even with MIDI None). Input from
-    units 2+ is dropped with a debug log until WP-C + WP-F widen channel
-    bounds.
+    units 2+ is dropped with a debug log until WP-EF widens channel bounds.
   - Dialog resources: `res.rc` and `res.rc_mac_dlg` (350×310).
   - Unit type encoding (CB_SETITEMDATA and KLINKE2 tokens):
     0 = mackie-main, 1 = mackie-ext, 2 = prox-main, 3 = prox-ext.

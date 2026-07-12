@@ -160,7 +160,8 @@ trivial), and every unit gets its own MIDI in/out. The ~20 existing
   automation-mode LEDs, flip/global-view, drop, save/undo, metronome) ⇒ sent to
   **every unit whose capabilities include "transport + 7-seg"**, regardless of
   its config position. There is **no "topmost = main" rule**. A unit with
-  transport can sit at any position; you simply need ≥1 transport-capable unit.
+  transport can sit at any position. There may also be no transport-capable
+  unit; in that case global output has no physical target and is dropped.
 
 ### 5.3 Persistence
 
@@ -270,17 +271,40 @@ Channel-Up/Down and track-selection-follow do:
   are released, grows back when re-enabled.
 - **Open:** confirm “scroll the whole bank together” is the desired default.
 
-### WP-E — Global-display / transport routing
-Global hardware (transport LEDs, SMPTE/beats + assignment 7-seg, automation-mode
-LEDs, flip/global-view, drop, save/undo, metronome) is routed to **every
-transport-capable unit** (§5.2), not to a single "main". Mirrors the
-`!m_is_mcuex` gating in the Cockos original but keyed on the per-unit
-"transport + 7-seg" capability instead of a fixed main slot.
+### WP-EF — Routing correctness + global multi-main output
+Combined work package (formerly WP-E + WP-F). **Revised 2026-07-12** after
+critical review: the first draft's claim to enable channels 9+ was
+self-contradictory (modes not widened). Scope is now honest and bounded.
 
-### WP-F — `CCSManager` / `VPOT_LED` sizing
-`VPOT_LED[9]` → sized for `N*8` (+ master handling). `ButtonManager` channel
-routing (select/mute/solo/recarm/VPOT/fader) extended to `N*8`. Touch-state maps
-already keyed by `MediaTrack*`, so mostly fine; verify fader/pan lastpos caches.
+Implementation plan: `ai-docs/extender-wp-ef-impl-plan.md`.
+Critical review: `ai-docs/extender-wp-ef-critical-review.md`.
+
+**Delivers (two real things):**
+1. **Routing correctness** — output no longer hardcodes unit 0 or gates on
+   `m_is_mcuex`. Global output → every transport-capable unit; strip output
+   → owning unit by global channel. Prerequisite for all future N>1 work.
+2. **Global multi-main output** — a config with two main-capable units shows
+   transport LEDs, SMPTE/beats, time digits, assignment, automation,
+   flip/global-view, zoom/scrub, drop, save/undo, metronome on **every** main
+   unit.
+
+**Also adds:** dense-unit topology invariant (no gaps), per-unit ProX quirks
+in the routing layer, DropState/blink/assignment cleanup, cache invalidation
+on reset.
+
+**NOT in scope (deferred to per-mode design, §7):**
+- Working channel strips 9..N*8 (modes still iterate 1-8; routing plumbing
+  is made correct and ready, but modes don't emit to 9+ yet).
+- VPOT_LED array resize, MeterBridge strip widening, ButtonManager per-unit
+  state, input gate removal for strip events.
+- Mode-level `CONFIG_FLAG_PROX` checks (~8 files). The define is RETAINED.
+- Full legacy shim removal (`m_midiout`, `m_is_mcuex` kept as shims).
+- MultiDisplay field routing for mode LCDs.
+
+**Why merged:** WP-E and WP-F share `SetLED`/`SendMidi` call sites, ProX-quirk
+sites, and the topology prerequisite. One routing-layer migration pass is
+cleaner than two. The merge delivers routing correctness + global multi-main
+output; per-mode WPs later deliver channels 9+.
 
 ## 7. Per-mode design (AFTER scaffolding) — TBD
 
@@ -310,3 +334,15 @@ channels / more params) or (b) mirror the main? Linked-mode default ⇒ (a).
 
 Next open thread: confirm the capability enumeration is complete, then start
 the detailed design of WP-A (`HardwareUnit`).
+
+## 9. Implementation plan summary
+
+| WP | Name | Status | Plan | Key outcome |
+|----|------|--------|------|-------------|
+| WP-A | HardwareUnit abstraction | DONE | `extender-wp-a-impl-plan.md` | N=1 extraction, HardwareUnit owns MIDI/I/O/LED/fader/display |
+| WP-B | Multi-unit configuration | DONE | `extender-wp-b-impl-plan.md` | SurfaceConfig, KLINKE2, 8-unit dialog |
+| WP-C | Tracks N*8 refactor | DONE | `extender-wp-c-impl-plan.md` | Runtime channel count, dynamic m_channelTracks |
+| WP-D | Banking semantics | DONE | `extender-wp-d-impl-plan.md` | Banking helpers in Tracks, clampGlobalOffset |
+| WP-EF | Routing correctness + global multi-main output | NEXT | `extender-wp-ef-impl-plan.md` | Capability-based routing, dense topology, multi-main global output; channels 9+ deferred to per-mode |
+| — | Per-mode design (§7) | FUTURE | Per-mode docs | Modes iterate 1..N*8 channels |
+| — | Hardware test (CR-R3) | FUTURE | — | Verify on real multi-unit hardware |

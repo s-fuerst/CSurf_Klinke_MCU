@@ -148,6 +148,7 @@
 #define B_SOLO                                                  0x5a 
 #define B_REWIND                                                0x5b 
 #define B_FFWD                                                  0x5c 
+#define B_PAUSE                                                 0x5d
 #define B_STOP                                                  0x5d 
 #define B_PLAY                                                  0x5e 
 #define B_RECORD                                                0x5f 
@@ -159,6 +160,8 @@
 #define B_SCRUB                                                 0x65 
 
 #define L_RUDESOLO                                              0x73
+#define L_SMPTE                                                 0x71
+#define L_BEATS                                                 0x72
 
 
 #define LED_ON                                                  0x7f

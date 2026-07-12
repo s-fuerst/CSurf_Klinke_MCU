@@ -50,3 +50,6 @@ ipch/
 
 # --- Local-only (unused SWELL regen byproduct) ---
 /res.rc_mac_menu
+
+graphify-out/
+/.pi-subagents/

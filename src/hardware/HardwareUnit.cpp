@@ -141,6 +141,16 @@ void HardwareUnit::forceAllLEDsOff() {
   }
 }
 
+void HardwareUnit::invalidateFaderCache() {
+  for (int i = 0; i < 9; i++)
+    m_faderPos[i] = -1;
+}
+
+void HardwareUnit::invalidateLEDCache() {
+  for (int i = 0; i < 128; i++)
+    m_led_state[i] = LED_UNKNOWN;
+}
+
 void HardwareUnit::reset() {
   // F0 00 00 66 <devId> 08 00 F7  : reset this MCU unit (per-device-id)
   if (!m_midiout)

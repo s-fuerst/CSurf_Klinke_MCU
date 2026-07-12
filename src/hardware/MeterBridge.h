@@ -6,6 +6,7 @@
 #define MCU_METERBRIDGE
 
 #include "reaper_plugin.h" // DWORD
+#include <vector>
 
 #define VU_BOTTOM 44
 #define VU_SIGNAL_LED 70
@@ -20,14 +21,18 @@ public:
   virtual void updateMeterBridge(CSurf_MCU *pMCU) = 0;
 
 protected:
-	virtual void updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
-													 double decay, int pin);
-	virtual void updateMasterLEDs(CSurf_MCU *pMCU, double decay);
-	void sendToHardware(CSurf_MCU *pMCU, int pos, short meter);
+  virtual void updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
+                           double decay, int pin);
+  virtual void updateMasterLEDs(CSurf_MCU *pMCU, double decay);
+  void sendToHardware(CSurf_MCU *pMCU, int pos, short meter);
 
-  double m_mcu_meterpos[10]; // 9 and 10 are for the master
+  // WP-EF: strip-meter state dynamically sized (availableChannels() entries).
+  // Master-meter state is separate (L/R, always 2 values, never indexed by strip pos).
+  std::vector<double> m_stripMeterPos;
+  double m_masterMeterPos[2];
+  void ensureStripMeterState(int channelCount);
+
   DWORD m_mcu_meter_lastrun;
 };
 
 #endif
-

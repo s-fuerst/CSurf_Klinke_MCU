@@ -260,28 +260,6 @@ void CSurf_MCU::MCUReset() {
     m_metronom_offset = 0;
 
   if (m_midiout) {
-    if (!m_is_mcuex) {
-      m_dropstate.updateMCU(m_is_mcuex, m_midiout);
-
-      m_pCCSManager->updateFlipLED();
-      m_pCCSManager->updateGlobalViewLED();
-
-      m_midiout->Send(0x90, 0x64,
-                      (m_mackie_arrow_states & ARROW_STATE_ZOOM) ? 0x7f : 0,
-                      -1);
-      m_midiout->Send(0x90, 0x65,
-                      (m_mackie_arrow_states & ARROW_STATE_SCRUB) ? 0x7f : 0,
-                      -1);
-
-      m_midiout->Send(
-											0xB0, 0x40 + 11,
-											'0' + (((Tracks::instance()->getGlobalOffset() + 1) / 10) % 10), -1);
-      m_midiout->Send(0xB0, 0x40 + 10,
-                      '0' + ((Tracks::instance()->getGlobalOffset() + 1) % 10),
-                      -1);
-
-    }
-
     m_pSplashDisplay->changeTextFullLine(0, SPLASH_MESSAGE);
     m_pSplashDisplay->clearLine(1);
     getDisplayHandler()->switchTo(m_pSplashDisplay);
@@ -307,6 +285,14 @@ bool CSurf_MCU::OnMCUReset(MIDI_event_t *evt) {
       !memcmp(evt->midi_message, onResetMsg, sizeof(onResetMsg))) {
     // on reset
     MCUReset();
+    // Republish state after cache invalidation
+    if (m_pTransport)
+      m_pTransport->updateLeds();
+    SetLED(B_DROP, m_dropstate.ledState());
+    m_pCCSManager->updateFlipLED();
+    m_pCCSManager->updateGlobalViewLED();
+    SetLED(B_ZOOM, (m_mackie_arrow_states & ARROW_STATE_ZOOM) ? 0x7f : 0);
+    SetLED(B_SCRUB, (m_mackie_arrow_states & ARROW_STATE_SCRUB) ? 0x7f : 0);
     TrackList_UpdateAllExternalSurfaces();
     return true;
   }
@@ -607,13 +593,11 @@ bool CSurf_MCU::OnClick(MIDI_event_t *evt) {
 }
 
 void CSurf_MCU::ClearSaveLed() {
-  if (m_midiout)
-    m_midiout->Send(0x90, 0x50, 0, -1);
+  SetLED(B_SAVE, 0);
 }
 
 bool CSurf_MCU::OnSave(MIDI_event_t *evt) {
-  if (m_midiout)
-    m_midiout->Send(0x90, 0x50, 0x7f, -1);
+  SetLED(B_SAVE, 0x7f);
   SendMessage(g_hwnd, WM_COMMAND,
               (IsModifierPressed(VK_SHIFT) | IsModifierPressed(VK_ALT))
 							? ID_FILE_SAVEAS
@@ -624,13 +608,11 @@ bool CSurf_MCU::OnSave(MIDI_event_t *evt) {
 }
 
 void CSurf_MCU::ClearUndoLed() {
-  if (m_midiout)
-    m_midiout->Send(0x90, 0x51, 0, -1);
+  SetLED(B_UNDO, 0);
 }
 
 bool CSurf_MCU::OnUndo(MIDI_event_t *evt) {
-  if (m_midiout)
-    m_midiout->Send(0x90, 0x51, 0x7f, -1);
+  SetLED(B_UNDO, 0x7f);
   SendMessage(g_hwnd, WM_COMMAND,
               IsModifierPressed(VK_SHIFT) ? IDC_EDIT_REDO : IDC_EDIT_UNDO, 0);
   ScheduleAction(timeGetTime() + 150, &CSurf_MCU::ClearUndoLed);
@@ -648,17 +630,13 @@ bool CSurf_MCU::OnZoom(MIDI_event_t *evt) {
     return true;
   }
   m_mackie_arrow_states ^= ARROW_STATE_ZOOM;
-  if (m_midiout)
-    m_midiout->Send(0x90, 0x64,
-                    (m_mackie_arrow_states & ARROW_STATE_ZOOM) ? 0x7f : 0, -1);
+  SetLED(B_ZOOM, (m_mackie_arrow_states & ARROW_STATE_ZOOM) ? 0x7f : 0);
   return true;
 }
 
 bool CSurf_MCU::OnScrub(MIDI_event_t *evt) {
   m_mackie_arrow_states ^= ARROW_STATE_SCRUB;
-  if (m_midiout)
-    m_midiout->Send(0x90, 0x65,
-                    (m_mackie_arrow_states & ARROW_STATE_SCRUB) ? 0x7f : 0, -1);
+  SetLED(B_SCRUB, (m_mackie_arrow_states & ARROW_STATE_SCRUB) ? 0x7f : 0);
   return true;
 }
 
@@ -760,7 +738,9 @@ bool CSurf_MCU::OnGlobalSoloButton(MIDI_event_t *evt) {
 }
 
 bool CSurf_MCU::OnDropButton(MIDI_event_t *evt) {
-  m_dropstate.toggleStateAndUpdate(m_is_mcuex, m_midiout);
+  m_dropstate.toggleState();
+  m_dropstate.updateReaper();
+  SetLED(B_DROP, m_dropstate.ledState());
   return true;
 }
 
@@ -822,6 +802,10 @@ CSurf_MCU::CSurf_MCU(const SurfaceConfig &cfg, int *errStats)
   // Store the parsed config
   m_surfaceConfig = cfg;
 
+  // WP-EF-0a: diagnostic assert — dense topology should be guaranteed by
+  // createFunc / dialog validation; this catches programming errors.
+  ASSERT(hasDenseUnitTopology(m_surfaceConfig));
+
   // Legacy compat shims (used by !m_is_mcuex gating, GetOffset/GetSize, etc.)
   m_is_mcuex = false;
   m_offset = 0;
@@ -864,6 +848,16 @@ CSurf_MCU::CSurf_MCU(const SurfaceConfig &cfg, int *errStats)
   m_midiin = (!m_units.empty()) ? m_units[0]->midiInput() : NULL;
   m_midiout = (!m_units.empty()) ? m_units[0]->midiOutput() : NULL;
 
+  // WP-EF: choose the global-input owner.
+  // If unit 0 is transport-capable, it owns global input (N=1: always true).
+  // Otherwise use the first transport-capable unit in dense order.
+  // -1 means no transport-capable unit → accept no global input.
+  m_globalInputUnitIndex = -1;
+  if (!m_units.empty() && m_units[0]->isMain())
+    m_globalInputUnitIndex = 0;
+  else if (hasTransportUnits())
+    m_globalInputUnitIndex = firstTransportUnit()->unitIndex();
+
   m_pSplashDisplay = new Display(getDisplayHandler(), 2);
   m_pActionDisplay = new ActionsDisplay(getDisplayHandler());
   m_pCCSManager =
@@ -881,6 +875,14 @@ CSurf_MCU::CSurf_MCU(const SurfaceConfig &cfg, int *errStats)
   // NOTE: MIDI open + JACK usleep workaround + errStats now live in the
   // HardwareUnit ctor above.
 
+  // WP-EF: per-unit reset, then invalidate caches so subsequent sends
+  // are not deduped away (caches are stale after hardware reset).
+  for (size_t ui = 0; ui < m_units.size(); ui++) {
+    m_units[ui]->reset();
+    m_units[ui]->invalidateFaderCache();
+    m_units[ui]->invalidateLEDCache();
+  }
+
   MCUReset();
 
   // Start MIDI input on all constructed units
@@ -891,13 +893,25 @@ CSurf_MCU::CSurf_MCU(const SurfaceConfig &cfg, int *errStats)
 
   m_pCCSManager->init();
 
-  // Force all LEDs off on all units
+  // Force all LEDs off on all units (cache was invalidated, will actually send)
   for (size_t ui = 0; ui < m_units.size(); ui++)
     m_units[ui]->forceAllLEDsOff();
 
-
+  // Publish initial transport state (LEDs freshly sent because caches are clean)
   m_pTransport = new Transport(this);
   m_pTransport->updateLeds();
+
+  // Re-publish surface-level LEDs that MCUReset set and forceAllLEDsOff cleared
+  SetLED(B_DROP, m_dropstate.ledState());
+  m_pCCSManager->updateFlipLED();
+  m_pCCSManager->updateGlobalViewLED();
+  SetLED(B_ZOOM, (m_mackie_arrow_states & ARROW_STATE_ZOOM) ? 0x7f : 0);
+  SetLED(B_SCRUB, (m_mackie_arrow_states & ARROW_STATE_SCRUB) ? 0x7f : 0);
+  // assignment digits per transport unit
+  sendMidiToTransportUnits(0xB0, 0x40 + 11,
+      '0' + (((Tracks::instance()->getGlobalOffset() + 1) / 10) % 10), -1);
+  sendMidiToTransportUnits(0xB0, 0x40 + 10,
+      '0' + ((Tracks::instance()->getGlobalOffset() + 1) % 10), -1);
 
   connect2FrameSignal(boost::bind(&UndoEnd::run, UndoEnd::instance(), _1));
 
@@ -909,12 +923,17 @@ CSurf_MCU::~CSurf_MCU() {
   for (size_t ui = 0; ui < m_units.size(); ui++)
     m_units[ui]->reset();
 
-
-	// turn all leds off and move faders to the bottom, etc.
-	for(int i=0; i < 128; i++)
-		SetLED(i, LED_OFF);
-	for(int i=0; i < 9; i++)
-		SendMidi(0xe0 + i, 0, 0, -1);
+  // WP-EF: per-unit LED/fader shutdown.
+  // Invalidate caches first so forceAllLEDsOff actually sends.
+  for (size_t ui = 0; ui < m_units.size(); ui++) {
+    HardwareUnit *u = m_units[ui];
+    u->invalidateFaderCache();
+    u->invalidateLEDCache();
+    for (int local = 0; local < 8; local++)
+      u->sendStripFader(local, 0);
+    u->setMasterFader(0);
+    u->forceAllLEDsOff();
+  }
 
 	// Write goodbye lines in 4-char chunks (same SysEx-fragmentation workaround
 	// as DisplayHandler::sendDifferences). Full-line SysEx via CSurf_MCU::SendMsg()
@@ -925,12 +944,11 @@ CSurf_MCU::~CSurf_MCU() {
 		for (int pos = 0; pos < 55; pos += 4)
 			getDisplayHandler()->sendToHardware(i, pos, &"                                                       "[pos], std::min(4, 55 - pos));
 
-	// turn off the meter bridge
-	for(int i=0; i < 8; i++) {
-		SendMidi(0xd0, i << 4, 0, -1);
-		// for QCon
-		SendMidi(0xd1, i << 4, 0, -1);
-	}
+	// turn off the meter bridge (via owning unit)
+	for (int i = 1; i <= availableChannels(); i++)
+		sendStripMeter(i, 0);
+	// master meters to ProX units
+	sendMasterMetersToProXUnits(0, 0);
 
 	// we must ensure that all events are send before the midi out is deleted
 	Sleep(100);
@@ -996,7 +1014,7 @@ void CSurf_MCU::Run() {
 
     signalFrame(now);
 
-		if (IsFlagSet(CONFIG_FLAG_PROX) || IsFlagSet(CONFIG_FLAG_EMULATING_BLINKING))
+		if (anyUnitNeedsBlinkEmulation())
 			EmulateBlinkingLEDs(now);
 
     Tracks::instance()->adjust(availableChannels());
@@ -1012,9 +1030,8 @@ void CSurf_MCU::Run() {
     }
 
     if (m_midiout) {
-      if (!m_is_mcuex) {
-        double pp =
-					(GetPlayState() & 1) ? GetPlayPosition() : GetCursorPosition();
+      double pp =
+				(GetPlayState() & 1) ? GetPlayPosition() : GetCursorPosition();
         unsigned char bla[10];
         //      bla[-2]='A';//first char of assignment
         //    bla[-1]='Z';//second char of assignment
@@ -1138,11 +1155,9 @@ void CSurf_MCU::Run() {
 
         if (m_mackie_lasttime_mode != tmode) {
           m_mackie_lasttime_mode = tmode;
-          m_midiout->Send(0x90, 0x71, tmode == 5 ? 0x7F : 0,
-                          -1); // set smpte light
-          m_midiout->Send(0x90, 0x72,
-                          m_mackie_lasttime_mode > 0 && tmode < 3 ? 0x7F : 0,
-                          -1); // set beats light
+          SetLED(L_SMPTE, tmode == 5 ? 0x7F : 0);    // smpte light
+          SetLED(L_BEATS,
+                 m_mackie_lasttime_mode > 0 && tmode < 3 ? 0x7F : 0); // beats light
         }
 
         // if (memcmp(m_mackie_lasttime,bla,sizeof(bla)))
@@ -1156,12 +1171,11 @@ void CSurf_MCU::Run() {
           for (x = 0; x < sizeof(bla); x++) {
             int idx = sizeof(bla) - x - 1;
             if (bla[idx] != m_mackie_lasttime[idx] || force) {
-              m_midiout->Send(0xB0, 0x40 + x, bla[idx], -1);
+              sendMidiToTransportUnits(0xB0, 0x40 + x, bla[idx], -1);
               m_mackie_lasttime[idx] = bla[idx];
             }
           }
         }
-      }
 
       m_pCCSManager->frameUpdate(now);
 
@@ -1250,16 +1264,25 @@ void CSurf_MCU::SendMidi(unsigned char status, unsigned char d1,
 }
 
 void CSurf_MCU::SetLED(int button_nr, int led_state) {
-  // WP-A N=1: strip notes 0x00-0x1F and global notes 0x28+ both go to unit 0.
-  // WP-F: strip->owning unit, global->all main units.
-  if (!m_units.empty())
-    m_units[0]->setLED(button_nr, led_state);
+  // WP-EF: SetLED is global-only. Strip notes MUST go through setStripLED().
+  ASSERT(isGlobalLedNote(button_nr));
+  if (isGlobalLedNote(button_nr))
+    setGlobalLED(button_nr, led_state);
 }
 
 void CSurf_MCU::EmulateBlinkingLEDs(DWORD now) {
-  // WP-A N=1: blink emulation moved to HardwareUnit (per-unit LED state).
-  if (!m_units.empty())
-    m_units[0]->emulateBlinkingLEDs(now);
+  // WP-EF: blink emulation across all units, each tracks its own LED state.
+  for (size_t i = 0; i < m_units.size(); i++)
+    m_units[i]->emulateBlinkingLEDs(now);
+}
+
+bool CSurf_MCU::anyUnitNeedsBlinkEmulation() const {
+  if (IsFlagSet(CONFIG_FLAG_EMULATING_BLINKING))
+    return true;
+  for (size_t i = 0; i < m_units.size(); i++)
+    if (m_units[i]->isProX())
+      return true;
+  return false;
 }
 
 
@@ -1296,18 +1319,14 @@ void CSurf_MCU::SetSurfaceSolo(MediaTrack *trackid, bool solo) {
 void CSurf_MCU::SetSurfaceRecArm(MediaTrack *trackid, bool recarm) {}
 
 void CSurf_MCU::SetPlayState(bool play, bool pause, bool rec) {
-  if (m_midiout && !m_is_mcuex) {
-    m_midiout->Send(0x90, 0x5f, rec ? 0x7f : 0, -1);
-    m_midiout->Send(0x90, 0x5e, play ? 0x7f : 0, -1);
-    m_midiout->Send(0x90, 0x5d, pause ? 0x7f : 0, -1);
-  }
+  SetLED(B_RECORD, rec ? 0x7f : 0);
+  SetLED(B_PLAY, play ? 0x7f : 0);
+  SetLED(B_PAUSE, pause ? 0x7f : 0);    // B_PAUSE is 0x5d (transport pause)
 }
 
 void CSurf_MCU::SetRepeatState(bool rep) {
   m_repeatState = rep;
-  if (m_midiout && !m_is_mcuex) {
-    m_midiout->Send(0x90, 0x56, rep ? 0x7f : 0, -1);
-  }
+  SetLED(B_CYCLE, rep ? 0x7f : 0);
 }
 
 void CSurf_MCU::SetTrackTitle(MediaTrack *trackid, const char *title) {}
@@ -1354,28 +1373,21 @@ void CSurf_MCU::SetAutoMode(int mode) {
 }
 
 void CSurf_MCU::UpdateAutoModes() {
-  if (m_midiout && !m_is_mcuex) {
-    int modes[5] = {0, 0, 0, 0, 0};
-    for (SelectedTrack *i = m_selected_tracks; i; i = i->next) {
-      MediaTrack *track = i->track();
-      if (!track)
-        continue;
-      int mode = GetTrackAutomationMode(track);
-      if (0 <= mode && mode < 5)
-        modes[mode] = 1;
-    }
-    bool multi = (modes[0] + modes[1] + modes[2] + modes[3] + modes[4]) > 1;
-    m_midiout->Send(0x90, 0x4A, modes[AUTO_MODE_READ] ? (multi ? 1 : 0x7f) : 0,
-                    -1);
-    m_midiout->Send(0x90, 0x4B, modes[AUTO_MODE_WRITE] ? (multi ? 1 : 0x7f) : 0,
-                    -1);
-    m_midiout->Send(0x90, 0x4C, modes[AUTO_MODE_TRIM] ? (multi ? 1 : 0x7f) : 0,
-                    -1);
-    m_midiout->Send(0x90, 0x4D, modes[AUTO_MODE_TOUCH] ? (multi ? 1 : 0x7f) : 0,
-                    -1);
-    m_midiout->Send(0x90, 0x4E, modes[AUTO_MODE_LATCH] ? (multi ? 1 : 0x7f) : 0,
-                    -1);
+  int modes[5] = {0, 0, 0, 0, 0};
+  for (SelectedTrack *i = m_selected_tracks; i; i = i->next) {
+    MediaTrack *track = i->track();
+    if (!track)
+      continue;
+    int mode = GetTrackAutomationMode(track);
+    if (0 <= mode && mode < 5)
+      modes[mode] = 1;
   }
+  bool multi = (modes[0] + modes[1] + modes[2] + modes[3] + modes[4]) > 1;
+  SetLED(B_AUTO_READ, modes[AUTO_MODE_READ] ? (multi ? 1 : 0x7f) : 0);
+  SetLED(B_AUTO_WRITE, modes[AUTO_MODE_WRITE] ? (multi ? 1 : 0x7f) : 0);
+  SetLED(B_AUTO_TRIM, modes[AUTO_MODE_TRIM] ? (multi ? 1 : 0x7f) : 0);
+  SetLED(B_AUTO_TOUCH, modes[AUTO_MODE_TOUCH] ? (multi ? 1 : 0x7f) : 0);
+  SetLED(B_AUTO_LATCH, modes[AUTO_MODE_LATCH] ? (multi ? 1 : 0x7f) : 0);
 }
 
 void CSurf_MCU::OnTrackSelection(MediaTrack *trackid) {}
@@ -1435,25 +1447,115 @@ void CSurf_MCU::SendMsg(MIDI_event_t *message, int frame_offset) {
 }
 
 void CSurf_MCU::sendStripFader(int channel, int value) {
-  // WP-A N=1: route to the only unit. channel 0 = master, 1..8 = strips.
-  // WP-F: channel 0 → broadcast to all units; 1..N*8 → owning unit.
-  if (m_units.empty()) return;
-  if (channel == 0)
-    m_units[0]->setMasterFader(value);
-  else
-    m_units[0]->sendStripFader(channel - 1, value);
+  // WP-EF: channel 0 = master fader → broadcast to all units.
+  // Channels 1..N*8 → owning unit.
+  if (channel == 0) {
+    broadcastMasterFader(value);
+  } else {
+    HardwareUnit *u = unitForChannel(channel);
+    if (u) {
+      int local = (channel - 1) % 8;
+      u->sendStripFader(local, value);
+    }
+  }
 }
 
 int CSurf_MCU::getFaderPos(int channel) {
-  if (m_units.empty()) return 0;
-  if (channel == 0)
-    return m_units[0]->getFaderPos(8);
-  return m_units[0]->getFaderPos(channel - 1);
+  if (channel == 0) {
+    return m_units.empty() ? 0 : m_units[0]->getFaderPos(8);
+  }
+  HardwareUnit *u = unitForChannel(channel);
+  if (!u) return 0;
+  int local = (channel - 1) % 8;
+  return u->getFaderPos(local);
 }
 
 void CSurf_MCU::broadcastMasterFader(int value) {
   for (size_t i = 0; i < m_units.size(); i++)
     m_units[i]->setMasterFader(value);
+}
+
+// --- WP-EF: capability queries ---
+
+bool CSurf_MCU::hasTransportUnits() const {
+  for (size_t i = 0; i < m_units.size(); i++)
+    if (m_units[i]->isMain())
+      return true;
+  return false;
+}
+
+HardwareUnit *CSurf_MCU::firstTransportUnit() const {
+  for (size_t i = 0; i < m_units.size(); i++)
+    if (m_units[i]->isMain())
+      return m_units[i];
+  return NULL;
+}
+
+// --- WP-EF: global broadcast ---
+
+void CSurf_MCU::setGlobalLED(int note, int state) {
+  for (size_t i = 0; i < m_units.size(); i++) {
+    if (m_units[i]->isMain())
+      m_units[i]->setLED(note, state);
+  }
+}
+
+void CSurf_MCU::sendMidiToTransportUnits(unsigned char status,
+                                         unsigned char d1, unsigned char d2,
+                                         int frameOffset) {
+  for (size_t i = 0; i < m_units.size(); i++) {
+    if (m_units[i]->isMain())
+      m_units[i]->sendMidi(status, d1, d2, frameOffset);
+  }
+}
+
+void CSurf_MCU::sendMidiToAllUnits(unsigned char status, unsigned char d1,
+                                   unsigned char d2, int frameOffset) {
+  for (size_t i = 0; i < m_units.size(); i++)
+    m_units[i]->sendMidi(status, d1, d2, frameOffset);
+}
+
+void CSurf_MCU::setLEDOnAllUnits(int note, int state) {
+  for (size_t i = 0; i < m_units.size(); i++)
+    m_units[i]->setLED(note, state);
+}
+
+// --- WP-EF: strip routing (global channel → owning unit) ---
+
+void CSurf_MCU::setStripLED(int globalChannel, int localNote, int state) {
+  HardwareUnit *u = unitForChannel(globalChannel);
+  if (!u) return;
+  u->setLED(localNote, state);
+}
+
+void CSurf_MCU::sendStripCC(int globalChannel, unsigned char cc,
+                            unsigned char value, int frameOffset) {
+  HardwareUnit *u = unitForChannel(globalChannel);
+  if (!u) return;
+  u->sendMidi(0xB0, cc, value, frameOffset);
+}
+
+void CSurf_MCU::sendStripFaderToUnit(int globalChannel, int value) {
+  HardwareUnit *u = unitForChannel(globalChannel);
+  if (!u) return;
+  int local = (globalChannel - 1) % 8;
+  u->sendStripFader(local, value);
+}
+
+void CSurf_MCU::sendStripMeter(int globalChannel, short meter) {
+  HardwareUnit *u = unitForChannel(globalChannel);
+  if (!u) return;
+  int local = (globalChannel - 1) % 8;
+  u->sendMidi(0xD0, (local << 4) | meter, 0, -1);
+}
+
+void CSurf_MCU::sendMasterMetersToProXUnits(short left, short right) {
+  for (size_t i = 0; i < m_units.size(); i++) {
+    HardwareUnit *u = m_units[i];
+    if (!u->isProX()) continue;
+    u->sendMidi(0xD1, (0 << 4) | left,  0, -1);
+    u->sendMidi(0xD1, (1 << 4) | right, 0, -1);
+  }
 }
 
 bool CSurf_MCU::OnNameValue(MIDI_event_t *evt) {

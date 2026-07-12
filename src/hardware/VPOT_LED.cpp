@@ -7,7 +7,8 @@
 #include "McuAssert.h"
 
 VPOT_LED::VPOT_LED()
-    : m_value(0), m_mode(SINGLE), m_bottom(false), m_track(-1), m_pMCU(NULL),
+    : m_value(0), m_mode(SINGLE), m_bottom(false), m_isProX(false),
+      m_track(-1), m_pMCU(NULL),
       m_pressed(false), m_mustUpdate(false) {}
 
 VPOT_LED::~VPOT_LED(void) {}
@@ -17,8 +18,9 @@ void VPOT_LED::updateLEDs() {
     return;
 
   int byte3 = m_bottom ? 1 << 6 : 0;
-	if (m_pMCU->IsFlagSet(CONFIG_FLAG_PROX))
-		byte3 = 0;
+  // WP-EF: per-unit ProX quirk (byte3=0) replaces global CONFIG_FLAG_PROX check
+  if (m_isProX)
+    byte3 = 0;
   // LED Kraenze:
   // CC Kanal 1
   // 0x20 + nr-1 fuer Position
@@ -27,10 +29,9 @@ void VPOT_LED::updateLEDs() {
   // Byte 5-6: Art
   // Byte 7: Punkt unten
   if (m_mode == OFF) {
-    if (m_track >
-        0) { // m_track == 0 exist only to have also the VPOTs 1 based (with
-             // m_track 0 for the master channel, but this has no VPOT)
-			m_pMCU->SendMidi(0xB0, 0x2F + m_track, byte3, -1);
+    if (m_track > 0) {
+      m_pMCU->sendStripCC(m_track, 0x2F + CSurf_MCU::localOf(m_track),
+                          byte3, -1);
       m_mustUpdate = false;
       return;
     }
@@ -48,18 +49,18 @@ void VPOT_LED::updateLEDs() {
   case OFF:
     break;
   }
-  if (m_track >
-      0) { // m_track == 0 exist only to have also the VPOTs 1 based (with
-           // m_track 0 for the master channel, but this has no VPOT)
-    m_pMCU->SendMidi(0xB0, 0x2F + m_track, byte3 + m_value, -1);
+  if (m_track > 0) {
+    m_pMCU->sendStripCC(m_track, 0x2F + CSurf_MCU::localOf(m_track),
+                        byte3 + m_value, -1);
   }
 
   m_mustUpdate = false;
 }
 
-void VPOT_LED::init(CSurf_MCU *pMCU, int track) {
+void VPOT_LED::init(CSurf_MCU *pMCU, int track, bool isProX) {
   m_pMCU = pMCU;
   m_track = track;
+  m_isProX = isProX;
 }
 
 void VPOT_LED::setMode(const MODE mode) {

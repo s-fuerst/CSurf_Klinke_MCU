@@ -13,7 +13,7 @@ public:
   VPOT_LED();
   virtual ~VPOT_LED(void);
 
-  void init(CSurf_MCU *pMCU, int track);
+  void init(CSurf_MCU *pMCU, int globalTrack, bool isProX = false);
 
   //      void setMCU(CSurf_MCU pMCU) {m_pMCU = pMCU;}
   //      void setTrack(int track) {m_track = track;}
@@ -39,6 +39,9 @@ private:
   MODE m_mode;
   // the single LED at the bottom of the VPOT
   bool m_bottom;
+
+  // WP-EF: per-VPOT ProX flag (replaces global CONFIG_FLAG_PROX)
+  bool m_isProX;
 
   // the ccsmanager set m_pressed to true, as long as the VPOT is pressed
   bool m_pressed;

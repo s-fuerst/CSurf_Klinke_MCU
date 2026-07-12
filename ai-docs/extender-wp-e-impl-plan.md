@@ -48,10 +48,10 @@ This matches the existing config model: main units use device id `0x14` and
 own the transport/timecode hardware; extender units use device id `0x15` and
 are strips-only for global-routing purposes.
 
-If a malformed config produces no transport-capable units, fall back to unit
-0 for output so a broken config does not make the surface completely silent.
-This is a defensive fallback only; the dialog should continue to require at
-least one main-capable unit.
+If a valid config contains no transport-capable units (all configured units
+are extenders), global output has no target and the transport-unit helpers
+are no-ops. There is no fallback to unit 0: an extender is not a transport
+unit. Malformed topology is handled by configuration validation separately.
 
 ### Global vs Strip Routing
 
@@ -178,15 +178,16 @@ domain they affect.
 
 ### Step 1 - Add transport-unit iteration helpers
 
-**Goal:** centralize the capability rule and defensive fallback.
+**Goal:** centralize the capability rule; no transport fallback is required.
 
 - **Files:** `src/core/csurf_mcu.h`, `src/core/csurf_mcu.cpp`.
 - Add `isTransportUnit()`, `hasTransportUnits()`, and `firstTransportUnit()`.
 - Add `sendMidiToTransportUnits()` and `setLEDOnTransportUnits()`.
 - Iteration order should be `m_units` order so repeated global state reaches
   hardware in the same physical left-to-right order as configuration.
-- If no unit has `isMain()`, route to `m_units[0]` if present and log a debug
-  warning once.
+- If no unit has `isMain()`, the transport-unit iteration is empty and global
+  output is intentionally dropped. This is valid when all configured units are
+  extenders; do not route global output to `m_units[0]`.
 - Keep `SendMidi()` unchanged as a unit-0 compatibility shim.
 - Keep `SendMsg()` unchanged unless a specific global SysEx caller needs a
   new explicit helper.

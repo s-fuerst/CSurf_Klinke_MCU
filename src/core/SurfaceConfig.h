@@ -48,4 +48,12 @@ const char *unitTypeToken(const UnitConfig &cfg);
 // Returns the UnitConfig for a given unit type index (0..3).
 UnitConfig unitConfigFromType(int typeIndex, int midiIn, int midiOut);
 
+// The one definition of Disabled used by dialog, parser, and constructor.
+bool unitIsDisabled(const UnitConfig &cfg);
+
+// Dense topology: active units must be contiguous from position 0.
+// Once a unit is Disabled, all later units must be Disabled.
+// Unit 0 may never be Disabled.
+bool hasDenseUnitTopology(const SurfaceConfig &cfg);
+
 #endif

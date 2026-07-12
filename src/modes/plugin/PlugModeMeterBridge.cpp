@@ -25,7 +25,8 @@ void PlugModeMeterBridge::updateMeterBridge(CSurf_MCU * pMCU) {
         (1.4 * 1000.0); // they claim 1.8s for falloff but we'll underestimate
   }
   m_mcu_meter_lastrun = now;
-	MediaTrack *pPlugTrack = m_pPlugMode->getPlugAccess()->getPlugTrack();
+  MediaTrack *pPlugTrack = m_pPlugMode->getPlugAccess()->getPlugTrack();
+  ensureStripMeterState(pMCU->availableChannels());
 	for (int x = 1; x < 9; x++) {
 		updateMeter(x, pPlugTrack, pMCU, decay, x-1);
 	}

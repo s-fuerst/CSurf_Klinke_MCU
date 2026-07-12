@@ -229,19 +229,9 @@ class DropState {
 #define DROP_NUM_STATES 3
 
   int m_current_state;
-  bool m_led_on;
 
 public:
-  DropState() {
-    m_current_state = DROP_NORMAL;
-    m_led_on = false;
-  }
-
-  void toggleStateAndUpdate(bool is_mcuex, midi_Output *p_midiout) {
-    toggleState();
-    updateReaper();
-    updateMCU(is_mcuex, p_midiout);
-  }
+  DropState() { m_current_state = DROP_NORMAL; }
 
   void toggleState() {
     m_current_state++;
@@ -263,19 +253,12 @@ public:
     }
   }
 
-  void updateMCU(bool is_mcuex, midi_Output *p_midiout) {
-    if (!is_mcuex && p_midiout) {
-      switch (m_current_state) {
-      case DROP_NORMAL:
-        p_midiout->Send(0x90, B_DROP, LED_OFF, -1);
-        break;
-      case DROP_TIME:
-        p_midiout->Send(0x90, B_DROP, LED_ON, -1);
-        break;
-      case DROP_ITEM:
-        p_midiout->Send(0x90, B_DROP, LED_BLINK, -1);
-        break;
-      }
+  int ledState() const {
+    switch (m_current_state) {
+    case DROP_NORMAL: return LED_OFF;
+    case DROP_TIME:   return LED_ON;
+    case DROP_ITEM:   return LED_BLINK;
+    default:          return LED_OFF;
     }
   }
 };
@@ -294,6 +277,7 @@ private:
   bool m_is_mcuex;
   int m_midi_in_dev, m_midi_out_dev;
   int m_offset, m_size;
+  int m_globalInputUnitIndex;  // WP-EF: which unit's global events reach ButtonManager
   SurfaceConfig m_surfaceConfig;       // WP-B: parsed config (all 8 units)
   std::vector<HardwareUnit *> m_units; // WP-A: N physical units (N=1 in WP-A)
   // m_midiout/m_midiin are NON-OWNING cached pointers into m_units[0]'s
@@ -405,7 +389,8 @@ public:
   void CloseNoReset();
   void Run();
   void SetLED(int button_nr, int led_state);
-	void EmulateBlinkingLEDs(DWORD now);
+  void EmulateBlinkingLEDs(DWORD now);
+  bool anyUnitNeedsBlinkEmulation() const;
 
   void UpdateAutoModes();
   void UpdateGlobalSoloLED();
@@ -437,15 +422,44 @@ public:
     return m_units.empty() ? NULL : m_units[0]->displayHandler();
   }
 
+  // --- N=1 fader bridge (still the old N=1 interface for modes) ---
   void sendStripFader(int channel, int value); // routes to owning unit (N=1: unit 0)
   int  getFaderPos(int channel);              // reads unit's cached position
 
   // WP-A translation helpers (N-generic plumbing, N=1 for now)
   int  numUnits() const { return (int)m_units.size(); }
-  HardwareUnit *unitForChannel(int g) { return m_units[(g - 1) / 8]; } // g is 1-based
+  HardwareUnit *unitForChannel(int g) const {
+    if (g < 1 || g > availableChannels()) return NULL;
+    return m_units[(g - 1) / 8];
+  }
   static int localOf(int g) { return (g - 1) % 8 + 1; }                 // 1-based→local 1..8
   int  availableChannels() const { return numUnits() * 8; }
   void broadcastMasterFader(int value); // all units setMasterFader(value)
+
+  // --- WP-EF: capability queries ---
+  bool isTransportUnit(const HardwareUnit *u) const { return u->isMain(); }
+  bool hasTransportUnits() const;
+  HardwareUnit *firstTransportUnit() const;   // NULL if no main unit exists
+
+  // --- WP-EF: global broadcast ---
+  void setGlobalLED(int note, int state);     // transport-capable units
+  void sendMidiToTransportUnits(unsigned char status, unsigned char d1,
+                                unsigned char d2, int frameOffset);
+  void sendMidiToAllUnits(unsigned char status, unsigned char d1,
+                          unsigned char d2, int frameOffset);
+  void setLEDOnAllUnits(int note, int state);
+
+  // --- WP-EF: strip routing (global channel → owning unit) ---
+  void setStripLED(int globalChannel, int localNote, int state);
+  void sendStripCC(int globalChannel, unsigned char cc, unsigned char value,
+                   int frameOffset);
+  void sendStripFaderToUnit(int globalChannel, int value); // wraps unit->sendStripFader
+  void sendStripMeter(int globalChannel, short meter);     // 0xD0, owning unit
+  void sendMasterMetersToProXUnits(short left, short right); // 0xD1, all ProX units
+
+  // --- WP-EF: note range classification ---
+  static bool isGlobalLedNote(int note) { return note >= 0x28 && note <= 0x7f; }
+  static bool isStripLedNote(int note) { return note >= 0x00 && note <= 0x27; }
 
   // these will be called by the host when states change etc
   void SetTrackListChange();

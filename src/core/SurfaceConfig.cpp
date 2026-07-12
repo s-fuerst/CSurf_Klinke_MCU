@@ -52,6 +52,24 @@ bool unitIsDisabled(const UnitConfig &cfg) {
   return (cfg.midiInDev == -1 && cfg.midiOutDev == -1 && !cfg.isMain);
 }
 
+bool hasDenseUnitTopology(const SurfaceConfig &cfg) {
+  // Unit 0 must never be Disabled.
+  if (unitIsDisabled(cfg.units[0]))
+    return false;
+  // Once a unit is Disabled, all later units must be Disabled.
+  bool foundDisabled = false;
+  for (int i = 1; i < MAX_SURFACE_UNITS; i++) {
+    if (foundDisabled) {
+      if (!unitIsDisabled(cfg.units[i]))
+        return false;
+    } else {
+      if (unitIsDisabled(cfg.units[i]))
+        foundDisabled = true;
+    }
+  }
+  return true;
+}
+
 // --- Default config ---
 
 SurfaceConfig makeDefaultSurfaceConfig() {

@@ -90,6 +90,8 @@ public:
   void setLED(int button_nr, int led_state);
   void emulateBlinkingLEDs(DWORD now);
   void forceAllLEDsOff(); // send LED_OFF to all 128 notes, reset cache
+  void invalidateFaderCache();   // set m_faderPos[0..8] to -1 (sentinel)
+  void invalidateLEDCache();     // set m_led_state[128] to LED_UNKNOWN
 
   // reset (F0 00 00 66 <devId> 08 00 F7) + host-query handshake, per unit
   void reset();

@@ -42,7 +42,10 @@ CCSManager::CCSManager(CSurf_MCU *pMCU) {
 
   m_pVPOTS = new VPOT_LED[9];
   for (int i = 0; i < 9; i++) {
-    m_pVPOTS[i].init(getMCU(), i);
+    // WP-EF: VPOT 0 (unused master slot) has no owning unit.
+    // VPOTs 1-8 get per-unit ProX flag from their owning unit.
+    bool isProX = (i > 0) ? pMCU->unitForChannel(i)->isProX() : false;
+    m_pVPOTS[i].init(getMCU(), i, isProX);
     m_faderTouched[i] = false;
     m_vpotTouchedTill[i] = 0;
     m_faderTouchedTill[i] = 0;
@@ -436,27 +439,27 @@ void CCSManager::setFader(CCSMode* pCaller, int channel, int value) {
 
 void CCSManager::setRecLED(CCSMode *pCaller, int channel, int state) {
   CHECKMODEANDCHANNEL
-
-  // dedup is now in HardwareUnit::setLED (WP-A Step 4)
-  m_pMCU->SetLED(channel - 1, state);
+  // WP-EF: strip LED → owning unit via global channel.
+  // rec notes 0x00..0x07 (channel-1)
+  m_pMCU->setStripLED(channel, channel - 1, state);
 }
 
 void CCSManager::setSoloLED(CCSMode *pCaller, int channel, int state) {
   CHECKMODEANDCHANNEL
-
-  m_pMCU->SetLED(0x07 + channel, state);
+  // solo notes 0x08..0x0f
+  m_pMCU->setStripLED(channel, 0x07 + channel, state);
 }
 
 void CCSManager::setMuteLED(CCSMode *pCaller, int channel, int state) {
   CHECKMODEANDCHANNEL
-
-  m_pMCU->SetLED(0x0F + channel, state);
+  // mute notes 0x10..0x17
+  m_pMCU->setStripLED(channel, 0x0F + channel, state);
 }
 
 void CCSManager::setSelectLED(CCSMode *pCaller, int channel, int state) {
   CHECKMODEANDCHANNEL
-
-  m_pMCU->SetLED(0x17 + channel, state);
+  // select notes 0x18..0x1f
+  m_pMCU->setStripLED(channel, 0x17 + channel, state);
 }
 
 void CCSManager::setFlipLED(CCSMode *pCaller, int state) {
@@ -481,11 +484,15 @@ void CCSManager::setAssignmentDisplay(CCSMode *pCaller, const char text[2]) {
   CHECKMODE
 
   if (memcmp(text, m_stateAssignmentDisplay, 2) != 0) {
-    if (!m_pMCU->IsExtender()) {
-			if (!m_pMCU->IsFlagSet(CONFIG_FLAG_PROX)) {
-				m_pMCU->SendMidi(0xB0, 0x40 + 11, text[0], -1);
-				m_pMCU->SendMidi(0xB0, 0x40 + 10, text[1], -1);
-			}
+    // WP-EF: route assignment digits to every transport-capable unit
+    // (Mackie main units only; ProX units suppress assignment display).
+    // This replaces the old IsExtender()/CONFIG_FLAG_PROX gate.
+    for (int i = 0; i < m_pMCU->numUnits(); i++) {
+      HardwareUnit *u = m_pMCU->unitForChannel(i * 8 + 1);
+      if (!u || !m_pMCU->isTransportUnit(u)) continue;
+      if (u->isProX()) continue;
+      u->sendMidi(0xB0, 0x40 + 11, text[0], -1);
+      u->sendMidi(0xB0, 0x40 + 10, text[1], -1);
     }
   }
 }

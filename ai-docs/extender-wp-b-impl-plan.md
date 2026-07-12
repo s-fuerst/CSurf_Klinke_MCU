@@ -24,8 +24,10 @@ Deliver a **complete, user-visible 8-unit configuration dialog** plus a
 versioned, forward-compatible parser/serializer for the surface config string.
 The dialog shows all 8 units, each with a device-type combo and MIDI
 input/output combos. Units 2–8 default to MIDI None and `Mackie Extender`.
-Unit 1 is always a main-capable unit (at least one main is required). The
-device type selected in the combo is the user-facing source of truth; it is
+Unit 1 may be any hardware type, including a Mackie or QCon ProX extender, but
+it may not be Disabled because the first eight channel slots must exist. Zero
+main units are allowed. The device type selected in the combo is the
+user-facing source of truth; it is
 converted to `UnitConfig::isMain` and `UnitConfig::model` before constructing
 `HardwareUnit`.
 
@@ -81,9 +83,10 @@ flags. The dialog is honest and complete from day one.
 
 - **8 fixed rows**, always all visible — no scrolling, no add/remove buttons.
 - Each row: `Unit N` label + **device type combo** + `In` / `Out` combos.
-- **Unit 1 device type combo:** only the two **main** presets —
-  `Mackie Main` and `QCon ProX`. At least one main unit is required;
-  restricting Unit 1 to main-only enforces this without a separate warning.
+- **Unit 1 device type combo:** all four hardware presets —
+  `Mackie Main`, `Mackie Extender`, `QCon ProX`, and `QCon ProX Extender`.
+  `Disabled` is excluded because the first eight channel slots must exist;
+  no Main unit is required.
 - **Units 2–8 device type combo:** all four presets:
   `Mackie Main`, `Mackie Extender`, `QCon ProX`, `QCon ProX Extender`.
   Default = `Mackie Extender`.
@@ -395,11 +398,12 @@ emits `KLINKE2` only, always 8 entries.
      index 0. Select the entry matching `cfg.units[0].midiInDev`/
      `cfg.units[0].midiOutDev`.
    - Create device type combo `IDC_UNIT_TYPE_0` dynamically.
-     **Contents: only `"Mackie Main"` and `"QCon ProX"`** — Unit 1 is
-     always a main unit. Store an encoded integer via `CB_SETITEMDATA`:
-     `"Mackie Main"` → `0`, `"QCon ProX"` → `2` (encoding matches
-     `unitTypeToken` table: 0=mackie-main, 1=mackie-ext, 2=prox-main,
-     3=prox-ext). Select based on `cfg.units[0]`.
+     **Contents: all four hardware presets, but not Disabled** — Unit 1 must
+     provide the first eight channel slots, but it may be an extender and no
+     main-capable unit is required. Store an encoded integer via
+     `CB_SETITEMDATA`: `"Mackie Main"` → `0`, `"Mackie Extender"` → `1`,
+     `"QCon ProX"` → `2`, `"QCon ProX Extender"` → `3` (encoding matches
+     `unitTypeToken`). Select based on `cfg.units[0]`.
 
 4. **Rows 1–7 (Units 2–8) — all controls created dynamically.**
    For each `i = 1..7`:

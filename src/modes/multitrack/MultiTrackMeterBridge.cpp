@@ -28,6 +28,7 @@ void MultiTrackMeterBridge::updateMeterBridge(CSurf_MCU * pMCU) {
         (1.4 * 1000.0); // they claim 1.8s for falloff but we'll underestimate
   }
   m_mcu_meter_lastrun = now;
+  ensureStripMeterState(pMCU->availableChannels());
   for (x = 1; x < 9; x++) {
     MediaTrack *t;
 
