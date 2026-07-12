@@ -40,10 +40,16 @@ CCSManager::CCSManager(CSurf_MCU *pMCU) {
   m_selectorActive = false;
   m_optionActive = NULL;
 
-  m_pVPOTS = new VPOT_LED[9];
-  for (int i = 0; i < 9; i++) {
-    // WP-EF: VPOT 0 (unused master slot) has no owning unit.
-    // VPOTs 1-8 get per-unit ProX flag from their owning unit.
+  // WP-EF: size arrays to availableChannels()+1 (0=master, 1..N*8 strips)
+  int nCh = pMCU->availableChannels() + 1;
+  m_pVPOTS = new VPOT_LED[nCh];
+  m_faderTouched = new bool[nCh];
+  m_vpotTouched = new bool[nCh];
+  m_faderTouchedTill = new DWORD[nCh];
+  m_vpotTouchedTill = new DWORD[nCh];
+  for (int i = 0; i < nCh; i++) {
+    // VPOT 0 (unused master slot) has no owning unit.
+    // VPOTs 1..N*8 get per-unit ProX flag from their owning unit.
     bool isProX = (i > 0) ? pMCU->unitForChannel(i)->isProX() : false;
     m_pVPOTS[i].init(getMCU(), i, isProX);
     m_faderTouched[i] = false;
@@ -73,6 +79,10 @@ CCSManager::~CCSManager(void) {
   safe_delete(m_pReceiveMode);
   safe_delete(m_pPlugMode);
   safe_delete_array(m_pVPOTS);
+  safe_delete_array(m_faderTouched);
+  safe_delete_array(m_vpotTouched);
+  safe_delete_array(m_faderTouchedTill);
+  safe_delete_array(m_vpotTouchedTill);
   m_pActualMode = NULL;
 }
 
@@ -88,7 +98,7 @@ void CCSManager::init() {
 }
 
 void CCSManager::setVPOTMode(VPOT_LED::MODE mode) {
-  for (int iChannel = 0; iChannel < 9; iChannel++)
+  for (int iChannel = 0; iChannel <= m_pMCU->availableChannels(); iChannel++)
     m_pVPOTS[iChannel].setMode(mode);
 }
 
@@ -378,7 +388,7 @@ void CCSManager::elementTouched(EElement element, int channel, bool touched) {
 
   if (element == FADER) {
     if (getNumFadersTouched() == 1) {
-      for (int iChannel = 0; iChannel < 9; iChannel++)
+      for (int iChannel = 0; iChannel <= m_pMCU->availableChannels(); iChannel++)
         if (touchedArray[iChannel])
           m_pActualMode->singleFaderTouched(iChannel);
     } else {
@@ -386,7 +396,7 @@ void CCSManager::elementTouched(EElement element, int channel, bool touched) {
     }
   } else {
     if (getNumVPotTouched() == 1) {
-      for (int iChannel = 0; iChannel < 9; iChannel++)
+      for (int iChannel = 0; iChannel <= m_pMCU->availableChannels(); iChannel++)
         if (touchedArray[iChannel])
           m_pActualMode->singleVPotTouched(iChannel);
     } else {
@@ -495,7 +505,12 @@ void CCSManager::setGlobalViewLED(CCSMode *pCaller, int state) {
 void CCSManager::setAssignmentDisplay(CCSMode *pCaller, const char text[2]) {
   CHECKMODE
 
-  if (memcmp(text, m_stateAssignmentDisplay, 2) != 0) {
+  // Normalise to 2 chars (caller may pass shorter strings like "")
+  char normalised[2] = {' ', ' '};
+  if (text[0]) normalised[0] = text[0];
+  if (text[0] && text[1]) normalised[1] = text[1];
+
+  if (memcmp(normalised, m_stateAssignmentDisplay, 2) != 0) {
     // WP-EF: route assignment digits to every transport-capable unit
     // (Mackie main units only; ProX units suppress assignment display).
     // This replaces the old IsExtender()/CONFIG_FLAG_PROX gate.
@@ -503,8 +518,8 @@ void CCSManager::setAssignmentDisplay(CCSMode *pCaller, const char text[2]) {
       HardwareUnit *u = m_pMCU->unitForChannel(i * 8 + 1);
       if (!u || !m_pMCU->isTransportUnit(u)) continue;
       if (u->isProX()) continue;
-      u->sendMidi(0xB0, 0x40 + 11, text[0], -1);
-      u->sendMidi(0xB0, 0x40 + 10, text[1], -1);
+      u->sendMidi(0xB0, 0x40 + 11, normalised[0], -1);
+      u->sendMidi(0xB0, 0x40 + 10, normalised[1], -1);
     }
   }
 }
@@ -610,11 +625,18 @@ int CCSManager::getElementsTouched() {
 }
 
 int CCSManager::getNumFadersTouched() {
-  return getNumTrueArrayEntries(m_faderTouched, 9);
+  return getNumTrueArrayEntries(m_faderTouched, m_pMCU->availableChannels() + 1);
 }
 
 int CCSManager::getNumVPotTouched() {
-  return getNumTrueArrayEntries(m_vpotTouched, 9);
+  return getNumTrueArrayEntries(m_vpotTouched, m_pMCU->availableChannels() + 1);
+}
+
+void CCSManager::resetAllFaderTouch() {
+  for (int i = 0; i <= m_pMCU->availableChannels(); i++) {
+    m_faderTouched[i] = false;
+    m_vpotTouched[i] = false;
+  }
 }
 
 int CCSManager::getNumTrueArrayEntries(bool *pArray, int size) {
@@ -631,7 +653,7 @@ int CCSManager::getNumTrueArrayEntries(bool *pArray, int size) {
 void CCSManager::frameUpdate(DWORD time) {
   m_lastTime = time;
 
-  for (int i = 1; i < 9; i++) {
+  for (int i = 1; i <= m_pMCU->availableChannels(); i++) {
     if (m_vpotTouchedTill[i] > 0 && time > m_vpotTouchedTill[i]) {
       elementTouched(VPOT, i, false);
       m_vpotTouchedTill[i] = 0;
@@ -639,7 +661,7 @@ void CCSManager::frameUpdate(DWORD time) {
   }
 
   if (m_pMCU->IsFlagSet(CONFIG_FLAG_FADER_TOUCH_FAKE)) {
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i <= m_pMCU->availableChannels(); i++) {
       if (m_faderTouchedTill[i] > 0 && time > m_faderTouchedTill[i]) {
         elementTouched(FADER, i, false);
         m_faderTouchedTill[i] = 0;

@@ -30,10 +30,16 @@ ipch/
 /manual/mcu_klinke_manual.synctex.gz
 
 # --- CMake build (cross-platform port) ---
+# NOTE: gitignore has no inline comments; a '#' not at line start becomes
+# part of the pattern and matches nothing. Keep comments on their own line.
 /build/
-/build_win/   # Windows CMake build (scripts/build-windows.sh)
+# Windows CMake build (scripts/build-windows.sh)
+/build_win/
+# scratch build dirs (build_asan, build_clean, build_test, ...)
+/build_*/
 /cmake-build*/
-/dist/                 # portable Linux build output (scripts/build-portable-linux.sh)
+# portable Linux build output (scripts/build-portable-linux.sh)
+/dist/
 /compile_commands.json
 /CMakeFiles/
 /CMakeCache.txt

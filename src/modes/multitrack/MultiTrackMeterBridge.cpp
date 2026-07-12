@@ -29,7 +29,7 @@ void MultiTrackMeterBridge::updateMeterBridge(CSurf_MCU * pMCU) {
   }
   m_mcu_meter_lastrun = now;
   ensureStripMeterState(pMCU->availableChannels());
-  for (x = 1; x < 9; x++) {
+  for (x = 1; x <= pMCU->availableChannels(); x++) {
     MediaTrack *t;
 
     if ((t = Tracks::instance()->getMediaTrackForChannel(x))) {

@@ -130,12 +130,7 @@ public:
   void setVPOTMode(VPOT_LED::MODE mode); // set all VPOTs to the same mode
 
 	
-	void resetAllFaderTouch() {
-		  for (int i = 0; i < 9; i++) {
-				m_faderTouched[i] = false;
-				m_vpotTouched[i] = false;
-			}
-	}
+	void resetAllFaderTouch();
 	PlugMode *getPlugMode() { return m_pPlugMode; }
 	
 private:
@@ -167,10 +162,11 @@ private:
   int m_stateGlobalView;
   char m_stateAssignmentDisplay[2];
 
-  bool m_faderTouched[9];
-  DWORD m_faderTouchedTill[9];
-  bool m_vpotTouched[9];
-  DWORD m_vpotTouchedTill[9];
+  // WP-EF: dynamically sized to availableChannels()+1 (0=master, 1..N*8 strips)
+  bool *m_faderTouched;
+  DWORD *m_faderTouchedTill;
+  bool *m_vpotTouched;
+  DWORD *m_vpotTouchedTill;
   DWORD m_lastTime;
 
   bool m_switchBack;

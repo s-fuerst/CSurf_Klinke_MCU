@@ -27,7 +27,7 @@ void PlugModeMeterBridge::updateMeterBridge(CSurf_MCU * pMCU) {
   m_mcu_meter_lastrun = now;
   MediaTrack *pPlugTrack = m_pPlugMode->getPlugAccess()->getPlugTrack();
   ensureStripMeterState(pMCU->availableChannels());
-	for (int x = 1; x < 9; x++) {
+	for (int x = 1; x <= pMCU->availableChannels(); x++) {
 		updateMeter(x, pPlugTrack, pMCU, decay, x-1);
 	}
 	MeterBridge::updateMasterLEDs(pMCU, decay);

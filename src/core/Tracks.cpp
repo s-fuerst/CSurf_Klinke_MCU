@@ -457,8 +457,15 @@ void Tracks::moveSelectedTrack2MCU() {
       Tracks::instance()->setGlobalOffset(0);
       while (!pTS->isOnMCU() &&
              Tracks::instance()->getGlobalOffset() < tracknr) {
-        Tracks::instance()->setGlobalOffset(
-            Tracks::instance()->getGlobalOffset() + numChannels);
+        // setGlobalOffset() clamps the offset to [0, getMaxUsefulGlobalOffset()].
+        // With a (near-)empty project that maximum is 0, so the offset can never
+        // advance and the selected track never lands on the MCU. Without this
+        // progress check the loop would spin forever (the GUI freeze observed
+        // when adding a track to an empty project with FOLLOW_REAPER enabled).
+        int offsetBefore = Tracks::instance()->getGlobalOffset();
+        Tracks::instance()->setGlobalOffset(offsetBefore + numChannels);
+        if (Tracks::instance()->getGlobalOffset() == offsetBefore)
+          break; // offset is clamped and cannot grow any further
       }
 
       // track wasn't found (because it is not in the set of shown tracks, or

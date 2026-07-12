@@ -38,7 +38,7 @@ void Display::changeText(int row, int pos, const char *text, int pad,
   ASSERT(row < m_numRows);
 
   char *pCenteredText = new char[pad + 1];
-  int textlen = std::min(pad, (int)strnlen(text, getRowLength(row)));
+  int textlen = std::min(pad, (int)strnlen(text, std::min(pad, getRowLength(row))));
   memset(pCenteredText, ' ', pad + 1);
   if (centered)
     strncpy(pCenteredText + ((pad - textlen) / 2), text, textlen);
