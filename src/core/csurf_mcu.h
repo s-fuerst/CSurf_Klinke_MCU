@@ -278,6 +278,9 @@ private:
   int m_midi_in_dev, m_midi_out_dev;
   int m_offset, m_size;
   int m_globalInputUnitIndex;  // WP-EF: which unit's global events reach ButtonManager
+  int m_currentInputOffset;     // WP-MT: channel offset for current input unit (0 = unit 0, 8 = unit 1, ...)
+                                // Valid only inside Run() → OnMIDIEvent → handler chain.
+                                // ButtonManager::frame() runs outside this scope and must NOT rely on it.
   SurfaceConfig m_surfaceConfig;       // WP-B: parsed config (all 8 units)
   std::vector<HardwareUnit *> m_units; // WP-A: N physical units (N=1 in WP-A)
   // m_midiout/m_midiin are NON-OWNING cached pointers into m_units[0]'s

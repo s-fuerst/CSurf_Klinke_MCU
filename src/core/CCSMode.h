@@ -102,6 +102,10 @@ public:
   bool isModifierPressed(int modifier);
 
 	virtual bool setAutoMode(AutoMode mode){ return false; }
+
+  // WP-MT: whether this mode has been widened to support extended channels
+  // (channels beyond 8 from extender units). Default false.
+  virtual bool supportsExtendedChannels() const { return false; }
 	
 protected:
   CCSManager *m_pCCSManager;

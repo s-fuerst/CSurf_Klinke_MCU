@@ -71,6 +71,10 @@ public:
     return Tracks::instance()->get2ndOptions();
   }
 
+  // WP-MT: MultiTrackMode (and subclasses PanMode, CommandMode) support
+  // extended channels from extender units.
+  virtual bool supportsExtendedChannels() const override { return true; }
+
   virtual Component **createEditorComponent();
   virtual void deleteEditorComponent();
 

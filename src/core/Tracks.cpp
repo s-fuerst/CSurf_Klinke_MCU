@@ -566,14 +566,15 @@ void Tracks::createChannelTrackVector() {
 }
 
 MediaTrack *Tracks::getMediaTrackForChannel(int channel) {
-  if (channel >= 0 && channel <= m_numMCUChannels)
+  if (channel >= 0 && channel < (int)m_channelTracks.size())
     return m_channelTracks[channel];
   else
     return NULL;
 }
 
 int Tracks::getChannelForMediaTrack(MediaTrack *pMT) {
-  for (int i = 1; i <= m_numMCUChannels; i++) {
+  int n = (int)m_channelTracks.size();
+  for (int i = 1; i < n; i++) {
     if (m_channelTracks[i] == pMT) {
       return i;
     }
@@ -724,6 +725,7 @@ void Tracks::adjust(int numMCUChannels) {
   if (m_numMCUChannels != clampedChannels) {
     m_numMCUChannels = clampedChannels;
     setGlobalOffset(m_globalOffset);  // WP-D: clamp to new valid range
+    createChannelTrackVector();        // keep vector in sync with m_numMCUChannels
   }
   updateTrackStates(m_numMCUChannels);
 

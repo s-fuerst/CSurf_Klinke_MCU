@@ -52,6 +52,12 @@ public:
   // switch each child on its OWN handler so m_pActualDisplay == child
   void switchToAll();
 
+  // Broadcast a field to every child unconditionally (e.g. ProX master
+  // field 9). Unlike changeField(), which routes per-unit by global
+  // field number, this sends the same field to ALL children.
+  void broadcastField(int row, int field, const char *text,
+                      bool centered = false);
+
 private:
   std::vector<Display *> m_children;
 };

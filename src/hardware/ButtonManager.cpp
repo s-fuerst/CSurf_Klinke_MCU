@@ -8,15 +8,34 @@
 ButtonManager::ButtonManager(CSurf_MCU *pMCU) : m_pMCU(pMCU) {
   m_signalFrameConnection =
       pMCU->connect2FrameSignal(boost::bind(&ButtonManager::frame, this, _1));
+  reset();
 }
 
 ButtonManager::~ButtonManager(void) { m_signalFrameConnection.disconnect(); }
 
+void ButtonManager::ensureUnitState() {
+  int n = m_pMCU->numUnits();
+  if (n > 0 && (int)m_perUnitState.size() < n) {
+    int old = (int)m_perUnitState.size();
+    m_perUnitState.resize(n);
+    for (int u = old; u < n; u++) {
+      memset(&m_perUnitState[u].pressed, 0, NUM_BUTTONS);
+      memset(&m_perUnitState[u].doublepressed, 0, NUM_BUTTONS);
+      memset(&m_perUnitState[u].hold_used, 0, NUM_BUTTONS);
+      memset(&m_perUnitState[u].pressed_time, 0, NUM_BUTTONS * sizeof(DWORD));
+    }
+  }
+}
+
 void ButtonManager::reset() {
   memset(&m_button_pressed, 0, 128);
-  memset(&m_button_doublepressed, 0, 128);
-  memset(&m_button_hold_used, 0, 128);
   memset(&m_button_pressed_time, 0, 128 * sizeof(DWORD));
+  for (int u = 0; u < (int)m_perUnitState.size(); u++) {
+    memset(&m_perUnitState[u].pressed, 0, NUM_BUTTONS);
+    memset(&m_perUnitState[u].doublepressed, 0, NUM_BUTTONS);
+    memset(&m_perUnitState[u].hold_used, 0, NUM_BUTTONS);
+    memset(&m_perUnitState[u].pressed_time, 0, NUM_BUTTONS * sizeof(DWORD));
+  }
 }
 
 typedef bool (CSurf_MCU::*MidiHandlerFunc)(MIDI_event_t *);
@@ -28,7 +47,7 @@ struct ButtonHandler {
   MidiHandlerFunc func_dc;
 };
 
-bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt) {
+bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt, int unitIndex) {
   unsigned char status = evt->midi_message[0] & 0xf0;
 
   // MCU button release is Note-On velocity 0 (0x90). On Linux the
@@ -42,6 +61,13 @@ bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt) {
 
   if (status != 0x90)
     return false;
+
+  // WP-MT: lazily size per-unit arrays, clamp unitIndex
+  ensureUnitState();
+  if (unitIndex < 0 || unitIndex >= (int)m_perUnitState.size())
+    unitIndex = 0;
+
+  PerUnitButtonState &st = m_perUnitState[unitIndex];
 
   static const int nPressOnlyHandlers = 19;
   static const ButtonHandler pressOnlyHandlers[nPressOnlyHandlers] = {
@@ -108,20 +134,26 @@ bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt) {
 #endif
 
   DWORD now = timeGetTime();
-  // button down is handled at the end of the function
   bool pressed = (evt->midi_message[2] >= 0x40);
+
+  // WP-MT: per-unit pressed state for double-click/long-press isolation
+  st.pressed[evt_code] = pressed;
+  st.pressed_time[evt_code] = pressed ? now : 0;
+
+  // Shared fallback for isButtonPressed() backward compat
   m_button_pressed[evt_code] = pressed;
-  m_button_pressed_time[evt_code] = m_button_pressed[evt_code] ? now : 0;
+  m_button_pressed_time[evt_code] = pressed ? now : 0;
+
   // For these events we only want to track button press
   if (pressed) {
-    m_button_hold_used[evt_code] = false;
+    st.hold_used[evt_code] = false;
     // Check for double click
     bool double_click = (int)evt_code == m_button_last &&
                         now - m_button_last_time < DOUBLE_CLICK_INTERVAL;
     m_button_last = evt_code;
     m_button_last_time = now;
     if (double_click)
-      m_button_doublepressed[evt_code] = true;
+      st.doublepressed[evt_code] = true;
 
     // Find event handler
     for (int i = 0; i < nPressOnlyHandlers; i++) {
@@ -146,9 +178,9 @@ bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt) {
         evt_code <= pressAndReleaseHandlers[i].evt_max)
       // release will not be send, if also a pressAndHoldHandler exist and an
       // holdEvent is send
-      if (!m_button_hold_used[evt_code] || pressed) {
-        if (m_button_doublepressed[evt_code]) {
-          m_button_doublepressed[evt_code] = pressed;
+      if (!st.hold_used[evt_code] || pressed) {
+        if (st.doublepressed[evt_code]) {
+          st.doublepressed[evt_code] = pressed;
           if (pressAndReleaseHandlers[i].func_dc != NULL &&
               (m_pMCU->*pressAndReleaseHandlers[i].func_dc)(evt))
             return true;
@@ -177,16 +209,23 @@ void ButtonManager::frame(DWORD time) {
       {0x18, 0x1f, &CSurf_MCU::OnChannelSelectLong},
   };
 
-  for (unsigned int button = 0; button < NUM_BUTTONS; button++) {
-    if (m_button_pressed[button] && !m_button_hold_used[button] &&
-        m_button_pressed_time[button] > 0 &&
-        m_button_pressed_time[button] < (time - 333)) {
-      for (int i = 0; i < nPressAndHoldHandlers; i++) {
-        if (pressAndHoldHandlers[i].evt_min <= button &&
-            button <= pressAndHoldHandlers[i].evt_max) {
-          if ((m_pMCU->*pressAndHoldHandlers[i].func)(
-                  button - pressAndHoldHandlers[i].evt_min + 1)) {
-            m_button_hold_used[button] = true;
+  // WP-MT: iterate per-unit button state for long-press detection
+  ensureUnitState();
+  for (int unit = 0; unit < (int)m_perUnitState.size(); unit++) {
+    PerUnitButtonState &st = m_perUnitState[unit];
+    for (unsigned int button = 0; button < NUM_BUTTONS; button++) {
+      if (st.pressed[button] && !st.hold_used[button] &&
+          st.pressed_time[button] > 0 &&
+          st.pressed_time[button] < (time - 333)) {
+        for (int i = 0; i < nPressAndHoldHandlers; i++) {
+          if (pressAndHoldHandlers[i].evt_min <= button &&
+              button <= pressAndHoldHandlers[i].evt_max) {
+            int localChannel = button - pressAndHoldHandlers[i].evt_min + 1;
+            // WP-MT: translate local → global channel for extender units
+            int globalChannel = localChannel + unit * 8;
+            if ((m_pMCU->*pressAndHoldHandlers[i].func)(globalChannel)) {
+              st.hold_used[button] = true;
+            }
           }
         }
       }

@@ -30,6 +30,21 @@ void MultiDisplay::changeTextFullLine(int row, const char *text, bool centered) 
 
 void MultiDisplay::changeField(int row, int field, const char *text,
                                bool centered) {
+  // Route by global field number: field 1..8 → unit 0, 9..16 → unit 1, etc.
+  // Fields outside 1..numChildren()*8 are no-ops.
+  int numStrips = (int)m_children.size() * 8;
+  if (field < 1 || field > numStrips)
+    return;
+
+  int unitIndex = (field - 1) / 8;
+  int localField = (field - 1) % 8 + 1;
+
+  if (unitIndex < (int)m_children.size())
+    m_children[unitIndex]->changeField(row, localField, text, centered);
+}
+
+void MultiDisplay::broadcastField(int row, int field, const char *text,
+                                  bool centered) {
   for (size_t i = 0; i < m_children.size(); i++)
     m_children[i]->changeField(row, field, text, centered);
 }

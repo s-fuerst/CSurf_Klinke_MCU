@@ -219,18 +219,21 @@ bool CCSManager::buttonNameValue(bool pressed) {
 }
 
 bool CCSManager::buttonRec(int channel, bool pressed) {
+  if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
   ASSERT(channel >= 1 && channel <= 8);
   m_switchBack = true;
   return m_pActualMode->buttonRec(channel, pressed);
 }
 
 bool CCSManager::buttonRecDC(int channel, bool pressed) {
+  if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
   ASSERT(channel >= 1 && channel <= 8);
   m_switchBack = true;
   return m_pActualMode->buttonRecDC(channel, pressed);
 }
 
 bool CCSManager::buttonSelect(int channel, bool pressed) {
+  if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
   ASSERT(channel >= 1 && channel <= 8);
   m_switchBack = true;
   pressed ? m_iNumSelectButtonsPressed++ : m_iNumSelectButtonsPressed--;
@@ -238,18 +241,21 @@ bool CCSManager::buttonSelect(int channel, bool pressed) {
 }
 
 bool CCSManager::buttonSelectDC(int channel) {
+  if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
   ASSERT(channel >= 1 && channel <= 8);
   m_switchBack = true;
   return m_pActualMode->buttonSelectDC(channel);
 }
 
 bool CCSManager::buttonSelectLong(int channel) {
+  if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
   ASSERT(channel >= 1 && channel <= 8);
   m_switchBack = true;
   return m_pActualMode->buttonSelectLong(channel);
 }
 
 bool CCSManager::buttonMute(int channel, bool pressed) {
+  if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
   ASSERT(channel >= 1 && channel <= 8);
   m_switchBack = true;
   pressed ? m_iNumMuteButtonsPressed++ : m_iNumMuteButtonsPressed--;
@@ -257,6 +263,7 @@ bool CCSManager::buttonMute(int channel, bool pressed) {
 }
 
 bool CCSManager::buttonSolo(int channel, bool pressed) {
+  if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
   ASSERT(channel >= 1 && channel <= 8);
   m_switchBack = true;
   pressed ? m_iNumSoloButtonsPressed++ : m_iNumSoloButtonsPressed--;
@@ -264,12 +271,14 @@ bool CCSManager::buttonSolo(int channel, bool pressed) {
 }
 
 bool CCSManager::buttonSoloDC(int channel) {
+  if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
   ASSERT(channel >= 1 && channel <= 8);
   m_switchBack = true;
   return m_pActualMode->buttonSoloDC(channel);
 }
 
 bool CCSManager::fader(int channel, int value) {
+  if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
   ASSERT(channel >= 0 && channel <= 8);
   m_switchBack = true;
 
@@ -283,6 +292,7 @@ bool CCSManager::fader(int channel, int value) {
 }
 
 bool CCSManager::faderTouched(int channel, bool touched) {
+  if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
   ASSERT(channel >= 0 && channel <= 8);
   m_switchBack = true;
 
@@ -295,6 +305,7 @@ bool CCSManager::faderTouched(int channel, bool touched) {
 }
 
 bool CCSManager::vpotMoved(int channel, int numSteps) {
+  if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
   ASSERT(channel >= 1 && channel <= 8);
   m_switchBack = true;
 
@@ -315,6 +326,7 @@ bool CCSManager::vpotMoved(int channel, int numSteps) {
 }
 
 bool CCSManager::vpotPressed(int channel, bool pressed) {
+  if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
   ASSERT(channel >= 1 && channel <= 8);
   m_switchBack = true;
 

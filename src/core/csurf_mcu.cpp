@@ -143,13 +143,6 @@ int CSurf_MCU::s_mackie_modifiers = 0;
 
 int CSurf_MCU::s_cfg_flags = 0;
 
-static double timeToBeats(double tpos, int *measures, int *cml,
-                          double *fullbeats, int *cdenom) {
-  if (TimeMap_timeToBeats != NULL)
-    return TimeMap_timeToBeats(tpos, measures, cml, fullbeats, cdenom);
-  else
-    return TimeMap2_timeToBeats(NULL, tpos, measures, cml, fullbeats, cdenom);
-}
 /*
 	static unsigned int get_midi_evt_code( MIDI_event_t *evt ) {
   unsigned int code = 0;
@@ -307,6 +300,10 @@ bool CSurf_MCU::OnFaderMove(MIDI_event_t *evt) {
     else
       tid++;
 
+    // WP-MT: translate local channel → global (master tid=0 is unchanged)
+    if (tid != 0)
+      tid += m_currentInputOffset;
+
     return m_pCCSManager->fader(tid,
 																msbLsbToInt(evt->midi_message[2],
 																						evt->midi_message[1]));
@@ -319,14 +316,17 @@ bool CSurf_MCU::OnRotaryEncoder(MIDI_event_t *evt) {
       evt->midi_message[1] < 0x18) { // pan
     int tid = evt->midi_message[1] - 0x10;
 
-    m_pan_lasttouch[Tracks::instance()->getMediaTrackForChannel(tid + 1)] =
+    // WP-MT: translate local VPOT → global channel
+    int channel = tid + 1 + m_currentInputOffset;
+
+    m_pan_lasttouch[Tracks::instance()->getMediaTrackForChannel(channel)] =
 			timeGetTime();
 
     int adj = (evt->midi_message[2] & 0x3f);
     if (evt->midi_message[2] & 0x40)
       adj = -adj;
 
-    return m_pCCSManager->vpotMoved(tid + 1, adj);
+    return m_pCCSManager->vpotMoved(channel, adj);
   }
   return false;
 }
@@ -337,6 +337,9 @@ bool CSurf_MCU::OnVPOTAssign(MIDI_event_t *evt) {
 }
 
 bool CSurf_MCU::OnJogWheel(MIDI_event_t *evt) {
+  // WP-MT: jog wheel is global — only accept from primary unit
+  if (m_currentInputOffset != 0)
+    return false;
   if ((evt->midi_message[0] & 0xf0) == 0xb0 &&
       evt->midi_message[1] == 0x3c) // jog wheel
 		{
@@ -466,45 +469,47 @@ bool CSurf_MCU::OnSMPTEBeats(MIDI_event_t *evt) {
 
 bool CSurf_MCU::OnRotaryEncoderPush(MIDI_event_t *evt) {
   int trackid = evt->midi_message[1] - 0x20;
-  m_pan_lasttouch[Tracks::instance()->getMediaTrackForChannel(trackid + 1)] =
+  // WP-MT: translate local VPOT push → global channel
+  int channel = trackid + 1 + m_currentInputOffset;
+  m_pan_lasttouch[Tracks::instance()->getMediaTrackForChannel(channel)] =
 		timeGetTime();
 
-  m_pCCSManager->vpotPressed(trackid + 1, evt->midi_message[2] > 0x3f);
+  m_pCCSManager->vpotPressed(channel, evt->midi_message[2] > 0x3f);
 
   return true;
 }
 
 bool CSurf_MCU::OnRecArm(MIDI_event_t *evt) {
-  return m_pCCSManager->buttonRec(evt->midi_message[1] + 1,
+  return m_pCCSManager->buttonRec(evt->midi_message[1] + 1 + m_currentInputOffset,
                                   evt->midi_message[2] > 0x3f);
 }
 
 bool CSurf_MCU::OnRecArmDC(MIDI_event_t *evt) {
-  return m_pCCSManager->buttonRecDC(evt->midi_message[1] + 1,
+  return m_pCCSManager->buttonRecDC(evt->midi_message[1] + 1 + m_currentInputOffset,
                                     evt->midi_message[2] > 0x3f);
 }
 
 bool CSurf_MCU::OnMute(MIDI_event_t *evt) {
-  return m_pCCSManager->buttonMute(evt->midi_message[1] - 0x0f,
+  return m_pCCSManager->buttonMute(evt->midi_message[1] - 0x0f + m_currentInputOffset,
                                    evt->midi_message[2] > 0x3f);
 }
 
 bool CSurf_MCU::OnSolo(MIDI_event_t *evt) {
-  return m_pCCSManager->buttonSolo(evt->midi_message[1] - 0x07,
+  return m_pCCSManager->buttonSolo(evt->midi_message[1] - 0x07 + m_currentInputOffset,
                                    evt->midi_message[2] > 0x3f);
 }
 
 bool CSurf_MCU::OnSoloDC(MIDI_event_t *evt) {
-  return m_pCCSManager->buttonSoloDC(evt->midi_message[1] - 0x07);
+  return m_pCCSManager->buttonSoloDC(evt->midi_message[1] - 0x07 + m_currentInputOffset);
 }
 
 bool CSurf_MCU::OnChannelSelect(MIDI_event_t *evt) {
-  return m_pCCSManager->buttonSelect(evt->midi_message[1] - 0x17,
+  return m_pCCSManager->buttonSelect(evt->midi_message[1] - 0x17 + m_currentInputOffset,
                                      evt->midi_message[2] > 0x3f);
 }
 
 bool CSurf_MCU::OnChannelSelectDC(MIDI_event_t *evt) {
-  return m_pCCSManager->buttonSelectDC(evt->midi_message[1] - 0x17);
+  return m_pCCSManager->buttonSelectDC(evt->midi_message[1] - 0x17 + m_currentInputOffset);
 }
 
 bool CSurf_MCU::OnChannelSelectLong(int channel) {
@@ -670,10 +675,12 @@ bool CSurf_MCU::OnScroll(MIDI_event_t *evt) {
 
 bool CSurf_MCU::OnTouch(MIDI_event_t *evt) {
   int fader = evt->midi_message[1] - 0x68;
-  m_fader_touchstate[Tracks::instance()->getMediaTrackForChannel(fader + 1)] =
+  // WP-MT: translate local touch → global channel (master fader 8 → channel 0)
+  int channel = (fader != 8) ? fader + 1 + m_currentInputOffset : 0;
+  m_fader_touchstate[Tracks::instance()->getMediaTrackForChannel(channel)] =
 		evt->midi_message[2] >= 0x7f;
 
-  return m_pCCSManager->faderTouched(fader != 8 ? fader + 1 : 0,
+  return m_pCCSManager->faderTouched(channel,
                                      evt->midi_message[2] > 0x3f);
 }
 
@@ -745,10 +752,15 @@ bool CSurf_MCU::OnDropButton(MIDI_event_t *evt) {
 }
 
 bool CSurf_MCU::OnButtonPress(MIDI_event_t *evt) {
-  return m_pButtonManager->dispatchMidiEvent(evt);
+  // WP-MT: pass unit index so ButtonManager isolates per-unit double-click/long-press state
+  int unitIndex = m_currentInputOffset / 8;
+  return m_pButtonManager->dispatchMidiEvent(evt, unitIndex);
 }
 
 bool CSurf_MCU::OnPedalMove(MIDI_event_t *evt) {
+  // WP-MT: pedal is global — only accept from primary unit
+  if (m_currentInputOffset != 0)
+    return false;
   if (evt->midi_message[0] == 0x90 && evt->midi_message[1] == 0x66) {
     MIDI_event_t sendEvent = {0, 3, {0xB0, 0x05, evt->midi_message[2]}};
     kbd_OnMidiEvent(&sendEvent, -1);
@@ -787,7 +799,7 @@ void CSurf_MCU::OnMIDIEvent(MIDI_event_t *evt) {
 }
 
 CSurf_MCU::CSurf_MCU(const SurfaceConfig &cfg, int *errStats)
-	: m_pActionsDialogComponent(NULL) {
+    : m_pActionsDialogComponent(NULL), m_currentInputOffset(0) {
   //_CrtSetBreakAlloc(6938);
   if (s_iNumInstances == 0) {
     MCU_LOG_INIT();
@@ -1185,27 +1197,17 @@ void CSurf_MCU::Run() {
   }
 
   if (m_midiin) {
-    // WP-B: iterate over all units' MIDI inputs.
-    // Units beyond index 0: input is dropped with a debug log until
-    // WP-C + WP-F widen the channel bounds and per-unit state.
+    // WP-MT: iterate over all units' MIDI inputs.
+    // m_currentInputOffset is set per-unit so strip handlers translate
+    // local channel → global channel. Global events (transport, modifiers,
+    // jog wheel, etc.) are only accepted from unit 0.
     for (size_t ui = 0; ui < m_units.size(); ui++) {
       midi_Input *in = m_units[ui]->midiInput();
       if (!in) continue;
       in->SwapBufs(timeGetTime());
-      if (ui > 0) {
-        // Input gate: silently drop all events from extenders until WP-C+WP-F
-        int l = 0;
-        MIDI_eventlist *list = in->GetReadBuf();
-        MIDI_event_t *evts;
-        bool warned = false;
-        while ((evts = list->EnumItems(&l))) {
-          if (!warned) {
-            MCU_LOG("WP-B: dropping input from unit %zu (channel bounds not yet widened)", ui);
-            warned = true;
-          }
-        }
-        continue;
-      }
+
+      m_currentInputOffset = (int)ui * 8;
+
       int l = 0;
       MIDI_eventlist *list = in->GetReadBuf();
       MIDI_event_t *evts;
