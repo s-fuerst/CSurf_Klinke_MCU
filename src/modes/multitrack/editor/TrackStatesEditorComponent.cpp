@@ -41,7 +41,7 @@ TrackStatesEditorComponent::TrackStatesEditorComponent() : component(0) {
   //[UserPreSize]
   //[/UserPreSize]
 
-  setSize(668, 604);
+  setSize(698, 604);
 
   //[Constructor] You can add your own custom stuff here..
   //[/Constructor]
@@ -69,7 +69,7 @@ void TrackStatesEditorComponent::paint(Graphics &g) {
 }
 
 void TrackStatesEditorComponent::resized() {
-  component->setBounds(24, 25, 620, 556);
+  component->setBounds(24, 25, 650, 556);
   //[UserResized] Add your own custom resize handling here..
   //[/UserResized]
 }

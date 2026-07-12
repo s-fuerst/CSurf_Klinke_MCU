@@ -395,6 +395,53 @@ reaper loads the .dll/.so/.dylib
   - Unit type encoding (CB_SETITEMDATA and KLINKE2 tokens):
     0 = mackie-main, 1 = mackie-ext, 2 = prox-main, 3 = prox-ext.
 
+### Using the knowledge graph (graphify) during the multi-unit refactoring
+
+A `graphify-out/graph.json` knowledge graph lives in the repo root. It is the
+fastest way to understand cross-subsystem relationships before changing them,
+which is exactly what the single-unit → multi-unit (extender) refactoring keeps
+asking for. **Treat any architecture question as a graphify query first** when
+the graph exists.
+
+**Keep it fresh.** After editing source files, run `graphify_update .` before the
+next query — it re-extracts only changed files (cheap) and keeps node locations
+and edges accurate. A stale graph silently points you at the wrong line numbers.
+
+**Pick the right tool for the question:**
+
+- **`graphify_explain "<concept>"` — component audit (preferred default).**
+  Returns only the direct neighbours of one node — no truncation regardless of
+  graph size. Run this **before** changing a class to confirm you have seen every
+  caller/dependency. Example: `graphify_explain "Tracks"` before editing
+  channel-mapping logic surfaces every consumer of the channel vector.
+- **`graphify_path "<from>" "<to>"` — impact / data-flow tracing.** Best for
+  "how does an event reach every unit's display?" type questions. It walks a
+  single shortest path and lists every station, so missed hops (e.g. a
+  `getDisplayHandler()` that only returns unit 0) become obvious.
+- **`graphify_query "<q>" --dfs --budget 4000` — deep connectivity.** Use DFS
+  (not the default BFS) and a raised `--budget` for "what is everything connected
+  to X?" questions. BFS scatters into hundreds of nodes and truncates; DFS stays
+  on path and wastes less of the budget on noise.
+
+**Known limitations — use `grep`/`read` instead:**
+
+- **Finding hardcoded constants** (e.g. every `i <= 8` or `resize(8, …)`):
+  graphify is *not* a text search. Use `rg -n "<= 8|resize\(8"` and then read
+  the hits. This is exactly the class of bug the extender refactoring produces
+  (UI/backend that forgot to switch from 8 to `getNumberOfChannelStrips()`).
+- **Exact code for edits:** graphify node labels and locations orient you, but
+  `edit` needs verbatim source text — switch to `read` once you know the file.
+- **BFS truncation:** a default-budget BFS over this codebase easily finds
+  300+ nodes and cuts ~80% of them. The cut is purely by graph distance from
+  the seed (not by relevance), so an important far-away node can vanish.
+  Mitigate with narrow seeds, DFS, `graphify_explain`, or `--budget`.
+
+**Workflow that works well here:** graphify (`explain`/`path`) to find the
+relevant files and confirm the blast radius → `read` for the exact text → `edit`
+→ build + deploy → `graphify_update` to refresh. Don't skip the first step on a
+change that touches more than one subsystem — the graph catches cross-subsystem
+callers that a single-file read misses.
+
 ## 6. Known issues & open work (from `notes.org`, `whats_new.org`)
 - **Distribution:** ReaPack packaging is desired but not done.
 - **PerformanceMode is a stub, intentionally kept.** `PerformanceMode.*`

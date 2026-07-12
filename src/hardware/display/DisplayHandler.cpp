@@ -28,9 +28,8 @@ DisplayHandler::DisplayHandler(HardwareUnit *pUnit, EnumMCUType mcuType,
   m_mcuType = mcuType;
   m_isProX = isProX;
   m_wait = false;
-  for (int i = 0; i < 9; i++) {
-    m_metersEnabled[i] = false;
-  }
+  // WP-F: widened from fixed [9] to dynamic vector (9 = 8 strips + master per unit)
+  m_metersEnabled.assign(9, false);
 
   m_pHardwareState = new Display(this, 4);
   char pInvalidText[56];
@@ -118,7 +117,8 @@ void DisplayHandler::switchTo(Display *pDisplay) {
 
 void DisplayHandler::enableMCUMeter(int channel, bool enable) // channel is 1 based
 {
-  ASSERT(channel > 0 && channel <= 9);
+  // WP-F: widened from fixed <=9 to vector bounds
+  ASSERT(channel > 0 && channel < (int)m_metersEnabled.size());
 
   // if (! m_pMCU->IsFlagSet(CONFIG_FLAG_MACKIE_LEVEL_METER))
   //   enable = false;
@@ -152,7 +152,8 @@ void DisplayHandler::enableMCUMeter(int channel, bool enable) // channel is 1 ba
 }
 
 void DisplayHandler::enableMCUMeter(bool enable) {
-  for (int i = 1; i < 9; i++) {
+  // WP-F: widened from fixed <9 to vector bounds (8 strips per unit)
+  for (int i = 1; i < (int)m_metersEnabled.size(); i++) {
     enableMCUMeter(i, enable);
   }
   safe_call(m_pActualDisplay, resendRow(1));

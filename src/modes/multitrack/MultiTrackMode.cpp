@@ -10,6 +10,8 @@
 #include "McuAssert.h"
 #include "stdio.h"
 #include "Display.h"
+#include "MultiDisplay.h"
+#include "HardwareUnit.h"
 #include "MultiTrackOptions.h"
 #include "MultiTrackOptions2.h"
 #include "TrackStatesEditorComponent.h"
@@ -21,7 +23,7 @@ bool MultiTrackMode::s_mcpmode = false;
 MultiTrackMode::MultiTrackMode(CCSManager *pManager)
     : CCSMode(pManager), m_pTrackStatesEditor(NULL), m_lastSelectedTrackNr(-1) {
   m_pDisplay = pManager->createDisplay(4);
-  m_pSelector = new MultiTrackSelector(pManager->getDisplayHandler());
+  m_pSelector = new MultiTrackSelector(pManager->getDisplayHandler(), pManager->getMCU());
 	m_pMeterBridge = new MultiTrackMeterBridge();
   s_mcpmode = CSurf_MCU::IsFlagSet(CONFIG_FLAG_STARTGLOBALVIEW);
 
@@ -52,12 +54,18 @@ void MultiTrackMode::frameUpdate() {
 void MultiTrackMode::activate() {
   CCSMode::activate();
   m_pDisplay->clear();
-  m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
+  // WP-F: for MultiDisplay, switch each child on its own handler
+  MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pDisplay);
+  if (md)
+    md->switchToAll();
+  else
+    m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
 }
 
 void MultiTrackMode::updateRecLEDs() {
-  // WP-F: widen to 1..Tracks::getNumberOfChannelStrips()
-  for (int channel = 1; channel < 9; channel++) {
+  // WP-F: widened from 8 to getNumberOfChannelStrips()
+  int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+  for (int channel = 1; channel <= nStrips; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
       int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
       if (isModifierPressed(VK_SHIFT)) {
@@ -86,8 +94,9 @@ void MultiTrackMode::updateRecLEDs() {
 }
 
 void MultiTrackMode::updateSoloLEDs() {
-  // WP-F: widen to 1..Tracks::getNumberOfChannelStrips()
-  for (int channel = 1; channel < 9; channel++) {
+  // WP-F: widened from 8 to getNumberOfChannelStrips()
+  int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+  for (int channel = 1; channel <= nStrips; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
       int *pSolo = (int *)GetSetMediaTrackInfo(tr, "I_SOLO", NULL);
       m_pCCSManager->setSoloLED(this, channel, *pSolo ? LED_ON : LED_OFF);
@@ -98,8 +107,9 @@ void MultiTrackMode::updateSoloLEDs() {
 }
 
 void MultiTrackMode::updateMuteLEDs() {
-  // WP-F: widen to 1..Tracks::getNumberOfChannelStrips()
-  for (int channel = 1; channel < 9; channel++) {
+  // WP-F: widened from 8 to getNumberOfChannelStrips()
+  int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+  for (int channel = 1; channel <= nStrips; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
       bool *pMute = (bool *)GetSetMediaTrackInfo(tr, "B_MUTE", NULL);
       m_pCCSManager->setMuteLED(this, channel, *pMute ? LED_ON : LED_OFF);
@@ -110,8 +120,9 @@ void MultiTrackMode::updateMuteLEDs() {
 }
 
 void MultiTrackMode::updateSelectLEDs() {
-  // WP-F: widen to 1..Tracks::getNumberOfChannelStrips()
-  for (int channel = 1; channel < 9; channel++) {
+  // WP-F: widened from 8 to getNumberOfChannelStrips()
+  int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+  for (int channel = 1; channel <= nStrips; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
       int *pSelect = (int *)GetSetMediaTrackInfo(tr, "I_SELECTED", NULL);
       m_pCCSManager->setSelectLED(this, channel, *pSelect ? LED_ON : LED_OFF);
@@ -131,8 +142,9 @@ void MultiTrackMode::updateGlobalViewLED() {
 }
 
 void MultiTrackMode::updateFaders() {
-  // WP-F: widen to 1..Tracks::getNumberOfChannelStrips()
-  for (int channel = 1; channel < 9; channel++) {
+  // WP-F: widened from 8 to getNumberOfChannelStrips()
+  int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+  for (int channel = 1; channel <= nStrips; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
       if (!s_flipmode)
         trackVolume(channel,
@@ -150,8 +162,9 @@ void MultiTrackMode::updateFaders() {
 }
 
 void MultiTrackMode::updateVPOTs() {
-  // WP-F: widen to 1..Tracks::getNumberOfChannelStrips()
-  for (int channel = 1; channel < 9; channel++) {
+  // WP-F: widened from 8 to getNumberOfChannelStrips()
+  int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+  for (int channel = 1; channel <= nStrips; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
 			if (s_flipmode)
 				m_pCCSManager->getVPOT(channel)->setMode(VPOT_LED::FROM_LEFT);
@@ -424,8 +437,9 @@ void MultiTrackMode::trackListChange() { updateEverything(); }
 
 void MultiTrackMode::trackVolume(int id, double volume) {
   MIDIOUT
-  // WP-F: widen to id < Tracks::getNumberOfChannelStrips()
-  if (id >= 0 && id < 9) {
+  // WP-F: widened from 8 to getNumberOfChannelStrips()
+  int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+  if (id >= 0 && id <= nStrips) {
     if (s_flipmode) {
       unsigned char volch = volToChar(volume);
       m_pCCSManager->getVPOT(id)->setValue(1 + ((volch * 11) >> 7));
@@ -444,8 +458,9 @@ void MultiTrackMode::trackVolume(int id, double volume) {
 
 void MultiTrackMode::trackPan(int id, double pan) {
   MIDIOUT
-  // WP-F: widen to id < Tracks::getNumberOfChannelStrips()
-  if (id >= 0 && id < 9) {
+  // WP-F: widened from 8 to getNumberOfChannelStrips()
+  int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+  if (id >= 0 && id <= nStrips) {
     if (!s_flipmode) {
       unsigned char volch = panToChar(pan);
       m_pCCSManager->getVPOT(id)->setValue(1 + ((volch * 11) >> 7));
@@ -457,34 +472,40 @@ void MultiTrackMode::trackPan(int id, double pan) {
 }
 
 void MultiTrackMode::updateDisplay() {
-  // WP-F: widen to 1..Tracks::getNumberOfChannelStrips()
-  for (int x = 1; x < 9; x++) {
+  // WP-F: widened from 8 to getNumberOfChannelStrips()
+  int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+  for (int x = 1; x <= nStrips; x++) {
     MediaTrack *tr = getMediaTrackForChannel(x);
     if (tr) {
       TrackState *pTS = Tracks::instance()->getTrackStateForMediaTrack(tr);
       if (pTS) {
         m_pDisplay->changeField(0, x, pTS->showInDisplay().toRawUTF8());
-				if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX)) 
-					m_pDisplay->changeField(2, x, pTS->showInDisplay().toRawUTF8());
+        // WP-F: per-unit ProX check instead of global CONFIG_FLAG_PROX
+        HardwareUnit *u = m_pCCSManager->getMCU()->unitForChannel(x);
+        if (u && u->isProX())
+          m_pDisplay->changeField(2, x, pTS->showInDisplay().toRawUTF8());
       }
     } else {
       m_pDisplay->changeField(0, x, "");
-			//			if (! m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_MACKIE_LEVEL_METER))
-			m_pDisplay->changeField(1, x, "");
-      if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX)) {
+      m_pDisplay->changeField(1, x, "");
+      HardwareUnit *u = m_pCCSManager->getMCU()->unitForChannel(x);
+      if (u && u->isProX()) {
         m_pDisplay->changeField(2, x, "");
         m_pDisplay->changeField(3, x, "");
       }
     }
   }
 
-	if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX)) {
-		m_pDisplay->changeField(2, 9, "Master");
-		m_pDisplay->showDB(3, 9,
-		             *((double *)GetSetMediaTrackInfo(getMediaTrackForChannel(0),
-																									"D_VOL", NULL)));
-	}
+  // Master display on ProX units only
+  HardwareUnit *u1 = m_pCCSManager->getMCU()->unitForChannel(1);
+  if (u1 && u1->isProX()) {
+    m_pDisplay->changeField(2, 9, "Master");
+    m_pDisplay->showDB(3, 9,
+                 *((double *)GetSetMediaTrackInfo(getMediaTrackForChannel(0),
+                                                  "D_VOL", NULL)));
+  }
 }
+
 
 void MultiTrackMode::toggleShowInMixer(MediaTrack *tr) {
   // TODO: Add Implementation

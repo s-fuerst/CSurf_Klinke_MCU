@@ -7,16 +7,18 @@
 #include "csurf_mcu.h"
 #include "McuAssert.h"
 #include "Display.h"
-//#include "MultiTrackSelector.h"
+#include "HardwareUnit.h"
+#include "Tracks.h"
 
 PanMode::PanMode(CCSManager *pManager) : MultiTrackMode(pManager) {}
 
 PanMode::~PanMode(void) {}
 
 void PanMode::activate() {
-	m_pCCSManager->getDisplayHandler()->enableMCUMeter(true);
-
-	CCSMode::activate();
+  // WP-F: call MultiTrackMode::activate() first to handle display init
+  // (MultiDisplay::switchToAll for N>1, clear + switch for N=1)
+  MultiTrackMode::activate();
+  m_pCCSManager->getDisplayHandler()->enableMCUMeter(true);
 }
 
 bool PanMode::vpotMoved(int channel, int numSteps) {
@@ -44,34 +46,36 @@ void PanMode::updateDisplay() {
 	m_pCCSManager->switchToDisplay(this, m_pDisplay);
 	
   MultiTrackMode::updateDisplay();
-	//  if (! m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_MACKIE_LEVEL_METER)) {
-    for (int iTrack = 1; iTrack < 9; iTrack++) {
+  // WP-F: widened from 8 to getNumberOfChannelStrips()
+  int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+    for (int iTrack = 1; iTrack <= nStrips; iTrack++) {
       MediaTrack *tr = getMediaTrackForChannel(iTrack);
       if (tr) {
-				if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX)) {
-					if (s_flipmode) {
-						m_pDisplay->showPan(3, iTrack,
-													*((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
-						m_pDisplay->showDB(1, iTrack,
-												  *((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
-					}
-					else {
-						m_pDisplay->showDB(3, iTrack,
-													*((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
-						m_pDisplay->showPan(1, iTrack,
-													*((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
-					}
-				} else {
-					if (s_flipmode)
-						m_pDisplay->showPan(1, iTrack,
-													*((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
-					else
-						m_pDisplay->showDB(1, iTrack,
-													*((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
-				}
-			}else {
+        // WP-F: per-unit ProX check
+        HardwareUnit *u = m_pCCSManager->getMCU()->unitForChannel(iTrack);
+        if (u && u->isProX()) {
+          if (s_flipmode) {
+            m_pDisplay->showPan(3, iTrack,
+                                *((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
+            m_pDisplay->showDB(1, iTrack,
+                              *((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
+          }
+          else {
+            m_pDisplay->showDB(3, iTrack,
+                              *((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
+            m_pDisplay->showPan(1, iTrack,
+                                *((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
+          }
+        } else {
+          if (s_flipmode)
+            m_pDisplay->showPan(1, iTrack,
+                                *((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
+          else
+            m_pDisplay->showDB(1, iTrack,
+                              *((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
+        }
+      } else {
         m_pDisplay->changeField(1, iTrack, "");
       }
     }
-		//  }
 }

@@ -5,6 +5,7 @@
 #include "SendReceiveModeBase.h"
 #include "SendReceiveMeterBridge.h"
 #include "Display.h"
+#include "MultiDisplay.h"
 #include <boost/foreach.hpp>
 #include "McuAssert.h"
 #include "csurf.h"
@@ -37,7 +38,12 @@ void SendReceiveModeBase::activate() {
 		m_recButtonPressed[i] = false;
 	}
 
-  m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
+  // WP-F: MultiDisplay needs switchToAll for N>1
+  MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pDisplay);
+  if (md)
+    md->switchToAll();
+  else
+    m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
 	m_pCCSManager->getDisplayHandler()->enableMCUMeter(true);
 }
 

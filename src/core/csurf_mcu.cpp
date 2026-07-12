@@ -252,10 +252,14 @@ void CSurf_MCU::MCUReset() {
   if (sz != 4)
     m_metronom_offset = 0;
 
-  if (m_midiout) {
-    m_pSplashDisplay->changeTextFullLine(0, SPLASH_MESSAGE);
-    m_pSplashDisplay->clearLine(1);
-    getDisplayHandler()->switchTo(m_pSplashDisplay);
+  // WP-F: show splash on all units using per-unit splash displays
+  for (size_t ui = 0; ui < m_pSplashDisplays.size() && ui < m_units.size(); ui++) {
+    DisplayHandler *dh = m_units[ui]->displayHandler();
+    if (dh) {
+      m_pSplashDisplays[ui]->changeTextFullLine(0, SPLASH_MESSAGE);
+      m_pSplashDisplays[ui]->clearLine(1);
+      dh->switchTo(m_pSplashDisplays[ui]);
+    }
   }
 }
 
@@ -870,7 +874,13 @@ CSurf_MCU::CSurf_MCU(const SurfaceConfig &cfg, int *errStats)
   else if (hasTransportUnits())
     m_globalInputUnitIndex = firstTransportUnit()->unitIndex();
 
-  m_pSplashDisplay = new Display(getDisplayHandler(), 2);
+  // WP-F: per-unit splash displays (one per HardwareUnit's DisplayHandler)
+  for (size_t ui = 0; ui < m_units.size(); ui++) {
+    HardwareUnit *u = m_units[ui];
+    if (u && u->displayHandler()) {
+      m_pSplashDisplays.push_back(new Display(u->displayHandler(), 2));
+    }
+  }
   m_pActionDisplay = new ActionsDisplay(getDisplayHandler());
   m_pCCSManager =
 		new CCSManager(this); // DisplayHandler is constructed per-unit by HardwareUnit ctor
@@ -903,7 +913,16 @@ CSurf_MCU::CSurf_MCU(const SurfaceConfig &cfg, int *errStats)
 
   m_schedule = NULL;
 
+  // WP-F: ensure Tracks knows the channel count BEFORE init/activate,
+  // so the first updateFaders() iterates the correct number of strips.
+  Tracks::instance()->adjust(availableChannels());
+
   m_pCCSManager->init();
+
+  // WP-F: force Reaper to re-send all volume/pan data to this surface.
+  // After a config change, the old surface's m_surface_volume map was
+  // destroyed; this ensures Reaper repopulates it.
+  CSurf_ResetAllCachedVolPanStates();
 
   // Force all LEDs off on all units (cache was invalidated, will actually send)
   for (size_t ui = 0; ui < m_units.size(); ui++)
@@ -947,14 +966,16 @@ CSurf_MCU::~CSurf_MCU() {
     u->forceAllLEDsOff();
   }
 
-	// Write goodbye lines in 4-char chunks (same SysEx-fragmentation workaround
-	// as DisplayHandler::sendDifferences). Full-line SysEx via CSurf_MCU::SendMsg()
-	// only delivers the first ~4 chars on the Linux JACK/MIDI path.
-	for (int pos = 0; pos < 55; pos += 4)
-		getDisplayHandler()->sendToHardware(0, pos, &"                        Goodbye                          "[pos], std::min(4, 55 - pos));
-	for(int i=1; i<4; i++)
+	// Write goodbye lines on ALL units' displays in 4-char chunks (same
+	// SysEx-fragmentation workaround as DisplayHandler::sendDifferences).
+	for (size_t ui = 0; ui < m_units.size(); ui++) {
+		DisplayHandler *dh = m_units[ui]->displayHandler();
 		for (int pos = 0; pos < 55; pos += 4)
-			getDisplayHandler()->sendToHardware(i, pos, &"                                                       "[pos], std::min(4, 55 - pos));
+			dh->sendToHardware(0, pos, &"                        Goodbye                          "[pos], std::min(4, 55 - pos));
+		for (int i = 1; i < 4; i++)
+			for (int pos = 0; pos < 55; pos += 4)
+				dh->sendToHardware(i, pos, &"                                                       "[pos], std::min(4, 55 - pos));
+	}
 
 	// turn off the meter bridge (via owning unit)
 	for (int i = 1; i <= availableChannels(); i++)
@@ -966,7 +987,8 @@ CSurf_MCU::~CSurf_MCU() {
 	Sleep(100);
 	
   delete m_pTransport;
-  delete m_pSplashDisplay;
+  for (size_t ui = 0; ui < m_pSplashDisplays.size(); ui++)
+    safe_delete(m_pSplashDisplays[ui]);
   delete m_pActionsDialogComponent;
   delete m_pActionDisplay;
   delete m_pCCSManager;
@@ -1191,7 +1213,12 @@ void CSurf_MCU::Run() {
 
       m_pCCSManager->frameUpdate(now);
 
-      m_pCCSManager->getDisplayHandler()->getDisplay()->resendAllRows();
+      // WP-F: resend all rows on every unit, not just unit 0
+      for (size_t ui = 0; ui < m_units.size(); ui++) {
+        HardwareUnit *u = m_units[ui];
+        if (u && u->displayHandler() && u->displayHandler()->getDisplay())
+          u->displayHandler()->getDisplay()->resendAllRows();
+      }
       m_pCCSManager->getDisplayHandler()->waitForMoreChanges(true);
     }
   }
@@ -1641,6 +1668,12 @@ double CSurf_MCU::GetSurfaceVolume(MediaTrack *pMT) {
   if (pMT && m_surface_volume.find(pMT) != m_surface_volume.end())
     return m_surface_volume[pMT];
 
+  // WP-F: fallback — read directly from Reaper when cache is cold
+  // (e.g. after surface recreation / config change)
+  if (pMT) {
+    double *vol = (double *)GetSetMediaTrackInfo(pMT, "D_VOL", NULL);
+    if (vol) return *vol;
+  }
   return 0;
 }
 
@@ -1652,6 +1685,11 @@ double CSurf_MCU::GetSurfacePan(MediaTrack *pMT) {
   if (pMT && m_surface_pan.find(pMT) != m_surface_pan.end())
     return m_surface_pan[pMT];
 
+  // WP-F: fallback — read directly from Reaper when cache is cold
+  if (pMT) {
+    double *pan = (double *)GetSetMediaTrackInfo(pMT, "D_PAN", NULL);
+    if (pan) return *pan;
+  }
   return 0;
 }
 

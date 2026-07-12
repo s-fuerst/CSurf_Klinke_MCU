@@ -6,6 +6,7 @@
 #include "CCSManager.h"
 #include "CCSMode.h"
 #include "Display.h"
+#include "MultiDisplay.h"
 #include "DisplayHandler.h"
 #include "csurf_mcu.h"
 
@@ -17,5 +18,10 @@ PerformanceMode::PerformanceMode(CCSManager *pManager) : CCSMode(pManager) {
 PerformanceMode::~PerformanceMode(void) { safe_delete(m_pDisplay); }
 
 void PerformanceMode::updateDisplay() {
-  m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
+  // WP-F: MultiDisplay needs switchToAll for N>1
+  MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pDisplay);
+  if (md)
+    md->switchToAll();
+  else
+    m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
 }

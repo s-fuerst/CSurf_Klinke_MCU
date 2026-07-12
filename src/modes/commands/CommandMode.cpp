@@ -7,6 +7,7 @@
 #include "CCSManager.h"
 #include "csurf_mcu.h"
 #include "Display.h"
+#include "MultiDisplay.h"
 #ifdef _WIN32
 #include "swell\swell.h"
 #endif
@@ -146,7 +147,12 @@ void CommandMode::writeConfigFile() {
 
 void CommandMode::activate() {
   CCSMode::activate();
-  m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
+  // WP-F: MultiDisplay needs switchToAll for N>1
+  MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pDisplay);
+  if (md)
+    md->switchToAll();
+  else
+    m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
 	m_pCCSManager->getDisplayHandler()->enableMCUMeter(false);
 }
 
@@ -222,7 +228,9 @@ bool CommandMode::faderTouched(int channel, bool touched) {
 // Disable the VPOT leds
 void CommandMode::updateVPOTs() {
   m_pCCSManager->setVPOTMode(VPOT_LED::OFF);
-  for (int channel = 1; channel < 9; channel++) {
+  // WP-F: widened from 8 to getNumberOfChannelStrips()
+  int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+  for (int channel = 1; channel <= nStrips; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
       m_pCCSManager->getVPOT(channel)->setBottom(
           Tracks::instance()->hasChilds(tr));
@@ -234,8 +242,11 @@ void CommandMode::updateVPOTs() {
 void CommandMode::updateDisplay() {
   MultiTrackMode::updateDisplay();
 
-	if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX)) {
-		for (int iChan = 1; iChan < 9; iChan++) {
+	// WP-F: per-unit ProX check, widened loop
+	if (m_pCCSManager->getMCU()->unitForChannel(1) &&
+	    m_pCCSManager->getMCU()->unitForChannel(1)->isProX()) {
+		int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+		for (int iChan = 1; iChan <= nStrips; iChan++) {
 			MediaTrack *tr = getMediaTrackForChannel(iChan);
 			if (tr) {
 				if (s_flipmode) {

@@ -268,7 +268,8 @@ class SelectedTrack;
 class CSurf_MCU : public IReaperControlSurface {
 private:
   Transport *m_pTransport;
-  Display *m_pSplashDisplay;
+  Display *m_pSplashDisplay;  // legacy (unit 0 only, kept for compat)
+  std::vector<Display *> m_pSplashDisplays;  // WP-F: per-unit splash displays
   CCSManager *m_pCCSManager;
   DropState m_dropstate;
   int m_metronom_offset;

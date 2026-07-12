@@ -68,10 +68,10 @@ TrackStatesTableComponent::TrackStatesTableComponent() {
                                  TableHeaderComponent::notResizableOrSortable);
   m_table->getHeader().addColumn(String("MCU"), TS_COLUMN_MCU, 30, 30, 30,
                                  TableHeaderComponent::notResizableOrSortable);
-  m_table->getHeader().addColumn(String("Anchor"), TS_COLUMN_ANCHOR, 80, 80, 80,
+  m_table->getHeader().addColumn(String("Anchor"), TS_COLUMN_ANCHOR, 95, 95, 95,
                                  TableHeaderComponent::notResizableOrSortable);
-  m_table->getHeader().addColumn(String("Jump Slot"), TS_COLUMN_QUICK_JUMP, 80,
-                                 80, 80,
+  m_table->getHeader().addColumn(String("Jump Slot"), TS_COLUMN_QUICK_JUMP, 95,
+                                 95, 95,
                                  TableHeaderComponent::notResizableOrSortable);
   m_table->getHeader().addColumn(String("J. Name"), TS_COLUMN_QUICK_NAME, 60,
                                  60, 60,
@@ -86,7 +86,7 @@ TrackStatesTableComponent::TrackStatesTableComponent() {
   m_table->setMultipleSelectionEnabled(false);
   m_table->setAutoSizeMenuOptionShown(false);
 
-  m_table->setSize(620, 556);
+  m_table->setSize(650, 556);
   m_table->setTopLeftPosition(0, 0);
 
   rebuildTrackStateAndMediaTrackVector();
@@ -331,7 +331,7 @@ AnchorColumnCustomComponent::AnchorColumnCustomComponent(
     : m_owner(owner) {
   addAndMakeVisible(m_comboBox = new ComboBox(String()));
   m_comboBox->addItem(String("No Anchor"), -1);
-  for (int i = 1; i <= 8; i++) {
+  for (int i = 1; i <= Tracks::instance()->getNumberOfChannelStrips(); i++) {
     m_comboBox->addItem(String("Channel ") + String(i), i);
   }
 
@@ -387,7 +387,7 @@ QuickJumpCustomComponent::QuickJumpCustomComponent(
     : m_owner(owner) {
   addAndMakeVisible(m_comboBox = new ComboBox(String()));
   m_comboBox->addItem(String("Inactive"), -1);
-  for (int i = 1; i <= 8; i++) {
+  for (int i = 1; i <= Tracks::instance()->getNumberOfChannelStrips(); i++) {
     m_comboBox->addItem(String("Pad ") + String(i), i);
   }
 

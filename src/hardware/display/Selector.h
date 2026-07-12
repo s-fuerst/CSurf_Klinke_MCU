@@ -11,9 +11,9 @@ class Display;
 
 class Selector {
 public:
-  Selector(DisplayHandler *pDH) {
+  Selector(DisplayHandler *pDH, Display *pDisplay = NULL) {
     m_pDisplayHandler = pDH;
-    m_pDisplay = new Display(pDH, 2);
+    m_pDisplay = pDisplay ? pDisplay : new Display(pDH, 2);
   }
 
   virtual ~Selector(void) { safe_delete(m_pDisplay); }

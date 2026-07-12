@@ -5,6 +5,8 @@
 #ifndef MCU_DISPLAYHANDLER
 #define MCU_DISPLAYHANDLER
 
+#include <vector>
+
 //#include "csurf.h"
 class HardwareUnit;
 class Display;
@@ -19,7 +21,8 @@ private:
   Display *m_pActualDisplay;
   EnumMCUType m_mcuType;
   bool m_isProX; // per-unit ProX flag (replaces global CONFIG_FLAG_PROX)
-  bool m_metersEnabled[9];
+  // WP-F: widened from fixed [9] to dynamic vector (9 = 8 strips + master per unit)
+  std::vector<bool> m_metersEnabled;
   bool m_wait;
 
   Display *m_pHardwareState;

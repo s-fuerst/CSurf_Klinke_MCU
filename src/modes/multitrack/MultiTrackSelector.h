@@ -7,10 +7,11 @@
 #include <vector>
 
 class TrackState;
+class CSurf_MCU;
 
 class MultiTrackSelector : public Selector {
 public:
-  MultiTrackSelector(DisplayHandler *pDH);
+  MultiTrackSelector(DisplayHandler *pDH, CSurf_MCU *pMCU);
   ~MultiTrackSelector(void);
 
   void activateSelector();

@@ -22,7 +22,7 @@ class Options;
   if (pCaller != m_pActualMode)                                                \
     return;
 #define CHECKMODEANDCHANNEL                                                    \
-  ASSERT(channel >= 0 && channel < 9);                                         \
+  ASSERT(channel >= 0 && channel <= m_pMCU->availableChannels());             \
   CHECKMODE
 
 class CCSManager {
