@@ -4,6 +4,7 @@
  */
 #include "Options.h"
 #include "McuDebugLog.h"
+#include "ConfigPath.h"
 #ifndef _WIN32
 #include "csurf_mcu.h"
 #endif
@@ -203,19 +204,6 @@ void Options::readOptionFromXml(XmlElement *pOptionNode,
 }
 
 File Options::getConfigFile() {
-#ifdef _WIN32
-  File configDir =
-      File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() +
-      String("\\Reaper\\MCU\\Config\\");
-  if (!configDir.exists())
-    configDir.createDirectory();
-  return File(configDir.getFullPathName() + String("\\") + getConfigFileName() +
-              String(".xml"));
-#else
-  File configDir = String(GetResourcePath()) + String("/MCU/Config/");
-  if (!configDir.exists())
-    configDir.createDirectory();
-  return File(configDir.getFullPathName() + String("/") + getConfigFileName() +
-              String(".xml"));
-#endif
+  // P2: shared cross-platform helper (all MCU XML configs in one place).
+  return getMcuConfigFile(getConfigFileName() + ".xml");
 }

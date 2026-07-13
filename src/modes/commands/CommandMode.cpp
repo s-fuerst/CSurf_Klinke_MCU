@@ -13,6 +13,7 @@
 #endif
 #include "JuceHeader.h"
 #include "CommandModeMainComponent.h"
+#include "ConfigPath.h"
 
 CommandMode::Page::Page(CommandMode *pMode, int index)
     : m_pMode(pMode), m_iIndex(index) {
@@ -87,10 +88,11 @@ bool CommandMode::Page::readFromXML(XmlElement *pPageNode) {
 }
 
 CommandMode::CommandMode(CCSManager *pManager) : MultiTrackMode(pManager) {
+  m_bConfigLoaded = false;
   for (int i = 0; i < 8; i++) {
     m_pPage[i] = new Page(this, i);
+    m_iActivePageIndex[i] = i; // P3: default unit x -> page x
   }
-  m_pActivePage = m_pPage[0];
 
   readConfigFile();
 
@@ -129,6 +131,7 @@ bool CommandMode::readConfigFile() {
   }
 
   safe_delete(pXmlFile);
+  m_bConfigLoaded = true; // P1: mark a successful load so deactivate() may save
   return true;
 }
 
@@ -156,6 +159,15 @@ void CommandMode::activate() {
 	m_pCCSManager->getDisplayHandler()->enableMCUMeter(false);
 }
 
+// P1: persist config when leaving the mode (covers the mode-switch path and,
+// via the editor dtor, shutdown). Guarded so a failed/absent config load never
+// overwrites a real config file with default-constructed data.
+void CommandMode::deactivate() {
+  if (m_bConfigLoaded)
+    writeConfigFile();
+  MultiTrackMode::deactivate();
+}
+
 // command mode: Channel 1-8, 0x06-0x0c, 0x16-0x1c, 0x26-0x2c ... 0x76-0x7c (the
 // channel is defined thru the page) (0xab : a is channel, b has six different
 // state,
@@ -165,22 +177,26 @@ void CommandMode::activate() {
 //                       b right while pressed,
 //                       c relativ)
 bool CommandMode::vpotMoved(int channel, int numSteps) {
-  channel--;
-  unsigned char midi_byte0 = 0xb0 + m_pActivePage->m_iIndex;
+  // P3: channel is global (1-based, 1..N*8); split into unit + local channel.
+  int unit = (channel - 1) / 8;
+  int localChan = (channel - 1) % 8; // 0-based local channel within the unit
+  Page *pActive = m_pPage[m_iActivePageIndex[unit]];
+
+  unsigned char midi_byte0 = 0xb0 + pActive->m_iIndex;
   int shift = m_pCCSManager->getMCU()->IsModifierPressed(VK_SHIFT) ? 1 : 0;
   if (shift)
     midi_byte0 += 0x08;
-  unsigned char midi_byte1 = 0x10 * channel;
+  unsigned char midi_byte1 = 0x10 * localChan;
   unsigned char midi_byte2;
-  VPOT_LED *pVpot = m_pCCSManager->getVPOT(channel + 1);
+  VPOT_LED *pVpot = m_pCCSManager->getVPOT(channel); // global 1-based channel
   int numSends = 1;
 
-  if (m_pActivePage->m_bRelative[shift][channel] == true) {
+  if (pActive->m_bRelative[shift][localChan] == true) {
     midi_byte1 += 0x0c;
     int relative =
         0x40 + numSteps * (pVpot->isPressed()
-                               ? m_pActivePage->m_iPressedSpeed[shift][channel]
-                               : m_pActivePage->m_iNormalSpeed[shift][channel]);
+                               ? pActive->m_iPressedSpeed[shift][localChan]
+                               : pActive->m_iNormalSpeed[shift][localChan]);
     midi_byte2 = (unsigned char)std::min(255, std::max(0, relative));
   } else {
     bool left = (numSteps < 0);
@@ -204,11 +220,15 @@ bool CommandMode::vpotMoved(int channel, int numSteps) {
 //                       6 vpot pressed,
 //                       7 vpot released)
 bool CommandMode::vpotPressed(int channel, bool pressed) {
-  channel--;
-  unsigned char midi_byte0 = 0xb0 + m_pActivePage->m_iIndex;
+  // P3: channel is global (1-based); split into unit + local channel.
+  int unit = (channel - 1) / 8;
+  int localChan = (channel - 1) % 8;
+  Page *pActive = m_pPage[m_iActivePageIndex[unit]];
+
+  unsigned char midi_byte0 = 0xb0 + pActive->m_iIndex;
   if (m_pCCSManager->getMCU()->IsModifierPressed(VK_SHIFT))
     midi_byte0 += 0x08;
-  unsigned char midi_byte1 = 0x10 * channel + (pressed ? 0x06 : 0x07);
+  unsigned char midi_byte1 = 0x10 * localChan + (pressed ? 0x06 : 0x07);
 
   MIDI_event_t evt = {0, 3, {midi_byte0, midi_byte1, 0x07}};
   kbd_OnMidiEvent(&evt, -1);
@@ -264,22 +284,50 @@ void CommandMode::updateDisplay() {
 	}
 
   int shift = m_pCCSManager->getMCU()->IsModifierPressed(VK_SHIFT) ? 1 : 0;
+  // P3: render line 1 per unit from each unit's own active page.
+  int numUnits = m_pCCSManager->getMCU()->numUnits();
+  if (numUnits < 1)
+    numUnits = 1;
 
-	bool somethingAssigned = false;
-  for (int i = 0; i < 8; i++) {
-		if (m_pActivePage->getCommandName(shift, i) != String())
-			somethingAssigned = true;
-	}
+  m_pDisplay->clearLine(1);
 
-	if (somethingAssigned == true) {
-		m_pDisplay->clearLine(1);
-		for (int i = 0; i < 8; i++)
-			m_pDisplay->changeField(
-							1, i + 1, m_pActivePage->getCommandName(shift, i).toRawUTF8());
-	} else {
-		m_pDisplay->changeText(1, 0, "No actions are name for this bank (press Alt-EQ).", 55, true);
-	}
+  // If the EQ button is held, show the 8 global page names on every
+  // unit — the user is in the bank-selector picking a page via VPOT.
+  if (m_pCCSManager->getMCU()->IsButtonPressed(B_VPOT_EQ)) {
+    for (int u = 0; u < numUnits; u++) {
+      for (int lc = 0; lc < 8; lc++)
+        m_pDisplay->changeField(1, u * 8 + lc + 1,
+                                m_pPage[lc]->m_strPageName.toRawUTF8());
+    }
+    return;
+  }
 
+  MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pDisplay);
+  static const char *kNoActionsHint =
+      "No actions are named for this bank (press Alt+EQ).";
+  for (int u = 0; u < numUnits; u++) {
+    Page *pActive = m_pPage[m_iActivePageIndex[u]];
+
+    bool anyNamed = false;
+    for (int lc = 0; lc < 8; lc++) {
+      if (pActive->getCommandName(shift, lc) != String()) {
+        anyNamed = true;
+        break;
+      }
+    }
+
+    if (anyNamed) {
+      for (int lc = 0; lc < 8; lc++)
+        m_pDisplay->changeField(
+            1, u * 8 + lc + 1, pActive->getCommandName(shift, lc).toRawUTF8());
+    } else {
+      // Per-unit hint: changeText pads/centers the line on this unit only.
+      if (md && u < (int)md->children().size())
+        md->children()[u]->changeText(1, 0, kNoActionsHint, 55, true);
+      else if (!md && u == 0)
+        m_pDisplay->changeText(1, 0, kNoActionsHint, 55, true);
+    }
+  }
 }
 
 Component **CommandMode::createEditorComponent() {
@@ -291,15 +339,7 @@ Component **CommandMode::createEditorComponent() {
 
 void CommandMode::deleteEditorComponent() { safe_delete(m_pMainComponent) }
 
-#define AM_FILE String("\\ActionMode.xml")
-
 File CommandMode::getConfigFile() {
-  File configDir =
-      File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() +
-      String("\\Reaper\\MCU\\Config\\");
-  if (!configDir.exists() ||
-      !File(configDir.getFullPathName() + AM_FILE).exists()) {
-    configDir.createDirectory();
-  }
-  return File(configDir.getFullPathName() + AM_FILE);
+  // P2: shared cross-platform helper (matches Options::getConfigFile()).
+  return getMcuConfigFile("ActionMode.xml");
 }

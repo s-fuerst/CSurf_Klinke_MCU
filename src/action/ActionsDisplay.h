@@ -26,7 +26,7 @@ public:
 private:
   void updateDisplay();
 
-  File getConfigFile(bool bLookAtProgramDir);
+  File getConfigFile();
   bool readConfigFile();
 
   String m_strLabel[16][8];

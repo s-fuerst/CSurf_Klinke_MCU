@@ -6,6 +6,7 @@
 #include "DisplayHandler.h"
 #include "McuAssert.h"
 #include "csurf_mcu.h"
+#include "ConfigPath.h"
 
 ActionsDisplay::ActionsDisplay(DisplayHandler* pDH) : Display(pDH, 4),
 m_pDisplayHandler(pDH),
@@ -69,27 +70,19 @@ void ActionsDisplay::setLabel( int modifiers, int nr, String& newText )
 // Read/Write XML files
 //-------------------------------------------------------------------
 
-File ActionsDisplay::getConfigFile(bool bLookAtProgramDir) {
-#ifdef _WIN32
-  File configDir = File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() + String("\\Reaper\\MCU\\Config\\");
-  if (!configDir.exists())
-    configDir.createDirectory();
-  return File(configDir.getFullPathName() + String("\\GlobalActions.xml"));
-#else
-  File configDir = String(GetResourcePath()) + String("/MCU/Config/");
-  if (!configDir.exists())
-    configDir.createDirectory();
-  return File(configDir.getFullPathName() + String("/GlobalActions.xml"));
-#endif
+File ActionsDisplay::getConfigFile() {
+  // P2: shared cross-platform helper (matches Options::getConfigFile()).
+  return getMcuConfigFile("GlobalActions.xml");
 }
 
 #define GA_ACTION String("ACTION")
 #define GA_ATT_MOD String("mod")
 #define GA_ATT_NR String("nr")
 #define GA_ATT_LABEL String("label")
+#define GA_ATT_VERSION String("version")
 
 bool ActionsDisplay::readConfigFile() {
-  XmlDocument* pXmlFile = new XmlDocument(getConfigFile(true));
+  XmlDocument* pXmlFile = new XmlDocument(getConfigFile());
   if (!pXmlFile)
     return false;
 
@@ -110,6 +103,7 @@ bool ActionsDisplay::readConfigFile() {
 
 void ActionsDisplay::writeConfigFile() {
   XmlElement* pRootElement = new XmlElement("GLOBAL_ACTIONS_CONFIG");
+  pRootElement->setAttribute(GA_ATT_VERSION, 1); // P1: version attr for future migration
 
   for (int mod = 0; mod < 16; mod++) {
     for (int nr = 0; nr < 8; nr++) {
@@ -121,7 +115,7 @@ void ActionsDisplay::writeConfigFile() {
     }
   }
  
-  pRootElement->writeToFile(getConfigFile(false), "", String("UTF-8"));
+  pRootElement->writeToFile(getConfigFile(), "", String("UTF-8"));
 
   delete(pRootElement);
 }

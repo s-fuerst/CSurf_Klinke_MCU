@@ -7,6 +7,7 @@
 #include "JuceHeader.h"
 #include "Selector.h"
 #include "Display.h"
+#include "MultiDisplay.h"
 #include "csurf_mcu.h"
 #include "CCSManager.h"
 #include "McuAssert.h"
@@ -57,6 +58,8 @@ public:
   void writeConfigFile();
 
   void activate();
+  // P1: persist config when leaving the mode (guarded by m_bConfigLoaded).
+  void deactivate();
 
   bool vpotMoved(int channel,
                  int numSteps); // numSteps are negativ for left rotation
@@ -80,7 +83,12 @@ public:
 
 private:
   Page *m_pPage[8];
-  Page *m_pActivePage;
+  // P3: per-unit active page cursor (replaces the single m_pActivePage).
+  // m_iActivePageIndex[unit] -> page index 0..7. Default: unit x -> page x.
+  int m_iActivePageIndex[8];
+  // P1: set true on successful readConfigFile(); guards deactivate() save so
+  // default-constructed data never overwrites a real config file.
+  bool m_bConfigLoaded;
 
   bool m_bVPOTPressed[8];
 
@@ -88,6 +96,11 @@ private:
 
   Component *m_pMainComponent;
   //      Component* m_pEditorComponent;
+
+  // P3: which page is active for the unit owning global channel g (1-based)?
+  int activePageIndexForChannel(int g) const {
+    return m_iActivePageIndex[(g - 1) / 8];
+  }
 };
 
 class CommandPageSelector : public Selector {
@@ -104,12 +117,15 @@ public:
 
     m_pCommandMode->m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
   }
-  // returns true if selector should still be active
-  bool select(int index) {
-    ASSERT(index >= 0 && index < 8);
-    m_pCommandMode->m_pActivePage = m_pCommandMode->m_pPage[index];
-
-    return false;
+  // P3: select() is called by CCSManager with (globalChannel - 1). Split it
+  // into unit + local page and set the active page for the picking unit only.
+  // Returns true if the selector should stay active.
+  bool select(int globalIndex) {
+    int unit = globalIndex / 8;
+    int localPage = globalIndex % 8;
+    ASSERT(unit >= 0 && unit < 8);
+    m_pCommandMode->m_iActivePageIndex[unit] = localPage;
+    return false; // close the selector globally after one pick
   }
 
 private:
