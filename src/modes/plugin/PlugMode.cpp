@@ -11,6 +11,7 @@
 #include "csurf.h"
 #include "csurf_mcu.h"
 #include "Display.h"
+#include "MultiDisplay.h"
 #include "std_helper.h"
 #include <math.h>
 #include "PlugModeOptions.h"
@@ -27,7 +28,7 @@
 PlugMode::PlugMode(CCSManager *pManager)
     : CCSMode(pManager), m_iSingleFaderTouched(0), m_iSingleVPotTouched(0),
       m_pAccess(NULL), m_pPlugEditor(NULL), m_buttonNameValuePressed(false),
-      m_followTrack(true), m_lastTimePlugWasSelected(0) {
+      m_followTrack(true), m_lastTimePlugWasSelected(0), m_activeUnit(0) {
   m_pAccess = new PlugAccess(this);
 
   m_pPlugModeOptions = new PlugModeOptions(pManager->getDisplayHandler());
@@ -1204,4 +1205,43 @@ MediaTrack *PlugMode::selectedTrack() {
 
 void PlugMode::plugChanged() {
 	 if (m_pPlugEditor) m_pPlugEditor->changePlug(m_pAccess);
+}
+
+// ---- WP-PlugMode: active unit & display helpers (Phase 0) ----
+
+void PlugMode::setActiveUnit(int unit) {
+  ASSERT(unit >= 0 && unit < m_pCCSManager->getMCU()->numUnits());
+  m_activeUnit = unit;
+}
+
+int PlugMode::anchorUnit() {
+  // Return first main-capable unit, else 0.
+  // Zero-main-unit configs are valid — anchor falls back to unit 0.
+  for (int i = 0; i < m_pCCSManager->getMCU()->numUnits(); i++) {
+    HardwareUnit *u = m_pCCSManager->getMCU()->unitForChannel(i * 8 + 1);
+    if (u && u->isMain())
+      return i;
+  }
+  return 0;
+}
+
+Display *PlugMode::mainChildOrNull(Display *d) {
+  MultiDisplay *md = dynamic_cast<MultiDisplay *>(d);
+  if (!md)
+    return d; // N=1: plain Display, no composite
+  int a = anchorUnit();
+  if (a < (int)md->children().size())
+    return md->children()[a];
+  return NULL;
+}
+
+void PlugMode::clearNonAnchorChildren(Display *d) {
+  MultiDisplay *md = dynamic_cast<MultiDisplay *>(d);
+  if (!md)
+    return;
+  int a = anchorUnit();
+  for (int i = 0; i < (int)md->children().size(); i++) {
+    if (i != a)
+      md->children()[i]->clear();
+  }
 }

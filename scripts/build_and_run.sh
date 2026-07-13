@@ -7,6 +7,7 @@
 #   ./build_and_run.sh              # quick (incremental) build + deploy + run
 #   ./build_and_run.sh --release    # full configure + build (Release) + deploy + run
 #   ./build_and_run.sh --debug      # full configure + build (Debug) + deploy + run
+#   ./build_and_run.sh --klinke     # full configure + build (Release) with KLINKE features
 #   ./build_and_run.sh --help       # show this message
 
 set -e
@@ -15,15 +16,17 @@ SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD_DIR="$SCRIPT_DIR/build"
 BUILD_TYPE="Release"
 QUICK=true
+KLINKE=0
 
 # --- Options ----------------------------------------------------------------
 
 if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
-    sed -n '2,12p' "$0"
+    sed -n '2,13p' "$0"
     exit 0
 fi
 if [ "$1" = "--debug" ]; then       BUILD_TYPE="Debug";  QUICK=false;  shift; fi
 if [ "$1" = "--release" ]; then     BUILD_TYPE="Release"; QUICK=false;  shift; fi
+if [ "$1" = "--klinke" ]; then      KLINKE=1;            QUICK=false;  shift; fi
 
 # --- Platform detection -----------------------------------------------------
 
@@ -64,7 +67,8 @@ if [ "$QUICK" = true ]; then
     echo "  (incremental — skipping cmake configure)"
 else
     cmake "$SCRIPT_DIR" -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-        $( [ "$BUILD_TYPE" = "Debug" ] && echo "-DMCU_DEBUG_LOG=ON" || echo "-DMCU_DEBUG_LOG=OFF" )
+        $( [ "$BUILD_TYPE" = "Debug" ] && echo "-DMCU_DEBUG_LOG=ON" || echo "-DMCU_DEBUG_LOG=OFF" ) \
+        $( [ "$KLINKE" = 1 ] && echo "-DMCU_KLINKE_BUILD=ON" || echo "-DMCU_KLINKE_BUILD=OFF" )
 fi
 cmake --build . -- -j"$JOBS"
 

@@ -30,7 +30,7 @@
 #          --no-deploy is given.
 #
 # Usage:
-#   scripts/build-windows.sh [--clean] [--reconfigure] [--debug] [--no-deploy] [-j N]
+#   scripts/build-windows.sh [--clean] [--reconfigure] [--debug] [--klinke] [--no-deploy] [-j N]
 #
 #   Switching between release/debug requires --clean; with Ninja (single-config)
 #   the build type is baked at configure time.  Pass MCU_BUILD_DIR=/path to
@@ -55,16 +55,18 @@ CLEAN=0
 RECONFIGURE=0
 BUILD_TYPE=Release
 DEPLOY=1
+KLINKE=0
 JOBS="$(nproc)"
 while [ $# -gt 0 ]; do
   case "$1" in
     --clean)        CLEAN=1 ;;
     --reconfigure)  RECONFIGURE=1 ;;
     --debug)        BUILD_TYPE=Debug; RECONFIGURE=1 ;;
+    --klinke)       KLINKE=1; RECONFIGURE=1 ;;
     --no-deploy)    DEPLOY=0 ;;
     -j)          shift; JOBS="$1" ;;
     -j*)         JOBS="${1#-j}" ;;
-    -h|--help)   sed -n '2,52p' "$0"; exit 0 ;;
+    -h|--help)   sed -n '2,53p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1 (try --help)" >&2; exit 2 ;;
   esac
   shift
@@ -170,7 +172,7 @@ if errorlevel 1 ( echo ERROR: pushd to repo failed & goto :fail )
 call "$VSVARS"
 if errorlevel 1 ( echo ERROR: vcvars64.bat failed & goto :fail )
 echo === CMake configure (Ninja, $BUILD_TYPE) ===
-"$CMAKE_WIN" -G Ninja -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_MAKE_PROGRAM="$NINJA_EXE" -S . -B "$BUILD_DIR_WIN"
+"$CMAKE_WIN" -G Ninja -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_MAKE_PROGRAM="$NINJA_EXE" $( [ "$KLINKE" = 1 ] && echo "-DMCU_KLINKE_BUILD=ON" ) -S . -B "$BUILD_DIR_WIN"
 if errorlevel 1 ( echo ERROR: CMake configure failed & goto :fail )
 echo === Ninja build ===
 "$CMAKE_WIN" --build "$BUILD_DIR_WIN" --parallel $JOBS

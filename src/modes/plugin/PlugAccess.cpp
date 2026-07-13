@@ -22,9 +22,14 @@
 //#define TRACK_CHANGE_TRACK_NOT_CHANGED -2
 
 PlugAccess::PlugAccess(PlugMode *pMode)
-    : m_pMode(pMode), m_selectedBank(0), m_pPlugTrack(NULL), m_iSlot(-1),
+    : m_pMode(pMode), m_pPlugTrack(NULL), m_iSlot(-1),
       m_pMapManager(NULL), m_plugName(String()),
       m_GUIDplugTrack(GUID_NOT_ACTIVE) {
+  // WP-PlugMode: init per-unit state to bank 0 / page 0 for all units
+  m_selectedBankPerUnit.assign(0);
+  for (int u = 0; u < MAX_SURFACE_UNITS; u++)
+    m_selectedPagePerUnit[u].assign(0);
+
   m_pMapManager = new PlugMapManager(pMode);
   m_pWindowManager = new PlugWindowManager(pMode);
 
@@ -104,9 +109,10 @@ void PlugAccess::accessPlugin(MediaTrack *pMediaTrack, int iSlot,
   }
   m_iSlot = iSlot;
 
-  m_selectedBank = 0;
-  BOOST_FOREACH (int &page, m_selectedPage)
-    page = 0;
+  // WP-PlugMode: reset ALL units to bank 0 / page 0
+  m_selectedBankPerUnit.assign(0);
+  for (int u = 0; u < MAX_SURFACE_UNITS; u++)
+    m_selectedPagePerUnit[u].assign(0);
 
   if (changeTriggeredFromProjectChange || !plugExist()) {
     m_pMapManager->deselectMap();
@@ -119,20 +125,33 @@ void PlugAccess::accessPlugin(MediaTrack *pMediaTrack, int iSlot,
   m_plugName = getPlugNameLong();
   m_pMapManager->loadMapForPlug(m_pPlugTrack, m_iSlot);
 
-  // restore the stored state
+  // restore stored per-unit state (or default page-spread for N>1)
   tSlotStatesMap::iterator iterStoredStates = m_knownSlotStates.find(
       tSlotLocation(GUID2String(CSurf_MCU::GUIDfromTrack(pMediaTrack)), iSlot));
+  bool restoredFromStored = false;
   if (iterStoredStates != m_knownSlotStates.end()) {
     tSlotState storedState = (*iterStoredStates).second;
     String storedPlugName = storedState.get<0>();
     if (storedPlugName.equalsIgnoreCase(getPlugNameLong())) {
-      m_selectedBank = storedState.get<1>();
-      m_selectedPage = storedState.get<2>();
+      // WP-PlugMode: restore per-unit arrays (R9)
+      m_selectedBankPerUnit = storedState.get<1>();
+      m_selectedPagePerUnit = storedState.get<2>();
+      restoredFromStored = true;
+    }
+  }
+
+  if (!restoredFromStored) {
+    // WP-PlugMode: default page-spread across used pages (R11 / Phase 0f)
+    // Unit u gets pageAtUsedOffset(bank0, u).  All units on bank 0.
+    int nUnits = m_pMode->getCCSManager()->getMCU()->numUnits();
+    for (int u = 0; u < nUnits; u++) {
+      m_selectedBankPerUnit[u] = 0;
+      m_selectedPagePerUnit[u][0] = pageAtUsedOffset(0, u);
     }
   }
 
   m_pPlugWatcher->setPlugin(pMediaTrack, iSlot);
-	m_pMode->plugChanged();
+  m_pMode->plugChanged();
 
   if (!changeTriggeredFromGUI)
     m_pWindowManager->switchedTo(pMediaTrack, iSlot);
@@ -252,7 +271,7 @@ int PlugAccess::getNumParams(bool includeReaper) {
   if (includeReaper)
       return numParams;
 
-	return TrackFX_GetParamFromIdent(m_pPlugTrack, m_iSlot, ":bypass");
+  return TrackFX_GetParamFromIdent(m_pPlugTrack, m_iSlot, ":bypass");
 }
 
 PMParam *PlugAccess::getPMParam(ElementDesc *pElement) {
@@ -287,22 +306,6 @@ PMParam *PlugAccess::getPMParam(ElementDesc *pElement) {
   return NULL;
 }
 
-int PlugAccess::getParamID(ElementDesc *pElement) {
-  if (pElement->m_type == ElementDesc::DRYWET) {
-    return TrackFX_GetParamFromIdent(m_pPlugTrack, m_iSlot, ":wet");
-  } else if (pElement->m_type == ElementDesc::BYPASS) {
-    return TrackFX_GetParamFromIdent(m_pPlugTrack, m_iSlot, ":bypass");
-  } else if (pElement->m_type == ElementDesc::DELTA) {
-    return TrackFX_GetParamFromIdent(m_pPlugTrack, m_iSlot, ":delta");
-  }
-
-  PMParam *pParam = getPMParam(pElement);
-  if (pParam == NULL)
-    return NOT_ASSIGNED;
-
-  return pParam->getParamID() + pElement->m_offset;
-}
-
 bool PlugAccess::resolveIndirection(ElementDesc *pDesc) {
   ASSERT(pDesc->isValid());
   ASSERT(pDesc->m_offset == 0);
@@ -335,6 +338,7 @@ bool PlugAccess::resolveIndirection(ElementDesc *pDesc) {
     break;
   default:
     ASSERT_M(false, "type is unknown");
+    return false;
   }
 
   if (pParam->getParamID() == NOT_ASSIGNED) {
@@ -344,35 +348,74 @@ bool PlugAccess::resolveIndirection(ElementDesc *pDesc) {
   return true;
 }
 
-void PlugAccess::setParamValueInt(ElementDesc::eType type, int channel,
+// ---- WP-PlugMode: explicit Bank/Page param overloads (R1 / Phase 0d) ----
+
+String PlugAccess::getParamNameShort(int bank, int page,
+                                     ElementDesc::eType type, int channel) {
+  ElementDesc desc(bank, page, type, channel);
+  return getPMParam(&desc) ? getPMParam(&desc)->getNameShort() : String();
+}
+
+String PlugAccess::getParamNameLong(int bank, int page,
+                                    ElementDesc::eType type, int channel) {
+  ElementDesc desc(bank, page, type, channel);
+  return getPMParam(&desc) ? getPMParam(&desc)->getNameLong() : String();
+}
+
+int PlugAccess::getParamID(ElementDesc *pElement) {
+  if (pElement->m_type == ElementDesc::DRYWET) {
+    return TrackFX_GetParamFromIdent(m_pPlugTrack, m_iSlot, ":wet");
+  } else if (pElement->m_type == ElementDesc::BYPASS) {
+    return TrackFX_GetParamFromIdent(m_pPlugTrack, m_iSlot, ":bypass");
+  } else if (pElement->m_type == ElementDesc::DELTA) {
+    return TrackFX_GetParamFromIdent(m_pPlugTrack, m_iSlot, ":delta");
+  }
+
+  PMParam *pParam = getPMParam(pElement);
+  if (pParam == NULL)
+    return NOT_ASSIGNED;
+
+  return pParam->getParamID() + pElement->m_offset;
+}
+
+int PlugAccess::getParamID(int bank, int page, ElementDesc::eType type,
+                           int channel) {
+  ElementDesc desc(bank, page, type, channel);
+  return getParamID(&desc);
+}
+
+void PlugAccess::setParamValueInt(int bank, int page,
+                                  ElementDesc::eType type, int channel,
                                   int value) {
   if (!plugExist())
     return;
 
-  int id = getParamID(type, channel);
+  int id = getParamID(bank, page, type, channel);
   if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams(true)) {
     TrackFX_SetParam(m_pPlugTrack, m_iSlot, id,
                      convertMCU2R(id, std::min(value, MAX_FADER_VALUE_INT)));
   }
 }
 
-void PlugAccess::setParamValueDouble(ElementDesc::eType type, int channel,
+void PlugAccess::setParamValueDouble(int bank, int page,
+                                     ElementDesc::eType type, int channel,
                                      double value) {
   if (!plugExist())
     return;
 
-  int id = getParamID(type, channel);
+  int id = getParamID(bank, page, type, channel);
   if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams(true)) {
     TrackFX_SetParam(m_pPlugTrack, m_iSlot, id, value);
   }
 }
 
-int PlugAccess::getParamValueInt(ElementDesc::eType type, int channel) {
+int PlugAccess::getParamValueInt(int bank, int page, ElementDesc::eType type,
+                                 int channel) {
   if (!plugExist())
     return 0;
 
   double min, max;
-  int id = getParamID(type, channel);
+  int id = getParamID(bank, page, type, channel);
   if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams(true)) {
     return convertR2MCU(
         id, TrackFX_GetParam(m_pPlugTrack, m_iSlot, id, &min, &max));
@@ -381,12 +424,13 @@ int PlugAccess::getParamValueInt(ElementDesc::eType type, int channel) {
   return 0;
 }
 
-double PlugAccess::getParamValueDouble(ElementDesc::eType type, int channel) {
+double PlugAccess::getParamValueDouble(int bank, int page,
+                                       ElementDesc::eType type, int channel) {
   if (!plugExist())
     return 0;
 
   double min, max;
-  int id = getParamID(type, channel);
+  int id = getParamID(bank, page, type, channel);
   if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams(true)) {
     return TrackFX_GetParam(m_pPlugTrack, m_iSlot, id, &min, &max);
   }
@@ -394,7 +438,7 @@ double PlugAccess::getParamValueDouble(ElementDesc::eType type, int channel) {
   return 0;
 }
 
-double PlugAccess::getParamValueDouble(ElementDesc* desc) {
+double PlugAccess::getParamValueDouble(ElementDesc *desc) {
   if (!plugExist())
     return 0;
 
@@ -407,14 +451,73 @@ double PlugAccess::getParamValueDouble(ElementDesc* desc) {
   return 0;
 }
 
-
-PMVPot::tSteps *PlugAccess::getParamSteps(int vpot) {
+PMVPot::tSteps *PlugAccess::getParamSteps(int bank, int page, int vpot) {
   if (!plugExist())
     return NULL;
 
-  PMVPot *pVPot = static_cast<PMVPot *>(getPMParam(ElementDesc::VPOT, vpot));
+  ElementDesc desc(bank, page, ElementDesc::VPOT, vpot);
+  PMVPot *pVPot = static_cast<PMVPot *>(getPMParam(&desc));
 
   return pVPot->getStepsMap();
+}
+
+String PlugAccess::getParamValueShort(int bank, int page,
+                                      ElementDesc::eType type, int channel) {
+  double min, max;
+  int id = getParamID(bank, page, type, channel);
+  if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams()) {
+    double val = TrackFX_GetParam(m_pPlugTrack, m_iSlot, id, &min, &max);
+
+    if (type == ElementDesc::VPOT) {
+      PMVPot::tSteps *steps = getParamSteps(bank, page, channel);
+      int index = findIndexFromKeyInMap(val, steps);
+      if (index >= 0) {
+        return getNthValueFromMap(index, steps).get<0>();
+      } else
+        return String();
+    }
+
+    char valueString[80];
+    bool valid = TrackFX_FormatParamValue(m_pPlugTrack, m_iSlot, id, val,
+                                          valueString, 79);
+    if (valid) {
+      return shortNameFromCString(valueString);
+    } else {
+      return String::formatted(String("%1.3f"),
+                               getParamValueDouble(bank, page, type, channel));
+    }
+  }
+
+  return String();
+}
+
+String PlugAccess::getParamValueLong(int bank, int page,
+                                     ElementDesc::eType type, int channel) {
+  double min, max;
+  int id = getParamID(bank, page, type, channel);
+  if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams()) {
+    double val = TrackFX_GetParam(m_pPlugTrack, m_iSlot, id, &min, &max);
+
+    if (type == ElementDesc::VPOT) {
+      PMVPot::tSteps *steps = getParamSteps(bank, page, channel);
+      int index = findIndexFromKeyInMap(val, steps);
+      if (index >= 0) {
+        return getNthValueFromMap(index, steps).get<1>();
+      }
+    }
+
+    char valueString[80];
+    bool valid = TrackFX_FormatParamValue(m_pPlugTrack, m_iSlot, id, val,
+                                          valueString, 79);
+    if (valid) {
+      return longNameFromCString(valueString);
+    } else {
+      return String::formatted(String("%1.3f"),
+                               getParamValueDouble(bank, page, type, channel));
+    }
+  }
+
+  return String();
 }
 
 double PlugAccess::convertMCU2R(int id, int value) {
@@ -435,78 +538,30 @@ int PlugAccess::convertR2MCU(int id, double value) {
   return (int)(normed * MAX_FADER_VALUE);
 }
 
-void PlugAccess::setSelectedBank(int bank) {
-  m_selectedBank = bank;
-  m_pMode->updateSoloLEDs();
-  m_pMode->updateMuteLEDs();
-  m_pMode->updateFaders();
-}
+// ---- WP-PlugMode: per-unit setters (Phase 0) ----
 
-void PlugAccess::setSelectedPage(int bank, int page) {
-  m_selectedPage[bank] = page;
-  m_pMode->updateMuteLEDs();
-  m_pMode->updateFaders();
-}
-
-void PlugAccess::setSelectedPageInSelectedBank(int page) {
-  setSelectedPage(m_selectedBank, page);
-}
-
-String PlugAccess::getParamValueShort(ElementDesc::eType type, int channel) {
-  double min, max;
-  int id = getParamID(type, channel);
-  if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams()) {
-    double val = TrackFX_GetParam(m_pPlugTrack, m_iSlot, id, &min, &max);
-
-    if (type == ElementDesc::VPOT) {
-      PMVPot::tSteps *steps = getParamSteps(channel);
-      int index = findIndexFromKeyInMap(val, steps);
-      if (index >= 0) {
-        return getNthValueFromMap(index, steps).get<0>();
-      } else
-        return String();
-    }
-
-    char valueString[80];
-    bool valid = TrackFX_FormatParamValue(m_pPlugTrack, m_iSlot, id, val,
-                                          valueString, 79);
-    if (valid) {
-      return shortNameFromCString(valueString);
-    } else {
-      return String::formatted(String("%1.3f"),
-                               getParamValueDouble(type, channel));
-    }
+void PlugAccess::setSelectedBank(int bank, int unit) {
+  ASSERT(unit >= 0 && unit < MAX_SURFACE_UNITS);
+  m_selectedBankPerUnit[unit] = bank;
+  // Only trigger LED/fader updates if setting the active unit
+  if (unit == m_pMode->getActiveUnit()) {
+    m_pMode->updateSoloLEDs();
+    m_pMode->updateMuteLEDs();
+    m_pMode->updateFaders();
   }
-
-  return String();
 }
 
-String PlugAccess::getParamValueLong(ElementDesc::eType type, int channel) {
-  double min, max;
-  int id = getParamID(type, channel);
-  if (id != NOT_ASSIGNED && id >= 0 && id < getNumParams()) {
-    double val = TrackFX_GetParam(m_pPlugTrack, m_iSlot, id, &min, &max);
-
-    if (type == ElementDesc::VPOT) {
-      PMVPot::tSteps *steps = getParamSteps(channel);
-      int index = findIndexFromKeyInMap(val, steps);
-      if (index >= 0) {
-        return getNthValueFromMap(index, steps).get<1>();
-      }
-    }
-
-    char valueString[80];
-    bool valid = TrackFX_FormatParamValue(m_pPlugTrack, m_iSlot, id, val,
-                                          valueString, 79);
-    if (valid) {
-      return longNameFromCString(valueString);
-    } else {
-      return String::formatted(String("%1.3f"),
-                               getParamValueDouble(type, channel));
-    }
+void PlugAccess::setSelectedPage(int bank, int page, int unit) {
+  ASSERT(unit >= 0 && unit < MAX_SURFACE_UNITS);
+  m_selectedPagePerUnit[unit][bank] = page;
+  if (unit == m_pMode->getActiveUnit()) {
+    m_pMode->updateMuteLEDs();
+    m_pMode->updateFaders();
   }
+}
 
-  return String();
+void PlugAccess::setSelectedPageInSelectedBank(int page, int unit) {
+  setSelectedPage(m_selectedBankPerUnit[unit], page, unit);
 }
 
 void PlugAccess::trackRemoved(MediaTrack *pMT) {
@@ -514,15 +569,15 @@ void PlugAccess::trackRemoved(MediaTrack *pMT) {
 
   if (pMT == m_pPlugTrack) {
     accessPlugin(NULL, -1);
-    //    m_pPlugTrack = NULL;
-    //    m_pMode->updateEverything();
   }
 }
 
+// WP-PlugMode: resolveBankReference uses the active unit's bank (R1)
 int PlugAccess::resolveBankReference() {
-  return getMap()->getBank(m_selectedBank)->doesRefer()
-             ? getMap()->getBank(m_selectedBank)->referTo()
-             : m_selectedBank;
+  int activeBank = m_selectedBankPerUnit[m_pMode->getActiveUnit()];
+  return getMap()->getBank(activeBank)->doesRefer()
+             ? getMap()->getBank(activeBank)->referTo()
+             : activeBank;
 }
 
 bool PlugAccess::isPageUsedInSelectedBank(int page) {
@@ -530,6 +585,217 @@ bool PlugAccess::isPageUsedInSelectedBank(int page) {
 }
 
 PlugMap *PlugAccess::getMap() { return m_pMapManager->getActiveMap(); }
+
+// ---- WP-PlugMode: used-page-sequence helpers (R11 / Phase 0e) ----
+
+std::vector<int> PlugAccess::usedPages(int bank) {
+  std::vector<int> result;
+  PlugMap *map = getMap();
+  if (!map)
+    return result;
+  for (int p = 0; p < 8; p++) {
+    if (map->getBank(bank)->getPage(p)->isUsed())
+      result.push_back(p);
+  }
+  return result;
+}
+
+int PlugAccess::usedPageCount(int bank) {
+  return (int)usedPages(bank).size();
+}
+
+int PlugAccess::pageAtUsedOffset(int bank, int offset) {
+  std::vector<int> pages = usedPages(bank);
+  if (pages.empty())
+    return 0;
+  if (offset < 0)
+    return pages.front();
+  if (offset >= (int)pages.size())
+    return pages.back();
+  return pages[offset];
+}
+
+// ---- WP-PlugMode: persistence (R9 / Phase 0g) ----
+
+#define PLUGACCESS_NODE_ROOT String("PLUGACCESS")
+#define PLUGACCESS_NODE_SLOTSTATE String("SLOTSTATES")
+#define PLUGACCESS_ATT_SLOTSTATE_TRACK String("track")
+#define PLUGACCESS_ATT_SLOTSTATE_SLOT String("slot")
+#define PLUGACCESS_ATT_SLOTSTATE_PLUGNAME String("plugname")
+#define PLUGACCESS_ATT_SLOTSTATE_BANK String("bank")
+#define PLUGACCESS_NODE_SLOTSTATE_PAGE String("PAGE")
+#define PLUGACCESS_ATT_SLOTSTATE_PAGE_INDEX String("nr")
+
+// WP-PlugMode: versioned UNIT_STATES block (R9)
+#define PLUGACCESS_NODE_UNIT_STATES String("UNIT_STATES")
+#define PLUGACCESS_ATT_VERSION String("version")
+#define PLUGACCESS_NODE_UNIT String("UNIT")
+#define PLUGACCESS_ATT_UNIT_INDEX String("nr")
+#define PLUGACCESS_ATT_UNIT_BANK String("bank")
+
+#define PLUGACCESS_NODE_SELECTED_PLUG String("SELECTED_PLUG")
+#define PLUGACCESS_ATT_SELECTED_PLUG_TRACK String("track")
+#define PLUGACCESS_ATT_SELECTED_PLUG_SLOT String("slot")
+
+void PlugAccess::projectChanged(XmlElement *pXmlElement,
+                                ProjectConfig::EAction action) {
+  XmlElement *pPlugAccessNode;
+
+  switch (action) {
+  case ProjectConfig::WRITE:
+    storeActualSlotState();
+    pPlugAccessNode = new XmlElement(PLUGACCESS_NODE_ROOT);
+    writeSlotStatesToProjectConfig(pPlugAccessNode);
+    writeSelectedPlugToProjectConfig(pPlugAccessNode);
+    pXmlElement->addChildElement(pPlugAccessNode);
+    break;
+
+  case ProjectConfig::FREE:
+    m_knownSlotStates.clear();
+    break;
+
+  case ProjectConfig::READ:
+    pPlugAccessNode = pXmlElement->getChildByName(PLUGACCESS_NODE_ROOT);
+    if (pPlugAccessNode) {
+      readSlotStatesFromProjectConfig(pPlugAccessNode);
+      readSelectedPlugFromProjectConfig(pPlugAccessNode, true);
+    }
+    break;
+  }
+}
+
+void PlugAccess::writeSlotStatesToProjectConfig(XmlElement *pNode) {
+  BOOST_FOREACH (tSlotStatePair &entry, m_knownSlotStates) {
+    XmlElement *pSlotState = new XmlElement(PLUGACCESS_NODE_SLOTSTATE);
+    tSlotLocation loc = entry.first;
+    pSlotState->setAttribute(PLUGACCESS_ATT_SLOTSTATE_TRACK, loc.get<0>());
+    pSlotState->setAttribute(PLUGACCESS_ATT_SLOTSTATE_SLOT, loc.get<1>());
+
+    tSlotState state = entry.second;
+    pSlotState->setAttribute(PLUGACCESS_ATT_SLOTSTATE_PLUGNAME, state.get<0>());
+
+    // WP-PlugMode: write versioned UNIT_STATES block (R9)
+    XmlElement *pUnitStates =
+        new XmlElement(PLUGACCESS_NODE_UNIT_STATES);
+    pUnitStates->setAttribute(PLUGACCESS_ATT_VERSION, 1);
+
+    boost::array<int, MAX_SURFACE_UNITS> banksPerUnit = state.get<1>();
+    boost::array<boost::array<int, 8>, MAX_SURFACE_UNITS> pagesPerUnit =
+        state.get<2>();
+
+    for (int u = 0; u < MAX_SURFACE_UNITS; u++) {
+      XmlElement *pUnit = new XmlElement(PLUGACCESS_NODE_UNIT);
+      pUnit->setAttribute(PLUGACCESS_ATT_UNIT_INDEX, u);
+      pUnit->setAttribute(PLUGACCESS_ATT_UNIT_BANK, banksPerUnit[u]);
+
+      for (int p = 0; p < 8; p++) {
+        XmlElement *pPage = new XmlElement(PLUGACCESS_NODE_SLOTSTATE_PAGE);
+        pPage->setAttribute(PLUGACCESS_ATT_SLOTSTATE_PAGE_INDEX,
+                            pagesPerUnit[u][p]);
+        pUnit->addChildElement(pPage);
+      }
+      pUnitStates->addChildElement(pUnit);
+    }
+    pSlotState->addChildElement(pUnitStates);
+    pNode->addChildElement(pSlotState);
+  }
+}
+
+void PlugAccess::readSlotStatesFromProjectConfig(XmlElement *pNode) {
+  forEachXmlChildElement(*pNode, pChild) {
+    if (pChild->getTagName() == PLUGACCESS_NODE_SLOTSTATE) {
+      tSlotLocation loc(
+          pChild->getStringAttribute(PLUGACCESS_ATT_SLOTSTATE_TRACK),
+          pChild->getIntAttribute(PLUGACCESS_ATT_SLOTSTATE_SLOT));
+
+      String plugName =
+          pChild->getStringAttribute(PLUGACCESS_ATT_SLOTSTATE_PLUGNAME);
+
+      boost::array<int, MAX_SURFACE_UNITS> banksPerUnit;
+      boost::array<boost::array<int, 8>, MAX_SURFACE_UNITS> pagesPerUnit;
+      banksPerUnit.assign(0);
+      for (int u = 0; u < MAX_SURFACE_UNITS; u++)
+        pagesPerUnit[u].assign(0);
+
+      // WP-PlugMode: try versioned UNIT_STATES block first (R9)
+      XmlElement *pUnitStates =
+          pChild->getChildByName(PLUGACCESS_NODE_UNIT_STATES);
+      if (pUnitStates && pUnitStates->getIntAttribute(PLUGACCESS_ATT_VERSION) == 1) {
+        int unitCount = 0;
+        forEachXmlChildElement(*pUnitStates, pUnit) {
+          if (pUnit->getTagName() == PLUGACCESS_NODE_UNIT) {
+            int u = pUnit->getIntAttribute(PLUGACCESS_ATT_UNIT_INDEX);
+            if (u >= 0 && u < MAX_SURFACE_UNITS) {
+              banksPerUnit[u] =
+                  pUnit->getIntAttribute(PLUGACCESS_ATT_UNIT_BANK);
+              int page = 0;
+              forEachXmlChildElement(*pUnit, pPage) {
+                if (page < 8)
+                  pagesPerUnit[u][page++] =
+                      pPage->getIntAttribute(
+                          PLUGACCESS_ATT_SLOTSTATE_PAGE_INDEX);
+              }
+              unitCount++;
+            }
+          }
+        }
+      } else {
+        // Legacy format: single bank + 8 pages → map to unit 0 (R9)
+        banksPerUnit[0] =
+            pChild->getIntAttribute(PLUGACCESS_ATT_SLOTSTATE_BANK);
+        int page = 0;
+        forEachXmlChildElement(*pChild, pPage) {
+          if (pPage->getTagName() == PLUGACCESS_NODE_SLOTSTATE_PAGE && page < 8)
+            pagesPerUnit[0][page++] =
+                pPage->getIntAttribute(PLUGACCESS_ATT_SLOTSTATE_PAGE_INDEX);
+        }
+        // Units 1..N−1: defaults from default page-spread logic
+        // (handled by accessPlugin when restoredFromStored is false for those)
+      }
+
+      tSlotState state(plugName, banksPerUnit, pagesPerUnit);
+      m_knownSlotStates[loc] = state;
+    }
+  }
+}
+
+void PlugAccess::storeActualSlotState() {
+  // WP-PlugMode: store per-unit arrays (R9)
+  if (m_iSlot >= 0 && m_pPlugTrack != NULL) {
+    tSlotLocation loc(GUID2String(&m_GUIDplugTrack), m_iSlot);
+    tSlotState state(m_plugName, m_selectedBankPerUnit, m_selectedPagePerUnit);
+    m_knownSlotStates.erase(loc);
+    m_knownSlotStates.insert(std::pair<tSlotLocation, tSlotState>(loc, state));
+  }
+}
+
+void PlugAccess::writeSelectedPlugToProjectConfig(XmlElement *pPlugAccessNode) {
+  XmlElement *pSelectedPlug = new XmlElement(PLUGACCESS_NODE_SELECTED_PLUG);
+  pSelectedPlug->setAttribute(PLUGACCESS_ATT_SELECTED_PLUG_TRACK,
+                              GUID2String(&m_GUIDplugTrack));
+  pSelectedPlug->setAttribute(PLUGACCESS_ATT_SELECTED_PLUG_SLOT, m_iSlot);
+  pPlugAccessNode->addChildElement(pSelectedPlug);
+}
+
+void PlugAccess::readSelectedPlugFromProjectConfig(
+    XmlElement *pPlugAccessNode,
+    bool changeTriggeredFromProjectChange) {
+  forEachXmlChildElement(*pPlugAccessNode, pChild) {
+    if (pChild->getTagName() == PLUGACCESS_NODE_SELECTED_PLUG) {
+      String guidString =
+          pChild->getStringAttribute(PLUGACCESS_ATT_SELECTED_PLUG_TRACK);
+      GUID guid;
+      String2GUID(guidString, &guid);
+      MediaTrack *pMediaTrack = CSurf_MCU::TrackFromGUID(guid);
+      int iSlot = pChild->getIntAttribute(PLUGACCESS_ATT_SELECTED_PLUG_SLOT);
+
+      accessPlugin(pMediaTrack, iSlot, false, changeTriggeredFromProjectChange);
+      return;
+    }
+  }
+}
+
+// ---- unchanged below this line ----
 
 void PlugAccess::watchedNameParameterChanged(MediaTrack *pMediaTrack, int iSlot,
                                              String newPlugName) {
@@ -553,7 +819,7 @@ void PlugAccess::checkFloatWindows() {
         pFWI = pTrackFWI;
       }
     }
-		// trigger update when user opens floating plugin on master track
+    // trigger update when user opens floating plugin on master track
     if (!pFWI)
       pFWI = checkAppearingFloats(GetMasterTrack(NULL));
   }
@@ -629,7 +895,7 @@ void PlugAccess::checkChainChanges() {
       checkChain(*ti);
     }
     // trigger update when user changes selected plugin on master track
-    checkChain(GetMasterTrack(NULL)); 
+    checkChain(GetMasterTrack(NULL));
   }
 }
 
@@ -681,123 +947,5 @@ void PlugAccess::openFX() {
     TrackFX_Show(m_pPlugTrack, m_iSlot, 1);
   } else if (isOptionSetTo(PMO_GUI_FOLLOW, PMOA_OPEN_FLOATING)) {
     TrackFX_Show(m_pPlugTrack, m_iSlot, 3);
-  }
-}
-
-#define PLUGACCESS_NODE_ROOT String("PLUGACCESS")
-#define PLUGACCESS_NODE_SLOTSTATE String("SLOTSTATES")
-#define PLUGACCESS_ATT_SLOTSTATE_TRACK String("track")
-#define PLUGACCESS_ATT_SLOTSTATE_SLOT String("slot")
-#define PLUGACCESS_ATT_SLOTSTATE_PLUGNAME String("plugname")
-#define PLUGACCESS_ATT_SLOTSTATE_BANK String("bank")
-#define PLUGACCESS_NODE_SLOTSTATE_PAGE String("PAGE")
-#define PLUGACCESS_ATT_SLOTSTATE_PAGE_INDEX String("nr")
-#define PLUGACCESS_NODE_SELECTED_PLUG String("SELECTED_PLUG")
-#define PLUGACCESS_ATT_SELECTED_PLUG_TRACK String("track")
-#define PLUGACCESS_ATT_SELECTED_PLUG_SLOT String("slot")
-
-void PlugAccess::projectChanged(XmlElement *pXmlElement,
-                                ProjectConfig::EAction action) {
-  XmlElement *pPlugAccessNode;
-
-  switch (action) {
-  case ProjectConfig::WRITE:
-    storeActualSlotState();
-    pPlugAccessNode = new XmlElement(PLUGACCESS_NODE_ROOT);
-    writeSlotStatesToProjectConfig(pPlugAccessNode);
-    writeSelectedPlugToProjectConfig(pPlugAccessNode);
-    pXmlElement->addChildElement(pPlugAccessNode);
-    break;
-
-  case ProjectConfig::FREE:
-    m_knownSlotStates.clear();
-    break;
-
-  case ProjectConfig::READ:
-    pPlugAccessNode = pXmlElement->getChildByName(PLUGACCESS_NODE_ROOT);
-    if (pPlugAccessNode) {
-      readSlotStatesFromProjectConfig(pPlugAccessNode);
-      readSelectedPlugFromProjectConfig(pPlugAccessNode, true);
-    }
-    break;
-  }
-}
-
-void PlugAccess::writeSlotStatesToProjectConfig(XmlElement *pNode) {
-  BOOST_FOREACH (tSlotStatePair &entry, m_knownSlotStates) {
-    XmlElement *pSlotState = new XmlElement(PLUGACCESS_NODE_SLOTSTATE);
-    tSlotLocation loc = entry.first;
-    pSlotState->setAttribute(PLUGACCESS_ATT_SLOTSTATE_TRACK, loc.get<0>());
-    pSlotState->setAttribute(PLUGACCESS_ATT_SLOTSTATE_SLOT, loc.get<1>());
-
-    tSlotState state = entry.second;
-    pSlotState->setAttribute(PLUGACCESS_ATT_SLOTSTATE_PLUGNAME, state.get<0>());
-    pSlotState->setAttribute(PLUGACCESS_ATT_SLOTSTATE_BANK, state.get<1>());
-    boost::array<int, 8> pages = state.get<2>();
-    BOOST_FOREACH (int &page, pages) {
-      XmlElement *pPage = new XmlElement(PLUGACCESS_NODE_SLOTSTATE_PAGE);
-      pPage->setAttribute(PLUGACCESS_ATT_SLOTSTATE_PAGE_INDEX, page);
-      pSlotState->addChildElement(pPage);
-    }
-    pNode->addChildElement(pSlotState);
-  }
-}
-
-void PlugAccess::readSlotStatesFromProjectConfig(XmlElement *pNode) {
-  forEachXmlChildElement(*pNode, pChild) {
-    if (pChild->getTagName() == PLUGACCESS_NODE_SLOTSTATE) {
-      tSlotLocation loc(
-          pChild->getStringAttribute(PLUGACCESS_ATT_SLOTSTATE_TRACK),
-          pChild->getIntAttribute(PLUGACCESS_ATT_SLOTSTATE_SLOT));
-
-      String plugName =
-          pChild->getStringAttribute(PLUGACCESS_ATT_SLOTSTATE_PLUGNAME);
-      int bank = pChild->getIntAttribute(PLUGACCESS_ATT_SLOTSTATE_BANK);
-      boost::array<int, 8> pages;
-      int page = 0;
-      forEachXmlChildElement(*pChild, pPage) {
-        pages[page++] =
-            pPage->getIntAttribute(PLUGACCESS_ATT_SLOTSTATE_PAGE_INDEX);
-      }
-      tSlotState state(plugName, bank, pages);
-
-      m_knownSlotStates[loc] = state;
-    }
-  }
-}
-
-void PlugAccess::storeActualSlotState() {
-  // store the actual state (selectedBank and Pages) in the knownSlotStates map
-  if (m_iSlot >= 0 && m_pPlugTrack != NULL) {
-    tSlotLocation loc(GUID2String(&m_GUIDplugTrack), m_iSlot);
-    tSlotState state(m_plugName, m_selectedBank, m_selectedPage);
-    m_knownSlotStates.erase(loc);
-    m_knownSlotStates.insert(std::pair<tSlotLocation, tSlotState>(loc, state));
-  }
-}
-
-void PlugAccess::writeSelectedPlugToProjectConfig(XmlElement *pPlugAccessNode) {
-  XmlElement *pSelectedPlug = new XmlElement(PLUGACCESS_NODE_SELECTED_PLUG);
-  pSelectedPlug->setAttribute(PLUGACCESS_ATT_SELECTED_PLUG_TRACK,
-                              GUID2String(&m_GUIDplugTrack));
-  pSelectedPlug->setAttribute(PLUGACCESS_ATT_SELECTED_PLUG_SLOT, m_iSlot);
-  pPlugAccessNode->addChildElement(pSelectedPlug);
-}
-
-void PlugAccess::readSelectedPlugFromProjectConfig(
-    XmlElement *pPlugAccessNode,
-    bool changeTriggeredFromProjectChange) {
-  forEachXmlChildElement(*pPlugAccessNode, pChild) {
-    if (pChild->getTagName() == PLUGACCESS_NODE_SELECTED_PLUG) {
-      String guidString =
-          pChild->getStringAttribute(PLUGACCESS_ATT_SELECTED_PLUG_TRACK);
-      GUID guid;
-      String2GUID(guidString, &guid);
-      MediaTrack *pMediaTrack = CSurf_MCU::TrackFromGUID(guid);
-      int iSlot = pChild->getIntAttribute(PLUGACCESS_ATT_SELECTED_PLUG_SLOT);
-
-      accessPlugin(pMediaTrack, iSlot, false, changeTriggeredFromProjectChange);
-      return;
-    }
   }
 }

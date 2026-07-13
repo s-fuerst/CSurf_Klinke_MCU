@@ -22,6 +22,9 @@ class PlugMode : public CCSMode {
 public:
   PlugMode(CCSManager *pManager);
 
+  // WP-PlugMode: opt into extender (channel > 8) events
+  bool supportsExtendedChannels() const override { return true; }
+
 public:
   ~PlugMode(void);
 
@@ -97,6 +100,10 @@ public:
   void deleteEditorComponent();
   void removeEditor();
 
+  // ---- WP-PlugMode: active unit management ----
+  int  getActiveUnit() const { return m_activeUnit; }
+  void setActiveUnit(int unit);
+
   void projectChanged(XmlElement *pXmlElement, ProjectConfig::EAction action);
   void plugMoved(MediaTrack *pOldTrack, int oldSlot, MediaTrack *pNewTrack,
                  int newSlot); // pNewTrack == NULL => plug is removed
@@ -118,6 +125,11 @@ public:
   // Helper
   String shortPlugName(const char *pName);
   String longPlugName(const char *pName);
+
+  // ---- WP-PlugMode: display helpers (Phase 1-3 will use these) ----
+  Display *mainChildOrNull(Display *d);
+  int      anchorUnit();
+  void     clearNonAnchorChildren(Display *d);
 
   MediaTrack *selectedTrack(); 
 	void followChanges();
@@ -190,4 +202,7 @@ private:
 
 	double lastFaderValues[8][8][8];
 	double lastVPotValues[8][8][8];
+
+	// WP-PlugMode: per-unit state (Phase 0)
+	int m_activeUnit; // pinned before every unit-specific callback (R8)
 };

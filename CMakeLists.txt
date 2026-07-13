@@ -52,6 +52,7 @@ endforeach()
 
 # --- Options ------------------------------------------------------------------
 option(MCU_DEBUG_LOG "Write button/window debug log to <REAPER_RESOURCE>/mcu_klinke_debug.log" ON)
+option(MCU_KLINKE_BUILD "Enable Klinke's personal developer features (KLINKE preprocessor flag)" OFF)
 
 # =============================================================================
 #  Versioning — VERSION.txt at the repo root holds "<version> <build-count>".
@@ -177,6 +178,10 @@ endif()
 
 if(MCU_DEBUG_LOG)
     target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE MCU_DEBUG_LOG)
+endif()
+
+if(MCU_KLINKE_BUILD)
+    target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE KLINKE)
 endif()
 
 # --- Source files — GLOB_RECURSE all .cpp under src/ with CONFIGURE_DEPENDS.

@@ -346,5 +346,5 @@ the detailed design of WP-A (`HardwareUnit`).
 | WP-EF | Routing correctness + global multi-main output | DONE | `extender-wp-ef-impl-plan.md` | Capability-based routing, dense topology, multi-main global output |
 | WP-F | Per-mode channel widening | DONE | (in WP-EF plan) | MultiTrack/Pan/Command/Send loops widened to availableChannels() |
 | — | Multi-unit mode selection | NEXT | — | Mode switching & display across all active units |
-| — | PlugMode N-unit widening | FUTURE | Per-mode doc | PlugMode still single-unit (split-behaviour obligation) |
+| WP-PlugMode | PlugMode N-unit widening | PLANNING | `extender-wp-plugmode-impl-plan.md` | Per-unit bank/page cursors, display sets, MeterBridge, ProX removal |
 | — | Hardware test (CR-R3) | FUTURE | — | Verify on real multi-unit hardware |

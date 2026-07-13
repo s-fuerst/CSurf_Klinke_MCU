@@ -39,6 +39,9 @@ public:
     }
 
     ElementDesc(PlugAccess *pPA, eType type, int channel) {
+      // WP-PlugMode guard: getSelectedBank() reads the active unit's state.
+      // If m_activeUnit is stale, resolution silently targets the wrong unit.
+      ASSERT(pPA->getActiveUnit() >= 0 && pPA->getActiveUnit() < MAX_SURFACE_UNITS);
       m_bank = pPA->getSelectedBank();
       m_page = pPA->getSelectedPageInSelectedBank();
       m_type = type;
@@ -86,44 +89,84 @@ public:
   MediaTrack *getPlugTrack() { return m_pPlugTrack; }
   const GUID &getPlugTrackGUID() { return m_GUIDplugTrack; }
 
-  // Parameter
+  // Parameter — selected-based (delegates to explicit overloads with active
+  // unit's Bank/Page)
   String getParamNameShort(ElementDesc::eType type, int channel) {
-    return getPMParam(type, channel) ? getPMParam(type, channel)->getNameShort()
-                                     : String();
+    return getParamNameShort(getSelectedBank(), getSelectedPageInSelectedBank(),
+                             type, channel);
   }
   String getParamNameLong(ElementDesc::eType type, int channel) {
-    return getPMParam(type, channel) ? getPMParam(type, channel)->getNameLong()
-                                     : String();
+    return getParamNameLong(getSelectedBank(), getSelectedPageInSelectedBank(),
+                            type, channel);
   }
   void setParamValueInt(
-      ElementDesc::eType type, int channel,
-      int value); // channel is 0 based, value is a 14bit unsigned int
-  void setParamValueDouble(ElementDesc::eType type, int channel,
-                           double value); // channel is 0 based, value is
-                                          // directly forwarded to reaper
+      ElementDesc::eType type, int channel, int value) {
+    setParamValueInt(getSelectedBank(), getSelectedPageInSelectedBank(), type,
+                     channel, value);
+  }
+  void setParamValueDouble(ElementDesc::eType type, int channel, double value) {
+    setParamValueDouble(getSelectedBank(), getSelectedPageInSelectedBank(), type,
+                        channel, value);
+  }
   int getParamValueInt(
       ElementDesc::eType type,
-      int channel = 0); // channel is 0 based, return value is 14bit unsigned,
-                        // returns 0 if element hasn't an assigned id
+      int channel = 0) {
+    return getParamValueInt(getSelectedBank(), getSelectedPageInSelectedBank(),
+                            type, channel);
+  }
   double getParamValueDouble(
-      ElementDesc::eType type,
-      int channel); // channel is 0 based, returns unconverted value, returns 0
-                    // if element hasn't an assigned id
-  double getParamValueDouble(ElementDesc* desc);
-  PMVPot::tSteps *getParamSteps(
-      int vpot); // ElementDesc can be only VPOT, so vpot parameter is enough
-  String getParamValueShort(ElementDesc::eType type, int channel);
-  String getParamValueLong(ElementDesc::eType type, int channel);
+      ElementDesc::eType type, int channel) {
+    return getParamValueDouble(getSelectedBank(), getSelectedPageInSelectedBank(),
+                               type, channel);
+  }
+  double getParamValueDouble(ElementDesc *desc);
+  PMVPot::tSteps *getParamSteps(int vpot) {
+    return getParamSteps(getSelectedBank(), getSelectedPageInSelectedBank(), vpot);
+  }
+  String getParamValueShort(ElementDesc::eType type, int channel) {
+    return getParamValueShort(getSelectedBank(), getSelectedPageInSelectedBank(),
+                              type, channel);
+  }
+  String getParamValueLong(ElementDesc::eType type, int channel) {
+    return getParamValueLong(getSelectedBank(), getSelectedPageInSelectedBank(),
+                             type, channel);
+  }
 
   int getParamID(ElementDesc *element);
   int getParamID(ElementDesc::eType type, int channel) {
-    boost::scoped_ptr<PlugAccess::ElementDesc> pDesc(
-        new ElementDesc(this, type, channel));
-    return getParamID(pDesc.get());
+    return getParamID(getSelectedBank(), getSelectedPageInSelectedBank(), type,
+                      channel);
   }
-  // Bank
-  void setSelectedBank(int bank);
-  int getSelectedBank() { return m_selectedBank; }
+
+  // ---- WP-PlugMode: explicit Bank/Page overloads (D1 / R1) ----
+  String getParamNameShort(int bank, int page, ElementDesc::eType type,
+                           int channel);
+  String getParamNameLong(int bank, int page, ElementDesc::eType type,
+                          int channel);
+  void setParamValueInt(int bank, int page, ElementDesc::eType type, int channel,
+                        int value);
+  void setParamValueDouble(int bank, int page, ElementDesc::eType type,
+                           int channel, double value);
+  int getParamValueInt(int bank, int page, ElementDesc::eType type,
+                       int channel);
+  double getParamValueDouble(int bank, int page, ElementDesc::eType type,
+                             int channel);
+  PMVPot::tSteps *getParamSteps(int bank, int page, int vpot);
+  String getParamValueShort(int bank, int page, ElementDesc::eType type,
+                            int channel);
+  String getParamValueLong(int bank, int page, ElementDesc::eType type,
+                           int channel);
+  int getParamID(int bank, int page, ElementDesc::eType type, int channel);
+
+  // Bank — active-unit aliases (selected-based, for editor/selector compat)
+  void setSelectedBank(int bank) {
+    setSelectedBank(bank, m_pMode->getActiveUnit());
+  }
+  int getSelectedBank() {
+    int u = m_pMode->getActiveUnit();
+    ASSERT(u >= 0 && u < MAX_SURFACE_UNITS);
+    return m_selectedBankPerUnit[u];
+  }
   String getBankNameLong(int bank) {
     return getMap()->getBank(bank)->getNameLong();
   }
@@ -134,10 +177,18 @@ public:
     return getMap()->getBank(bank)->isUsed();
   } // 0 based
 
-  // Page
-  void setSelectedPage(int bank, int page);
-  void setSelectedPageInSelectedBank(int page);
-  int getSelectedPageInSelectedBank() { return m_selectedPage[m_selectedBank]; }
+  // Page — active-unit aliases
+  void setSelectedPage(int bank, int page) {
+    setSelectedPage(bank, page, m_pMode->getActiveUnit());
+  }
+  void setSelectedPageInSelectedBank(int page) {
+    setSelectedPageInSelectedBank(page, m_pMode->getActiveUnit());
+  }
+  int getSelectedPageInSelectedBank() {
+    int u = m_pMode->getActiveUnit();
+    int bank = m_selectedBankPerUnit[u];
+    return m_selectedPagePerUnit[u][bank];
+  }
   String getPageNameLongInSelectedBank(int page) {
     return getMap()
         ->getBank(resolveBankReference())
@@ -154,6 +205,24 @@ public:
     return getMap()->getBank(bank)->getPage(page)->isUsed();
   }
   bool isPageUsedInSelectedBank(int page); // 0 based
+
+  // ---- WP-PlugMode: per-unit accessors (Phase 0) ----
+  int  selectedBankForUnit(int u) const { return m_selectedBankPerUnit[u]; }
+  int  selectedPageForUnit(int u) const {
+    return m_selectedPagePerUnit[u][m_selectedBankPerUnit[u]];
+  }
+  int  selectedPageForUnit(int u, int bank) const {
+    return m_selectedPagePerUnit[u][bank];
+  }
+  void setSelectedBank(int bank, int unit);
+  void setSelectedPage(int bank, int page, int unit);
+  void setSelectedPageInSelectedBank(int page, int unit);
+  int  getActiveUnit() const { return m_pMode->getActiveUnit(); }
+
+  // ---- WP-PlugMode: used-page-sequence helpers (R11) ----
+  std::vector<int> usedPages(int bank);
+  int usedPageCount(int bank);
+  int pageAtUsedOffset(int bank, int offset);
 
   // TrackFX_ releated stuff
   bool plugExist();
@@ -219,9 +288,11 @@ private:
                      // for saving the slotState (it's possible that the track
                      // doesn't exist anymore)
 
-  int m_selectedBank;
-  boost::array<int, 8>
-      m_selectedPage; // for each bank we store the last selected page
+  // WP-PlugMode: per-unit state (Phase 0).  Index 0..MAX_SURFACE_UNITS-1.
+  // m_selectedBankPerUnit[u] = selected bank for unit u, -1 = unassigned.
+  boost::array<int, MAX_SURFACE_UNITS> m_selectedBankPerUnit;
+  // m_selectedPagePerUnit[u][bank] = selected page in bank for unit u.
+  boost::array<boost::array<int, 8>, MAX_SURFACE_UNITS> m_selectedPagePerUnit;
 
   MediaTrack *m_pPlugTrack; // can be NULL
   GUID m_GUIDplugTrack; // GetTrackGUID only works as long as the track is in
@@ -235,7 +306,12 @@ private:
   PlugMode *m_pMode;
   PlugMapManager *m_pMapManager;
 
-  typedef boost::tuple<String, int, boost::array<int, 8>> tSlotState;
+  // WP-PlugMode: widened tSlotState (R9) — per-unit banks + pages.
+  // Format: (plugName, banksPerUnit[], pagesPerUnit[][])
+  typedef boost::tuple<String,
+                       boost::array<int, MAX_SURFACE_UNITS>,
+                       boost::array<boost::array<int, 8>, MAX_SURFACE_UNITS>>
+      tSlotState;
   typedef boost::tuple<String /* GUID */, int> tSlotLocation;
   typedef std::pair<const tSlotLocation, tSlotState> tSlotStatePair;
   typedef std::map<tSlotLocation, tSlotState> tSlotStatesMap;

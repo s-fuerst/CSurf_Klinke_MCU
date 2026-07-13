@@ -18,6 +18,7 @@
 #   scripts/build-windows-fast.sh --clean     # wipe build dir, reconfigure + build
 #   scripts/build-windows-fast.sh --reconfigure  # re-run CMake configure, then build
 #   scripts/build-windows-fast.sh --debug     # Debug config (needs --clean first)
+#   scripts/build-windows-fast.sh --klinke    # Release config with KLINKE features
 #   scripts/build-windows-fast.sh --no-deploy
 #
 #   Switching release <-> debug requires --clean (Ninja is single-config).
@@ -32,6 +33,7 @@ CLEAN=0
 RECONFIGURE=0
 BUILD_TYPE=Release
 DEPLOY=1
+KLINKE=0
 JOBS="$(nproc)"
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -39,10 +41,11 @@ while [ $# -gt 0 ]; do
     --clean)       CLEAN=1 ;;
     --reconfigure) RECONFIGURE=1 ;;
     --debug)       BUILD_TYPE=Debug; RECONFIGURE=1 ;;
+    --klinke)      KLINKE=1; RECONFIGURE=1 ;;
     --no-deploy)   DEPLOY=0 ;;
     -j)            shift; JOBS="$1" ;;
     -j*)           JOBS="${1#-j}" ;;
-    -h|--help)     sed -n '2,34p' "$0"; exit 0 ;;
+    -h|--help)     sed -n '2,35p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1 (try --help)" >&2; exit 2 ;;
   esac
   shift
@@ -173,7 +176,7 @@ if errorlevel 1 ( echo ERROR: cd to $MIRROR_WIN failed & goto :fail )
 call "$VSVARS"
 if errorlevel 1 ( echo ERROR: vcvars64.bat failed & goto :fail )
 echo === CMake configure (Ninja, $BUILD_TYPE) ===
-"$CMAKE_WIN" -G Ninja -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_MAKE_PROGRAM="$NINJA_EXE" -S . -B build_win
+"$CMAKE_WIN" -G Ninja -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_MAKE_PROGRAM="$NINJA_EXE" $( [ "$KLINKE" = 1 ] && echo "-DMCU_KLINKE_BUILD=ON" ) -S . -B build_win
 if errorlevel 1 ( echo ERROR: CMake configure failed & goto :fail )
 echo === Ninja build ===
 "$CMAKE_WIN" --build build_win --parallel $JOBS
