@@ -183,23 +183,18 @@ This is existing behavior, not introduced by the plan.
 | 1 | 🔴 Critical | 🟢 No issue | `GetResourcePath()` IS writable on Linux — review is factually wrong |
 | 2 | 🟠 High | 🟡 Medium | Existing behavior, unlikely trigger, easy to guard with flag |
 | 3 | 🟠 High | 🟡 Medium | Valid concern but edge case; deactivate()-based save is better |
-| 4 | 🟡 Medium | 🟡 Medium | Correct — import needs more spec detail |
 | 5 | 🟡 Medium | 🟢 Trivial | Line numbers drift; both the plan AND review got this wrong (280, not 269 or 140) |
-| 6 | 🟡 Medium | 🟡 Medium | Fair — P3 estimate is optimistic |
+| 6 | 🟡 Medium | 🟡 Medium | Fair — P2 estimate is optimistic |
 | 7 | 🟢 Low | 🟢 No issue | `GetResourcePath()` handles macOS too |
 | 8 | 🟢 Low | 🟢 Low | Valid observation, useful for docs |
-| 9 | 🟢 Low | 🟢 Low | Valid clarification |
 
 ---
 
 ## What the Review Gets Right
 
 - The two-subsystem decomposition is correct ✅
-- The import merge semantics discussion is useful ✅
 - The CommandPageSelector mirroring observation is insightful ✅
 - The JUCE teardown concern (save in dtor) is a real consideration ✅
-- The effort estimate adjustment for P3 (4h → 6-8h) is reasonable ✅
-- The Actions subsystem distinction (hardcoded vs. configurable) is important ✅
 - The plan's overall structure and phase ordering is sound ✅
 - The bottom line ("~80% solid") is fair ✅
 
@@ -217,11 +212,8 @@ medium/low-severity observations. The plan should incorporate:
 
 1. **Review #2 / #3**: Use `deactivate()` instead of (or in addition to) dtor
    for config save; add `m_bConfigLoaded` guard.
-2. **Review #4**: Add import validation/rollback spec and version-attribute
-   handling.
-3. **Review #8**: Document CommandPageSelector mirroring behavior explicitly.
-4. **Review #9**: Clarify CommandMode presets vs. Actions subsystem in §6.2.
-5. **Noted gap**: The current `CommandMode::getConfigFile()` has no platform
+2. **Review #8**: Document CommandPageSelector mirroring behavior explicitly.
+3. **Noted gap**: The current `CommandMode::getConfigFile()` has no platform
    branch at all — the plan's fix handles this implicitly but should call it
    out.
 

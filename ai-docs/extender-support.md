@@ -343,6 +343,8 @@ the detailed design of WP-A (`HardwareUnit`).
 | WP-B | Multi-unit configuration | DONE | `extender-wp-b-impl-plan.md` | SurfaceConfig, KLINKE2, 8-unit dialog |
 | WP-C | Tracks N*8 refactor | DONE | `extender-wp-c-impl-plan.md` | Runtime channel count, dynamic m_channelTracks |
 | WP-D | Banking semantics | DONE | `extender-wp-d-impl-plan.md` | Banking helpers in Tracks, clampGlobalOffset |
-| WP-EF | Routing correctness + global multi-main output | NEXT | `extender-wp-ef-impl-plan.md` | Capability-based routing, dense topology, multi-main global output; channels 9+ deferred to per-mode |
-| — | Per-mode design (§7) | FUTURE | Per-mode docs | Modes iterate 1..N*8 channels |
+| WP-EF | Routing correctness + global multi-main output | DONE | `extender-wp-ef-impl-plan.md` | Capability-based routing, dense topology, multi-main global output |
+| WP-F | Per-mode channel widening | DONE | (in WP-EF plan) | MultiTrack/Pan/Command/Send loops widened to availableChannels() |
+| — | Multi-unit mode selection | NEXT | — | Mode switching & display across all active units |
+| — | PlugMode N-unit widening | FUTURE | Per-mode doc | PlugMode still single-unit (split-behaviour obligation) |
 | — | Hardware test (CR-R3) | FUTURE | — | Verify on real multi-unit hardware |

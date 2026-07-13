@@ -21,10 +21,10 @@ the MCU Action-Mode feature described in the manual (`mcu_klinke_manual.tex`,
    LCD display of action names.
 
 Both subsystems are **functional and tested** — this plan covers improvements,
-not ground-up construction. The work is organized into 5 phases, each
+not ground-up construction. The work is organized into 3 phases, each
 independent and buildable in isolation.
 
-**Total estimated effort:** ~2.5–3.5 days (see timeline in §7).
+**Total estimated effort:** ~1.5–2 days (see timeline in §5).
 
 ---
 
@@ -50,8 +50,6 @@ independent and buildable in isolation.
   displaying action names on the MCU LCD. Persisted as `GlobalActions.xml`.
 
 **What it doesn't do (gaps):**
-- No import/export of action assignment sets (manual §4 says users should
-  import them).
 - Config path uses Windows-style `\\Reaper\\MCU\\Config\\` on Windows, and
   `GetResourcePath()/MCU/Config/` on Linux/macOS — neither is the standard
   user config directory for cross-platform.
@@ -90,14 +88,18 @@ independent and buildable in isolation.
    (not writable for most users). Should use Reaper's resource path
    (`GetResourcePath()`) on all platforms, or the standard user config dir.
 2. **Spelling error** — line ~140: "No actions are name for this bank" → "named".
-3. **No import/export** — users must configure all 128 slots (8 VPOTs × 2
-   shift × 8 pages) by hand or edit XML. No way to import the preset action
-   assignments mentioned in the manual.
+3. **Action assignment is manual by design** — users assign VPOT CCs to
+   Reaper actions via MIDI-learn in Reaper's Actions dialog (as documented
+   in the manual, §\ref{globalactions}). The extension provides the
+   CC-generating VPOTs and the on-screen editor for labels/banks; Reaper
+   handles the actual action binding. There is no import/export mechanism
+   for assignments — and there will not be one.
 4. **`writeConfigFile()` called only on editor close** (`~CommandModeMainComponent`).
    If the mode is deactivated without opening/closing the editor (e.g. Reaper
    shutdown), changes may be lost. The dtor of `CommandMode` does NOT call
    `writeConfigFile()` — only the editor dtor does.
-5. **Multi-unit extender design unresolved** — see §5.
+5. **Multi-unit extender design unresolved** — resolved in §4 (Phase 3):
+   8 global pages with a per-unit active-page cursor.
 
 ### 1.3 Integration Points
 
@@ -142,12 +144,14 @@ File CommandMode::getConfigFile() {
 }
 ```
 
-**Problem:** Uses `userDocumentsDirectory` on Windows, but
-`GetResourcePath()` on Linux (ActionsDisplay.cpp). Inconsistent, and
-`userDocumentsDirectory` is the wrong location for app config.
+**Problem:** The current code has **no platform branch at all** — it uses
+`userDocumentsDirectory` with Windows backslash paths on every platform.
+On Linux this resolves to something like `~/Documents\Reaper\MCU\Config\`
+which is wrong regardless of whether JUCE normalizes the separators.
 
-**Fix:** Match the pattern used by `ActionsDisplay::getConfigFile()` but
-make it cross-platform properly:
+**Fix:** Use `GetResourcePath()` on all platforms, following the established
+pattern from `Options::getConfigFile()` (`src/core/Options.cpp:215`):
+
 ```cpp
 File CommandMode::getConfigFile() {
 #ifdef _WIN32
@@ -162,8 +166,9 @@ File CommandMode::getConfigFile() {
 }
 ```
 
-Or better, use `GetResourcePath()` on all platforms (it returns the Reaper
-resource dir, which is the canonical location for extension data).
+`GetResourcePath()` returns the writable Reaper resource directory on all
+platforms (`~/.config/REAPER/` on Linux, `~/Library/Application Support/REAPER/`
+on macOS, `%APPDATA%/REAPER/` on Windows) and handles portable installs correctly.
 
 **Files:** `src/modes/commands/CommandMode.cpp` (lines ~283-291)
 
@@ -173,7 +178,7 @@ resource dir, which is the canonical location for extension data).
 
 **Fix:** `"No actions are named for this bank (press Alt+EQ)."`
 
-**Files:** `src/modes/commands/CommandMode.cpp` (line ~140)
+**Files:** `src/modes/commands/CommandMode.cpp` (line ~280)
 
 ### 2.3 Fix `ActionsDisplay::getConfigFile()` cross-platform path
 
@@ -181,28 +186,51 @@ Same pattern as above — ensure consistent with CommandMode.
 
 **Files:** `src/action/ActionsDisplay.cpp` (lines ~85-99)
 
-### 2.4 Ensure config is saved on `CommandMode` destruction
+### 2.4 Ensure config is saved on mode deactivation
 
 **Current:** `writeConfigFile()` is only called from
 `~CommandModeMainComponent()`. If the editor was never opened, or if Reaper
 shuts down without closing the editor, changes may be lost.
 
-**Fix:** Add `writeConfigFile()` call to `CommandMode::~CommandMode()`:
+**Problem with dtor-based save:** Saving in `~CommandMode()` is fragile for
+two reasons:
+
+1. **Default-data overwrite:** If `readConfigFile()` failed (e.g. no config
+   file exists yet) and the mode is destroyed, `writeConfigFile()` would write
+   default-constructed data to disk — emptying all pages and overwriting any
+   manually-edited `ActionMode.xml`.
+
+2. **JUCE teardown during Reaper shutdown:** `XmlElement::writeToFile()`
+   depends on JUCE's file I/O and possibly `MessageManager`. During plugin
+   unload, JUCE subsystems may already be partially torn down.
+
+**Fix:** Save in `CommandMode::deactivate()` (called when switching AWAY from
+the mode), guarded by a `m_bConfigLoaded` flag:
 
 ```cpp
-CommandMode::~CommandMode(void) {
-  writeConfigFile();  // <-- ADD THIS
-  safe_delete(m_pMainComponent);
-  for (int i = 0; i < 8; i++) {
-    safe_delete(m_pPage[i]);
+// CommandMode.h — add member:
+bool m_bConfigLoaded;  // set true on successful readConfigFile()
+
+// CommandMode.cpp — override deactivate():
+void CommandMode::deactivate() {
+  if (m_bConfigLoaded) {
+    writeConfigFile();
   }
-  safe_delete(m_pSelector);
+  MultiTrackMode::deactivate();  // call base class
 }
+
+// CommandMode.cpp — in readConfigFile(), after successful parse:
+m_bConfigLoaded = true;
 ```
 
-The order matters — write BEFORE deleting pages.
+`deactivate()` is also called during shutdown (mode switch before unload),
+providing a more explicit save point than the destructor. The
+`m_bConfigLoaded` guard prevents overwriting the config file with defaults
+when no config was ever successfully loaded.
 
-**Files:** `src/modes/commands/CommandMode.cpp` (line ~108)
+**Files:** `src/modes/commands/CommandMode.h` (add `deactivate()` declaration
++ `m_bConfigLoaded` member), `src/modes/commands/CommandMode.cpp` (add
+`deactivate()` implementation + `m_bConfigLoaded = true` in `readConfigFile()`)
 
 ### 2.5 Add XML root element version attribute
 
@@ -273,195 +301,217 @@ this parameter is dead code on all platforms. Simplify to no parameter:
 
 ---
 
-## 4. Phase 3 — Import/Export Action Assignments (new feature)
+## 4. Phase 3 — Multi-Unit Per-Unit Page Selection (implementation)
 
-**Goal:** Let users import preset action assignments (as described in the manual
-§4), share configurations, and back up their settings.
-
-### 4.1 Design
-
-The manual (`text_en/installation.tex`, `text_en/actionmode.tex`) mentions
-importing action assignments but no UI exists for it. The ActionMode.xml
-format is well-defined (XML with PAGE/VPOT elements). We'll add:
-
-1. **"Import" button** in the `CommandModeMainComponent` editor — opens a file
-   chooser, reads an XML file, merges/replaces pages.
-2. **"Export" button** — writes current config to a user-chosen file.
-3. **"Reset to defaults" button** — clears all assignments.
-
-### 4.2 Implementation
-
-**New UI elements in `CommandModeMainComponent`:**
-- Add a button row **above** the tabbed pages (not inside the tabs — import
-  applies to all pages, not just the current one). Suggested layout: a
-  `Component` strip at the top of `CommandModeMainComponent` containing
-  `TextButton` "Import…", "Export…", "Reset".
-- Wire them to file chooser dialogs (`FileChooser` with `"*.xml"` filter)
-  and the new import/export/reset methods.
-- Error reporting: use `AlertWindow::showMessageBox()` for malformed XML,
-  partial import failures, and file I/O errors — never fail silently.
-
-**New methods on `CommandMode`:**
-- `bool importFromFile(const File &file)` — reads XML, validates structure
-  before applying any changes, then merges into pages. Validation checks:
-  - Root element must be `<ACTIVE_MODE_CONFIG>`.
-  - The `version` attribute (if present) must be `1` — reject
-    unknown/future versions with a clear error message.
-  - Each `<PAGE>` child must have a valid `index` attribute (0–7).
-  - Each page must contain exactly 16 `<VPOT>` elements.
-  - **Rollback on failure:** Parse into a temporary `Page[8]` array
-    first; only replace `m_pPage` entries if ALL 8 pages parse
-    successfully. A partial failure leaves the current config untouched.
-- `void exportToFile(const File &file)` — writes current config to the
-  chosen file (calls `writeConfigFile()` with target path).
-- `void resetToDefaults()` — reinitializes all 8 pages to empty defaults,
-  calls `updateDisplay()`. Prompts for confirmation first.
-
-**Files:**
-- `src/modes/commands/CommandMode.h` — new method declarations
-- `src/modes/commands/CommandMode.cpp` — implementations
-- `src/modes/commands/editor/CommandModeMainComponent.h/.cpp` — UI buttons
-
-### 4.3 Merge semantics
-
-On import, for each `<PAGE>` in the source XML:
-- If a page with matching `index` already exists → replace it.
-- If no matching index → ignore (we have exactly 8 pages, no more).
-
-This preserves the user's untouched pages.
-
----
-
-## 5. Phase 4 — Multi-Unit Extender Design (planning only)
-
-**Important:** This phase is **design documentation only**. Implementation is
-deferred to a separate work package (WP-ActionMode-Extender) AFTER the
-per-mode WP for CommandMode is prioritized in the master plan
-(`extender-support.md` §7).
-
-### 5.1 Design Decision
+**Goal:** With more than one hardware unit connected, each unit independently
+selects which of the 8 shared pages (banks) it displays and sends CCs from.
+Default: unit 0 → page 0, unit 1 → page 1, etc. The page selector (hold EQ)
+picks the page for the unit whose VPOT was pressed.
 
 Per `extender-wp-f-widening-audit.md` §3.4, the `CommandMode` 8s are
-**per-block-8 (VPOTs/banks/pages)**, not surface-channel counts. They are
-correct as-is and no widening is needed for channel strips 9+.
+**per-block-8 (VPOTs/banks/pages)**, not surface-channel counts — they are
+already correct for channel strips 9+. The work here is purely the
+per-unit *active-page cursor*.
 
-The open question is: **what does an extender do in Action Mode?**
+### 4.1 Background: global channel → unit + local channel
 
-| Option | Description | Pro | Con |
-|---|---|---|---|
-| **A: Mirror (Recommended)** | All units show the same 8 VPOTs / page / bank. Extender VPOTs duplicate main-unit VPOTs. | Simple, predictable, no new concepts for users. Matches "linked mode" default. | Redundant hardware capability. |
-| **B: Extend banks** | Main = pages 0-3, extender = pages 4-7. VPOTs 1-8 on main, 9-16 on extender. | Uses all hardware. Double action count accessible at once. | Complex page mapping, confusing when units are released. |
-| **C: Independent per-unit** | Each unit gets its own page/bank. Unit 0 page 0, Unit 1 page 2, etc. | Maximum flexibility. | Complex, breaks "linked mode" default, requires per-unit config UI. |
+`CCSManager` dispatches VPOT events with the **global channel** (1-based,
+1..N*8). The two helpers in `CSurf_MCU` (`csurf_mcu.h:435`) split it:
 
-**Recommendation: Option A (Mirror)** — follows the master plan's linked-mode
-default (§7). The user sees the same 8 VPOTs with the same actions on every
-unit. The LCD on each unit shows the same action names. This is the
-least-surprising behavior and requires the fewest code changes.
+```cpp
+HardwareUnit *unitForChannel(int g) const { return m_units[(g - 1) / 8]; }
+static int localOf(int g) { return (g - 1) % 8 + 1; }  // 1-based local 1..8
+int availableChannels() const { return numUnits() * 8; }
+```
 
-### 5.2 Implementation sketch (Option A)
+So for global channel `g`: **unit index = `(g-1)/8`**, **local channel =
+`(g-1)%8`** (0-based). The synthetic MIDI CCs that `CommandMode` generates
+must use the *local* channel for `byte1` (VPOT within the unit) and the
+*unit's active page* for `byte0` (the CC's MIDI channel = page index).
 
-When N > 1:
-- `CommandMode::activate()` already calls `MultiDisplay::switchToAll()`,
-  which routes each child display to its own handler → **display works for
-  free.**
-- `CommandMode::vpotMoved()` uses `m_pActivePage->m_iIndex` as the MIDI
-  channel (0xB0 + pageIndex). Reaper's MIDI-learn dispatcher receives this
-  from any unit. No change needed — **the CC is the same regardless of which
-  unit's VPOT was moved.**
-- `CommandMode::vpotPressed()` — same logic, MIDI channel = 0xB0 + pageIndex.
-- `CommandMode::updateVPOTs()` — already iterates `getNumberOfChannelStrips()`
-  (widened in WP-F). VPOT LEDs are already per-channel via CCSManager.
-- `CommandMode::updateDisplay()` — the MultiDisplay handles routing.
-  `changeField(1, i+1, ...)` with global field numbers (1..N*8) routes to
-  the correct unit's LCD.
+### 4.2 Data structure change (`CommandMode.h`)
 
-**Result: essentially zero code changes needed.** The existing per-block-8
-design + MultiDisplay routing + CCSManager channel translation makes
-mirroring work automatically.
+Replace the single active-page pointer with a per-unit page index. There are
+at most 8 units (`SurfaceConfig` has 8 fixed entries):
 
-- **Page selector behavior:** When the user holds EQ to pick a page, the
-  `CommandPageSelector` activates on all units' LCDs (via
-  `MultiDisplay::switchToAll()`). VPOT 1 on the extender ALSO selects the
-  page — this works automatically because `CCSManager::vpotPressed()` routes
-  extender VPOTs to `CommandMode::vpotPressed()`, which calls the selector's
-  `select(channel-1)`. The global channel → local channel translation in
-  `CCSManager` makes this transparent. No code change needed, but worth
-  documenting in the extender design doc.
+```cpp
+// CommandMode.h — replace:
+//   Page *m_pActivePage;
+// with:
+  int m_iActivePageIndex[8];  // [unit] -> page index 0..7
 
-### 5.3 What would Option B require?
+// helper: which page is active for the unit owning global channel g?
+  int activePageIndexForChannel(int g) const {
+    return m_iActivePageIndex[(g - 1) / 8];
+  }
+```
 
-If we later decide to go with Option B (extend banks):
-- The `Page` array would need to map differently per unit (unit 0 → pages
-  0-3, unit 1 → pages 4-7, etc.).
-- `vpotMoved()` would need to know which unit's VPOT was moved to select the
-  right page.
-- The page selector (hold EQ) would need to show different page sets per unit.
-- The editor would need per-unit page tabs or a unit selector.
+`CommandPageSelector::select()` currently asserts `index < 8` on a *global*
+channel, which would fire for channel 9+. The selector must instead compute
+unit + local page from the global channel (see §4.5).
 
-This is a significant scope increase and should be its own WP.
+### 4.3 Constructor init (`CommandMode.cpp`)
+
+Default the per-unit cursor to "unit x → page x" (clamped to 7):
+
+```cpp
+CommandMode::CommandMode(CCSManager *pManager) : MultiTrackMode(pManager) {
+  for (int i = 0; i < 8; i++) {
+    m_pPage[i] = new Page(this, i);
+    m_iActivePageIndex[i] = i;  // unit x -> page x (clamped to 0..7)
+  }
+  readConfigFile();
+  m_pSelector = new CommandPageSelector(pManager->getDisplayHandler(), this);
+  m_pMainComponent = NULL;
+}
+```
+
+(`m_pActivePage` is gone; every read site is converted below.)
+
+### 4.4 VPOT event routing (`vpotMoved` / `vpotPressed`)
+
+Both currently do `channel--` then use `m_pActivePage->m_iIndex` for `byte0`
+and the (now global) `channel` for `byte1 = 0x10 * channel`. Fix: split into
+unit + local channel, look up the unit's page:
+
+```cpp
+bool CommandMode::vpotMoved(int channel, int numSteps) {
+  int unit = (channel - 1) / 8;
+  int localChan = (channel - 1) % 8;          // 0-based
+  unsigned char midi_byte0 = 0xb0 + m_iActivePageIndex[unit];
+  int shift = m_pCCSManager->getMCU()->IsModifierPressed(VK_SHIFT) ? 1 : 0;
+  if (shift)
+    midi_byte0 += 0x08;
+  unsigned char midi_byte1 = 0x10 * localChan;
+  // ... rest unchanged, using m_pPage[m_iActivePageIndex[unit]] for speed/relative
+  Page *pActive = m_pPage[m_iActivePageIndex[unit]];
+  if (pActive->m_bRelative[shift][localChan] == true) { /* ... */ }
+  // ...
+}
+```
+
+`vpotPressed()` gets the identical `unit`/`localChan` split; `byte1 =
+0x10 * localChan + (pressed ? 0x06 : 0x07)`. The VPOT-LED lookup
+`getVPOT(channel + 1)` in `vpotMoved` already uses the *global* channel and
+stays as-is (VPOT LEDs are per-channel via CCSManager — §4.6).
+
+### 4.5 Display rendering (`updateDisplay`)
+
+Currently line 1 is filled from the single `m_pActivePage`. Because
+`MultiDisplay::changeField(row, globalField 1..N*8)` already routes each
+global field to its owning unit's LCD, line 1 just needs to be filled
+per-global-field from that field's unit's active page:
+
+```cpp
+void CommandMode::updateDisplay() {
+  MultiTrackMode::updateDisplay();
+  // ... ProX row-3 block unchanged (already global-channel aware) ...
+
+  int shift = m_pCCSManager->getMCU()->IsModifierPressed(VK_SHIFT) ? 1 : 0;
+  int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+
+  // any unit has at least one named command on its active page?
+  // (drives the "No actions are named" fallback per unit)
+  m_pDisplay->clearLine(1);
+  for (int g = 1; g <= nStrips; g++) {
+    int unit = (g - 1) / 8;
+    int localChan = (g - 1) % 8;
+    String name = m_pPage[m_iActivePageIndex[unit]]->getCommandName(shift, localChan);
+    m_pDisplay->changeField(1, g, name.toRawUTF8());
+  }
+}
+```
+
+The single "No actions are named" fallback line was a single-page concept;
+with per-unit pages it is dropped (empty fields render blank per unit). If a
+unit-wide fallback is still wanted, it must be decided *per unit* (e.g.
+blank vs. the hint) — see §4.7.
+
+### 4.6 Page selector (`CommandPageSelector`)
+
+Two changes: (a) `activateSelector()` must show on **all** units (so any unit
+can pick), and (b) `select()` must set the page for the picking unit only.
+
+```cpp
+class CommandPageSelector : public Selector {
+public:
+  void activateSelector() {
+    MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pDisplay);
+    for (int i = 0; i < 8; i++)
+      md->broadcastField(1, i + 1,
+          m_pCommandMode->m_pPage[i]->m_strPageName.toRawUTF8());
+    // show the picker on every unit
+    if (md) md->switchToAll();
+    else m_pCommandMode->m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
+  }
+
+  // select() is called by CCSManager with (globalChannel - 1)
+  bool select(int globalIndex) {
+    int unit = globalIndex / 8;
+    int localPage = globalIndex % 8;       // 0..7
+    m_pCommandMode->m_iActivePageIndex[unit] = localPage;
+    return false;  // close selector globally after one pick
+  }
+};
+```
+
+Notes:
+- The page name on field `i+1` is the same on every unit, so `broadcastField`
+  (sends one field to all children) is the right primitive — or simply
+  `changeField(1, i+1, ...)` per global field, since all units share the
+  same 8 page names.
+- The selector closes globally after one pick (CCSManager calls
+  `m_pActualMode->activate()` + `m_selectorActive = false`). Each unit's
+  `updateDisplay()` then renders its own (possibly new) active page.
+
+### 4.7 Edge cases & decisions
+
+- **`updateVPOTs()`** needs no change: it already iterates
+  `getNumberOfChannelStrips()` and the LED ring is per-channel. ✅
+- **Editor** (`CommandModeMainComponent`) edits the 8 global pages — unchanged.
+  A page edited for one unit is instantly the same page for any unit viewing
+  it; `updateDisplay()` reflects each unit's cursor. ✅
+- **"No actions are named" hint:** with per-unit cursors the global hint line
+  no longer fits. Decision: render blank fields per unit (no hint), or keep
+  the hint only when the *transport/main unit's* active page is empty. Pick
+  the simpler blank-field behaviour unless the maintainer prefers the hint.
+- **Single-unit (N=1):** `(g-1)/8 == 0` for all g, so behaviour collapses to
+  the status quo — page 0 active, identical to today. ✅
+- **`supportsExtendedChannels()`:** `CommandMode` must return `true` so
+  `CCSManager` forwards channels > 8 (already the case after WP-F; verify).
+
+### 4.8 Build & test
+
+After implementation:
+```bash
+# Linux (needs a 2-unit surface config to exercise multi-unit)
+mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build . -- -j"$(nproc)"
+cp reaper_csurf_mcu_klinke.so ~/.config/REAPER/UserPlugins/
+```
+
+Test matrix:
+- **N=1:** unchanged behaviour — page 0 active, hold EQ + VPOT picks page,
+  CC MIDI channel = page index, single-unit display correct.
+- **N=2:** unit 0 defaults to page 0, unit 1 to page 1; hold EQ + VPOT on
+  unit 1 changes unit 1's page only; unit 0's display/page unchanged;
+  each unit's line 1 shows its own page's names; CC byte0 reflects the
+  picking unit's page index.
 
 ---
 
-## 6. Phase 5 — Global Actions Enhancement (stretch)
-
-**Goal:** Improve the `Actions` / `ActionsDisplay` subsystem, which is separate
-from `CommandMode`.
-
-### 6.1 Add label editing UI for GlobalActions
-
-Currently, `GlobalActions.xml` labels can only be edited by hand in the XML
-file. There's no UI. Consider adding:
-- A tab or button in the existing editor that lets users edit action display
-  labels.
-- Open question: is this valuable enough? The GlobalActions are rarely changed
-  after initial setup. Defer unless requested.
-
-### 6.2 Bundle preset action assignments
-
-**Two distinct subsystems, two different presets:**
-
-1. **CommandMode presets** (`ActionMode.xml`): The manual
-   (`text_en/installation.tex`) describes importing action assignments for
-   the VPOT-based CommandMode. We can ship a `DefaultActionMode.xml` in the
-   distribution and copy it to the user config dir on first run (when no
-   config file exists). This replaces the "No actions are named" experience
-   with working VPOT action assignments.
-
-2. **Actions subsystem** (`Actions::addActions()`): The ~124 global Reaper
-   action registrations (rec, solo, mute, transport buttons, etc.) are
-   **hardcoded** at compile time — the button-to-action mapping is a C++
-   table in `Actions.cpp`, not a config file. What *could* be shipped is a
-   `DefaultGlobalActions.xml` with sensible display labels for the
-   16-modifier × 8-field LCD matrix (currently all empty strings).
-
-These should not be conflated — the CommandMode preset covers VPOT
-assignments; the Actions subsystem preset covers LCD display labels for the
-hardware buttons.
-
-### 6.3 Consider using `reaper_plugin_info_t::GetFunc("MIDI_GetRecentInputDevice")`
-
-The `ActionsDisplay` header comment mentions "Using the MIDI-learn function
-in the action display." Currently, the user must manually MIDI-learn each
-action in Reaper's action list. There may be an API to automate this, but
-it's not exposed in the public SDK. Research needed.
-
----
-
-## 7. Implementation Timeline
+## 5. Implementation Timeline
 
 | Phase | Description | Effort | Risk | Dependencies |
 |---|---|---|---|---|
 | **P1** | Bug fixes & polish (§2) | 3 hours | Low | None |
 | **P2** | Config path unification (§3) | 2 hours | Low | P1 |
-| **P3** | Import/Export (§4) | 6–8 hours | Medium | P1, P2 |
-| **P4** | Multi-unit design document (§5) | 1 hour | N/A | (doc only) |
-| **P5** | Global Actions enhancement (§6) | TBD | Medium | None |
+| **P3** | Multi-unit per-unit page selection (§4) | 4–6 hours | Medium | P1 |
 
-**Suggested order:** P1 → P2 → P4 (doc) → P3 → P5
+**Suggested order:** P1 → P2 → P3
 
-P1 and P2 are pure cleanup/fixes and should be done first. P3 adds the most
-user-visible value. P4 is documentation that unblocks the extender per-mode
-WP later. P5 is optional/stretch.
+P1 and P2 are pure cleanup/fixes and should be done first. P3 implements the
+per-unit page cursor and requires a multi-unit surface config to test.
 
 ### Build & Test Checklist for Each Phase
 
@@ -486,7 +536,7 @@ editor with Alt+EQ, edit VPOT names, verify persistence across Reaper restart.
 
 ---
 
-## 8. Files Affected Summary
+## 6. Files Affected Summary
 
 | Phase | File | Change |
 |---|---|---|
@@ -496,38 +546,34 @@ editor with Alt+EQ, edit VPOT names, verify persistence across Reaper restart.
 | P2 | `src/core/ConfigPath.h` | **NEW** — shared config path helper |
 | P2 | `src/modes/commands/CommandMode.cpp` | Use shared helper |
 | P2 | `src/action/ActionsDisplay.cpp` | Use shared helper, simplify getConfigFile |
-| P3 | `src/modes/commands/CommandMode.h` | Add importFile(), exportToFile(), resetToDefaults() |
-| P3 | `src/modes/commands/CommandMode.cpp` | Implement import/export/reset |
-| P3 | `src/modes/commands/editor/CommandModeMainComponent.h` | Add import/export/reset buttons |
-| P3 | `src/modes/commands/editor/CommandModeMainComponent.cpp` | Wire button handlers |
-| P3 | `CMakeLists.txt` | Add new files if any |
-| P4 | `ai-docs/extender-commandmode-design.md` | **NEW** — extender design doc |
-| P5 | TBD | TBD |
+| P3 | `src/modes/commands/CommandMode.h` | Replace `m_pActivePage` with `m_iActivePageIndex[8]` + helper; update `CommandPageSelector` |
+| P3 | `src/modes/commands/CommandMode.cpp` | Per-unit page lookup in ctor, `vpotMoved`, `vpotPressed`, `updateDisplay` |
+| P3 | `src/modes/commands/CommandMode.h` (`CommandPageSelector`) | `select(globalIndex)` splits unit/local; `activateSelector()` uses `switchToAll` |
 
 ---
 
-## 9. Open Questions
+## 7. Open Questions
 
-1. **Config directory:** Use `GetResourcePath()` on non-Windows (the Reaper
-   resource dir, documented as "where ini files are stored" — writable on
-   all platforms). On Windows use `userDocumentsDirectory` for backward
-   compatibility with existing installs (matches `Options.cpp`). A future
-   migration to `GetResourcePath()` on all platforms could clean this up,
-   but requires migrating existing user configs.
+1. **Config directory:** ✅ **RESOLVED** — Use `GetResourcePath()` on all
+   platforms, following the existing `Options.cpp` pattern:
+   `#ifdef _WIN32` → `userApplicationDataDirectory`, `#else` → `GetResourcePath()`.
+   This is the canonical Reaper API (writable on all platforms, handles
+   portable installs) and already used by `Options.cpp`, `ActionsDisplay.cpp`,
+   `PlugMapManager.cpp`, and `McuDebugLog.h`.
 
-2. **Import merge strategy:** Replace matching pages only, or replace all 8?
-   Recommend: replace matching pages (indexed), leave others — users can
-   selectively import.
+2. **Extender behavior:** ✅ **RESOLVED** — **8 global pages, per-unit page
+   selection.** Each unit independently chooses which of the 8 shared pages
+   it displays. Default: unit 0 → page 0, unit 1 → page 1, etc. The page
+   selector (hold EQ) selects the page for the unit whose VPOT was pressed.
+   This is a hybrid: pages are shared (not per-unit), but each unit has its
+   own page cursor. Fully specified in §4 (Phase 3), including the
+   global-channel → unit/local split, per-unit `m_iActivePageIndex[8]`, and
+   the per-unit page selector.
 
-3. **Default action assignments:** Should we ship a `DefaultActionMode.xml`?
-   The manual references importing presets — if the original Klinke distribution
-   had one, we should include it.
+3. **"No actions are named" hint with per-unit cursors:** With N>1 the
+   single global hint line no longer applies. §4.7 proposes blank fields per
+   unit (simpler) vs. hint-on-main-unit-only. Confirm the blank-field choice
+   unless the maintainer prefers the hint.
 
-4. **Extender behavior:** Option A (mirror) is recommended. Confirm before
-   implementation.
-
-5. **`Actions` class lifetime:** The singleton `Actions::instance()` creates
-   all ~150 action registrations at first use. It's destructed at plugin
-   unload. Is there a memory leak concern with `m_literals` (heap-allocated
-   char arrays that are never freed until dtor)? Not a leak — they're freed
-   in the dtor. But the singleton pattern could be simplified.
+4. **`Actions` class lifetime:** ✅ **RESOLVED** — Leave the singleton as-is.
+   No leak, works correctly, not worth refactoring.

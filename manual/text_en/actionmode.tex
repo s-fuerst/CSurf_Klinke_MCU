@@ -4,11 +4,13 @@ The button \eq in the VPOT ASSIGN section switches the \vpots to the
 Action-Mode, the other elements of the channel stripes will work in
 the same way as in the Pan-Mode.
 
-For the Action-Mode it is useful to import Action assignments as described in
-the \hyperref[installation]{Installation} section.
-%\footnote{If you want to assign all actions by yourself you don't need to
-%import anything, but it the predefined actions can be helpful to understand the
-%features descriped here.} 
+The Action-Mode does not ship with pre-assigned actions. You must assign
+the VPOT MIDI CCs to Reaper actions yourself using the MIDI-learn function
+in Reaper's Actions dialog, as described in the
+\hyperref[globalactions]{Global Actions} section. Each VPOT sends six
+different MIDI CC messages (press, release, rotate-left, rotate-right,
+rotate-left-pressed, rotate-right-pressed) which can be individually bound
+to Reaper actions. 
 When you have done this, you can use the \vpots in the Action-Mode to
 trigger \reaper-Actions, e.g.  moving items etc. How does this work?
 The MCU sends different MIDI-CC message to \reaper when pressing a
@@ -18,8 +20,7 @@ combination with the \shift modifier, you get six additional CCs. As
 described in the \hyperref[globalactions]{Global Actions} section, you
 can assign those MIDI events to \reaper actions.
 
-There are eight banks which can be assigned to different actions (the
-imported shortcuts using only four of them). To switch to a different
+There are eight banks which can be assigned to different actions. To switch to a different
 bank, press and hold the \eq button again while you are in the Action-Mode.
 The display will show the name of the banks and you can select one by
 pressing the corresponding \vpot.
@@ -48,7 +49,7 @@ and ``Pressed Speed'' settings.
 The normal speed is used when the \vpot is not
 pressed while rotating, the pressed speed when the \vpot is
 pressed. For example this is
-used in the imported assignments in the FXparam bank to realize fine adjustment
+used in the FXparam bank to realize fine adjustment
 while pressing the \vpots. 
 %In Pan-Mode the Quick Jump navigation isn't available directly, because
 %pressing the \eq button is used for selecting the action bank. But with a
