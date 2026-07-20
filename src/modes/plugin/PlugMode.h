@@ -6,6 +6,7 @@
 #include "CCSMode.h"
 #include "PlugModeSelectors.h"
 #include "PlugModeOptions.h"
+#include "PlugMode2ndOptions.h"
 #include "JuceHeader.h"
 #include <boost/tuple/tuple.hpp>
 #include <vector>
@@ -131,10 +132,19 @@ public:
   int      anchorUnit();
   void     clearNonAnchorChildren(Display *d);
 
+  // ---- WP-PlugMode Phase 4: transport lock-step + cascade (R3) ----
+  // Cascade bank/page selection to units `unit..N-1`, spreading each unit's
+  // page along the used-page sequence from `baseOffset`. Units 0..unit-1 are
+  // left unchanged. Used by Control+SOLO (bank selection from any unit).
+  void     cascadeFromUnit(int unit, int bank, int baseOffset);
+
   MediaTrack *selectedTrack(); 
 	void followChanges();
-
 	void plugChanged();
+
+	// WP-PlugMode Phase 5a (R2): the unit whose attribute is selected for
+	// PMO2_FOLLOW_CHANGE, or -1 if OFF / out of range (>= numUnits()).
+	int followChangeUnit();
 
 	
 private:
@@ -142,7 +152,6 @@ private:
   void updateParamsDisplay();
   void updateValueDisplay();
   void updateTouchedDisplay();
-  void updateTouchedDisplayProX();
   int randomPreset();
 
   bool isSingleFaderTouched() {
@@ -183,10 +192,11 @@ private:
   PlugPresetManager *m_pPresetManager;
 
   PlugModeSelector *m_pPlugSelector;
-  BankPagePlugSelector *m_pBankPagePlugSelector;
+  // WP-PlugMode Phase 3: per-unit BankPagePlugSelector instances
+  BankPagePlugSelector *m_pBankPagePlugSelectorPerUnit[MAX_SURFACE_UNITS];
 
   Options *m_pPlugModeOptions;
-  Options *m_pPlugMode2ndOptions;
+  PlugMode2ndOptions *m_pPlugMode2ndOptions;
 
   PlugModeComponent *m_pPlugEditor;
 
@@ -200,8 +210,17 @@ private:
   typedef std::map<String, int> tLCPs; // fxGUID
   tLCPs m_lastCalledPreset;
 
-	double lastFaderValues[8][8][8];
-	double lastVPotValues[8][8][8];
+	// WP-PlugMode Phase 5c (R2): param-change cache. Flat [8][8][8] vector
+	// (bank/page/channel), refilled on first scan and after every
+	// plugin/map change so the old map's values don't register as changes.
+	std::vector<double> lastFaderValues;
+	std::vector<double> lastVPotValues;
+	bool m_paramCacheValid;
+	void invalidateParamCache();
+	void refillParamCache();
+	static int paramCacheIndex(int bank, int page, int channel) {
+		return (bank * 8 + page) * 8 + channel;
+	}
 
 	// WP-PlugMode: per-unit state (Phase 0)
 	int m_activeUnit; // pinned before every unit-specific callback (R8)

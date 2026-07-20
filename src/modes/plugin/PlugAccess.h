@@ -223,6 +223,9 @@ public:
   std::vector<int> usedPages(int bank);
   int usedPageCount(int bank);
   int pageAtUsedOffset(int bank, int offset);
+  // Inverse of pageAtUsedOffset: sequence position of `page` in bank's used-page
+  // list, or -1 if the page is unused. Used by transport page-window math.
+  int pageUsedOffsetForPage(int bank, int page);
 
   // TrackFX_ releated stuff
   bool plugExist();

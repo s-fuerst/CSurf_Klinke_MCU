@@ -28,7 +28,10 @@
 PlugMode::PlugMode(CCSManager *pManager)
     : CCSMode(pManager), m_iSingleFaderTouched(0), m_iSingleVPotTouched(0),
       m_pAccess(NULL), m_pPlugEditor(NULL), m_buttonNameValuePressed(false),
-      m_followTrack(true), m_lastTimePlugWasSelected(0), m_activeUnit(0) {
+      m_followTrack(true), m_lastTimePlugWasSelected(0), m_activeUnit(0),
+      m_paramCacheValid(false) {
+  lastFaderValues.assign(8 * 8 * 8, 0.0);
+  lastVPotValues.assign(8 * 8 * 8, 0.0);
   m_pAccess = new PlugAccess(this);
 
   m_pPlugModeOptions = new PlugModeOptions(pManager->getDisplayHandler());
@@ -56,8 +59,18 @@ PlugMode::PlugMode(CCSManager *pManager)
                                                true);
 
   m_pPlugSelector = new PlugSelector(pManager->getDisplayHandler(), this);
-  m_pBankPagePlugSelector =
-      new BankPagePlugSelector(pManager->getDisplayHandler(), this);
+  // WP-PlugMode Phase 3: per-unit BankPagePlugSelector instances
+  int nUnits = pManager->getMCU()->numUnits();
+  for (int u = 0; u < MAX_SURFACE_UNITS; u++) {
+    if (u < nUnits) {
+      DisplayHandler *unitDH =
+          pManager->getMCU()->unitForChannel(u * 8 + 1)->displayHandler();
+      m_pBankPagePlugSelectorPerUnit[u] =
+          new BankPagePlugSelector(unitDH, this, u);
+    } else {
+      m_pBankPagePlugSelectorPerUnit[u] = NULL;
+    }
+  }
 
   m_pPresetManager = new PlugPresetManager(pManager->getMCU());
 
@@ -86,7 +99,8 @@ PlugMode::~PlugMode(void) {
   safe_delete(m_pValueDisplay);
   safe_delete(m_pSingleTrackMessage);
   safe_delete(m_pPlugSelector);
-  safe_delete(m_pBankPagePlugSelector);
+  for (int u = 0; u < MAX_SURFACE_UNITS; u++)
+    safe_delete(m_pBankPagePlugSelectorPerUnit[u]);
   safe_delete(m_pNoPlugMessage);
   safe_delete(m_pNoPlugSelectedMessage);
   safe_delete(m_pPlugModeOptions);
@@ -213,68 +227,87 @@ int PlugMode::randomPreset() {
 }
 
 bool PlugMode::buttonSolo(int channel, bool pressed) {
-  channel--; // channel is 0 based for PlugMode releated calls
+  // WP-PlugMode Phase 2: per-unit (R8)
+  int unit = (channel - 1) / 8;
+  int localCh = (channel - 1) % 8;
+  setActiveUnit(unit);
 
   if (pressed) {
-    safe_call(m_pPlugEditor, selectedBankChanged(channel))
+    safe_call(m_pPlugEditor, selectedBankChanged(localCh))
 
-        m_pBankPagePlugSelector->select(channel);
+        m_pBankPagePlugSelectorPerUnit[unit]->select(localCh);
   }
 
-  if (pressed && m_pAccess->isBankUsed(channel)) {
-    m_pAccess->setSelectedBank(channel);
+  if (pressed && m_pAccess->isBankUsed(localCh)) {
+    // WP-PlugMode Phase 4b: Control+cascade (R3). When Control is held, bank
+    // selection cascades to units `unit..N-1`, spreading their pages along
+    // the used-page sequence from offset 0. Units 0..unit-1 unchanged.
+    // Without Control the bank is set for this unit only (legacy behaviour).
+    if (isModifierPressed(VK_CONTROL)) {
+      cascadeFromUnit(unit, localCh, 0);
+    } else {
+      m_pAccess->setSelectedBank(localCh, unit);
+    }
   }
 
   if (pressed) {
-    m_pBankPagePlugSelector->activateSelector(BankPagePlugSelector::BANK);
+    m_pBankPagePlugSelectorPerUnit[unit]->activateSelector(BankPagePlugSelector::BANK);
   } else if (m_pCCSManager->getNumSoloButtonsPressed() == 0) {
-    m_pBankPagePlugSelector->activateSelector(BankPagePlugSelector::NOTHING);
+    m_pBankPagePlugSelectorPerUnit[unit]->activateSelector(BankPagePlugSelector::NOTHING);
   }
 
   return true;
 }
 
 bool PlugMode::buttonMute(int channel, bool pressed) {
-  channel--; // channel is 0 based for PlugMode releated calls
+  // WP-PlugMode Phase 2: per-unit (R8)
+  int unit = (channel - 1) / 8;
+  int localCh = (channel - 1) % 8;
+  setActiveUnit(unit);
 
   if (pressed)
-    safe_call(m_pPlugEditor, selectedPageChanged(channel))
+    safe_call(m_pPlugEditor, selectedPageChanged(localCh))
 
         if (pressed && isModifierPressed(VK_SHIFT)) {
       for (int iBank = 0; iBank < 8; iBank++) {
-        if (m_pAccess->isPageUsed(iBank, channel)) {
-          m_pAccess->setSelectedPage(iBank, channel);
+        if (m_pAccess->isPageUsed(iBank, localCh)) {
+          m_pAccess->setSelectedPage(iBank, localCh, unit);
         }
       }
     }
-  else if (pressed && m_pAccess->isPageUsedInSelectedBank(channel)) {
-    m_pAccess->setSelectedPageInSelectedBank(channel);
+  else if (pressed && m_pAccess->isPageUsedInSelectedBank(localCh)) {
+    m_pAccess->setSelectedPageInSelectedBank(localCh, unit);
   }
 
   if (pressed) {
-    m_pBankPagePlugSelector->activateSelector(BankPagePlugSelector::PAGE);
+    m_pBankPagePlugSelectorPerUnit[unit]->activateSelector(BankPagePlugSelector::PAGE);
   } else if (m_pCCSManager->getNumMuteButtonsPressed() == 0) {
-    m_pBankPagePlugSelector->activateSelector(BankPagePlugSelector::NOTHING);
+    m_pBankPagePlugSelectorPerUnit[unit]->activateSelector(BankPagePlugSelector::NOTHING);
   }
 
   return true;
 }
 
 bool PlugMode::fader(int channel, int value) {
-  if (channel > 0)
-    safe_call(m_pPlugEditor, selectedChannelChanged(channel - 1, true))
+  // WP-PlugMode Phase 2: per-unit fader resolution
+  int unit = (channel > 0) ? (channel - 1) / 8 : 0;
+  int localCh = (channel > 0) ? (channel - 1) % 8 : 0;
+  setActiveUnit(unit);
 
-        if (m_followTrack && !selectedTrack()) { // PlugMode works only with a
-                                                 // single selectedTrack
+  if (channel > 0)
+    safe_call(m_pPlugEditor, selectedChannelChanged(localCh, true))
+
+        if (m_followTrack && !selectedTrack()) {
       m_pCCSManager->setFader(this, channel, 0);
     }
 
   if (channel == 0 /* Master fader */) {
     m_pAccess->setParamValueInt(PlugAccess::ElementDesc::DRYWET, 0, value);
   } else {
-    m_pAccess->setParamValueInt(PlugAccess::ElementDesc::FADER,
-                                channel - 1 /*plugmode stuff is 0 based*/,
-                                value);
+    int bank = m_pAccess->selectedBankForUnit(unit);
+    int page = m_pAccess->selectedPageForUnit(unit);
+    m_pAccess->setParamValueInt(bank, page, PlugAccess::ElementDesc::FADER,
+                                localCh, value);
   }
   m_pCCSManager->setFader(this, channel, value);
 
@@ -282,16 +315,20 @@ bool PlugMode::fader(int channel, int value) {
 }
 
 bool PlugMode::singleFaderTouched(int channel) {
+  // WP-PlugMode: editor callback uses local channel (0-7)
+  int localCh = (channel > 0) ? (channel - 1) % 8 : 0;
   if (channel > 0)
-    safe_call(m_pPlugEditor, selectedChannelChanged(channel - 1, true))
+    safe_call(m_pPlugEditor, selectedChannelChanged(localCh, true))
         m_iSingleFaderTouched = channel;
   switchDisplay();
   return true;
 }
 
 bool PlugMode::singleVPotTouched(int channel) {
+  // WP-PlugMode: editor callback uses local channel (0-7)
+  int localCh = (channel > 0) ? (channel - 1) % 8 : 0;
   if (channel > 0)
-    safe_call(m_pPlugEditor, selectedChannelChanged(channel - 1, false))
+    safe_call(m_pPlugEditor, selectedChannelChanged(localCh, false))
 
         m_iSingleVPotTouched = channel;
   switchDisplay();
@@ -299,9 +336,16 @@ bool PlugMode::singleVPotTouched(int channel) {
 }
 
 bool PlugMode::vpotMoved(int channel, int numSteps) {
-  PMVPot::tSteps *pStepMap = m_pAccess->getParamSteps(channel - 1);
-  double val = m_pAccess->getParamValueDouble(PlugAccess::ElementDesc::VPOT,
-                                              channel - 1);
+  // WP-PlugMode Phase 2: per-unit VPOT resolution
+  int unit = (channel - 1) / 8;
+  int localCh = (channel - 1) % 8;
+  setActiveUnit(unit);
+  int bank = m_pAccess->selectedBankForUnit(unit);
+  int page = m_pAccess->selectedPageForUnit(unit);
+
+  PMVPot::tSteps *pStepMap = m_pAccess->getParamSteps(bank, page, localCh);
+  double val = m_pAccess->getParamValueDouble(bank, page,
+      PlugAccess::ElementDesc::VPOT, localCh);
 
   if (pStepMap && !pStepMap->empty()) {
     int index = findIndexFromKeyInMap(val, pStepMap);
@@ -311,15 +355,21 @@ bool PlugMode::vpotMoved(int channel, int numSteps) {
     } else if (index < 0) {
       index = 0;
     }
-    m_pAccess->setParamValueDouble(PlugAccess::ElementDesc::VPOT, channel - 1,
+    m_pAccess->setParamValueDouble(bank, page, PlugAccess::ElementDesc::VPOT,
+                                   localCh,
                                    getNthKeyFromMap(index, pStepMap));
   }
   return true;
 }
 
 bool PlugMode::vpotPressed(int channel, bool pressed) {
+  // WP-PlugMode Phase 3: per-unit vpotPressed dispatch (R4)
+  int unit = (channel - 1) / 8;
+  int localCh = (channel - 1) % 8;
+  setActiveUnit(unit);
+
   if (pressed) {
-    switch (m_pBankPagePlugSelector->getWhatToSelect()) {
+    switch (m_pBankPagePlugSelectorPerUnit[m_activeUnit]->getWhatToSelect()) {
     case BankPagePlugSelector::NOTHING:
       break;
     case BankPagePlugSelector::BANK:
@@ -335,9 +385,11 @@ bool PlugMode::vpotPressed(int channel, bool pressed) {
   }
 
   if (pressed) {
-    PMVPot::tSteps *pStepMap = m_pAccess->getParamSteps(channel - 1);
-    double val = m_pAccess->getParamValueDouble(PlugAccess::ElementDesc::VPOT,
-                                                channel - 1);
+    int bank = m_pAccess->selectedBankForUnit(unit);
+    int page = m_pAccess->selectedPageForUnit(unit);
+    PMVPot::tSteps *pStepMap = m_pAccess->getParamSteps(bank, page, localCh);
+    double val = m_pAccess->getParamValueDouble(bank, page,
+        PlugAccess::ElementDesc::VPOT, localCh);
 
     if (pStepMap && !pStepMap->empty()) {
       int index = findIndexFromKeyInMap(val, pStepMap);
@@ -347,7 +399,8 @@ bool PlugMode::vpotPressed(int channel, bool pressed) {
       } else if (index < 0) {
         index = pStepMap->size() - 1;
       }
-      m_pAccess->setParamValueDouble(PlugAccess::ElementDesc::VPOT, channel - 1,
+      m_pAccess->setParamValueDouble(bank, page, PlugAccess::ElementDesc::VPOT,
+                                     localCh,
                                      getNthKeyFromMap(index, pStepMap));
     }
   }
@@ -355,29 +408,41 @@ bool PlugMode::vpotPressed(int channel, bool pressed) {
 }
 
 void PlugMode::updateSoloLEDs() {
-  for (int channel = 0; channel < 8; channel++) {
-    if (m_pAccess->plugExist() && m_pAccess->getSelectedBank() == channel &&
-        m_pAccess->isBankUsed(channel)) {
-      m_pCCSManager->setSoloLED(this, channel + 1, LED_BLINK);
-    } else if (m_pAccess->plugExist() && m_pAccess->isBankUsed(channel)) {
-      m_pCCSManager->setSoloLED(this, channel + 1, LED_ON);
+  // WP-PlugMode Phase 2: per-unit LED loop
+  int nStrips = m_pCCSManager->getMCU()->numUnits() * 8;
+  for (int i = 0; i < nStrips; i++) {
+    int unit = i / 8;
+    int localCh = i % 8;
+    int globalCh = i + 1;
+    setActiveUnit(unit);
+    if (m_pAccess->plugExist() && m_pAccess->selectedBankForUnit(unit) == localCh &&
+        m_pAccess->isBankUsed(localCh)) {
+      m_pCCSManager->setSoloLED(this, globalCh, LED_BLINK);
+    } else if (m_pAccess->plugExist() && m_pAccess->isBankUsed(localCh)) {
+      m_pCCSManager->setSoloLED(this, globalCh, LED_ON);
     } else {
-      m_pCCSManager->setSoloLED(this, channel + 1, LED_OFF);
+      m_pCCSManager->setSoloLED(this, globalCh, LED_OFF);
     }
   }
 }
 
 void PlugMode::updateMuteLEDs() {
-  for (int channel = 0; channel < 8; channel++) {
+  // WP-PlugMode Phase 2: per-unit LED loop
+  int nStrips = m_pCCSManager->getMCU()->numUnits() * 8;
+  for (int i = 0; i < nStrips; i++) {
+    int unit = i / 8;
+    int localCh = i % 8;
+    int globalCh = i + 1;
+    setActiveUnit(unit);
     if (m_pAccess->plugExist() &&
-        m_pAccess->getSelectedPageInSelectedBank() == channel &&
-        m_pAccess->isPageUsedInSelectedBank(channel)) {
-      m_pCCSManager->setMuteLED(this, channel + 1, LED_BLINK);
+        m_pAccess->selectedPageForUnit(unit) == localCh &&
+        m_pAccess->isPageUsedInSelectedBank(localCh)) {
+      m_pCCSManager->setMuteLED(this, globalCh, LED_BLINK);
     } else if (m_pAccess->plugExist() &&
-               m_pAccess->isPageUsedInSelectedBank(channel)) {
-      m_pCCSManager->setMuteLED(this, channel + 1, LED_ON);
+               m_pAccess->isPageUsedInSelectedBank(localCh)) {
+      m_pCCSManager->setMuteLED(this, globalCh, LED_ON);
     } else {
-      m_pCCSManager->setMuteLED(this, channel + 1, LED_OFF);
+      m_pCCSManager->setMuteLED(this, globalCh, LED_OFF);
     }
   }
 }
@@ -438,23 +503,41 @@ void PlugMode::updateFaders() {
     return; // ALT + REC_BUTTON is used for blind test, so also the faders
             // shouldn't give any hint about the preset
 
-  for (unsigned int iFader = 0; iFader < 8; iFader++) {
+  // WP-PlugMode Phase 2: per-unit fader update
+  int nStrips = m_pCCSManager->getMCU()->numUnits() * 8;
+  for (int i = 0; i < nStrips; i++) {
+    int unit = i / 8;
+    int localCh = i % 8;
+    int globalCh = i + 1;
+    setActiveUnit(unit);
+    int bank = m_pAccess->selectedBankForUnit(unit);
+    int page = m_pAccess->selectedPageForUnit(unit);
     m_pCCSManager->setFader(
-        this, iFader + 1,
-        m_pAccess->getParamValueInt(PlugAccess::ElementDesc::FADER, iFader));
+        this, globalCh,
+        m_pAccess->getParamValueInt(bank, page, PlugAccess::ElementDesc::FADER,
+                                    localCh));
   }
 
-  // set master fader to the drywet value
+  // set master fader to the drywet value (anchor unit)
   m_pCCSManager->setFader(
       this, 0, m_pAccess->getParamValueInt(PlugAccess::ElementDesc::DRYWET));
 }
 
 void PlugMode::updateVPOTs() {
-  for (unsigned int iVPot = 0; iVPot < 8; iVPot++) {
-    PMVPot::tSteps *pStepMap = m_pAccess->getParamSteps(iVPot);
-    VPOT_LED *pVPot = m_pCCSManager->getVPOT(iVPot + 1);
-    double val =
-        m_pAccess->getParamValueDouble(PlugAccess::ElementDesc::VPOT, iVPot);
+  // WP-PlugMode Phase 2: per-unit VPOT update
+  int nStrips = m_pCCSManager->getMCU()->numUnits() * 8;
+  for (int i = 0; i < nStrips; i++) {
+    int unit = i / 8;
+    int localCh = i % 8;
+    int globalCh = i + 1;
+    setActiveUnit(unit);
+    int bank = m_pAccess->selectedBankForUnit(unit);
+    int page = m_pAccess->selectedPageForUnit(unit);
+
+    PMVPot::tSteps *pStepMap = m_pAccess->getParamSteps(bank, page, localCh);
+    VPOT_LED *pVPot = m_pCCSManager->getVPOT(globalCh);
+    double val = m_pAccess->getParamValueDouble(bank, page,
+        PlugAccess::ElementDesc::VPOT, localCh);
 
     pVPot->setBottom(pStepMap != NULL && pStepMap->size() > 0);
     if (!pStepMap) {
@@ -497,210 +580,287 @@ void PlugMode::updateVPOTs() {
 void PlugMode::trackListChange() { updateEverything(); }
 
 void PlugMode::switchDisplay() {
+  // WP-PlugMode Phase 1: per-unit switchDisplay (R5/R6)
+  // Global-message conditions: switch ALL children, then clear non-anchor
   if (m_followTrack && selectedTrack() == NULL) {
-    m_pCCSManager->switchToDisplay(this, m_pSingleTrackMessage);
+    MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pSingleTrackMessage);
+    if (md) {
+      md->switchToAll();
+      clearNonAnchorChildren(m_pSingleTrackMessage);
+    } else {
+      m_pCCSManager->switchToDisplay(this, m_pSingleTrackMessage);
+    }
   } else if (getNumPlugsInSelectedTrack() == 0 && m_followTrack) {
-    m_pCCSManager->switchToDisplay(this, m_pNoPlugMessage);
+    MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pNoPlugMessage);
+    if (md) {
+      md->switchToAll();
+      clearNonAnchorChildren(m_pNoPlugMessage);
+    } else {
+      m_pCCSManager->switchToDisplay(this, m_pNoPlugMessage);
+    }
   } else if (m_pAccess->getPlugSlot() == -1) {
-    m_pCCSManager->switchToDisplay(this, m_pNoPlugSelectedMessage);
-  } else if (m_pBankPagePlugSelector->getWhatToSelect() !=
+    MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pNoPlugSelectedMessage);
+    if (md) {
+      md->switchToAll();
+      clearNonAnchorChildren(m_pNoPlugSelectedMessage);
+    } else {
+      m_pCCSManager->switchToDisplay(this, m_pNoPlugSelectedMessage);
+    }
+  } else if (m_pBankPagePlugSelectorPerUnit[anchorUnit()]->getWhatToSelect() !=
              BankPagePlugSelector::NOTHING) {
-    m_pCCSManager->switchToDisplay(
-        this, m_pBankPagePlugSelector->getSelectorDisplay());
+    MultiDisplay *md =
+        dynamic_cast<MultiDisplay *>(m_pBankPagePlugSelectorPerUnit[anchorUnit()]->getSelectorDisplay());
+    if (md)
+      md->switchToAll();
+    else
+      m_pCCSManager->switchToDisplay(
+          this, m_pBankPagePlugSelectorPerUnit[anchorUnit()]->getSelectorDisplay());
   } else if ((isSingleFaderTouched() || isSingleVPotTouched()) &&
              !m_buttonNameValuePressed &&
-						 m_pPlugMode2ndOptions->isOptionSetTo(PMO2_SHOW_DETAILS, PMO2A_ON)) {
-    m_pCCSManager->switchToDisplay(this, m_pTouchedDisplay);
+             m_pPlugMode2ndOptions->isOptionSetTo(PMO2_SHOW_DETAILS, PMO2A_ON)) {
+    MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pTouchedDisplay);
+    if (md)
+      md->switchToAll();
+    else
+      m_pCCSManager->switchToDisplay(this, m_pTouchedDisplay);
   } else {
-    m_pCCSManager->switchToDisplay(this, m_pParamsDisplay);
+    MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pParamsDisplay);
+    if (md)
+      md->switchToAll();
+    else
+      m_pCCSManager->switchToDisplay(this, m_pParamsDisplay);
   }
 }
 
 void PlugMode::updateParamsDisplay() {
-	if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX)) {
-		for (int iChannel = 0; iChannel < 8; iChannel++) {
-			m_pParamsDisplay->changeField(1, iChannel + 1,
-				m_pAccess->getParamValueShort(PlugAccess::ElementDesc::VPOT, iChannel)
-																		.toRawUTF8());
+  // WP-PlugMode Phase 1/6: per-unit display loop (R5). Phase 6 (R7) selects
+  // the 4-row ProX vs 2-row MCU layout per owning unit's isProX() instead of
+  // the global CONFIG_FLAG_PROX flag, so mixed main/extender configs render
+  // each unit in its native layout.
+  int nUnits = m_pCCSManager->getMCU()->numUnits();
+  int nStrips = nUnits * 8;
 
-      m_pParamsDisplay->changeField(0, iChannel + 1,
-          m_pAccess->getParamNameShort(PlugAccess::ElementDesc::VPOT, iChannel)
+  for (int iChannel = 0; iChannel < nStrips; iChannel++) {
+    int unit = iChannel / 8;
+    int localCh = iChannel % 8;
+    setActiveUnit(unit);
+    int bank = m_pAccess->selectedBankForUnit(unit);
+    int page = m_pAccess->selectedPageForUnit(unit);
+    HardwareUnit *hu = m_pCCSManager->getMCU()->unitForChannel(iChannel + 1);
+    bool prox = hu && hu->isProX();
+
+    if (prox) {
+      // ProX 4-row layout: VPOT name/value (rows 0/1), FADER name/value
+      // (rows 2/3).
+      m_pParamsDisplay->changeField(1, iChannel + 1,
+          m_pAccess
+              ->getParamValueShort(bank, page, PlugAccess::ElementDesc::VPOT,
+                                   localCh)
               .toRawUTF8());
-
+      m_pParamsDisplay->changeField(0, iChannel + 1,
+          m_pAccess
+              ->getParamNameShort(bank, page, PlugAccess::ElementDesc::VPOT,
+                                  localCh)
+              .toRawUTF8());
       m_pParamsDisplay->changeField(3, iChannel + 1,
           m_pAccess
-              ->getParamValueShort(PlugAccess::ElementDesc::FADER, iChannel)
+              ->getParamValueShort(bank, page, PlugAccess::ElementDesc::FADER,
+                                   localCh)
               .toRawUTF8());
-
       m_pParamsDisplay->changeField(2, iChannel + 1,
-          m_pAccess->getParamNameShort(PlugAccess::ElementDesc::FADER, iChannel)
-              .toRawUTF8());
-
-			m_pParamsDisplay->changeField(2, 9, " Wet");
-
-      int wet = m_pAccess->getParamValueInt(PlugAccess::ElementDesc::DRYWET);
-			char text[8];
-			sprintf(text, " %3.0f%%", (100 * (double) wet / 16368.));
-			m_pParamsDisplay->changeField(3, 9, text);
-
-		}
-		return;
-	}
-		
-  for (int iChannel = 0; iChannel < 8; iChannel++) {
-    if (m_pCCSManager->getVPotTouched(iChannel + 1) || m_buttonNameValuePressed)
-      m_pParamsDisplay->changeField(
-          0, iChannel + 1,
-          m_pAccess->getParamValueShort(PlugAccess::ElementDesc::VPOT, iChannel)
-              .toRawUTF8());
-    else
-      m_pParamsDisplay->changeField(
-          0, iChannel + 1,
-          m_pAccess->getParamNameShort(PlugAccess::ElementDesc::VPOT, iChannel)
-              .toRawUTF8());
-
-    if (m_pCCSManager->getFaderTouched(iChannel + 1) ||
-        m_buttonNameValuePressed)
-      m_pParamsDisplay->changeField(
-          1, iChannel + 1,
           m_pAccess
-              ->getParamValueShort(PlugAccess::ElementDesc::FADER, iChannel)
+              ->getParamNameShort(bank, page, PlugAccess::ElementDesc::FADER,
+                                  localCh)
               .toRawUTF8());
-    else
-      m_pParamsDisplay->changeField(
-          1, iChannel + 1,
-          m_pAccess->getParamNameShort(PlugAccess::ElementDesc::FADER, iChannel)
-              .toRawUTF8());
+    } else {
+      // MCU 2-row layout: name/value switches with touch / name-value button.
+      if (m_pCCSManager->getVPotTouched(iChannel + 1) ||
+          m_buttonNameValuePressed)
+        m_pParamsDisplay->changeField(
+            0, iChannel + 1,
+            m_pAccess
+                ->getParamValueShort(bank, page, PlugAccess::ElementDesc::VPOT,
+                                     localCh)
+                .toRawUTF8());
+      else
+        m_pParamsDisplay->changeField(
+            0, iChannel + 1,
+            m_pAccess
+                ->getParamNameShort(bank, page, PlugAccess::ElementDesc::VPOT,
+                                localCh)
+                .toRawUTF8());
+
+      if (m_pCCSManager->getFaderTouched(iChannel + 1) ||
+          m_buttonNameValuePressed)
+        m_pParamsDisplay->changeField(
+            1, iChannel + 1,
+            m_pAccess
+                ->getParamValueShort(bank, page, PlugAccess::ElementDesc::FADER,
+                                     localCh)
+                .toRawUTF8());
+      else
+        m_pParamsDisplay->changeField(
+            1, iChannel + 1,
+            m_pAccess
+                ->getParamNameShort(bank, page, PlugAccess::ElementDesc::FADER,
+                                localCh)
+                .toRawUTF8());
+    }
+  }
+
+  // "Wet" field 9 -> render on the anchor unit when it is ProX (N=1 ProX is
+  // byte-identical to the legacy global-flag path; non-ProX anchors skip it).
+  Display *anchor = mainChildOrNull(m_pParamsDisplay);
+  if (anchor) {
+    HardwareUnit *anchorU = m_pCCSManager->getMCU()->unitForChannel(1);
+    if (anchorU && anchorU->isProX()) {
+      anchor->changeField(2, 9, " Wet");
+      int wet = m_pAccess->getParamValueInt(PlugAccess::ElementDesc::DRYWET);
+      char text[8];
+      sprintf(text, " %3.0f%%", (100 * (double)wet / 16368.));
+      anchor->changeField(3, 9, text);
+    }
   }
 }
-
 void PlugMode::updateTouchedDisplay() {
-  if (m_pAccess->plugExist()) {
-		if (m_pCCSManager->getMCU()->IsFlagSet(CONFIG_FLAG_PROX)) {
-			updateTouchedDisplayProX();
-			return;
-		}
-		
+  if (!m_pAccess->plugExist())
+    return;
+
+  // WP-PlugMode Phase 1/6 (R5/R7): the touched element lives on one unit; the
+  // owning unit's isProX() selects the 4-row vs 2-row touched layout (was a
+  // global CONFIG_FLAG_PROX flag + a separate updateTouchedDisplayProX).
+  int touchedCh = (m_iSingleFaderTouched > 0) ? m_iSingleFaderTouched
+                                              : m_iSingleVPotTouched;
+  int unit = (touchedCh > 0) ? (touchedCh - 1) / 8 : 0;
+  setActiveUnit(unit);
+
+  // Resolve target child
+  Display *target = m_pTouchedDisplay;
+  MultiDisplay *md = dynamic_cast<MultiDisplay *>(target);
+  if (md && unit < (int)md->children().size())
+    target = md->children()[unit];
+
+  HardwareUnit *hu =
+      m_pCCSManager->getMCU()->unitForChannel(touchedCh > 0 ? touchedCh : 1);
+  bool prox = hu && hu->isProX();
+
+  if (prox) {
+    static int last_iSingleVPotTouched = -1;
+    if (m_iSingleVPotTouched != last_iSingleVPotTouched) {
+      last_iSingleVPotTouched = m_iSingleVPotTouched;
+      target->clearLine(0);
+      target->clearLine(1);
+    }
+
+    static int last_iSingleFaderTouched = -1;
+    if (m_iSingleFaderTouched != last_iSingleFaderTouched) {
+      last_iSingleFaderTouched = m_iSingleFaderTouched;
+      target->clearLine(2);
+      target->clearLine(3);
+    }
+
+    if (m_iSingleVPotTouched > 0) {
+      target->changeText(0, 0,
+          m_pAccess->getBankNameLong(m_pAccess->getSelectedBank()).toRawUTF8(),
+          17, true);
+      target->changeText(0, 19,
+          m_pAccess->getPageNameLongInSelectedBank(
+                       m_pAccess->getSelectedPageInSelectedBank()).toRawUTF8(),
+          17, true);
+      target->changeText(0, 38,
+          m_pAccess->getParamNameLong(PlugAccess::ElementDesc::VPOT, m_iSingleVPotTouched - 1).toRawUTF8(),
+          17, true);
+      target->changeText(1, 0,
+          m_pCCSManager->getMCU()->GetTrackName(m_pAccess->getPlugTrack()),
+          17, true);
+      target->changeText(1, 19,
+          m_pAccess->getPlugNameLong().toRawUTF8(), 17, true);
+      target->changeText(1, 38,
+          m_pAccess->getParamValueLong(PlugAccess::ElementDesc::VPOT, m_iSingleVPotTouched - 1).toRawUTF8(),
+          17, true);
+    } else {
+      for (int iChannel = 0; iChannel < 8; iChannel++) {
+        target->changeField(1, iChannel + 1,
+            m_pAccess
+                ->getParamValueShort(PlugAccess::ElementDesc::VPOT, iChannel)
+                .toRawUTF8());
+
+        target->changeField(0, iChannel + 1,
+            m_pAccess->getParamNameShort(PlugAccess::ElementDesc::VPOT, iChannel)
+                .toRawUTF8());
+      }
+    }
+
+    if (m_iSingleFaderTouched > 0) {
+      target->changeText(2, 0,
+          m_pAccess->getBankNameLong(m_pAccess->getSelectedBank()).toRawUTF8(),
+          17, true);
+      target->changeText(2, 19,
+          m_pAccess
+              ->getPageNameLongInSelectedBank(
+                  m_pAccess->getSelectedPageInSelectedBank())
+              .toRawUTF8(),
+          17, true);
+      target->changeText(2, 38,
+          m_pAccess->getParamNameLong(PlugAccess::ElementDesc::FADER, m_iSingleFaderTouched - 1).toRawUTF8(),
+          17, true);
+      target->changeText(3, 0,
+          m_pCCSManager->getMCU()->GetTrackName(m_pAccess->getPlugTrack()),
+          17, true);
+      target->changeText(3, 19,
+          m_pAccess->getPlugNameLong().toRawUTF8(), 17, true);
+      target->changeText(3, 38,
+          m_pAccess->getParamValueLong(PlugAccess::ElementDesc::FADER, m_iSingleFaderTouched - 1).toRawUTF8(),
+          17, true);
+    } else {
+      for (int iChannel = 0; iChannel < 8; iChannel++) {
+        target->changeField(3, iChannel + 1,
+            m_pAccess
+                ->getParamValueShort(PlugAccess::ElementDesc::FADER, iChannel)
+                .toRawUTF8());
+
+        target->changeField(2, iChannel + 1,
+            m_pAccess->getParamNameShort(PlugAccess::ElementDesc::FADER, iChannel)
+                .toRawUTF8());
+      }
+      // "Wet" on anchor unit
+      Display *anchor = mainChildOrNull(m_pParamsDisplay);
+      if (anchor) {
+        anchor->changeField(2, 9, " Wet");
+        int wet = m_pAccess->getParamValueInt(PlugAccess::ElementDesc::DRYWET);
+        char text[8];
+        sprintf(text, " %3.0f%%", (100 * (double)wet / 16368.));
+        anchor->changeField(3, 9, text);
+      }
+    }
+  } else {
     PlugAccess::ElementDesc::eType element =
         (m_iSingleFaderTouched > 0) ? PlugAccess::ElementDesc::FADER
                                     : PlugAccess::ElementDesc::VPOT;
     int iChannel = (m_iSingleFaderTouched > 0) ? m_iSingleFaderTouched
                                                : m_iSingleVPotTouched;
 
-		
-    m_pTouchedDisplay->changeText(0, 0,
+    target->changeText(0, 0,
         m_pAccess->getBankNameLong(m_pAccess->getSelectedBank()).toRawUTF8(),
         17, true);
-    m_pTouchedDisplay->changeText(0, 19,
+    target->changeText(0, 19,
         m_pAccess
             ->getPageNameLongInSelectedBank(
                 m_pAccess->getSelectedPageInSelectedBank())
             .toRawUTF8(),
         17, true);
-    m_pTouchedDisplay->changeText(0, 38,
-				m_pAccess->getParamNameLong(element, iChannel - 1).toRawUTF8(),
+    target->changeText(0, 38,
+        m_pAccess->getParamNameLong(element, iChannel - 1).toRawUTF8(),
         17, true);
-    m_pTouchedDisplay->changeText(1, 0,
-				m_pCCSManager->getMCU()->GetTrackName(m_pAccess->getPlugTrack()),
+    target->changeText(1, 0,
+        m_pCCSManager->getMCU()->GetTrackName(m_pAccess->getPlugTrack()),
         17, true);
-    m_pTouchedDisplay->changeText(1, 19,
-			  m_pAccess->getPlugNameLong().toRawUTF8(), 17, true);
-    m_pTouchedDisplay->changeText(1, 38,
-				m_pAccess->getParamValueLong(element, iChannel - 1).toRawUTF8(),
+    target->changeText(1, 19,
+        m_pAccess->getPlugNameLong().toRawUTF8(), 17, true);
+    target->changeText(1, 38,
+        m_pAccess->getParamValueLong(element, iChannel - 1).toRawUTF8(),
         17, true);
   }
-}
-
-void PlugMode::updateTouchedDisplayProX() {
-	//	m_pTouchedDisplay->clear();
-
-	static int last_iSingleVPotTouched = -1;
-	if (m_iSingleVPotTouched != last_iSingleVPotTouched) {
-		last_iSingleVPotTouched = m_iSingleVPotTouched;
-		m_pTouchedDisplay->clearLine(0);
-		m_pTouchedDisplay->clearLine(1);
-	}
-
-	static int last_iSingleFaderTouched = -1;
-	if (m_iSingleFaderTouched != last_iSingleFaderTouched) {
-		last_iSingleFaderTouched = m_iSingleFaderTouched;
-		m_pTouchedDisplay->clearLine(2);
-		m_pTouchedDisplay->clearLine(3);
-	}
-
-	
-	if (m_iSingleVPotTouched > 0) {
-    m_pTouchedDisplay->changeText(0, 0,
-        m_pAccess->getBankNameLong(m_pAccess->getSelectedBank()).toRawUTF8(),
-        17, true);
-    m_pTouchedDisplay->changeText(0, 19,
-        m_pAccess->getPageNameLongInSelectedBank(
-                     m_pAccess->getSelectedPageInSelectedBank()).toRawUTF8(),
-        17, true);
-    m_pTouchedDisplay->changeText(0, 38,
-				m_pAccess->getParamNameLong(PlugAccess::ElementDesc::VPOT, m_iSingleVPotTouched - 1).toRawUTF8(),
-        17, true);
-    m_pTouchedDisplay->changeText(1, 0,
-				m_pCCSManager->getMCU()->GetTrackName(m_pAccess->getPlugTrack()),
-        17, true);
-    m_pTouchedDisplay->changeText(1, 19,
-			  m_pAccess->getPlugNameLong().toRawUTF8(), 17, true);
-    m_pTouchedDisplay->changeText(1, 38,
-				m_pAccess->getParamValueLong(PlugAccess::ElementDesc::VPOT, m_iSingleVPotTouched - 1).toRawUTF8(),
-        17, true);
-	} else {
-		for (int iChannel = 0; iChannel < 8; iChannel++) {
-      m_pTouchedDisplay->changeField(1, iChannel + 1,
-          m_pAccess
-              ->getParamValueShort(PlugAccess::ElementDesc::VPOT, iChannel)
-              .toRawUTF8());
-
-      m_pTouchedDisplay->changeField(0, iChannel + 1,
-          m_pAccess->getParamNameShort(PlugAccess::ElementDesc::VPOT, iChannel)
-              .toRawUTF8());
-		}
-	}
-
-	if (m_iSingleFaderTouched > 0) {
-    m_pTouchedDisplay->changeText(2, 0,
-        m_pAccess->getBankNameLong(m_pAccess->getSelectedBank()).toRawUTF8(),
-        17, true);
-    m_pTouchedDisplay->changeText(2, 19,
-        m_pAccess
-            ->getPageNameLongInSelectedBank(
-                m_pAccess->getSelectedPageInSelectedBank())
-            .toRawUTF8(),
-        17, true);
-    m_pTouchedDisplay->changeText(2, 38,
-				m_pAccess->getParamNameLong(PlugAccess::ElementDesc::FADER, m_iSingleFaderTouched - 1).toRawUTF8(),
-        17, true);
-    m_pTouchedDisplay->changeText(3, 0,
-				m_pCCSManager->getMCU()->GetTrackName(m_pAccess->getPlugTrack()),
-        17, true);
-    m_pTouchedDisplay->changeText(3, 19,
-			  m_pAccess->getPlugNameLong().toRawUTF8(), 17, true);
-    m_pTouchedDisplay->changeText(3, 38,
-				m_pAccess->getParamValueLong(PlugAccess::ElementDesc::FADER, m_iSingleFaderTouched - 1).toRawUTF8(),
-        17, true);
-	} else {
-		for (int iChannel = 0; iChannel < 8; iChannel++) {
-      m_pTouchedDisplay->changeField(3, iChannel + 1,
-          m_pAccess
-              ->getParamValueShort(PlugAccess::ElementDesc::FADER, iChannel)
-              .toRawUTF8());
-
-      m_pTouchedDisplay->changeField(2, iChannel + 1,
-          m_pAccess->getParamNameShort(PlugAccess::ElementDesc::FADER, iChannel)
-              .toRawUTF8());
-
-			m_pParamsDisplay->changeField(2, 9, " Wet");
-
-      int wet = m_pAccess->getParamValueInt(PlugAccess::ElementDesc::DRYWET);
-			char text[8];
-			sprintf(text, " %3.0f%%", (100 * (double) wet / 16368.));
-			m_pParamsDisplay->changeField(3, 9, text);
-		}
-	}
 }
 
 
@@ -745,7 +905,9 @@ String PlugMode::longPlugName(const char *pName) {
 
 void PlugMode::updateEverything() {
   switchDisplay();
-  m_pBankPagePlugSelector->updateDisplay();
+  // WP-PlugMode Phase 3: update all units' selector displays
+  for (int u = 0; u < m_pCCSManager->getMCU()->numUnits(); u++)
+    m_pBankPagePlugSelectorPerUnit[u]->updateDisplay();
   CCSMode::updateEverything();
 }
 
@@ -758,7 +920,7 @@ bool PlugMode::buttonGView(bool pressed) {
     m_pAccess->trackChanged(selectedTrack());
   }
 
-  m_pBankPagePlugSelector->clearDisplay();
+  m_pBankPagePlugSelectorPerUnit[anchorUnit()]->clearDisplay();
   updateEverything();
 
   return true;
@@ -802,6 +964,12 @@ bool PlugMode::buttonFlip(bool pressed) {
 }
 
 Component **PlugMode::createEditorComponent() {
+  // WP-PlugMode Phase 8d (R8): the on-screen editor reflects m_activeUnit.
+  // PlugAccess' active-unit alias layer reads the per-unit bank/page state
+  // of whatever unit was last pinned by a unit-specific callback (default
+  // 0 = anchor). No structural editor change needed; m_activeUnit is already
+  // maintained everywhere a hardware event lands. Opening the editor does
+  // not itself pin a unit, so it shows the last hardware-active unit's state.
   // Ensure we have the right track even when the editor is opened via ALT+PLUG
   // without switching to PlugMode as the active mode.
   if (m_followTrack)
@@ -844,36 +1012,42 @@ void PlugMode::frameUpdate() {
 
   m_pAccess->getPlugWindowManager()->moveWnd();
 
-	if (m_pPlugMode2ndOptions->isOptionSetTo(PMO2_FOLLOW_CHANGE, PMO2A_ON))
+	// WP-PlugMode Phase 5a (R2): follow-change now multi-valued; active
+	// whenever a valid follow unit is selected.
+	if (followChangeUnit() >= 0)
 		followChanges();
 }
 
 void PlugMode::updateRecLEDs() {
+  // WP-PlugMode Phase 3: replicate LED state to all units
+  if (!m_pAccess->plugExist())
+    return;
   String fxGUID = GUID2String(
       TrackFX_GetFXGUID(m_pAccess->getPlugTrack(), m_pAccess->getPlugSlot()));
 
+  int nUnits = m_pCCSManager->getMCU()->numUnits();
   int start = isModifierPressed(VK_SHIFT) ? 8 : 0;
-  for (int channel = 0; channel < 8; channel++) {
-    if (channel + start == m_lastCalledPreset[fxGUID]) {
-      if (m_pPresetManager->presetMatchState(m_pAccess->getPlugTrack(),
-                                             m_pAccess->getPlugSlot(),
-                                             channel + start)) {
-        m_pCCSManager->setRecLED(
-            this, channel + 1, isModifierPressed(VK_ALT) ? LED_ON : LED_BLINK);
-        continue;
-      } else {
-        m_lastCalledPreset[fxGUID] = -1;
+  for (int unit = 0; unit < nUnits; unit++) {
+    for (int channel = 0; channel < 8; channel++) {
+      int globalCh = unit * 8 + channel + 1;
+      if (channel + start == m_lastCalledPreset[fxGUID]) {
+        if (m_pPresetManager->presetMatchState(m_pAccess->getPlugTrack(),
+                                               m_pAccess->getPlugSlot(),
+                                               channel + start)) {
+          m_pCCSManager->setRecLED(
+              this, globalCh, isModifierPressed(VK_ALT) ? LED_ON : LED_BLINK);
+          continue;
+        } else {
+          m_lastCalledPreset[fxGUID] = -1;
+        }
       }
+      m_pCCSManager->setRecLED(
+          this, globalCh,
+          m_pPresetManager->hasPreset(fxGUID, channel + start) ? LED_ON
+                                                               : LED_OFF);
     }
-    String fxGUID = GUID2String(
-        TrackFX_GetFXGUID(m_pAccess->getPlugTrack(), m_pAccess->getPlugSlot()));
-    m_pCCSManager->setRecLED(
-        this, channel + 1,
-        m_pPresetManager->hasPreset(fxGUID, channel + start) ? LED_ON
-                                                             : LED_OFF);
   }
 }
-
 bool PlugMode::isSlotBypassed(MediaTrack *pPlugTrack, int iSlot) {
   double min, max;
   int bypassID = TrackFX_GetNumParams(pPlugTrack, iSlot) - 3;
@@ -881,57 +1055,69 @@ bool PlugMode::isSlotBypassed(MediaTrack *pPlugTrack, int iSlot) {
 }
 
 void PlugMode::updateSelectLEDs() {
+  // WP-PlugMode Phase 3: replicate LED state to all units
+  int nUnits = m_pCCSManager->getMCU()->numUnits();
   int start = isModifierPressed(VK_SHIFT) ? 8 : 0;
   if (m_followTrack) {
-    for (int channel = 0; channel < 8; channel++) {
-      if (channel + start == m_pAccess->getPlugSlot())
-        m_pCCSManager->setSelectLED(this, channel + 1, LED_BLINK);
-      else if (channel + start < getNumPlugsInSelectedTrack()) {
-				if (isSlotBypassed(m_pAccess->getPlugTrack(), channel + start))
-					m_pCCSManager->setSelectLED(this, channel + 1, LED_BLINK_BYPASSED);
-				else
-					m_pCCSManager->setSelectLED(this, channel + 1, LED_ON);
-			}
-      else
-        m_pCCSManager->setSelectLED(this, channel + 1, LED_OFF);
+    for (int unit = 0; unit < nUnits; unit++) {
+      for (int channel = 0; channel < 8; channel++) {
+        int globalCh = unit * 8 + channel + 1;
+        if (channel + start == m_pAccess->getPlugSlot())
+          m_pCCSManager->setSelectLED(this, globalCh, LED_BLINK);
+        else if (channel + start < getNumPlugsInSelectedTrack()) {
+          if (isSlotBypassed(m_pAccess->getPlugTrack(), channel + start))
+            m_pCCSManager->setSelectLED(this, globalCh, LED_BLINK_BYPASSED);
+          else
+            m_pCCSManager->setSelectLED(this, globalCh, LED_ON);
+        }
+        else
+          m_pCCSManager->setSelectLED(this, globalCh, LED_OFF);
+      }
     }
   } else {
-    for (int channel = 0; channel < 8; channel++) {
-      MediaTrack *pMT = NULL;
-      if (m_favPlugins[start + channel].get<0>() != GUID_NOT_ACTIVE) {
-        pMT = CSurf_MCU::TrackFromGUID(m_favPlugins[start + channel].get<0>());
-        int slot = m_favPlugins[start + channel].get<1>();
-        if (slot == m_pAccess->getPlugSlot() &&
-            pMT == m_pAccess->getPlugTrack() && pMT != NULL)
-          m_pCCSManager->setSelectLED(this, channel + 1, LED_BLINK);
-        else if (pMT != NULL) {
-					if (isSlotBypassed(pMT, channel + start))
-						m_pCCSManager->setSelectLED(this, channel + 1, LED_BLINK_BYPASSED);
-					else
-						m_pCCSManager->setSelectLED(this, channel + 1, LED_ON);
-					
-				}
-      } else
-        m_pCCSManager->setSelectLED(this, channel + 1, LED_OFF);
+    for (int unit = 0; unit < nUnits; unit++) {
+      for (int channel = 0; channel < 8; channel++) {
+        int globalCh = unit * 8 + channel + 1;
+        MediaTrack *pMT = NULL;
+        if (m_favPlugins[start + channel].get<0>() != GUID_NOT_ACTIVE) {
+          pMT = CSurf_MCU::TrackFromGUID(m_favPlugins[start + channel].get<0>());
+          int slot = m_favPlugins[start + channel].get<1>();
+          if (slot == m_pAccess->getPlugSlot() &&
+              pMT == m_pAccess->getPlugTrack() && pMT != NULL)
+            m_pCCSManager->setSelectLED(this, globalCh, LED_BLINK);
+          else if (pMT != NULL) {
+            if (isSlotBypassed(pMT, channel + start))
+              m_pCCSManager->setSelectLED(this, globalCh, LED_BLINK_BYPASSED);
+            else
+              m_pCCSManager->setSelectLED(this, globalCh, LED_ON);
+          }
+        } else
+          m_pCCSManager->setSelectLED(this, globalCh, LED_OFF);
+      }
     }
   }
 }
-
 bool PlugMode::buttonSelect(int channel, bool pressed) {
+  // WP-PlugMode: channel is global, compute unit-local slot
+  int unit = (channel - 1) / 8;
+  int localCh = (channel - 1) % 8;
+  setActiveUnit(unit);
+
   if (pressed) {
-    m_pBankPagePlugSelector->activateSelector(BankPagePlugSelector::PLUG);
+    m_pBankPagePlugSelectorPerUnit[unit]->activateSelector(BankPagePlugSelector::PLUG);
   } else {
-    m_pBankPagePlugSelector->activateSelector(BankPagePlugSelector::NOTHING);
+    m_pBankPagePlugSelectorPerUnit[unit]->activateSelector(BankPagePlugSelector::NOTHING);
   }
 
   if (!pressed)
     return true;
 
-  int slot = channel + (isModifierPressed(VK_SHIFT) ? 8 : 0) - 1;
+  int slot = localCh + (isModifierPressed(VK_SHIFT) ? 8 : 0);
   if (m_followTrack) {
     if (slot < getNumPlugsInSelectedTrack()) {
       m_lastTimePlugWasSelected = m_pCCSManager->getLastTime();
       m_pAccess->accessPlugin(selectedTrack(), slot);
+      invalidateParamCache();
     }
   } else {
     if (isModifierPressed(VK_CONTROL)) {
@@ -945,6 +1131,7 @@ bool PlugMode::buttonSelect(int channel, bool pressed) {
       if (pMT) {
         m_lastTimePlugWasSelected = m_pCCSManager->getLastTime();
         m_pAccess->accessPlugin(pMT, m_favPlugins[slot].get<1>());
+        invalidateParamCache();
       }
     }
   }
@@ -957,30 +1144,41 @@ bool PlugMode::accessFXFavorite(int slot) {
 	if (pMT) {
 		m_lastTimePlugWasSelected = m_pCCSManager->getLastTime();
 		m_pAccess->accessPlugin(pMT, m_favPlugins[slot].get<1>());
+		invalidateParamCache();
 	}
 
   return true;
 }
 
 bool PlugMode::buttonFaderBanks(int button, bool pressed) {
-  int bank = m_pAccess->getSelectedBank();
-  int page = m_pAccess->getSelectedPageInSelectedBank();
+  // WP-PlugMode Phase 4: transport lock-step page-spread over the used-page
+  // sequence (R3, R11). Transport buttons (BANK_UP/DOWN, CHANNEL_UP/DOWN)
+  // carry no channel and no unit identity, so they operate on a SHARED window
+  // across all units, not a per-unit identity. Transport deliberately
+  // collapses per-unit Bank divergence back to that shared window.
+  //
+  // N=1 note: CHANNEL_UP/DOWN stays behaviour-equivalent (steps one used page
+  // in the sequence). BANK_UP/DOWN additionally resets each unit's page to
+  // the first used page of the new bank (the window position), which is a
+  // minor, intended change from the legacy per-bank remembered page.
+  setActiveUnit(anchorUnit());
 
+  // Selector activation (press/release) on the anchor unit's selector.
   switch (button) {
   case B_BANK_UP:
   case B_BANK_DOWN:
     if (pressed) {
-      m_pBankPagePlugSelector->activateSelector(BankPagePlugSelector::BANK);
+      m_pBankPagePlugSelectorPerUnit[anchorUnit()]->activateSelector(BankPagePlugSelector::BANK);
     } else if (m_pCCSManager->getNumSoloButtonsPressed() == 0) {
-      m_pBankPagePlugSelector->activateSelector(BankPagePlugSelector::NOTHING);
+      m_pBankPagePlugSelectorPerUnit[anchorUnit()]->activateSelector(BankPagePlugSelector::NOTHING);
     }
     break;
   case B_CHANNEL_UP:
   case B_CHANNEL_DOWN:
     if (pressed) {
-      m_pBankPagePlugSelector->activateSelector(BankPagePlugSelector::PAGE);
+      m_pBankPagePlugSelectorPerUnit[anchorUnit()]->activateSelector(BankPagePlugSelector::PAGE);
     } else if (m_pCCSManager->getNumMuteButtonsPressed() == 0) {
-      m_pBankPagePlugSelector->activateSelector(BankPagePlugSelector::NOTHING);
+      m_pBankPagePlugSelectorPerUnit[anchorUnit()]->activateSelector(BankPagePlugSelector::NOTHING);
     }
     break;
   }
@@ -988,44 +1186,72 @@ bool PlugMode::buttonFaderBanks(int button, bool pressed) {
   if (!pressed)
     return true;
 
+  int a = anchorUnit();
+  int N = m_pCCSManager->getMCU()->numUnits();
+
   switch (button) {
   case B_BANK_UP:
-    while (bank < 7) {
-      bank++;
-      if (m_pAccess->isBankUsed(bank)) {
-        buttonSolo(bank + 1, pressed);
-        m_pAccess->setSelectedBank(bank);
-        break;
+  case B_BANK_DOWN: {
+    // Bank UP/DOWN: reference bank = anchor unit's bank; find the next/prev
+    // USED bank and reset the page window to sequence positions [0..N-1]
+    // across all units.
+    int refBank = m_pAccess->selectedBankForUnit(a);
+    int newBank = refBank;
+    if (button == B_BANK_UP) {
+      for (int b = refBank + 1; b < 8; b++) {
+        if (m_pAccess->isBankUsed(b)) {
+          newBank = b;
+          break;
+        }
+      }
+    } else {
+      for (int b = refBank - 1; b >= 0; b--) {
+        if (m_pAccess->isBankUsed(b)) {
+          newBank = b;
+          break;
+        }
       }
     }
-    break;
-  case B_BANK_DOWN:
-    while (bank > 0) {
-      bank--;
-      if (m_pAccess->isBankUsed(bank)) {
-        buttonSolo(bank + 1, pressed);
-        break;
+    if (newBank != refBank) {
+      for (int u = 0; u < N; u++) {
+        m_pAccess->setSelectedBank(newBank, u);
+        m_pAccess->setSelectedPage(newBank,
+                                   m_pAccess->pageAtUsedOffset(newBank, u), u);
       }
+      safe_call(m_pPlugEditor, selectedBankChanged(newBank));
     }
     break;
+  }
   case B_CHANNEL_UP:
-    while (page < 7) {
-      page++;
-      if (m_pAccess->isPageUsedInSelectedBank(page)) {
-        buttonMute(page + 1, pressed);
-        break;
+  case B_CHANNEL_DOWN: {
+    // Page UP/DOWN: shift the page window start by +/-N sequence positions;
+    // each unit u shows pageAtUsedOffset(bank, newOffset + u). Clamp, no wrap.
+    int bank = m_pAccess->selectedBankForUnit(a);
+    int curOffset = m_pAccess->pageUsedOffsetForPage(
+        bank, m_pAccess->selectedPageForUnit(a));
+    if (curOffset < 0)
+      curOffset = 0;
+    int count = m_pAccess->usedPageCount(bank);
+    int delta = (button == B_CHANNEL_UP) ? N : -N;
+    int newOffset = curOffset + delta;
+    if (count <= 0) {
+      newOffset = 0;
+    } else {
+      if (newOffset < 0)
+        newOffset = 0;
+      if (newOffset > count - 1)
+        newOffset = count - 1;
+    }
+    if (newOffset != curOffset) {
+      for (int u = 0; u < N; u++) {
+        m_pAccess->setSelectedPage(
+            bank, m_pAccess->pageAtUsedOffset(bank, newOffset + u), u);
       }
+      safe_call(m_pPlugEditor,
+                selectedPageChanged(m_pAccess->pageAtUsedOffset(bank, newOffset)));
     }
     break;
-  case B_CHANNEL_DOWN:
-    while (page > 0) {
-      page--;
-      if (m_pAccess->isPageUsedInSelectedBank(page)) {
-        buttonMute(page + 1, pressed);
-        break;
-      }
-    }
-    break;
+  }
   }
 
   switchDisplay();
@@ -1160,7 +1386,14 @@ void PlugMode::followChanges() {
 	onlyEveryTenth++;
 	if (onlyEveryTenth % 10 != 0)
 		return;
-	
+
+  // WP-PlugMode Phase 5c (R2): refill the cache on first scan and after
+  // every plugin/map change so the old map's values are not seen as changes.
+  if (!m_paramCacheValid) {
+    refillParamCache();
+    return;
+  }
+
   int numChangedValues = 0;
 	int changeInBank = -1;
 	int changeInPage = -1;
@@ -1172,22 +1405,52 @@ void PlugMode::followChanges() {
 				double faderVal = m_pAccess->getParamValueDouble(&faderDesc);
 				PlugAccess::ElementDesc vpotDesc(bank, page, PlugAccess::ElementDesc::VPOT, channel);
 				double vpotVal = m_pAccess->getParamValueDouble(&vpotDesc);
-				if (faderVal != lastFaderValues[bank][page][channel] ||
-						vpotVal != lastVPotValues[bank][page][channel]) {
+				int idx = paramCacheIndex(bank, page, channel);
+				if (faderVal != lastFaderValues[idx] ||
+						vpotVal != lastVPotValues[idx]) {
 					numChangedValues++;
 					changeInBank = bank;
 					changeInPage = page;
-					lastFaderValues[bank][page][channel] = faderVal;
-					lastVPotValues[bank][page][channel] = vpotVal;
+					lastFaderValues[idx] = faderVal;
+					lastVPotValues[idx] = vpotVal;
 				}
 			}
 		}
 	}
 
 	if (numChangedValues == 1) {
-		m_pAccess->setSelectedBank(changeInBank);
-		m_pAccess->setSelectedPage(changeInBank, changeInPage);
+		// WP-PlugMode Phase 5b (R2): jump the selected follow-unit's cursor,
+		// not the active unit's. With OFF (fu < 0) no action is taken.
+		int fu = followChangeUnit();
+		if (fu >= 0) {
+			m_pAccess->setSelectedBank(changeInBank, fu);
+			m_pAccess->setSelectedPage(changeInBank, changeInPage, fu);
+		}
 	}
+}
+
+int PlugMode::followChangeUnit() {
+	return m_pPlugMode2ndOptions->followChangeUnit(
+		m_pCCSManager->getMCU()->numUnits());
+}
+
+void PlugMode::invalidateParamCache() { m_paramCacheValid = false; }
+
+void PlugMode::refillParamCache() {
+	for (int bank = 0; bank < 8; bank++) {
+		for (int page = 0; page < 8; page++) {
+			for (int channel = 0; channel < 8; channel++) {
+				int idx = paramCacheIndex(bank, page, channel);
+				PlugAccess::ElementDesc faderDesc(bank, page,
+														 PlugAccess::ElementDesc::FADER, channel);
+				lastFaderValues[idx] = m_pAccess->getParamValueDouble(&faderDesc);
+				PlugAccess::ElementDesc vpotDesc(bank, page,
+														PlugAccess::ElementDesc::VPOT, channel);
+				lastVPotValues[idx] = m_pAccess->getParamValueDouble(&vpotDesc);
+			}
+		}
+	}
+	m_paramCacheValid = true;
 }
 
 // MediaTrack* PlugMode::selectedTrack()
@@ -1243,5 +1506,19 @@ void PlugMode::clearNonAnchorChildren(Display *d) {
   for (int i = 0; i < (int)md->children().size(); i++) {
     if (i != a)
       md->children()[i]->clear();
+  }
+}
+
+// ---- WP-PlugMode Phase 4b: Control+cascade (R3) ----
+// Spread bank/page selection to units `unit..N-1`. Unit u gets the bank and
+// the page at sequence offset `baseOffset + (u - unit)` in that bank's
+// used-page list. Units 0..unit-1 are left untouched. Called from
+// Control+SOLO so the page window can be re-anchored starting at any unit.
+void PlugMode::cascadeFromUnit(int unit, int bank, int baseOffset) {
+  int N = m_pCCSManager->getMCU()->numUnits();
+  for (int u = unit; u < N; u++) {
+    m_pAccess->setSelectedBank(bank, u);
+    m_pAccess->setSelectedPage(
+        bank, m_pAccess->pageAtUsedOffset(bank, baseOffset + (u - unit)), u);
   }
 }

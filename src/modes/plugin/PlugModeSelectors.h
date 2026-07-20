@@ -43,7 +43,7 @@ class BankPagePlugSelector : public PlugModeSelector {
 public:
   enum eSelect { NOTHING = 0, BANK, PAGE, PLUG };
 
-  BankPagePlugSelector(DisplayHandler *pDH, PlugMode *pPM);
+  BankPagePlugSelector(DisplayHandler *pDH, PlugMode *pPM, int unit);
 
   // from Selector
   void activateSelector();
@@ -52,10 +52,12 @@ public:
   void activateSelector(eSelect newSelect);
 
   eSelect getWhatToSelect() { return m_selectWhat; }
+  int  getUnit() const { return m_unit; }
 
   void updateDisplay();
   void clearDisplay() { m_pDisplay->clear(); }
 
 private:
   eSelect m_selectWhat;
+  int m_unit; // WP-PlugMode Phase 3: owning unit index
 };

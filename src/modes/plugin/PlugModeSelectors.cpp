@@ -36,13 +36,14 @@ void PlugModeSelector::writeTrackPlugTopLine() {
 void PlugModeSelector::writePlugBankPageTopLine() {
   PlugAccess *pPA = m_pPlugMode->getPlugAccess();
   if (pPA->plugExist()) {
+    int u = m_pPlugMode->getActiveUnit();
     m_pDisplay->changeText(0, 0, pPA->getPlugNameLong().toRawUTF8(), 17, true);
     m_pDisplay->changeText(
-        0, 19, pPA->getBankNameLong(pPA->getSelectedBank()).toRawUTF8(), 17,
+        0, 19, pPA->getBankNameLong(pPA->selectedBankForUnit(u)).toRawUTF8(), 17,
         true);
     m_pDisplay->changeText(
         0, 38,
-        pPA->getPageNameLongInSelectedBank(pPA->getSelectedPageInSelectedBank())
+        pPA->getPageNameLongInSelectedBank(pPA->selectedPageForUnit(u))
             .toRawUTF8(),
         17, true);
   }
@@ -95,8 +96,8 @@ bool PlugSelector::select(int index) {
   return true;
 }
 
-BankPagePlugSelector::BankPagePlugSelector(DisplayHandler *pDH, PlugMode *pPM)
-    : PlugModeSelector(pDH, pPM), m_selectWhat(NOTHING) {}
+BankPagePlugSelector::BankPagePlugSelector(DisplayHandler *pDH, PlugMode *pPM, int unit)
+    : PlugModeSelector(pDH, pPM), m_selectWhat(NOTHING), m_unit(unit) {}
 
 void BankPagePlugSelector::activateSelector() {}
 
@@ -123,6 +124,8 @@ bool BankPagePlugSelector::select(int index) {
 
 void BankPagePlugSelector::updateDisplay() {
   PlugAccess *pPA = m_pPlugMode->getPlugAccess();
+  // WP-PlugMode Phase 3: read per-unit state
+  m_pPlugMode->setActiveUnit(m_unit);
 
   switch (m_selectWhat) {
   case NOTHING:

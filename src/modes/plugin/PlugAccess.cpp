@@ -543,21 +543,22 @@ int PlugAccess::convertR2MCU(int id, double value) {
 void PlugAccess::setSelectedBank(int bank, int unit) {
   ASSERT(unit >= 0 && unit < MAX_SURFACE_UNITS);
   m_selectedBankPerUnit[unit] = bank;
-  // Only trigger LED/fader updates if setting the active unit
-  if (unit == m_pMode->getActiveUnit()) {
-    m_pMode->updateSoloLEDs();
-    m_pMode->updateMuteLEDs();
-    m_pMode->updateFaders();
-  }
+  // Always update LEDs/faders — affects all units (N>1)
+  m_pMode->updateSoloLEDs();
+  m_pMode->updateMuteLEDs();
+  m_pMode->updateFaders();
+  m_pMode->updateSelectLEDs();
+  m_pMode->updateRecLEDs();
 }
 
 void PlugAccess::setSelectedPage(int bank, int page, int unit) {
   ASSERT(unit >= 0 && unit < MAX_SURFACE_UNITS);
   m_selectedPagePerUnit[unit][bank] = page;
-  if (unit == m_pMode->getActiveUnit()) {
-    m_pMode->updateMuteLEDs();
-    m_pMode->updateFaders();
-  }
+  // Always update LEDs/faders — affects all units (N>1)
+  m_pMode->updateMuteLEDs();
+  m_pMode->updateFaders();
+  m_pMode->updateSelectLEDs();
+  m_pMode->updateRecLEDs();
 }
 
 void PlugAccess::setSelectedPageInSelectedBank(int page, int unit) {
@@ -613,6 +614,15 @@ int PlugAccess::pageAtUsedOffset(int bank, int offset) {
   if (offset >= (int)pages.size())
     return pages.back();
   return pages[offset];
+}
+
+int PlugAccess::pageUsedOffsetForPage(int bank, int page) {
+  std::vector<int> pages = usedPages(bank);
+  for (int i = 0; i < (int)pages.size(); i++) {
+    if (pages[i] == page)
+      return i;
+  }
+  return -1;
 }
 
 // ---- WP-PlugMode: persistence (R9 / Phase 0g) ----
