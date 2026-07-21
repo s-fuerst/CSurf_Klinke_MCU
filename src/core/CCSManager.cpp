@@ -187,6 +187,15 @@ void CCSManager::switchToDisplay(CCSMode *pMode, Display *pDisplay) {
   }
 }
 
+bool CCSManager::canSwitchDisplay(CCSMode *pMode) {
+  // Mirrors the guard inside switchToDisplay(). Exposed so callers that need a
+  // side effect beside the switch (e.g. PlugMode's clearNonAnchorChildren on
+  // global-message displays) can respect the same selector/option/NameValue
+  // locks without duplicating the condition.
+  return pMode == m_pActualMode && !m_selectorActive && !m_optionActive &&
+         !m_pMCU->IsButtonPressed(B_NAME_VALUE);
+}
+
 void CCSManager::updateVPOTLeds() {
   MediaTrack *m_pSelectedTrack = Tracks::instance()->getSelectedSingleTrack();
 

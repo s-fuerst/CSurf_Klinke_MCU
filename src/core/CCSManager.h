@@ -126,6 +126,11 @@ public:
 	
   // helper
   void switchToDisplay(CCSMode *pMode, Display *pDisplay);
+  // True when switchToDisplay() would actually switch (the guard condition,
+  // exposed so callers that bypass switchToDisplay — e.g. PlugMode's
+  // MultiDisplay switchToAll + clearNonAnchorChildren path — can respect the
+  // same selector/option/NameValue locks).
+  bool canSwitchDisplay(CCSMode *pMode);
   Display *createDisplay(int numRows); // WP-A factory (plain Display for N=1, MultiDisplay for N>1)
   void setVPOTMode(VPOT_LED::MODE mode); // set all VPOTs to the same mode
 

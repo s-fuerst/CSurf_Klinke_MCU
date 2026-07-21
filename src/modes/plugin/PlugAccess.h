@@ -282,6 +282,13 @@ private:
   double convertMCU2R(int id, int value);
   int convertR2MCU(int id, double value);
   int resolveBankReference();
+public:
+  // Resolve a bank reference for an explicit bank (doesRefer -> referTo),
+  // independent of the active unit. Used by page-cascade math which must read
+  // the map's used-page sequence on the RESOLVED bank while storing the
+  // selection under the RAW bank.
+  int resolveBankReference(int bank);
+private:
 
   bool isOptionSetTo(const String &optionName, const String &attribute) {
     return m_pMode->getOptions()->isOptionSetTo(optionName, attribute);

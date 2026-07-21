@@ -268,7 +268,17 @@ bool PlugMode::buttonMute(int channel, bool pressed) {
   if (pressed)
     safe_call(m_pPlugEditor, selectedPageChanged(localCh))
 
-        if (pressed && isModifierPressed(VK_SHIFT)) {
+        if (pressed && isModifierPressed(VK_CONTROL) &&
+            m_pAccess->isPageUsedInSelectedBank(localCh)) {
+      // WP-PlugMode Phase 4c: Control+Mute cascades pages — unit N gets
+      // page localCh, unit N+1 the next used page, N+2 the one after, etc.
+      m_pAccess->setSelectedPageInSelectedBank(localCh, unit);
+      int bank = m_pAccess->selectedBankForUnit(unit);
+      int resolved = m_pAccess->resolveBankReference(bank);
+      int baseOffset = m_pAccess->pageUsedOffsetForPage(resolved, localCh);
+      if (baseOffset >= 0)
+        cascadeFromUnit(unit, bank, baseOffset);
+    } else if (pressed && isModifierPressed(VK_SHIFT)) {
       for (int iBank = 0; iBank < 8; iBank++) {
         if (m_pAccess->isPageUsed(iBank, localCh)) {
           m_pAccess->setSelectedPage(iBank, localCh, unit);
@@ -580,55 +590,61 @@ void PlugMode::updateVPOTs() {
 void PlugMode::trackListChange() { updateEverything(); }
 
 void PlugMode::switchDisplay() {
-  // WP-PlugMode Phase 1: per-unit switchDisplay (R5/R6)
-  // Global-message conditions: switch ALL children, then clear non-anchor
+  // WP-PlugMode Phase 1/6: per-unit switchDisplay (R5/R6).
+  //
+  // Each unit's handler is switched EXACTLY ONCE to its final target per
+  // frame: a unit whose bank/page/plug selector is active (Solo=BANK,
+  // Mute=PAGE, Select=PLUG held) shows its selector display, every other
+  // unit shows the shared content (params / touched / message).
+  // switchTo()'s same-display early-return then makes this a no-op when
+  // nothing changed — which is what stops the flicker (switchToAll followed
+  // by a per-unit override would activate the shared child AND the selector
+  // every frame, fighting each other).
+  //
+  // Guarded by canSwitchDisplay() (selector-overlay / option / NameValue).
+  if (!m_pCCSManager->canSwitchDisplay(this))
+    return;
+
+  Display *pShared;
+  bool globalMessage = false;
   if (m_followTrack && selectedTrack() == NULL) {
-    MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pSingleTrackMessage);
-    if (md) {
-      md->switchToAll();
-      clearNonAnchorChildren(m_pSingleTrackMessage);
-    } else {
-      m_pCCSManager->switchToDisplay(this, m_pSingleTrackMessage);
-    }
+    pShared = m_pSingleTrackMessage;
+    globalMessage = true;
   } else if (getNumPlugsInSelectedTrack() == 0 && m_followTrack) {
-    MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pNoPlugMessage);
-    if (md) {
-      md->switchToAll();
-      clearNonAnchorChildren(m_pNoPlugMessage);
-    } else {
-      m_pCCSManager->switchToDisplay(this, m_pNoPlugMessage);
-    }
+    pShared = m_pNoPlugMessage;
+    globalMessage = true;
   } else if (m_pAccess->getPlugSlot() == -1) {
-    MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pNoPlugSelectedMessage);
-    if (md) {
-      md->switchToAll();
-      clearNonAnchorChildren(m_pNoPlugSelectedMessage);
-    } else {
-      m_pCCSManager->switchToDisplay(this, m_pNoPlugSelectedMessage);
-    }
-  } else if (m_pBankPagePlugSelectorPerUnit[anchorUnit()]->getWhatToSelect() !=
-             BankPagePlugSelector::NOTHING) {
-    MultiDisplay *md =
-        dynamic_cast<MultiDisplay *>(m_pBankPagePlugSelectorPerUnit[anchorUnit()]->getSelectorDisplay());
-    if (md)
-      md->switchToAll();
-    else
-      m_pCCSManager->switchToDisplay(
-          this, m_pBankPagePlugSelectorPerUnit[anchorUnit()]->getSelectorDisplay());
+    pShared = m_pNoPlugSelectedMessage;
+    globalMessage = true;
   } else if ((isSingleFaderTouched() || isSingleVPotTouched()) &&
              !m_buttonNameValuePressed &&
              m_pPlugMode2ndOptions->isOptionSetTo(PMO2_SHOW_DETAILS, PMO2A_ON)) {
-    MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pTouchedDisplay);
-    if (md)
-      md->switchToAll();
-    else
-      m_pCCSManager->switchToDisplay(this, m_pTouchedDisplay);
+    pShared = m_pTouchedDisplay;
   } else {
-    MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pParamsDisplay);
-    if (md)
-      md->switchToAll();
-    else
-      m_pCCSManager->switchToDisplay(this, m_pParamsDisplay);
+    pShared = m_pParamsDisplay;
+  }
+
+  MultiDisplay *md = dynamic_cast<MultiDisplay *>(pShared);
+  // Global messages clear the non-anchor children so only the anchor shows
+  // the message; other units go blank.
+  if (globalMessage && md)
+    clearNonAnchorChildren(pShared);
+
+  // Switch each unit's handler once to its final target.
+  int nUnits = m_pCCSManager->getMCU()->numUnits();
+  for (int u = 0; u < nUnits; u++) {
+    BankPagePlugSelector *sel = m_pBankPagePlugSelectorPerUnit[u];
+    if (!sel)
+      continue;
+    Display *target;
+    if (sel->getWhatToSelect() != BankPagePlugSelector::NOTHING) {
+      target = sel->getSelectorDisplay();
+    } else if (md && u < (int)md->children().size()) {
+      target = md->children()[u];
+    } else {
+      target = pShared; // N=1: plain Display on the single handler
+    }
+    sel->getDisplayHandler()->switchTo(target);
   }
 }
 
@@ -1516,9 +1532,14 @@ void PlugMode::clearNonAnchorChildren(Display *d) {
 // Control+SOLO so the page window can be re-anchored starting at any unit.
 void PlugMode::cascadeFromUnit(int unit, int bank, int baseOffset) {
   int N = m_pCCSManager->getMCU()->numUnits();
+  // Page math runs on the RESOLVED bank (a bank may `refer` to another, where
+  // the used-page sequence actually lives), but the selection is stored under
+  // the RAW bank (setSelectedBank/setSelectedPage key on the raw bank so
+  // selectedPageForUnit reads it back correctly).
+  int resolved = m_pAccess->resolveBankReference(bank);
   for (int u = unit; u < N; u++) {
+    int page = m_pAccess->pageAtUsedOffset(resolved, baseOffset + (u - unit));
     m_pAccess->setSelectedBank(bank, u);
-    m_pAccess->setSelectedPage(
-        bank, m_pAccess->pageAtUsedOffset(bank, baseOffset + (u - unit)), u);
+    m_pAccess->setSelectedPage(bank, page, u);
   }
 }

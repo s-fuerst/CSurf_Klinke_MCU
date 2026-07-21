@@ -576,9 +576,13 @@ void PlugAccess::trackRemoved(MediaTrack *pMT) {
 // WP-PlugMode: resolveBankReference uses the active unit's bank (R1)
 int PlugAccess::resolveBankReference() {
   int activeBank = m_selectedBankPerUnit[m_pMode->getActiveUnit()];
-  return getMap()->getBank(activeBank)->doesRefer()
-             ? getMap()->getBank(activeBank)->referTo()
-             : activeBank;
+  return resolveBankReference(activeBank);
+}
+
+int PlugAccess::resolveBankReference(int bank) {
+  return getMap()->getBank(bank)->doesRefer()
+             ? getMap()->getBank(bank)->referTo()
+             : bank;
 }
 
 bool PlugAccess::isPageUsedInSelectedBank(int page) {

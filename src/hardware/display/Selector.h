@@ -19,6 +19,10 @@ public:
   virtual ~Selector(void) { safe_delete(m_pDisplay); }
 
   virtual Display *getSelectorDisplay() { return m_pDisplay; }
+  // The per-unit handler this selector (and its unit's shared MultiDisplay
+  // child) lives on. Used by PlugMode::switchDisplay to switch the unit's
+  // handler exactly once to its final target.
+  DisplayHandler *getDisplayHandler() { return m_pDisplayHandler; }
   virtual void activateSelector() = 0;
   // returns true if selector should still be active
   virtual bool select(int index) = 0; // 0-7
