@@ -29,6 +29,9 @@ public:
   SendReceiveModeBase(CCSManager *pManager);
   virtual ~SendReceiveModeBase(void);
 
+  // Send and receive windows span all configured surface units.
+  bool supportsExtendedChannels() const override { return true; }
+
   virtual void activate();
 
 	virtual bool buttonRec(int channel, bool pressed);
@@ -87,6 +90,7 @@ protected:
   virtual const char *stringForESendInfo(ESendInfo sendInfo);
 
   virtual void writeTrackName(int startPos);
+  bool isRecButtonPressedOnUnit(int unit) const;
 
   Display *m_pDisplay;
 

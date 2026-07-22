@@ -182,10 +182,25 @@ void SendReceiveModeBase::writeTrackName(int startPos) {
     }
 
     HardwareUnit *hardwareUnit = pMCU->unitForChannel(unit * 8 + 1);
+    // On a two-row unit, held REC buttons temporarily use the upper row for
+    // automation modes instead of the normal mode/track header.
+    if ((!hardwareUnit || !hardwareUnit->isProX()) &&
+        isRecButtonPressedOnUnit(unit))
+      continue;
     display->changeText(hardwareUnit && hardwareUnit->isProX() ? 2 : 0,
                         startPos, pMCU->GetTrackName(selectedTrack()),
                         44 - startPos);
   }
+}
+
+bool SendReceiveModeBase::isRecButtonPressedOnUnit(int unit) const {
+  int firstChannel = unit * 8;
+  int lastChannel = std::min(firstChannel + 8,
+                             (int)m_recButtonPressed.size());
+  for (int channel = firstChannel; channel < lastChannel; channel++)
+    if (m_recButtonPressed[channel])
+      return true;
+  return false;
 }
 
 void SendReceiveModeBase::updateDisplay() {
@@ -220,8 +235,10 @@ void SendReceiveModeBase::updateDisplay() {
       HardwareUnit *hardwareUnit = pMCU->unitForChannel(unit * 8 + 1);
       bool isProX = hardwareUnit && hardwareUnit->isProX();
       int headerRow = isProX ? 2 : 0;
-      display->changeText(headerRow, 0, m_pSendOrReceiveText, headerLength);
-      display->changeText(headerRow, isProX ? 34 : 46, "solo=mono", 19);
+      if (isProX || !isRecButtonPressedOnUnit(unit)) {
+        display->changeText(headerRow, 0, m_pSendOrReceiveText, headerLength);
+        display->changeText(headerRow, isProX ? 34 : 46, "solo=mono", 19);
+      }
     }
     writeTrackName(headerLength);
 
@@ -229,6 +246,10 @@ void SendReceiveModeBase::updateDisplay() {
       int channel = iInfo + 1;
       HardwareUnit *hardwareUnit = pMCU->unitForChannel(channel);
       bool isProX = hardwareUnit && hardwareUnit->isProX();
+      bool showRecAutoModes =
+          !isProX && isRecButtonPressedOnUnit((channel - 1) / 8);
+      bool showFaderValues =
+          !showRecAutoModes && m_pCCSManager->getNumFadersTouched();
       bool hasSend = m_startWithSend + iInfo < (int)tracks.size();
 
       if (!hasSend) {
@@ -272,7 +293,23 @@ void SendReceiveModeBase::updateDisplay() {
         m_pDisplay->changeField(
             0, channel,
             pMCU->GetTrackName((MediaTrack *)tracks[m_startWithSend + iInfo]));
-      } else if (m_pCCSManager->getNumFadersTouched()) {
+      } else if (showRecAutoModes) {
+        int mode = *((int *)autoModes[m_startWithSend + iInfo]);
+        const char *modeText = "";
+        switch (mode) {
+        case AUTO_MODE_READ:  modeText = "Read";  break;
+        case AUTO_MODE_LATCH: modeText = "Latch"; break;
+        case AUTO_MODE_TRIM:  modeText = "Trim";  break;
+        case AUTO_MODE_WRITE: modeText = "Write"; break;
+        case AUTO_MODE_TOUCH: modeText = "Touch"; break;
+        }
+        // Held REC replaces the normal header with automation modes while
+        // retaining the destination track names on the lower row.
+        m_pDisplay->changeField(0, channel, modeText);
+        m_pDisplay->changeField(
+            1, channel,
+            pMCU->GetTrackName((MediaTrack *)tracks[m_startWithSend + iInfo]));
+      } else if (showFaderValues) {
         int mode = *((int *)autoModes[m_startWithSend + iInfo]);
         const char *modeText = "";
         switch (mode) {
