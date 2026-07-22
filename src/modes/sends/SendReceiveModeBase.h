@@ -52,7 +52,6 @@ public:
   virtual void updateFlipLED();
 
   virtual void updateDisplay();
-	virtual void updateDisplayProX();
 	
   virtual void updateFaders();
   virtual void updateVPOTs();

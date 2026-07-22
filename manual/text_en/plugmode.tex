@@ -43,6 +43,34 @@ by pressing the \select buttons. They select one of the first 8 FXs,
 or, when pressed in combination with the \shift modifier, one of the
 FXs 9-16.
 
+\subsubsection{Multi-unit operation}\label{plugcascade}
+
+When more than one hardware unit is configured, the FX-Mode uses all
+units together to display a contiguous window of pages of the current
+bank. The units follow the same bank in lock-step, so the \bankdu
+buttons switch the bank on all units at once, and the \channeldu
+buttons move the page window across all units together. With $N$
+units, the surface shows $N$ consecutive used pages of the current
+bank.
+
+To re-shape this page window from any unit, hold the \control modifier
+while selecting a bank or page:
+\begin{itemize}
+\item \control + \solo: Normally a \solo button selects the bank for
+  its own unit only. With \control held, the selected bank is cascaded
+  to this unit and every unit to its right, each of them getting the
+  next page of the used-page sequence (the pressed unit gets the first
+  used page). Units to the left of the pressed unit stay unchanged.
+\item \control + \mute: Normally a \mute button selects the page for
+  its own unit only. With \control held, the selected page becomes the
+  start of a new window: the pressed unit keeps the selected page, and
+  every unit to its right gets the following used page in sequence.
+\end{itemize}
+This makes it possible, for example, to display eight different pages
+on eight units at once and thus control up to 128 parameters
+simultaneously. With a single unit all of this reduces to the normal
+single-unit behaviour.
+
 \subsubsection{Favorites}\label{fav}
 
 By default, you can only control an FX of the selected track. If you
@@ -206,10 +234,15 @@ Table~\ref{T:plugmode_options2} for details.
           \item Double-click: Extend action to all FXs of the track
         \end{compactitem}
 \item \solo: Select a Bank
+\bemod
+        \begin{compactitem}
+        \item \control: \hyperref[plugcascade]{Cascade} the bank across the units
+        \end{compactitem}
 \item \mute: Select a Page. 
 \bemod
         \begin{compactitem}
         \item \shift In all Banks the Pages at this position are selected 
+        \item \control: \hyperref[plugcascade]{Cascade} the page across the units
         \end{compactitem} 
 \item \select: Select an FX of the actual track (if the \gv is off) or a
 Favorite (else). 

@@ -22,7 +22,7 @@
 class DisplayHandler;
 class CSurf_MCU;
 
-// QConProX => 2 LCD panels + the cluster of ~20 ex-CONFIG_FLAG_PROX quirks
+// QConProX => 2 LCD panels plus the device-specific protocol quirks
 // (VPOT-ring byte3=0, meter-bridge master path, LED-blink handling,
 // assignment-display suppression, ...). lcdPanels = isProX()?2:1.
 enum DeviceModel { Mackie, QConProX };

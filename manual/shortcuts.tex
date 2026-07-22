@@ -71,14 +71,18 @@
 \newcommand{\channelu}{\button{Channel}~$\triangleright$\xspace}
 \newcommand{\channeldu}{$\triangleleft$~\button{Channel}~$\triangleright$\xspace}
 
-\newcommand{\anchors}{\hyperref[anchors]{Anchors}\xspace}
+\newcommand{\anchors}{\hyperref[anchor]{Anchors}\xspace}
 
 \newcommand{\foldermode}{\hyperref[foldermode]{Folder-Mode}\xspace}
 \newcommand{\actionmode}{\hyperref[actionmode]{Action-Mode}\xspace}
 
 \newcommand{\prox}[1]{(\textsc{Pro~X:~#1)\xspace}}
 
-\newcommand{\mapeditor}{\hyperref[Screenshot_Plug_Mode]{Mapping
+\newcommand{\mapeditor}{\hyperref[F:Screenshot_Plug_Mode]{Mapping
 editor}\xspace}
 
-\newcommand{\attribute}{Property\xspace}
+% \attribute is predefined by a loaded package, so a plain \newcommand
+% would error ("already defined"). Ensure it exists, then (re)define it
+% to the manual's meaning.
+\providecommand{\attribute}{}
+\renewcommand{\attribute}{Property\xspace}

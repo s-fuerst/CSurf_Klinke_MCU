@@ -480,7 +480,7 @@ void MultiTrackMode::updateDisplay() {
       TrackState *pTS = Tracks::instance()->getTrackStateForMediaTrack(tr);
       if (pTS) {
         m_pDisplay->changeField(0, x, pTS->showInDisplay().toRawUTF8());
-        // WP-F: per-unit ProX check instead of global CONFIG_FLAG_PROX
+        // WP-F: select the display layout from the owning unit's model.
         HardwareUnit *u = m_pCCSManager->getMCU()->unitForChannel(x);
         if (u && u->isProX())
           m_pDisplay->changeField(2, x, pTS->showInDisplay().toRawUTF8());

@@ -1,5 +1,23 @@
 \section{What's new}
 
+v0.9.5:
+\begin{itemize}
+\item Extender support: up to eight MCU-protocol units (one main plus
+  up to seven extenders, i.e.\ up to 64 channels) are combined into one
+  logical control surface. All channel-strip modes span the full channel
+  count, and in the FX-Mode the banks and pages can be cascaded across
+  the units (see section~\ref{plugcascade}).
+\item Cross-platform: the extension now builds and runs on Windows,
+  macOS\,(10.15+) and Linux, in addition to the original Windows-only
+  build.
+\item The configuration dialog now configures every hardware unit (device
+  type and MIDI ports); the former ``Icon QCon Pro X support'' checkbox
+  has been replaced by a per-unit device type.
+\item The former ``2nd controller (Mackie Control B)'' workaround has been
+  removed in favour of the built-in extender support.
+\end{itemize}
+
+\noindent
 v0.8:
 \begin{itemize}
 \item Removed "Old track selection behavior" (it can't be consistent with new mixer modes)

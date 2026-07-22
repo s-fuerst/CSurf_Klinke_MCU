@@ -22,6 +22,10 @@ static const char *s_typeTokens[] = {
     "disabled",    // 4
 };
 
+// Legacy five-integer configs encoded the QCon ProX model in bit 16.  This is
+// read only for migration; ProX is now represented solely by UnitConfig::model.
+static const int kLegacyProXConfigBit = 16;
+
 const char *unitTypeToken(const UnitConfig &cfg) {
   // Disabled: both MIDI devices are -1 and not a main unit
   if (cfg.midiInDev == -1 && cfg.midiOutDev == -1 && !cfg.isMain)
@@ -169,11 +173,9 @@ static SurfaceConfig parseKlinke2(const std::vector<std::string> &tokens) {
     cfg.units[i] = unitConfigFromType(typeIdx, inDev, outDev);
   }
 
-  // Derive PROX flag from unit 1's model (backward compat shim)
-  if (cfg.units[0].model == QConProX)
-    cfg.flags |= 16; // CONFIG_FLAG_PROX
-  else
-    cfg.flags &= ~16;
+  // Earlier KLINKE2 versions persisted the legacy ProX compatibility bit.
+  // It has no meaning now that every unit carries its own device model.
+  cfg.flags &= ~kLegacyProXConfigBit;
 
   return cfg;
 }
@@ -193,11 +195,11 @@ static SurfaceConfig parseLegacy(const std::vector<std::string> &tokens) {
   // but we keep the parse for backward compat
 
   // Populate unit 1 from legacy params
-  DeviceModel model = (parms[4] & 16) ? QConProX : Mackie;
+  DeviceModel model = (parms[4] & kLegacyProXConfigBit) ? QConProX : Mackie;
   cfg.units[0] = unitConfigFromType(
       model == QConProX ? UNIT_TYPE_PROX_MAIN : UNIT_TYPE_MACKIE_MAIN,
       parms[2], parms[3]);
-  cfg.flags = parms[4];
+  cfg.flags = parms[4] & ~kLegacyProXConfigBit;
 
   // Units 2–8 stay at defaults (Disabled)
   // cfg.valid is true — no error for empty strings or simple digit strings
@@ -237,7 +239,8 @@ SurfaceConfig parseSurfaceConfig(const char *str) {
 
 std::string serializeSurfaceConfig(const SurfaceConfig &cfg) {
   char buf[1024];
-  int pos = snprintf(buf, sizeof(buf), "KLINKE2 flags=%d", cfg.flags);
+  int pos = snprintf(buf, sizeof(buf), "KLINKE2 flags=%d",
+                     cfg.flags & ~kLegacyProXConfigBit);
   for (int i = 0; i < MAX_SURFACE_UNITS; i++) {
     pos += snprintf(buf + pos, sizeof(buf) - pos, " %d,%d,%s",
                     cfg.units[i].midiInDev,

@@ -27,7 +27,7 @@
 #define UNIT_TYPE_DISABLED    4
 
 struct SurfaceConfig {
-  int flags;                             // CONFIG_FLAG_* bits; PROX derived from units[0].model
+  int flags;                             // CONFIG_FLAG_* bits
   UnitConfig units[MAX_SURFACE_UNITS];   // always 8 entries — position = unit index
   bool valid;                            // false if parse error → safe default used
 };

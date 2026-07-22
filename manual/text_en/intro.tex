@@ -15,17 +15,9 @@ section~\ref{disclaimer}.
 
 \subsection{Limitations}
 \begin{itemize}
-\item \mcu only runs under Microsoft Windows, no OS X version exists
-  and none is planned from my side. However, the source code is open to
-  everyone and most parts are based on the cross platform library
-  JUCE, so if anyone wants to try to port the extension to OS X, this
-  should be feasible (and I will try to support them as much as
-  possible).
-
-\item The extension does not support the Mackie Control Extender, and
-  not more then two controllers at the same time in general. Also the
-  support of a second controller is already a hack as described in
-  section \ref{secondcontroller}.
+\item \mcu runs on Windows, macOS\,(10.15 Catalina or newer) and
+  Linux. The source code is open and is based on the cross-platform
+  JUCE library.
 
 \item The minimum supported \reaper version is 6.37. The latest version of the extension for older \reaper versions can be downloaded from \href{https://sync.luckycloud.de/f/591dfbe1cfb042ea8b11/?dl=1}{here}.
 \end{itemize}
@@ -46,6 +38,17 @@ if they don't), there are two alternatives:
 % \todo{vervollstaendigen}
 
 \subsection{Most important latest changes}
+\subsubsection{Version 0.9.5}
+\begin{compactitem}
+\item \hyperref[units]{Extender support}: up to eight MCU units (one
+  main plus up to seven extenders, i.e.\ up to 64 channels) are
+  combined into one logical surface.
+\item Cross-platform: in addition to Windows, the extension now also
+  runs on macOS and Linux.
+\item \hyperref[plugcascade]{FX-Mode page cascade}: with multiple
+  units, banks and pages can be spread across the units.
+\end{compactitem}
+
 \subsubsection{Version 0.9}
 \begin{compactitem}
 \item \hyperref[prox]{Icon QCon Pro X support}
@@ -56,7 +59,8 @@ if they don't), there are two alternatives:
 
 \subsubsection{Version 0.8}
 \begin{compactitem}
-\item \hyperref[secondcontroller]{2nd controller hack} (since v0.8.3)
+\item 2nd controller support (since v0.8.3; superseded by extender
+  support in v0.9.5)
 \item \hyperref[buttonactions]{Button-emulating actions} (since v0.8.2)
 \item \reaper folders can now be reflected on the MCU using the \foldermode
 \item \anchors allows locking a \cs to a fixed track

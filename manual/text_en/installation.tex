@@ -63,18 +63,42 @@ To activate the extension you need to follow these steps:
 %     DefaultActions.reaperKeyMap}.
 % \end{compactitem}
 
-\subsection{Control Surface Settings Options}\label{settings}
-There are five options in the Control Surface Settings dialog that can
-be activated:
-%\pikFigure[][8.05cm][-2.5mm]{Screenshot_CSS}{Control Surface Settings}{}{}
-%\vspace{-5mm}
+\subsection{Control Surface Settings}\label{settings}
+
+The Control Surface Settings dialog configures the hardware units of
+the surface and a few global options.
+
+\subsubsection{Units}\label{units}
+The extension combines up to eight MCU-protocol hardware units into
+one logical surface: one main unit plus up to seven extenders, i.e.\
+up to 64 channels controlled at the same time. Select the unit you
+want to edit (Unit~1\,--\,8) and configure it with:
 \begin{itemize}
-\item Icon QCon Pro X support: This option
-  activates the additional hardware elements (second display,
-  meterbridge for the master) of the Icon QCon Pro X.
-\item Emulate blinking LEDs: In the case that there is no 
+\item \textbf{Type}: the hardware model and role of the unit ---
+  \textsc{Mackie Main}, \textsc{Mackie Extender}, \textsc{QCon ProX},
+  \textsc{QCon ProX Extender} or \textsc{Disabled}. The two
+  \textsc{QCon ProX} types activate the additional hardware elements
+  of the Icon QCon Pro~X (second display, master meterbridge) for that
+  unit; see section~\ref{prox}.
+\item \textbf{MIDI input} / \textbf{MIDI output}: the MIDI ports the
+  unit is connected to.
+\end{itemize}
+The unit position (Unit~1\,--\,8) determines the channel-strip order
+from left to right: Unit~1 controls channels~1\,--\,8, Unit~2
+channels~9\,--\,16, and so on. Unit~1 can not be disabled, and the
+active units must be contiguous from Unit~1 (no gaps in between). A
+``main'' unit --- one with transport controls and the
+assignment/timecode displays --- may sit at any position; the
+transport LEDs and the timecode/assignment displays are sent to every
+main unit. The device type fully determines a unit's protocol
+behaviour, so there is no separate device-id or offset to set.
+
+\subsubsection{Options}
+The following global options can be activated:
+\begin{itemize}
+\item Emulate blinking LEDs: In the case that there is no
   LED blinking on your hardware, try this option.
-\item Use keyboard modifier: The Behringer BCF does not have 
+\item Use keyboard modifier: The Behringer BCF does not have
   \option/\control and \alt modifier buttons. When this option is
   selected, the keyboard modifier can be used instead. The left
   \alt key substitutes the \alt button, the right \alt key the
@@ -87,28 +111,10 @@ be activated:
   zooming is activated via the \zoom button). This can be swapped.
 \end{itemize}
 
-
-\subsection{2nd controller (Mackie Control B)}\label{secondcontroller}
-If you try to add a second controller using the ``Mackie Control Protocol
-(Klinke)'' entry in the Control Surfaces dialog, you will get an
-error message that tells you that a second instance of the extension
-can not be added.
-
-As a workaround I built a ``B'' extension which runs completly
-independent, e.g. the settings in the
-\hyperref[F:Screenshot_Track_Mode]{Track Settings Editor} are not
-shared. The only ``communication'' between both extensions are happen
-through \reaper, e.g. if you select a track with one controll surface,
-\reaper will tell the other one that a new track was selected. But
-it's important to keep in mind that an extension can also modify the
-tracks that are shown in the \reaper mixer (see \ref{panOptions} for
-details). If both extensions try this at the same time, this can cause
-a chaotic behaviour, so you must enable this options for only one of
-the extensions.
-
-To activate a second extender you need to follow the steps described
-aboved for the first extender, the only difference is that the
-``Mackie Control Protocol B (Klinke)'' surface must be selected.
+\noindent
+The former ``2nd controller (Mackie Control B)'' workaround is no
+longer needed: a second and further hardware units are now added as
+additional units of the same surface, as described above.
 %%% Local Variables: 
 %%% mode: latex
 %%% TeX-master: "../mcu_klinke_manual"

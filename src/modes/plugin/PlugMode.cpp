@@ -651,7 +651,7 @@ void PlugMode::switchDisplay() {
 void PlugMode::updateParamsDisplay() {
   // WP-PlugMode Phase 1/6: per-unit display loop (R5). Phase 6 (R7) selects
   // the 4-row ProX vs 2-row MCU layout per owning unit's isProX() instead of
-  // the global CONFIG_FLAG_PROX flag, so mixed main/extender configs render
+  // the former global ProX setting, so mixed main/extender configs render
   // each unit in its native layout.
   int nUnits = m_pCCSManager->getMCU()->numUnits();
   int nStrips = nUnits * 8;
@@ -744,7 +744,7 @@ void PlugMode::updateTouchedDisplay() {
 
   // WP-PlugMode Phase 1/6 (R5/R7): the touched element lives on one unit; the
   // owning unit's isProX() selects the 4-row vs 2-row touched layout (was a
-  // global CONFIG_FLAG_PROX flag + a separate updateTouchedDisplayProX).
+  // former global ProX setting + a separate updateTouchedDisplayProX).
   int touchedCh = (m_iSingleFaderTouched > 0) ? m_iSingleFaderTouched
                                               : m_iSingleVPotTouched;
   int unit = (touchedCh > 0) ? (touchedCh - 1) / 8 : 0;

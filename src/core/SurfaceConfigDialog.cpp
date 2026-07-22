@@ -326,8 +326,6 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
       if (IsDlgButtonChecked(hwndDlg, IDC_KEYBOARD_MODIFIER))
         cfg->flags |= CONFIG_FLAG_KEYBOARD_MODIFIER;
 
-      if (cfg->units[0].model == QConProX)
-        cfg->flags |= CONFIG_FLAG_PROX;
       cfg->valid = true;
 
       // WP-EF-0a: reject non-dense unit topology (gaps not allowed).

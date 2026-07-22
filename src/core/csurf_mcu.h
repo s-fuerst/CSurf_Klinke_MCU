@@ -91,7 +91,6 @@ struct ScheduledAction {
 #define CONFIG_FLAG_SWAPZOOM 2
 #define CONFIG_FLAG_EMULATING_BLINKING 4
 #define CONFIG_FLAG_KEYBOARD_MODIFIER 8
-#define CONFIG_FLAG_PROX 16 
 #define CONFIG_FLAG_STARTGLOBALVIEW 32
 // 64 was already used, continue with 128
 

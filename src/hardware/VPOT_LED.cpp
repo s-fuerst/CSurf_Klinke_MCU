@@ -18,7 +18,7 @@ void VPOT_LED::updateLEDs() {
     return;
 
   int byte3 = m_bottom ? 1 << 6 : 0;
-  // WP-EF: per-unit ProX quirk (byte3=0) replaces global CONFIG_FLAG_PROX check
+  // WP-EF: ProX units require byte 3 to be zero.
   if (m_isProX)
     byte3 = 0;
   // LED Kraenze:

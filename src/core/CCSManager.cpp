@@ -533,7 +533,7 @@ void CCSManager::setAssignmentDisplay(CCSMode *pCaller, const char text[2]) {
   if (memcmp(normalised, m_stateAssignmentDisplay, 2) != 0) {
     // WP-EF: route assignment digits to every transport-capable unit
     // (Mackie main units only; ProX units suppress assignment display).
-    // This replaces the old IsExtender()/CONFIG_FLAG_PROX gate.
+    // This replaces the old global ProX routing gate.
     for (int i = 0; i < m_pMCU->numUnits(); i++) {
       HardwareUnit *u = m_pMCU->unitForChannel(i * 8 + 1);
       if (!u || !m_pMCU->isTransportUnit(u)) continue;
