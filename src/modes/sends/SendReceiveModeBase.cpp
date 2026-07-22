@@ -35,11 +35,11 @@ void SendReceiveModeBase::activate() {
     m_pLastSelectedTrack = selectedTrack();
   }
 
-  // WP-F: size rec-button state to the surface channel count.
+  // size rec-button state to the surface channel count.
   m_recButtonPressed.assign(
       Tracks::instance()->getNumberOfChannelStrips(), false);
 
-  // WP-F: MultiDisplay needs switchToAll for N>1
+  // MultiDisplay needs switchToAll for N>1
   MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pDisplay);
   if (md)
     md->switchToAll();
@@ -50,7 +50,7 @@ void SendReceiveModeBase::activate() {
 
 void SendReceiveModeBase::updateRecLEDs() {
   getSendInfos(&m_sendInfos, AUTOMODE);
-  // WP-F: widened from 8 to nStrips
+  // widened from 8 to nStrips
   const int nStrips = Tracks::instance()->getNumberOfChannelStrips();
   for (int iInfo = 0; iInfo < nStrips; iInfo++) {
     if (m_startWithSend + iInfo < m_sendInfos.size()) {
@@ -71,7 +71,7 @@ void SendReceiveModeBase::updateRecLEDs() {
 
 void SendReceiveModeBase::updateSoloLEDs() {
   getSendInfos(&m_sendInfos, MONO);
-  // WP-F: widened from 8 to nStrips
+  // widened from 8 to nStrips
   const int nStrips = Tracks::instance()->getNumberOfChannelStrips();
   for (int iInfo = 0; iInfo < nStrips; iInfo++) {
     if (m_startWithSend + iInfo < m_sendInfos.size())
@@ -85,7 +85,7 @@ void SendReceiveModeBase::updateSoloLEDs() {
 
 void SendReceiveModeBase::updateMuteLEDs() {
   getSendInfos(&m_sendInfos, MUTE);
-  // WP-F: widened from 8 to nStrips
+  // widened from 8 to nStrips
   const int nStrips = Tracks::instance()->getNumberOfChannelStrips();
   for (int iInfo = 0; iInfo < nStrips; iInfo++) {
     if (m_startWithSend + iInfo < m_sendInfos.size())
@@ -105,7 +105,7 @@ void SendReceiveModeBase::updateFaders() {
   double vol;
   double pan;
 
-  // WP-F: widened from 8 to nStrips
+  // widened from 8 to nStrips
   const int nStrips = Tracks::instance()->getNumberOfChannelStrips();
   for (int iInfo = 1; iInfo <= nStrips; iInfo++) {
     if (m_startWithSend + iInfo <= m_sendInfos.size()) {
@@ -138,7 +138,7 @@ void SendReceiveModeBase::updateVPOTs() {
   else
     getSendInfos(&m_sendInfos, PAN);
 
-  // WP-F: widened from 8 to nStrips
+  // widened from 8 to nStrips
   const int nStrips = Tracks::instance()->getNumberOfChannelStrips();
   for (int iInfo = 0; iInfo < nStrips; iInfo++) {
 
@@ -185,7 +185,8 @@ void SendReceiveModeBase::writeTrackName(int startPos) {
     // On a two-row unit, held REC buttons temporarily use the upper row for
     // automation modes instead of the normal mode/track header.
     if ((!hardwareUnit || !hardwareUnit->isProX()) &&
-        isRecButtonPressedOnUnit(unit))
+        (isRecButtonPressedOnUnit(unit) ||
+         m_pCCSManager->getNumFadersTouched()))
       continue;
     display->changeText(hardwareUnit && hardwareUnit->isProX() ? 2 : 0,
                         startPos, pMCU->GetTrackName(selectedTrack()),
@@ -235,7 +236,9 @@ void SendReceiveModeBase::updateDisplay() {
       HardwareUnit *hardwareUnit = pMCU->unitForChannel(unit * 8 + 1);
       bool isProX = hardwareUnit && hardwareUnit->isProX();
       int headerRow = isProX ? 2 : 0;
-      if (isProX || !isRecButtonPressedOnUnit(unit)) {
+      if (isProX ||
+          (!isRecButtonPressedOnUnit(unit) &&
+           !m_pCCSManager->getNumFadersTouched())) {
         display->changeText(headerRow, 0, m_pSendOrReceiveText, headerLength);
         display->changeText(headerRow, isProX ? 34 : 46, "solo=mono", 19);
       }
@@ -310,20 +313,15 @@ void SendReceiveModeBase::updateDisplay() {
             1, channel,
             pMCU->GetTrackName((MediaTrack *)tracks[m_startWithSend + iInfo]));
       } else if (showFaderValues) {
-        int mode = *((int *)autoModes[m_startWithSend + iInfo]);
-        const char *modeText = "";
-        switch (mode) {
-        case AUTO_MODE_READ:  modeText = "Read";  break;
-        case AUTO_MODE_LATCH: modeText = "Latch"; break;
-        case AUTO_MODE_TRIM:  modeText = "Trim";  break;
-        case AUTO_MODE_WRITE: modeText = "Write"; break;
-        case AUTO_MODE_TOUCH: modeText = "Touch"; break;
-        }
-        m_pDisplay->changeField(0, channel, modeText);
+        // Fader touch uses the upper row for values and retains destination
+        // track names on the lower row, matching the REC-held layout.
         if (m_flip)
-          m_pDisplay->showPan(1, channel, pan);
+          m_pDisplay->showPan(0, channel, pan);
         else
-          m_pDisplay->showDB(1, channel, vol);
+          m_pDisplay->showDB(0, channel, vol);
+        m_pDisplay->changeField(
+            1, channel,
+            pMCU->GetTrackName((MediaTrack *)tracks[m_startWithSend + iInfo]));
       } else {
         m_pDisplay->changeField(
             1, channel,
@@ -367,7 +365,7 @@ const char *SendReceiveModeBase::stringForESendInfo(ESendInfo sendInfo) {
 }
 
 bool SendReceiveModeBase::buttonRec(int channel, bool pressed) {
-	// WP-F: bound to availableChannels(); state array is sized in activate().
+	// bound to availableChannels(); state array is sized in activate().
 	ASSERT(channel > 0 && channel <= m_pCCSManager->getMCU()->availableChannels());
 	if ((int)m_recButtonPressed.size() < channel)
 		m_recButtonPressed.resize(channel, false); // defensive (e.g. future dynamic width)
@@ -394,7 +392,7 @@ bool SendReceiveModeBase::buttonFaderBanks(int button, bool pressed) {
   if (pressed == false)
     return true;
 
-  // WP-F: bank window widened from 8 to nStrips (channel scroll stays ±1).
+  // bank window widened from 8 to nStrips (channel scroll stays ±1).
   const int nStrips = Tracks::instance()->getNumberOfChannelStrips();
   switch (button) {
   case B_BANK_UP:
@@ -413,8 +411,7 @@ bool SendReceiveModeBase::buttonFaderBanks(int button, bool pressed) {
     m_startWithSend--;
     break;
   }
-  // Clamp kept identical to the original (operates on m_sendInfos.size(),
-  // width-independent) so N=1 is provably unchanged.
+  // Clamp against the current send list.
   if (m_startWithSend < 0)
     m_startWithSend = 0;
   else if (m_startWithSend + 1 > (int)m_sendInfos.size())
@@ -567,7 +564,7 @@ int SendReceiveModeBase::getNumSends() {
 bool SendReceiveModeBase::setAutoMode(AutoMode mode) {
 	bool ret = false;
 
-  // WP-F: iterate actual pressed-state (sized to nStrips), not a fixed 1..8.
+  // iterate actual pressed-state (sized to nStrips), not a fixed 1..8.
   for (size_t i = 0; i < m_recButtonPressed.size(); i++) {
 		if (m_recButtonPressed[i]) {
 			int sendNr = m_startWithSend + (int)i;

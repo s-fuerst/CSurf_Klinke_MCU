@@ -23,7 +23,7 @@ class PlugMode : public CCSMode {
 public:
   PlugMode(CCSManager *pManager);
 
-  // WP-PlugMode: opt into extender (channel > 8) events
+  // opt into extender (channel > 8) events
   bool supportsExtendedChannels() const override { return true; }
 
 public:
@@ -101,7 +101,7 @@ public:
   void deleteEditorComponent();
   void removeEditor();
 
-  // ---- WP-PlugMode: active unit management ----
+  // ---- active unit management ----
   int  getActiveUnit() const { return m_activeUnit; }
   void setActiveUnit(int unit);
 
@@ -127,12 +127,12 @@ public:
   String shortPlugName(const char *pName);
   String longPlugName(const char *pName);
 
-  // ---- WP-PlugMode: display helpers (Phase 1-3 will use these) ----
+  // ---- Display helpers ----
   Display *mainChildOrNull(Display *d);
   int      anchorUnit();
   void     clearNonAnchorChildren(Display *d);
 
-  // ---- WP-PlugMode Phase 4: transport lock-step + cascade (R3) ----
+  // ---- transport lock-step + cascade ----
   // Cascade bank/page selection to units `unit..N-1`, spreading each unit's
   // page along the used-page sequence from `baseOffset`. Units 0..unit-1 are
   // left unchanged. Used by Control+SOLO (bank selection from any unit).
@@ -142,7 +142,7 @@ public:
 	void followChanges();
 	void plugChanged();
 
-	// WP-PlugMode Phase 5a (R2): the unit whose attribute is selected for
+	// the unit whose attribute is selected for
 	// PMO2_FOLLOW_CHANGE, or -1 if OFF / out of range (>= numUnits()).
 	int followChangeUnit();
 
@@ -192,7 +192,7 @@ private:
   PlugPresetManager *m_pPresetManager;
 
   PlugModeSelector *m_pPlugSelector;
-  // WP-PlugMode Phase 3: per-unit BankPagePlugSelector instances
+  // per-unit BankPagePlugSelector instances
   BankPagePlugSelector *m_pBankPagePlugSelectorPerUnit[MAX_SURFACE_UNITS];
 
   Options *m_pPlugModeOptions;
@@ -210,7 +210,7 @@ private:
   typedef std::map<String, int> tLCPs; // fxGUID
   tLCPs m_lastCalledPreset;
 
-	// WP-PlugMode Phase 5c (R2): param-change cache. Flat [8][8][8] vector
+	// param-change cache. Flat [8][8][8] vector
 	// (bank/page/channel), refilled on first scan and after every
 	// plugin/map change so the old map's values don't register as changes.
 	std::vector<double> lastFaderValues;
@@ -222,6 +222,6 @@ private:
 		return (bank * 8 + page) * 8 + channel;
 	}
 
-	// WP-PlugMode: per-unit state (Phase 0)
-	int m_activeUnit; // pinned before every unit-specific callback (R8)
+	// per-unit state
+	int m_activeUnit; // pinned before every unit-specific callback
 };

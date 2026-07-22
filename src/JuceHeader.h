@@ -20,7 +20,7 @@ inline void klinkeInitLookAndFeel()
 {
     auto& lf = LookAndFeel::getDefaultLookAndFeel();
 
-    // Step 1: text only — black text everywhere
+    // Keep text readable on JUCE 8 dialogs.
     lf.setColour (Label::textColourId,              Colours::black);
     lf.setColour (TextEditor::textColourId,          Colours::black);
     lf.setColour (ComboBox::textColourId,            Colours::black);

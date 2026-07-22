@@ -731,7 +731,7 @@ void Tracks::adjust(int numMCUChannels) {
   int clampedChannels = std::max(8, std::min(numMCUChannels, 64));
   if (m_numMCUChannels != clampedChannels) {
     m_numMCUChannels = clampedChannels;
-    setGlobalOffset(m_globalOffset);  // WP-D: clamp to new valid range
+    setGlobalOffset(m_globalOffset);  // clamp to new valid range
     createChannelTrackVector();        // keep vector in sync with m_numMCUChannels
   }
   updateTrackStates(m_numMCUChannels);

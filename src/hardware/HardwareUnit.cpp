@@ -2,8 +2,8 @@
  * Copyright (C) 2009-2026 Steffen Fuerst
  * Distributed under the GNU GPL v3. For full terms see the file gplv3.txt.
  *
- * WP-A Step 2: HardwareUnit owns MIDI I/O + reset SysEx + raw send.
- * CSurf_MCU holds one unit (N=1) and forwards via shims.
+ * HardwareUnit owns MIDI I/O + reset SysEx + raw send.
+ * CSurf_MCU owns the configured units and forwards surface operations to them.
  */
 #include "HardwareUnit.h"
 #include "DisplayHandler.h"
@@ -40,7 +40,6 @@ HardwareUnit::HardwareUnit(int unitIndex, const UnitConfig &cfg,
   // WORKAROUND: PipeWire JACK may crash (SIGSEGV in process_empty) when
   // MIDI is sent immediately after opening a JACK MIDI output port.
   // The data-loop thread accesses buffers that are not yet allocated.
-  // (MEMD 2026-06-27; N>1 variant unverified — WP-A is N=1.)
   if (m_midiout) {
 #ifdef _WIN32
     //    Sleep(500);
@@ -178,7 +177,6 @@ void HardwareUnit::reset() {
 }
 
 bool HardwareUnit::onMCUReset(MIDI_event_t *evt) {
-  // handshake matcher (moved here in Step 5); for Step 2 still unused.
   (void)evt;
   return false;
 }

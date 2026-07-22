@@ -261,7 +261,7 @@ public:
 
   int getNumberOfChannelStrips();
 
-  // WP-D banking helpers
+  // banking helpers
   int getEffectiveBankStep();
   int getLegacyPageStep();
   int getMaxUsefulGlobalOffset();

@@ -25,7 +25,7 @@ PlugAccess::PlugAccess(PlugMode *pMode)
     : m_pMode(pMode), m_pPlugTrack(NULL), m_iSlot(-1),
       m_pMapManager(NULL), m_plugName(String()),
       m_GUIDplugTrack(GUID_NOT_ACTIVE) {
-  // WP-PlugMode: init per-unit state to bank 0 / page 0 for all units
+  // init per-unit state to bank 0 / page 0 for all units
   m_selectedBankPerUnit.assign(0);
   for (int u = 0; u < MAX_SURFACE_UNITS; u++)
     m_selectedPagePerUnit[u].assign(0);
@@ -109,7 +109,7 @@ void PlugAccess::accessPlugin(MediaTrack *pMediaTrack, int iSlot,
   }
   m_iSlot = iSlot;
 
-  // WP-PlugMode: reset ALL units to bank 0 / page 0
+  // reset ALL units to bank 0 / page 0
   m_selectedBankPerUnit.assign(0);
   for (int u = 0; u < MAX_SURFACE_UNITS; u++)
     m_selectedPagePerUnit[u].assign(0);
@@ -133,7 +133,7 @@ void PlugAccess::accessPlugin(MediaTrack *pMediaTrack, int iSlot,
     tSlotState storedState = (*iterStoredStates).second;
     String storedPlugName = storedState.get<0>();
     if (storedPlugName.equalsIgnoreCase(getPlugNameLong())) {
-      // WP-PlugMode: restore per-unit arrays (R9)
+      // restore per-unit arrays
       m_selectedBankPerUnit = storedState.get<1>();
       m_selectedPagePerUnit = storedState.get<2>();
       restoredFromStored = true;
@@ -141,7 +141,7 @@ void PlugAccess::accessPlugin(MediaTrack *pMediaTrack, int iSlot,
   }
 
   if (!restoredFromStored) {
-    // WP-PlugMode: default page-spread across used pages (R11 / Phase 0f)
+    // Default page spread across used pages.
     // Unit u gets pageAtUsedOffset(bank0, u).  All units on bank 0.
     int nUnits = m_pMode->getCCSManager()->getMCU()->numUnits();
     for (int u = 0; u < nUnits; u++) {
@@ -348,7 +348,7 @@ bool PlugAccess::resolveIndirection(ElementDesc *pDesc) {
   return true;
 }
 
-// ---- WP-PlugMode: explicit Bank/Page param overloads (R1 / Phase 0d) ----
+// ---- Explicit bank/page parameter overloads ----
 
 String PlugAccess::getParamNameShort(int bank, int page,
                                      ElementDesc::eType type, int channel) {
@@ -538,7 +538,7 @@ int PlugAccess::convertR2MCU(int id, double value) {
   return (int)(normed * MAX_FADER_VALUE);
 }
 
-// ---- WP-PlugMode: per-unit setters (Phase 0) ----
+// ---- per-unit setters ----
 
 void PlugAccess::setSelectedBank(int bank, int unit) {
   ASSERT(unit >= 0 && unit < MAX_SURFACE_UNITS);
@@ -573,7 +573,7 @@ void PlugAccess::trackRemoved(MediaTrack *pMT) {
   }
 }
 
-// WP-PlugMode: resolveBankReference uses the active unit's bank (R1)
+// resolveBankReference uses the active unit's bank
 int PlugAccess::resolveBankReference() {
   int activeBank = m_selectedBankPerUnit[m_pMode->getActiveUnit()];
   return resolveBankReference(activeBank);
@@ -591,7 +591,7 @@ bool PlugAccess::isPageUsedInSelectedBank(int page) {
 
 PlugMap *PlugAccess::getMap() { return m_pMapManager->getActiveMap(); }
 
-// ---- WP-PlugMode: used-page-sequence helpers (R11 / Phase 0e) ----
+// ---- Used-page sequence helpers ----
 
 std::vector<int> PlugAccess::usedPages(int bank) {
   std::vector<int> result;
@@ -629,7 +629,7 @@ int PlugAccess::pageUsedOffsetForPage(int bank, int page) {
   return -1;
 }
 
-// ---- WP-PlugMode: persistence (R9 / Phase 0g) ----
+// ---- Persistence ----
 
 #define PLUGACCESS_NODE_ROOT String("PLUGACCESS")
 #define PLUGACCESS_NODE_SLOTSTATE String("SLOTSTATES")
@@ -640,7 +640,7 @@ int PlugAccess::pageUsedOffsetForPage(int bank, int page) {
 #define PLUGACCESS_NODE_SLOTSTATE_PAGE String("PAGE")
 #define PLUGACCESS_ATT_SLOTSTATE_PAGE_INDEX String("nr")
 
-// WP-PlugMode: versioned UNIT_STATES block (R9)
+// versioned UNIT_STATES block
 #define PLUGACCESS_NODE_UNIT_STATES String("UNIT_STATES")
 #define PLUGACCESS_ATT_VERSION String("version")
 #define PLUGACCESS_NODE_UNIT String("UNIT")
@@ -688,7 +688,7 @@ void PlugAccess::writeSlotStatesToProjectConfig(XmlElement *pNode) {
     tSlotState state = entry.second;
     pSlotState->setAttribute(PLUGACCESS_ATT_SLOTSTATE_PLUGNAME, state.get<0>());
 
-    // WP-PlugMode: write versioned UNIT_STATES block (R9)
+    // write versioned UNIT_STATES block
     XmlElement *pUnitStates =
         new XmlElement(PLUGACCESS_NODE_UNIT_STATES);
     pUnitStates->setAttribute(PLUGACCESS_ATT_VERSION, 1);
@@ -731,7 +731,7 @@ void PlugAccess::readSlotStatesFromProjectConfig(XmlElement *pNode) {
       for (int u = 0; u < MAX_SURFACE_UNITS; u++)
         pagesPerUnit[u].assign(0);
 
-      // WP-PlugMode: try versioned UNIT_STATES block first (R9)
+      // try versioned UNIT_STATES block first
       XmlElement *pUnitStates =
           pChild->getChildByName(PLUGACCESS_NODE_UNIT_STATES);
       if (pUnitStates && pUnitStates->getIntAttribute(PLUGACCESS_ATT_VERSION) == 1) {
@@ -754,7 +754,7 @@ void PlugAccess::readSlotStatesFromProjectConfig(XmlElement *pNode) {
           }
         }
       } else {
-        // Legacy format: single bank + 8 pages → map to unit 0 (R9)
+        // Legacy format: single bank + 8 pages → map to unit 0
         banksPerUnit[0] =
             pChild->getIntAttribute(PLUGACCESS_ATT_SLOTSTATE_BANK);
         int page = 0;
@@ -774,7 +774,7 @@ void PlugAccess::readSlotStatesFromProjectConfig(XmlElement *pNode) {
 }
 
 void PlugAccess::storeActualSlotState() {
-  // WP-PlugMode: store per-unit arrays (R9)
+  // store per-unit arrays
   if (m_iSlot >= 0 && m_pPlugTrack != NULL) {
     tSlotLocation loc(GUID2String(&m_GUIDplugTrack), m_iSlot);
     tSlotState state(m_plugName, m_selectedBankPerUnit, m_selectedPagePerUnit);

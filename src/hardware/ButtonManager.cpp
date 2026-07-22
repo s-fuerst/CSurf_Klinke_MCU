@@ -62,7 +62,7 @@ bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt, int unitIndex) {
   if (status != 0x90)
     return false;
 
-  // WP-MT: lazily size per-unit arrays, clamp unitIndex
+  // lazily size per-unit arrays, clamp unitIndex
   ensureUnitState();
   if (unitIndex < 0 || unitIndex >= (int)m_perUnitState.size())
     unitIndex = 0;
@@ -136,7 +136,7 @@ bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt, int unitIndex) {
   DWORD now = timeGetTime();
   bool pressed = (evt->midi_message[2] >= 0x40);
 
-  // WP-MT: per-unit pressed state for double-click/long-press isolation
+  // per-unit pressed state for double-click/long-press isolation
   st.pressed[evt_code] = pressed;
   st.pressed_time[evt_code] = pressed ? now : 0;
 
@@ -209,7 +209,7 @@ void ButtonManager::frame(DWORD time) {
       {0x18, 0x1f, &CSurf_MCU::OnChannelSelectLong},
   };
 
-  // WP-MT: iterate per-unit button state for long-press detection
+  // iterate per-unit button state for long-press detection
   ensureUnitState();
   for (int unit = 0; unit < (int)m_perUnitState.size(); unit++) {
     PerUnitButtonState &st = m_perUnitState[unit];
@@ -221,7 +221,7 @@ void ButtonManager::frame(DWORD time) {
           if (pressAndHoldHandlers[i].evt_min <= button &&
               button <= pressAndHoldHandlers[i].evt_max) {
             int localChannel = button - pressAndHoldHandlers[i].evt_min + 1;
-            // WP-MT: translate local → global channel for extender units
+            // translate local → global channel for extender units
             int globalChannel = localChannel + unit * 8;
             if ((m_pMCU->*pressAndHoldHandlers[i].func)(globalChannel)) {
               st.hold_used[button] = true;

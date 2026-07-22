@@ -42,7 +42,7 @@ CCSManager::CCSManager(CSurf_MCU *pMCU) {
   m_selectorActive = false;
   m_optionActive = NULL;
 
-  // WP-EF: size arrays to availableChannels()+1 (0=master, 1..N*8 strips)
+  // size arrays to availableChannels()+1 (0=master, 1..N*8 strips)
   int nCh = pMCU->availableChannels() + 1;
   m_pVPOTS = new VPOT_LED[nCh];
   m_faderTouched = new bool[nCh];
@@ -178,7 +178,7 @@ bool CCSManager::buttonVPOTassign(int button, bool pressed) {
 void CCSManager::switchToDisplay(CCSMode *pMode, Display *pDisplay) {
   if (pMode == m_pActualMode && !m_selectorActive && !m_optionActive &&
       !m_pMCU->IsButtonPressed(B_NAME_VALUE)) {
-    // WP-F: MultiDisplay needs switchToAll to activate each child on its own handler
+    // MultiDisplay needs switchToAll to activate each child on its own handler
     MultiDisplay *md = dynamic_cast<MultiDisplay *>(pDisplay);
     if (md)
       md->switchToAll();
@@ -471,13 +471,13 @@ void CCSManager::updateAssignmentDisplay() {
 void CCSManager::setFader(CCSMode* pCaller, int channel, int value) {
   CHECKMODEANDCHANNEL
 
-  // dedup and send through CSurf_MCU -> HardwareUnit (WP-A Step 4)
+  // Route through CSurf_MCU to the owning HardwareUnit.
   m_pMCU->sendStripFader(channel, value);
 }
 
 void CCSManager::setRecLED(CCSMode *pCaller, int channel, int state) {
   CHECKMODEANDCHANNEL
-  // WP-EF: strip LED → owning unit via global channel.
+  // strip LED → owning unit via global channel.
   // rec notes 0x00..0x07; local = (channel-1) % 8
   int local = (channel - 1) % 8;
   m_pMCU->setStripLED(channel, local, state);
@@ -531,7 +531,7 @@ void CCSManager::setAssignmentDisplay(CCSMode *pCaller, const char text[2]) {
   if (text[0] && text[1]) normalised[1] = text[1];
 
   if (memcmp(normalised, m_stateAssignmentDisplay, 2) != 0) {
-    // WP-EF: route assignment digits to every transport-capable unit
+    // route assignment digits to every transport-capable unit
     // (Mackie main units only; ProX units suppress assignment display).
     // This replaces the old global ProX routing gate.
     for (int i = 0; i < m_pMCU->numUnits(); i++) {
@@ -636,7 +636,7 @@ int CCSManager::getFaderPos(int channel) {
 }
 
 Display *CCSManager::createDisplay(int numRows) {
-  // WP-F: N=1: plain Display. N>1: returns a MultiDisplay with one child
+  // N=1: plain Display. N>1: returns a MultiDisplay with one child
   // per unit, each backed by its own DisplayHandler.
   if (m_pMCU->numUnits() > 1) {
     MultiDisplay *md = new MultiDisplay(getDisplayHandler(), numRows);

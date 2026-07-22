@@ -2,7 +2,7 @@
  * Copyright (C) 2009-2026 Steffen Fuerst
  * Distributed under the GNU GPL v3. For full terms see the file gplv3.txt.
  *
- * WP-B: SurfaceConfig parser, serializer, and unit type helpers.
+ * SurfaceConfig parser, serializer, and unit type helpers.
  */
 
 #include "SurfaceConfig.h"

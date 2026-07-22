@@ -39,7 +39,7 @@ public:
     }
 
     ElementDesc(PlugAccess *pPA, eType type, int channel) {
-      // WP-PlugMode guard: getSelectedBank() reads the active unit's state.
+      // guard: getSelectedBank() reads the active unit's state.
       // If m_activeUnit is stale, resolution silently targets the wrong unit.
       ASSERT(pPA->getActiveUnit() >= 0 && pPA->getActiveUnit() < MAX_SURFACE_UNITS);
       m_bank = pPA->getSelectedBank();
@@ -138,7 +138,7 @@ public:
                       channel);
   }
 
-  // ---- WP-PlugMode: explicit Bank/Page overloads (D1 / R1) ----
+  // ---- explicit Bank/Page overloads ----
   String getParamNameShort(int bank, int page, ElementDesc::eType type,
                            int channel);
   String getParamNameLong(int bank, int page, ElementDesc::eType type,
@@ -206,7 +206,7 @@ public:
   }
   bool isPageUsedInSelectedBank(int page); // 0 based
 
-  // ---- WP-PlugMode: per-unit accessors (Phase 0) ----
+  // ---- per-unit accessors ----
   int  selectedBankForUnit(int u) const { return m_selectedBankPerUnit[u]; }
   int  selectedPageForUnit(int u) const {
     return m_selectedPagePerUnit[u][m_selectedBankPerUnit[u]];
@@ -219,7 +219,7 @@ public:
   void setSelectedPageInSelectedBank(int page, int unit);
   int  getActiveUnit() const { return m_pMode->getActiveUnit(); }
 
-  // ---- WP-PlugMode: used-page-sequence helpers (R11) ----
+  // ---- used-page-sequence helpers ----
   std::vector<int> usedPages(int bank);
   int usedPageCount(int bank);
   int pageAtUsedOffset(int bank, int offset);
@@ -298,7 +298,7 @@ private:
                      // for saving the slotState (it's possible that the track
                      // doesn't exist anymore)
 
-  // WP-PlugMode: per-unit state (Phase 0).  Index 0..MAX_SURFACE_UNITS-1.
+  // per-unit state.  Index 0..MAX_SURFACE_UNITS-1.
   // m_selectedBankPerUnit[u] = selected bank for unit u, -1 = unassigned.
   boost::array<int, MAX_SURFACE_UNITS> m_selectedBankPerUnit;
   // m_selectedPagePerUnit[u][bank] = selected page in bank for unit u.
@@ -316,7 +316,7 @@ private:
   PlugMode *m_pMode;
   PlugMapManager *m_pMapManager;
 
-  // WP-PlugMode: widened tSlotState (R9) — per-unit banks + pages.
+  // widened tSlotState — per-unit banks + pages.
   // Format: (plugName, banksPerUnit[], pagesPerUnit[][])
   typedef boost::tuple<String,
                        boost::array<int, MAX_SURFACE_UNITS>,

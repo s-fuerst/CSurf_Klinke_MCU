@@ -26,7 +26,7 @@ protected:
   virtual void updateMasterLEDs(CSurf_MCU *pMCU, double decay);
   void sendToHardware(CSurf_MCU *pMCU, int pos, short meter);
 
-  // WP-EF: strip-meter state dynamically sized (availableChannels() entries).
+  // strip-meter state dynamically sized (availableChannels() entries).
   // Master-meter state is separate (L/R, always 2 values, never indexed by strip pos).
   std::vector<double> m_stripMeterPos;
   double m_masterMeterPos[2];

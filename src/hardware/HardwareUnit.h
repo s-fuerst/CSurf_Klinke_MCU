@@ -2,12 +2,9 @@
  * Copyright (C) 2009-2026 Steffen Fuerst
  * Distributed under the GNU GPL v3. For full terms see the file gplv3.txt.
  *
- * WP-A (extender support): one physical MCU unit's hardware concerns.
+ * Represents one physical MCU unit's hardware concerns.
  *
  * CSurf_MCU owns N HardwareUnits and becomes the single *logical* surface.
- * WP-A ships N hardcoded to 1 (hard numUnits()==1 invariant); the
- * translation plumbing is written N-generic so a later milestone
- * (WP-B -> WP-C -> WP-F -> per-mode) can enable N>1.
  *
  *   outgoing  : CSurf_MCU translates global -> local before calling these
  *   incoming  : the unit parses raw MIDI and emits GLOBAL channel events
@@ -36,7 +33,6 @@ struct UnitConfig {
 
 // Input-side listener (CSurf_MCU implements). HardwareUnit emits GLOBAL
 // channel indices (1..N*8) by adding its own m_unitIndex*8 offset.
-// For WP-A (N=1) global == local.
 class HardwareEventListener {
 public:
   virtual ~HardwareEventListener() {}
@@ -54,8 +50,7 @@ public:
 
 class HardwareUnit {
 public:
-  // pMCU is the owning logical surface (kept for legacy global code paths
-  // during the migration; will be replaced by the listener only).
+  // pMCU is the owning logical surface for callbacks and compatibility paths.
   // Constructed: midiOut/midiIn + usleep (ctor body start) →
   //   DisplayHandler (ctor body end). See HardwareUnit.cpp.
   HardwareUnit(int unitIndex, const UnitConfig &cfg, CSurf_MCU *pMCU,
@@ -112,7 +107,7 @@ private:
   short m_lastNowMod2;
   short m_blinkSometimes;
 
-  CSurf_MCU *m_pMCU; // owning logical surface (migration shim)
+  CSurf_MCU *m_pMCU; // owning logical surface
   HardwareEventListener *m_pListener;
 };
 

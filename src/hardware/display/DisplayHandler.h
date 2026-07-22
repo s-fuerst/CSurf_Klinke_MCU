@@ -21,7 +21,7 @@ private:
   Display *m_pActualDisplay;
   EnumMCUType m_mcuType;
   bool m_isProX; // per-unit ProX capability
-  // WP-F: widened from fixed [9] to dynamic vector (9 = 8 strips + master per unit)
+  // widened from fixed [9] to dynamic vector (9 = 8 strips + master per unit)
   std::vector<bool> m_metersEnabled;
   bool m_wait;
 

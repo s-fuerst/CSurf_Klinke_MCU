@@ -2,7 +2,7 @@
  * Copyright (C) 2009-2026 Steffen Fuerst
  * Distributed under the GNU GPL v3. For full terms see the file gplv3.txt.
  *
- * WP-B: SurfaceConfig dialog — REAPER control-surface configuration UI.
+ * SurfaceConfig dialog — REAPER control-surface configuration UI.
  * Unit selector + per-unit type/MIDI combos, all 8 units configurable
  * through a single compact dialog.
  */
@@ -121,7 +121,7 @@ createFunc(const char *type_string, const char *configString, int *errStats) {
   (void)type_string;
   SurfaceConfig cfg = parseSurfaceConfig(configString);
 
-  // WP-EF-0a: validate dense unit topology.
+  // validate dense unit topology.
   // A hand-edited or stale KLINKE2 string that is non-dense is logged and
   // replaced with the safe default before constructing CSurf_MCU.
   if (!hasDenseUnitTopology(cfg)) {
@@ -328,7 +328,7 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
 
       cfg->valid = true;
 
-      // WP-EF-0a: reject non-dense unit topology (gaps not allowed).
+      // reject non-dense unit topology (gaps not allowed).
       if (!hasDenseUnitTopology(*cfg)) {
         MessageBox(hwndDlg,
                    "Unit positions must be contiguous from Unit 1. "

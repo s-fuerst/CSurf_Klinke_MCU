@@ -59,5 +59,5 @@ public:
 
 private:
   eSelect m_selectWhat;
-  int m_unit; // WP-PlugMode Phase 3: owning unit index
+  int m_unit; // owning unit index
 };

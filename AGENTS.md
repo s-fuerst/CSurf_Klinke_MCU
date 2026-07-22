@@ -37,16 +37,12 @@ through its **csurf** (control surface) API. Once loaded, it registers a
 control surface called *"Mackie Control Protocol (Klinke)"* that the user
 selects in Reaper's *Preferences → Control/OSC/web*.
 
-## 2. Revival context (read this)
+## 2. Project status (read this)
 
-The project has been largely dormant. The **goal of the revival is to make
-it build and run cross-platform — Windows, macOS, and Linux — while keeping
-dependency versions as close to the originals as feasible.** Originally built
-against JUCE 1.52, the project was upgraded to **JUCE 8** (module build)
-as part of the revival, because JUCE 1.52 could not target Apple Silicon
-and modern macOS. Boost was upgraded from 1.39 to **1.91.0** (header-only):
-Boost 1.39 (2009) does not compile under modern libc++/C++17 without an
-ever-growing pile of patches; 1.91.0 compiles cleanly on all platforms.
+The cross-platform revival is complete: the extension builds and runs on
+Windows, macOS, and Linux. It uses **JUCE 8** (module build) and header-only
+**Boost 1.91.0**. JUCE 1.52 could not target modern macOS and Apple Silicon;
+Boost 1.39 does not compile reliably with modern libc++ and C++17.
 
 > The original build is **Windows + Visual Studio only**. A cross-platform
 > **CMake** build has been added (see §4) and is now the source of truth for
@@ -367,10 +363,10 @@ reaper loads the .dll/.so/.dylib
   `GetDescString()`.
 - **No auto-format style is enforced;** match the surrounding file's style
   (roughly 2-space indent, `m_` member prefix, `p` pointer-arg prefix).
-- **Config format (WP-B):** `SurfaceConfig` (in `src/core/SurfaceConfig.h/cpp`)
+- **Config format:** `SurfaceConfig` (in `src/core/SurfaceConfig.h/cpp`)
   handles two formats:
   - **Legacy:** `"0 8 <midiIn> <midiOut> <flags>"` — parsed, never re-emitted.
-    Becomes unit 1 populated, units 2–8 at defaults (Mackie extender, MIDI None).
+    Becomes unit 1 populated, with units 2–8 disabled.
   - **KLINKE2:** `"KLINKE2 flags=<N> <in>,<out>,<type> ..."` (8 fixed entries).
     Type tokens: `mackie-main`, `mackie-ext`, `prox-main`, `prox-ext`.
     `GetConfigString()` always emits `KLINKE2` with all 8 entries.
@@ -384,20 +380,19 @@ reaper loads the .dll/.so/.dylib
     Units 1-7 offer all five types including Disabled. Unit position and
     main/extender role are **orthogonal** — a main unit may sit at any
     position. Configs with zero main units are allowed (no validation).
-  - `createFunc()` constructs `HardwareUnit` for every unit with real MIDI
-    devices (unit 1 always constructed even with MIDI None). Input from
-    units 2+ is dropped with a debug log until WP-EF widens channel bounds.
+  - `createFunc()` constructs a `HardwareUnit` for every configured unit with
+    real MIDI devices. Unit 1 is constructed even when its MIDI ports are None.
+    Strip input from every configured unit is translated to global channels.
   - Dialog resources: `res.rc` and `res.rc_mac_dlg` (350×310).
   - Unit type encoding (CB_SETITEMDATA and KLINKE2 tokens):
     0 = mackie-main, 1 = mackie-ext, 2 = prox-main, 3 = prox-ext.
 
-### Using the knowledge graph (graphify) during the multi-unit refactoring
+### Using the knowledge graph (graphify)
 
 A `graphify-out/graph.json` knowledge graph lives in the repo root. It is the
-fastest way to understand cross-subsystem relationships before changing them,
-which is exactly what the single-unit → multi-unit (extender) refactoring keeps
-asking for. **Treat any architecture question as a graphify query first** when
-the graph exists.
+fastest way to understand cross-subsystem relationships before changing them.
+**Treat any architecture question as a graphify query first** when the graph
+exists.
 
 **Keep it fresh.** After editing source files, run `graphify_update .` before the
 next query — it re-extracts only changed files (cheap) and keeps node locations
@@ -423,8 +418,7 @@ and edges accurate. A stale graph silently points you at the wrong line numbers.
 
 - **Finding hardcoded constants** (e.g. every `i <= 8` or `resize(8, …)`):
   graphify is *not* a text search. Use `rg -n "<= 8|resize\(8"` and then read
-  the hits. This is exactly the class of bug the extender refactoring produces
-  (UI/backend that forgot to switch from 8 to `getNumberOfChannelStrips()`).
+  the hits.
 - **Exact code for edits:** graphify node labels and locations orient you, but
   `edit` needs verbatim source text — switch to `read` once you know the file.
 - **BFS truncation:** a default-budget BFS over this codebase easily finds

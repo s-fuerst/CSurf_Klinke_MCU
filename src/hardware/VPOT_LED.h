@@ -40,7 +40,7 @@ private:
   // the single LED at the bottom of the VPOT
   bool m_bottom;
 
-  // WP-EF: per-VPOT ProX capability.
+  // per-VPOT ProX capability.
   bool m_isProX;
 
   // the ccsmanager set m_pressed to true, as long as the VPOT is pressed

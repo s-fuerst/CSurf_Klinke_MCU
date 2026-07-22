@@ -59,7 +59,7 @@ PlugMode::PlugMode(CCSManager *pManager)
                                                true);
 
   m_pPlugSelector = new PlugSelector(pManager->getDisplayHandler(), this);
-  // WP-PlugMode Phase 3: per-unit BankPagePlugSelector instances
+  // per-unit BankPagePlugSelector instances
   int nUnits = pManager->getMCU()->numUnits();
   for (int u = 0; u < MAX_SURFACE_UNITS; u++) {
     if (u < nUnits) {
@@ -227,7 +227,7 @@ int PlugMode::randomPreset() {
 }
 
 bool PlugMode::buttonSolo(int channel, bool pressed) {
-  // WP-PlugMode Phase 2: per-unit (R8)
+  // per-unit
   int unit = (channel - 1) / 8;
   int localCh = (channel - 1) % 8;
   setActiveUnit(unit);
@@ -239,7 +239,7 @@ bool PlugMode::buttonSolo(int channel, bool pressed) {
   }
 
   if (pressed && m_pAccess->isBankUsed(localCh)) {
-    // WP-PlugMode Phase 4b: Control+cascade (R3). When Control is held, bank
+    // Control+cascade. When Control is held, bank
     // selection cascades to units `unit..N-1`, spreading their pages along
     // the used-page sequence from offset 0. Units 0..unit-1 unchanged.
     // Without Control the bank is set for this unit only (legacy behaviour).
@@ -260,7 +260,7 @@ bool PlugMode::buttonSolo(int channel, bool pressed) {
 }
 
 bool PlugMode::buttonMute(int channel, bool pressed) {
-  // WP-PlugMode Phase 2: per-unit (R8)
+  // per-unit
   int unit = (channel - 1) / 8;
   int localCh = (channel - 1) % 8;
   setActiveUnit(unit);
@@ -270,7 +270,7 @@ bool PlugMode::buttonMute(int channel, bool pressed) {
 
         if (pressed && isModifierPressed(VK_CONTROL) &&
             m_pAccess->isPageUsedInSelectedBank(localCh)) {
-      // WP-PlugMode Phase 4c: Control+Mute cascades pages — unit N gets
+      // Control+Mute cascades pages — unit N gets
       // page localCh, unit N+1 the next used page, N+2 the one after, etc.
       m_pAccess->setSelectedPageInSelectedBank(localCh, unit);
       int bank = m_pAccess->selectedBankForUnit(unit);
@@ -299,7 +299,7 @@ bool PlugMode::buttonMute(int channel, bool pressed) {
 }
 
 bool PlugMode::fader(int channel, int value) {
-  // WP-PlugMode Phase 2: per-unit fader resolution
+  // per-unit fader resolution
   int unit = (channel > 0) ? (channel - 1) / 8 : 0;
   int localCh = (channel > 0) ? (channel - 1) % 8 : 0;
   setActiveUnit(unit);
@@ -325,7 +325,7 @@ bool PlugMode::fader(int channel, int value) {
 }
 
 bool PlugMode::singleFaderTouched(int channel) {
-  // WP-PlugMode: editor callback uses local channel (0-7)
+  // editor callback uses local channel (0-7)
   int localCh = (channel > 0) ? (channel - 1) % 8 : 0;
   if (channel > 0)
     safe_call(m_pPlugEditor, selectedChannelChanged(localCh, true))
@@ -335,7 +335,7 @@ bool PlugMode::singleFaderTouched(int channel) {
 }
 
 bool PlugMode::singleVPotTouched(int channel) {
-  // WP-PlugMode: editor callback uses local channel (0-7)
+  // editor callback uses local channel (0-7)
   int localCh = (channel > 0) ? (channel - 1) % 8 : 0;
   if (channel > 0)
     safe_call(m_pPlugEditor, selectedChannelChanged(localCh, false))
@@ -346,7 +346,7 @@ bool PlugMode::singleVPotTouched(int channel) {
 }
 
 bool PlugMode::vpotMoved(int channel, int numSteps) {
-  // WP-PlugMode Phase 2: per-unit VPOT resolution
+  // per-unit VPOT resolution
   int unit = (channel - 1) / 8;
   int localCh = (channel - 1) % 8;
   setActiveUnit(unit);
@@ -373,7 +373,7 @@ bool PlugMode::vpotMoved(int channel, int numSteps) {
 }
 
 bool PlugMode::vpotPressed(int channel, bool pressed) {
-  // WP-PlugMode Phase 3: per-unit vpotPressed dispatch (R4)
+  // per-unit vpotPressed dispatch
   int unit = (channel - 1) / 8;
   int localCh = (channel - 1) % 8;
   setActiveUnit(unit);
@@ -418,7 +418,7 @@ bool PlugMode::vpotPressed(int channel, bool pressed) {
 }
 
 void PlugMode::updateSoloLEDs() {
-  // WP-PlugMode Phase 2: per-unit LED loop
+  // per-unit LED loop
   int nStrips = m_pCCSManager->getMCU()->numUnits() * 8;
   for (int i = 0; i < nStrips; i++) {
     int unit = i / 8;
@@ -437,7 +437,7 @@ void PlugMode::updateSoloLEDs() {
 }
 
 void PlugMode::updateMuteLEDs() {
-  // WP-PlugMode Phase 2: per-unit LED loop
+  // per-unit LED loop
   int nStrips = m_pCCSManager->getMCU()->numUnits() * 8;
   for (int i = 0; i < nStrips; i++) {
     int unit = i / 8;
@@ -513,7 +513,7 @@ void PlugMode::updateFaders() {
     return; // ALT + REC_BUTTON is used for blind test, so also the faders
             // shouldn't give any hint about the preset
 
-  // WP-PlugMode Phase 2: per-unit fader update
+  // per-unit fader update
   int nStrips = m_pCCSManager->getMCU()->numUnits() * 8;
   for (int i = 0; i < nStrips; i++) {
     int unit = i / 8;
@@ -534,7 +534,7 @@ void PlugMode::updateFaders() {
 }
 
 void PlugMode::updateVPOTs() {
-  // WP-PlugMode Phase 2: per-unit VPOT update
+  // per-unit VPOT update
   int nStrips = m_pCCSManager->getMCU()->numUnits() * 8;
   for (int i = 0; i < nStrips; i++) {
     int unit = i / 8;
@@ -590,7 +590,7 @@ void PlugMode::updateVPOTs() {
 void PlugMode::trackListChange() { updateEverything(); }
 
 void PlugMode::switchDisplay() {
-  // WP-PlugMode Phase 1/6: per-unit switchDisplay (R5/R6).
+  // per-unit switchDisplay.
   //
   // Each unit's handler is switched EXACTLY ONCE to its final target per
   // frame: a unit whose bank/page/plug selector is active (Solo=BANK,
@@ -649,7 +649,7 @@ void PlugMode::switchDisplay() {
 }
 
 void PlugMode::updateParamsDisplay() {
-  // WP-PlugMode Phase 1/6: per-unit display loop (R5). Phase 6 (R7) selects
+  // Per-unit display loop selects
   // the 4-row ProX vs 2-row MCU layout per owning unit's isProX() instead of
   // the former global ProX setting, so mixed main/extender configs render
   // each unit in its native layout.
@@ -724,8 +724,7 @@ void PlugMode::updateParamsDisplay() {
     }
   }
 
-  // "Wet" field 9 -> render on the anchor unit when it is ProX (N=1 ProX is
-  // byte-identical to the legacy global-flag path; non-ProX anchors skip it).
+  // Field 9 is the ProX dry/wet column on the anchor unit.
   Display *anchor = mainChildOrNull(m_pParamsDisplay);
   if (anchor) {
     HardwareUnit *anchorU = m_pCCSManager->getMCU()->unitForChannel(1);
@@ -742,7 +741,7 @@ void PlugMode::updateTouchedDisplay() {
   if (!m_pAccess->plugExist())
     return;
 
-  // WP-PlugMode Phase 1/6 (R5/R7): the touched element lives on one unit; the
+  // the touched element lives on one unit; the
   // owning unit's isProX() selects the 4-row vs 2-row touched layout (was a
   // former global ProX setting + a separate updateTouchedDisplayProX).
   int touchedCh = (m_iSingleFaderTouched > 0) ? m_iSingleFaderTouched
@@ -921,7 +920,7 @@ String PlugMode::longPlugName(const char *pName) {
 
 void PlugMode::updateEverything() {
   switchDisplay();
-  // WP-PlugMode Phase 3: update all units' selector displays
+  // update all units' selector displays
   for (int u = 0; u < m_pCCSManager->getMCU()->numUnits(); u++)
     m_pBankPagePlugSelectorPerUnit[u]->updateDisplay();
   CCSMode::updateEverything();
@@ -980,7 +979,7 @@ bool PlugMode::buttonFlip(bool pressed) {
 }
 
 Component **PlugMode::createEditorComponent() {
-  // WP-PlugMode Phase 8d (R8): the on-screen editor reflects m_activeUnit.
+  // the on-screen editor reflects m_activeUnit.
   // PlugAccess' active-unit alias layer reads the per-unit bank/page state
   // of whatever unit was last pinned by a unit-specific callback (default
   // 0 = anchor). No structural editor change needed; m_activeUnit is already
@@ -1028,14 +1027,14 @@ void PlugMode::frameUpdate() {
 
   m_pAccess->getPlugWindowManager()->moveWnd();
 
-	// WP-PlugMode Phase 5a (R2): follow-change now multi-valued; active
+	// follow-change now multi-valued; active
 	// whenever a valid follow unit is selected.
 	if (followChangeUnit() >= 0)
 		followChanges();
 }
 
 void PlugMode::updateRecLEDs() {
-  // WP-PlugMode Phase 3: replicate LED state to all units
+  // replicate LED state to all units
   if (!m_pAccess->plugExist())
     return;
   String fxGUID = GUID2String(
@@ -1071,7 +1070,7 @@ bool PlugMode::isSlotBypassed(MediaTrack *pPlugTrack, int iSlot) {
 }
 
 void PlugMode::updateSelectLEDs() {
-  // WP-PlugMode Phase 3: replicate LED state to all units
+  // replicate LED state to all units
   int nUnits = m_pCCSManager->getMCU()->numUnits();
   int start = isModifierPressed(VK_SHIFT) ? 8 : 0;
   if (m_followTrack) {
@@ -1114,7 +1113,7 @@ void PlugMode::updateSelectLEDs() {
   }
 }
 bool PlugMode::buttonSelect(int channel, bool pressed) {
-  // WP-PlugMode: channel is global, compute unit-local slot
+  // channel is global, compute unit-local slot
   int unit = (channel - 1) / 8;
   int localCh = (channel - 1) % 8;
   setActiveUnit(unit);
@@ -1167,16 +1166,12 @@ bool PlugMode::accessFXFavorite(int slot) {
 }
 
 bool PlugMode::buttonFaderBanks(int button, bool pressed) {
-  // WP-PlugMode Phase 4: transport lock-step page-spread over the used-page
-  // sequence (R3, R11). Transport buttons (BANK_UP/DOWN, CHANNEL_UP/DOWN)
+  // transport lock-step page-spread over the used-page
+  // sequence. Transport buttons (BANK_UP/DOWN, CHANNEL_UP/DOWN)
   // carry no channel and no unit identity, so they operate on a SHARED window
   // across all units, not a per-unit identity. Transport deliberately
   // collapses per-unit Bank divergence back to that shared window.
   //
-  // N=1 note: CHANNEL_UP/DOWN stays behaviour-equivalent (steps one used page
-  // in the sequence). BANK_UP/DOWN additionally resets each unit's page to
-  // the first used page of the new bank (the window position), which is a
-  // minor, intended change from the legacy per-bank remembered page.
   setActiveUnit(anchorUnit());
 
   // Selector activation (press/release) on the anchor unit's selector.
@@ -1403,7 +1398,7 @@ void PlugMode::followChanges() {
 	if (onlyEveryTenth % 10 != 0)
 		return;
 
-  // WP-PlugMode Phase 5c (R2): refill the cache on first scan and after
+  // refill the cache on first scan and after
   // every plugin/map change so the old map's values are not seen as changes.
   if (!m_paramCacheValid) {
     refillParamCache();
@@ -1435,7 +1430,7 @@ void PlugMode::followChanges() {
 	}
 
 	if (numChangedValues == 1) {
-		// WP-PlugMode Phase 5b (R2): jump the selected follow-unit's cursor,
+		// jump the selected follow-unit's cursor,
 		// not the active unit's. With OFF (fu < 0) no action is taken.
 		int fu = followChangeUnit();
 		if (fu >= 0) {
@@ -1486,7 +1481,7 @@ void PlugMode::plugChanged() {
 	 if (m_pPlugEditor) m_pPlugEditor->changePlug(m_pAccess);
 }
 
-// ---- WP-PlugMode: active unit & display helpers (Phase 0) ----
+// ---- active unit & display helpers ----
 
 void PlugMode::setActiveUnit(int unit) {
   ASSERT(unit >= 0 && unit < m_pCCSManager->getMCU()->numUnits());
@@ -1525,7 +1520,7 @@ void PlugMode::clearNonAnchorChildren(Display *d) {
   }
 }
 
-// ---- WP-PlugMode Phase 4b: Control+cascade (R3) ----
+// ---- Control+cascade ----
 // Spread bank/page selection to units `unit..N-1`. Unit u gets the bank and
 // the page at sequence offset `baseOffset + (u - unit)` in that bank's
 // used-page list. Units 0..unit-1 are left untouched. Called from

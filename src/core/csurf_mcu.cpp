@@ -252,7 +252,7 @@ void CSurf_MCU::MCUReset() {
   if (sz != 4)
     m_metronom_offset = 0;
 
-  // WP-F: show splash on all units using per-unit splash displays
+  // show splash on all units using per-unit splash displays
   for (size_t ui = 0; ui < m_pSplashDisplays.size() && ui < m_units.size(); ui++) {
     DisplayHandler *dh = m_units[ui]->displayHandler();
     if (dh) {
@@ -304,7 +304,7 @@ bool CSurf_MCU::OnFaderMove(MIDI_event_t *evt) {
     else
       tid++;
 
-    // WP-MT: translate local channel → global (master tid=0 is unchanged)
+    // translate local channel → global (master tid=0 is unchanged)
     if (tid != 0)
       tid += m_currentInputOffset;
 
@@ -320,7 +320,7 @@ bool CSurf_MCU::OnRotaryEncoder(MIDI_event_t *evt) {
       evt->midi_message[1] < 0x18) { // pan
     int tid = evt->midi_message[1] - 0x10;
 
-    // WP-MT: translate local VPOT → global channel
+    // translate local VPOT → global channel
     int channel = tid + 1 + m_currentInputOffset;
 
     m_pan_lasttouch[Tracks::instance()->getMediaTrackForChannel(channel)] =
@@ -341,7 +341,7 @@ bool CSurf_MCU::OnVPOTAssign(MIDI_event_t *evt) {
 }
 
 bool CSurf_MCU::OnJogWheel(MIDI_event_t *evt) {
-  // WP-MT: jog wheel is global — only accept from primary unit
+  // jog wheel is global — only accept from primary unit
   if (m_currentInputOffset != 0)
     return false;
   if ((evt->midi_message[0] & 0xf0) == 0xb0 &&
@@ -473,7 +473,7 @@ bool CSurf_MCU::OnSMPTEBeats(MIDI_event_t *evt) {
 
 bool CSurf_MCU::OnRotaryEncoderPush(MIDI_event_t *evt) {
   int trackid = evt->midi_message[1] - 0x20;
-  // WP-MT: translate local VPOT push → global channel
+  // translate local VPOT push → global channel
   int channel = trackid + 1 + m_currentInputOffset;
   m_pan_lasttouch[Tracks::instance()->getMediaTrackForChannel(channel)] =
 		timeGetTime();
@@ -679,7 +679,7 @@ bool CSurf_MCU::OnScroll(MIDI_event_t *evt) {
 
 bool CSurf_MCU::OnTouch(MIDI_event_t *evt) {
   int fader = evt->midi_message[1] - 0x68;
-  // WP-MT: translate local touch → global channel (master fader 8 → channel 0)
+  // translate local touch → global channel (master fader 8 → channel 0)
   int channel = (fader != 8) ? fader + 1 + m_currentInputOffset : 0;
   m_fader_touchstate[Tracks::instance()->getMediaTrackForChannel(channel)] =
 		evt->midi_message[2] >= 0x7f;
@@ -756,13 +756,13 @@ bool CSurf_MCU::OnDropButton(MIDI_event_t *evt) {
 }
 
 bool CSurf_MCU::OnButtonPress(MIDI_event_t *evt) {
-  // WP-MT: pass unit index so ButtonManager isolates per-unit double-click/long-press state
+  // pass unit index so ButtonManager isolates per-unit double-click/long-press state
   int unitIndex = m_currentInputOffset / 8;
   return m_pButtonManager->dispatchMidiEvent(evt, unitIndex);
 }
 
 bool CSurf_MCU::OnPedalMove(MIDI_event_t *evt) {
-  // WP-MT: pedal is global — only accept from primary unit
+  // pedal is global — only accept from primary unit
   if (m_currentInputOffset != 0)
     return false;
   if (evt->midi_message[0] == 0x90 && evt->midi_message[1] == 0x66) {
@@ -818,7 +818,7 @@ CSurf_MCU::CSurf_MCU(const SurfaceConfig &cfg, int *errStats)
   // Store the parsed config
   m_surfaceConfig = cfg;
 
-  // WP-EF-0a: diagnostic assert — dense topology should be guaranteed by
+  // diagnostic assert — dense topology should be guaranteed by
   // createFunc / dialog validation; this catches programming errors.
   ASSERT(hasDenseUnitTopology(m_surfaceConfig));
 
@@ -830,7 +830,7 @@ CSurf_MCU::CSurf_MCU(const SurfaceConfig &cfg, int *errStats)
   m_midi_out_dev = cfg.units[0].midiOutDev;
   s_cfg_flags = cfg.flags;
 
-  // WP-B: construct HardwareUnits for all configured units.
+  // construct HardwareUnits for all configured units.
   // Unit 1 (index 0) is always constructed even with MIDI None.
   // Units 2–8: constructed only if real (non-(-1)) MIDI devices are assigned.
   // Duplicate MIDI device checking: warn but don't block.
@@ -841,9 +841,9 @@ CSurf_MCU::CSurf_MCU(const SurfaceConfig &cfg, int *errStats)
         int inI = cfg.units[i].midiInDev, inJ = cfg.units[j].midiInDev;
         int outI = cfg.units[i].midiOutDev, outJ = cfg.units[j].midiOutDev;
         if (inI != -1 && inI == inJ)
-          MCU_LOG("WP-B: duplicate MIDI input device %d on units %d and %d", inI, i + 1, j + 1);
+          MCU_LOG("duplicate MIDI input device %d on units %d and %d", inI, i + 1, j + 1);
         if (outI != -1 && outI == outJ)
-          MCU_LOG("WP-B: duplicate MIDI output device %d on units %d and %d", outI, i + 1, j + 1);
+          MCU_LOG("duplicate MIDI output device %d on units %d and %d", outI, i + 1, j + 1);
       }
     }
 
@@ -864,7 +864,7 @@ CSurf_MCU::CSurf_MCU(const SurfaceConfig &cfg, int *errStats)
   m_midiin = (!m_units.empty()) ? m_units[0]->midiInput() : NULL;
   m_midiout = (!m_units.empty()) ? m_units[0]->midiOutput() : NULL;
 
-  // WP-EF: choose the global-input owner.
+  // choose the global-input owner.
   // If unit 0 is transport-capable, it owns global input (N=1: always true).
   // Otherwise use the first transport-capable unit in dense order.
   // -1 means no transport-capable unit → accept no global input.
@@ -874,7 +874,7 @@ CSurf_MCU::CSurf_MCU(const SurfaceConfig &cfg, int *errStats)
   else if (hasTransportUnits())
     m_globalInputUnitIndex = firstTransportUnit()->unitIndex();
 
-  // WP-F: per-unit splash displays (one per HardwareUnit's DisplayHandler)
+  // per-unit splash displays (one per HardwareUnit's DisplayHandler)
   for (size_t ui = 0; ui < m_units.size(); ui++) {
     HardwareUnit *u = m_units[ui];
     if (u && u->displayHandler()) {
@@ -897,7 +897,7 @@ CSurf_MCU::CSurf_MCU(const SurfaceConfig &cfg, int *errStats)
   // NOTE: MIDI open + JACK usleep workaround + errStats now live in the
   // HardwareUnit ctor above.
 
-  // WP-EF: per-unit reset, then invalidate caches so subsequent sends
+  // per-unit reset, then invalidate caches so subsequent sends
   // are not deduped away (caches are stale after hardware reset).
   for (size_t ui = 0; ui < m_units.size(); ui++) {
     m_units[ui]->reset();
@@ -913,13 +913,13 @@ CSurf_MCU::CSurf_MCU(const SurfaceConfig &cfg, int *errStats)
 
   m_schedule = NULL;
 
-  // WP-F: ensure Tracks knows the channel count BEFORE init/activate,
+  // ensure Tracks knows the channel count BEFORE init/activate,
   // so the first updateFaders() iterates the correct number of strips.
   Tracks::instance()->adjust(availableChannels());
 
   m_pCCSManager->init();
 
-  // WP-F: force Reaper to re-send all volume/pan data to this surface.
+  // force Reaper to re-send all volume/pan data to this surface.
   // After a config change, the old surface's m_surface_volume map was
   // destroyed; this ensures Reaper repopulates it.
   CSurf_ResetAllCachedVolPanStates();
@@ -954,7 +954,7 @@ CSurf_MCU::~CSurf_MCU() {
   for (size_t ui = 0; ui < m_units.size(); ui++)
     m_units[ui]->reset();
 
-  // WP-EF: per-unit LED/fader shutdown.
+  // per-unit LED/fader shutdown.
   // Invalidate caches first so forceAllLEDsOff actually sends.
   for (size_t ui = 0; ui < m_units.size(); ui++) {
     HardwareUnit *u = m_units[ui];
@@ -994,7 +994,7 @@ CSurf_MCU::~CSurf_MCU() {
   delete m_pCCSManager;
 
   g_mcu_list.Delete(g_mcu_list.Find(this));
-  // WP-A: units own MIDI ports (dtors call DELETE_ASYNC on close).
+  // units own MIDI ports (dtors call DELETE_ASYNC on close).
   for (size_t i = 0; i < m_units.size(); i++)
     delete m_units[i];
   m_units.clear();
@@ -1020,7 +1020,7 @@ CSurf_MCU::~CSurf_MCU() {
 }
 
 void CSurf_MCU::CloseNoReset() {
-  // WP-A: units own MIDI ports now; close them through the unit.
+  // units own MIDI ports now; close them through the unit.
   for (size_t i = 0; i < m_units.size(); i++)
     delete m_units[i];
   m_units.clear();
@@ -1213,7 +1213,7 @@ void CSurf_MCU::Run() {
 
       m_pCCSManager->frameUpdate(now);
 
-      // WP-F: resend all rows on every unit, not just unit 0
+      // resend all rows on every unit, not just unit 0
       for (size_t ui = 0; ui < m_units.size(); ui++) {
         HardwareUnit *u = m_units[ui];
         if (u && u->displayHandler() && u->displayHandler()->getDisplay())
@@ -1224,7 +1224,7 @@ void CSurf_MCU::Run() {
   }
 
   if (m_midiin) {
-    // WP-MT: iterate over all units' MIDI inputs.
+    // iterate over all units' MIDI inputs.
     // m_currentInputOffset is set per-unit so strip handlers translate
     // local channel → global channel. Global events (transport, modifiers,
     // jog wheel, etc.) are only accepted from unit 0.
@@ -1293,14 +1293,14 @@ void CSurf_MCU::SendMidi(unsigned char status, unsigned char d1,
 }
 
 void CSurf_MCU::SetLED(int button_nr, int led_state) {
-  // WP-EF: SetLED is global-only. Strip notes MUST go through setStripLED().
+  // SetLED is global-only. Strip notes MUST go through setStripLED().
   ASSERT(isGlobalLedNote(button_nr));
   if (isGlobalLedNote(button_nr))
     setGlobalLED(button_nr, led_state);
 }
 
 void CSurf_MCU::EmulateBlinkingLEDs(DWORD now) {
-  // WP-EF: blink emulation across all units, each tracks its own LED state.
+  // blink emulation across all units, each tracks its own LED state.
   for (size_t i = 0; i < m_units.size(); i++)
     m_units[i]->emulateBlinkingLEDs(now);
 }
@@ -1476,7 +1476,7 @@ void CSurf_MCU::SendMsg(MIDI_event_t *message, int frame_offset) {
 }
 
 void CSurf_MCU::sendStripFader(int channel, int value) {
-  // WP-EF: channel 0 = master fader → broadcast to all units.
+  // channel 0 = master fader → broadcast to all units.
   // Channels 1..N*8 → owning unit.
   if (channel == 0) {
     broadcastMasterFader(value);
@@ -1504,7 +1504,7 @@ void CSurf_MCU::broadcastMasterFader(int value) {
     m_units[i]->setMasterFader(value);
 }
 
-// --- WP-EF: capability queries ---
+// --- capability queries ---
 
 bool CSurf_MCU::hasTransportUnits() const {
   for (size_t i = 0; i < m_units.size(); i++)
@@ -1520,7 +1520,7 @@ HardwareUnit *CSurf_MCU::firstTransportUnit() const {
   return NULL;
 }
 
-// --- WP-EF: global broadcast ---
+// --- global broadcast ---
 
 void CSurf_MCU::setGlobalLED(int note, int state) {
   for (size_t i = 0; i < m_units.size(); i++) {
@@ -1549,7 +1549,7 @@ void CSurf_MCU::setLEDOnAllUnits(int note, int state) {
     m_units[i]->setLED(note, state);
 }
 
-// --- WP-EF: strip routing (global channel → owning unit) ---
+// --- strip routing (global channel → owning unit) ---
 
 void CSurf_MCU::setStripLED(int globalChannel, int localNote, int state) {
   HardwareUnit *u = unitForChannel(globalChannel);
@@ -1668,7 +1668,7 @@ double CSurf_MCU::GetSurfaceVolume(MediaTrack *pMT) {
   if (pMT && m_surface_volume.find(pMT) != m_surface_volume.end())
     return m_surface_volume[pMT];
 
-  // WP-F: fallback — read directly from Reaper when cache is cold
+  // fallback — read directly from Reaper when cache is cold
   // (e.g. after surface recreation / config change)
   if (pMT) {
     double *vol = (double *)GetSetMediaTrackInfo(pMT, "D_VOL", NULL);
@@ -1685,7 +1685,7 @@ double CSurf_MCU::GetSurfacePan(MediaTrack *pMT) {
   if (pMT && m_surface_pan.find(pMT) != m_surface_pan.end())
     return m_surface_pan[pMT];
 
-  // WP-F: fallback — read directly from Reaper when cache is cold
+  // fallback — read directly from Reaper when cache is cold
   if (pMT) {
     double *pan = (double *)GetSetMediaTrackInfo(pMT, "D_PAN", NULL);
     if (pan) return *pan;

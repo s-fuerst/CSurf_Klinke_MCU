@@ -2,7 +2,7 @@
  * Copyright (C) 2009-2026 Steffen Fuerst
  * Distributed under the GNU GPL v3. For full terms see the file gplv3.txt.
  *
- * WP-B (extender support): multi-unit surface configuration.
+ * multi-unit surface configuration.
  *
  * Parses the surface config string (legacy 5-int or new KLINKE2 8-entry
  * format) into a typed SurfaceConfig, and serializes back to KLINKE2.

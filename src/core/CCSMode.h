@@ -103,7 +103,7 @@ public:
 
 	virtual bool setAutoMode(AutoMode mode){ return false; }
 
-  // WP-MT: whether this mode has been widened to support extended channels
+  // whether this mode has been widened to support extended channels
   // (channels beyond 8 from extender units). Default false.
   virtual bool supportsExtendedChannels() const { return false; }
 	

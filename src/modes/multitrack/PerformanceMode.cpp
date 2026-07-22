@@ -18,7 +18,7 @@ PerformanceMode::PerformanceMode(CCSManager *pManager) : CCSMode(pManager) {
 PerformanceMode::~PerformanceMode(void) { safe_delete(m_pDisplay); }
 
 void PerformanceMode::updateDisplay() {
-  // WP-F: MultiDisplay needs switchToAll for N>1
+  // MultiDisplay needs switchToAll for N>1
   MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pDisplay);
   if (md)
     md->switchToAll();

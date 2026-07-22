@@ -19,7 +19,7 @@ SendReceiveMeterBridge::SendReceiveMeterBridge(SendReceiveModeBase *pSendMode)
 void SendReceiveMeterBridge::updateMeterBridge(CSurf_MCU *pMCU) {
   DWORD now = pMCU->GetActualFrameTime();
 
-  // WP-EF: ensure strip state vector matches surface channel count.
+  // ensure strip state vector matches surface channel count.
   ensureStripMeterState(pMCU->availableChannels());
 
   std::vector<void *> sendInfos;
@@ -35,7 +35,7 @@ void SendReceiveMeterBridge::updateMeterBridge(CSurf_MCU *pMCU) {
 
   unsigned offset = m_pSendMode->getChannelOffset();
 
-  // WP-F: widened from 8 to availableChannels() (matches MultiTrackMeterBridge)
+  // widened from 8 to availableChannels() (matches MultiTrackMeterBridge)
   const int nStrips = pMCU->availableChannels();
   for (int iInfo = 0; iInfo < nStrips; iInfo++) {
     if ((offset + iInfo) < sendInfos.size()) {
@@ -49,7 +49,7 @@ void SendReceiveMeterBridge::updateMeterBridge(CSurf_MCU *pMCU) {
 }
 
 void SendReceiveMeterBridge::updateMasterLEDs(CSurf_MCU *pMCU, double decay) {
-  // WP-EF: send master meters to every ProX unit.
+  // send master meters to every ProX unit.
   // SendReceive uses the selected track's peak, not the Reaper master.
   short leftVal = 0, rightVal = 0;
   for (int x = 0; x < 2; x++) {

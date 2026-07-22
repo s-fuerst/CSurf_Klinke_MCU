@@ -26,7 +26,7 @@ public:
 
   void reset();
 
-  // WP-MT: unitIndex is the sender unit index (0 = primary, 1+ = extender).
+  // unitIndex is the sender unit index (0 = primary, 1+ = extender).
   // Used to isolate per-unit double-click and long-press state.
   bool dispatchMidiEvent(MIDI_event_t *evt, int unitIndex = 0);
 
@@ -36,13 +36,13 @@ public:
   void frame(DWORD time);
 
 private:
-  // WP-MT: lazily size per-unit state to match m_pMCU->numUnits().
+  // lazily size per-unit state to match m_pMCU->numUnits().
   void ensureUnitState();
 
   int m_button_last;
   DWORD m_button_last_time;
 
-  // WP-MT: shared fallback for backward compat (isButtonPressed)
+  // shared fallback for backward compat (isButtonPressed)
   bool m_button_pressed[NUM_BUTTONS];
   DWORD m_button_pressed_time[NUM_BUTTONS];
 

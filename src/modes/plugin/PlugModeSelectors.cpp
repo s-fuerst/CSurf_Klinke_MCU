@@ -124,7 +124,7 @@ bool BankPagePlugSelector::select(int index) {
 
 void BankPagePlugSelector::updateDisplay() {
   PlugAccess *pPA = m_pPlugMode->getPlugAccess();
-  // WP-PlugMode Phase 3: read per-unit state
+  // read per-unit state
   m_pPlugMode->setActiveUnit(m_unit);
 
   switch (m_selectWhat) {

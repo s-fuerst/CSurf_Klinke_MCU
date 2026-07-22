@@ -150,7 +150,7 @@ void CommandMode::writeConfigFile() {
 
 void CommandMode::activate() {
   CCSMode::activate();
-  // WP-F: MultiDisplay needs switchToAll for N>1
+  // MultiDisplay needs switchToAll for N>1
   MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pDisplay);
   if (md)
     md->switchToAll();
@@ -248,7 +248,7 @@ bool CommandMode::faderTouched(int channel, bool touched) {
 // Disable the VPOT leds
 void CommandMode::updateVPOTs() {
   m_pCCSManager->setVPOTMode(VPOT_LED::OFF);
-  // WP-F: widened from 8 to getNumberOfChannelStrips()
+  // widened from 8 to getNumberOfChannelStrips()
   int nStrips = Tracks::instance()->getNumberOfChannelStrips();
   for (int channel = 1; channel <= nStrips; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
@@ -262,7 +262,7 @@ void CommandMode::updateVPOTs() {
 void CommandMode::updateDisplay() {
   MultiTrackMode::updateDisplay();
 
-	// WP-F: per-unit ProX check, widened loop
+	// per-unit ProX check, widened loop
 	if (m_pCCSManager->getMCU()->unitForChannel(1) &&
 	    m_pCCSManager->getMCU()->unitForChannel(1)->isProX()) {
 		int nStrips = Tracks::instance()->getNumberOfChannelStrips();

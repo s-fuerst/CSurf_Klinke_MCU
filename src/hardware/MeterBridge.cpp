@@ -60,7 +60,7 @@ void MeterBridge::updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
 }
 
 void MeterBridge::updateMasterLEDs(CSurf_MCU *pMCU, double decay) {
-  // WP-EF: send master meters to every ProX unit.
+  // send master meters to every ProX unit.
   // Compute values once, then broadcast.
   short leftVal = 0, rightVal = 0;
   for (int x = 0; x < 2; x++) {
@@ -95,7 +95,7 @@ void MeterBridge::sendToHardware(CSurf_MCU *pMCU, int pos, short meter) {
   if (meter > 12) meter = 12;
   if (meter < 0)  meter = 0;
 
-  // WP-EF: strip meters route via sendStripMeter (owning unit, 0xD0).
+  // strip meters route via sendStripMeter (owning unit, 0xD0).
   // Master meters route via sendMasterMetersToProXUnits (0xD1).
   // pos is 0-based strip index.
   pMCU->sendStripMeter(pos + 1, meter);

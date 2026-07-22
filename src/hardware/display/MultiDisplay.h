@@ -2,7 +2,7 @@
  * Copyright (C) 2009-2026 Steffen Fuerst
  * Distributed under the GNU GPL v3. For full terms see the file gplv3.txt.
  *
- * WP-A: composite Display spanning N units. IS-A Display so modes hold it
+ * composite Display spanning N units. IS-A Display so modes hold it
  * unchanged. changeField(row, globalField 1..N*8) routes to the owning
  * unit's child Display. Rows 2-3 (ProX 2nd panel) are silently dropped on
  * non-ProX children.
@@ -13,7 +13,6 @@
  *   Switching goes through switchToAll() so each child is activated on its
  *   OWN handler.
  *
- * Stub in Step 1; fleshed out in Step 7.
  */
 #ifndef MCU_MULTI_DISPLAY
 #define MCU_MULTI_DISPLAY

@@ -267,8 +267,8 @@ class SelectedTrack;
 class CSurf_MCU : public IReaperControlSurface {
 private:
   Transport *m_pTransport;
-  Display *m_pSplashDisplay;  // legacy (unit 0 only, kept for compat)
-  std::vector<Display *> m_pSplashDisplays;  // WP-F: per-unit splash displays
+  Display *m_pSplashDisplay;  // unit 0 compatibility alias
+  std::vector<Display *> m_pSplashDisplays;  // per-unit splash displays
   CCSManager *m_pCCSManager;
   DropState m_dropstate;
   int m_metronom_offset;
@@ -277,16 +277,15 @@ private:
   bool m_is_mcuex;
   int m_midi_in_dev, m_midi_out_dev;
   int m_offset, m_size;
-  int m_globalInputUnitIndex;  // WP-EF: which unit's global events reach ButtonManager
-  int m_currentInputOffset;     // WP-MT: channel offset for current input unit (0 = unit 0, 8 = unit 1, ...)
+  int m_globalInputUnitIndex;  // which unit's global events reach ButtonManager
+  int m_currentInputOffset;     // channel offset for current input unit (0 = unit 0, 8 = unit 1, ...)
                                 // Valid only inside Run() → OnMIDIEvent → handler chain.
                                 // ButtonManager::frame() runs outside this scope and must NOT rely on it.
-  SurfaceConfig m_surfaceConfig;       // WP-B: parsed config (all 8 units)
-  std::vector<HardwareUnit *> m_units; // WP-A: N physical units (N=1 in WP-A)
+  SurfaceConfig m_surfaceConfig;       // parsed config (all 8 units)
+  std::vector<HardwareUnit *> m_units; // configured physical units
   // m_midiout/m_midiin are NON-OWNING cached pointers into m_units[0]'s
-  // ports. Ownership moved to HardwareUnit (WP-A Step 2). Kept so the many
-  // legacy call sites (MCUReset/Run/SetPlayState/...) stay unchanged; they
-  // will be removed once all sites route through the unit.
+  // ports. They remain compatibility aliases for code paths that use the
+  // primary unit directly.
   midi_Output *m_midiout;
   midi_Input *m_midiin;
 
@@ -425,11 +424,11 @@ public:
     return m_units.empty() ? NULL : m_units[0]->displayHandler();
   }
 
-  // --- N=1 fader bridge (still the old N=1 interface for modes) ---
-  void sendStripFader(int channel, int value); // routes to owning unit (N=1: unit 0)
+  // --- fader routing ---
+  void sendStripFader(int channel, int value); // routes to the owning unit
   int  getFaderPos(int channel);              // reads unit's cached position
 
-  // WP-A translation helpers (N-generic plumbing, N=1 for now)
+  // channel-to-unit translation helpers
   int  numUnits() const { return (int)m_units.size(); }
   HardwareUnit *unitForChannel(int g) const {
     if (g < 1 || g > availableChannels()) return NULL;
@@ -439,12 +438,12 @@ public:
   int  availableChannels() const { return numUnits() * 8; }
   void broadcastMasterFader(int value); // all units setMasterFader(value)
 
-  // --- WP-EF: capability queries ---
+  // --- capability queries ---
   bool isTransportUnit(const HardwareUnit *u) const { return u->isMain(); }
   bool hasTransportUnits() const;
   HardwareUnit *firstTransportUnit() const;   // NULL if no main unit exists
 
-  // --- WP-EF: global broadcast ---
+  // --- global broadcast ---
   void setGlobalLED(int note, int state);     // transport-capable units
   void sendMidiToTransportUnits(unsigned char status, unsigned char d1,
                                 unsigned char d2, int frameOffset);
@@ -452,7 +451,7 @@ public:
                           unsigned char d2, int frameOffset);
   void setLEDOnAllUnits(int note, int state);
 
-  // --- WP-EF: strip routing (global channel → owning unit) ---
+  // --- strip routing (global channel → owning unit) ---
   void setStripLED(int globalChannel, int localNote, int state);
   void sendStripCC(int globalChannel, unsigned char cc, unsigned char value,
                    int frameOffset);
@@ -460,7 +459,7 @@ public:
   void sendStripMeter(int globalChannel, short meter);     // 0xD0, owning unit
   void sendMasterMetersToProXUnits(short left, short right); // 0xD1, all ProX units
 
-  // --- WP-EF: note range classification ---
+  // --- note range classification ---
   static bool isGlobalLedNote(int note) { return note >= 0x28 && note <= 0x7f; }
   static bool isStripLedNote(int note) { return note >= 0x00 && note <= 0x27; }
 

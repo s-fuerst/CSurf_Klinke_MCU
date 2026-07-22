@@ -131,7 +131,7 @@ public:
   // MultiDisplay switchToAll + clearNonAnchorChildren path — can respect the
   // same selector/option/NameValue locks).
   bool canSwitchDisplay(CCSMode *pMode);
-  Display *createDisplay(int numRows); // WP-A factory (plain Display for N=1, MultiDisplay for N>1)
+  Display *createDisplay(int numRows); // factory (plain Display for N=1, MultiDisplay for N>1)
   void setVPOTMode(VPOT_LED::MODE mode); // set all VPOTs to the same mode
 
 	
@@ -162,12 +162,12 @@ private:
 
   // all the following stuff is one based ([0] is the master fader)
   VPOT_LED *m_pVPOTS;
-  // per-strip LED dedup moved to HardwareUnit::m_led_state (WP-A Step 4)
+  // Per-strip LED state is cached by HardwareUnit.
   int m_stateFlip;
   int m_stateGlobalView;
   char m_stateAssignmentDisplay[2];
 
-  // WP-EF: dynamically sized to availableChannels()+1 (0=master, 1..N*8 strips)
+  // dynamically sized to availableChannels()+1 (0=master, 1..N*8 strips)
   bool *m_faderTouched;
   DWORD *m_faderTouchedTill;
   bool *m_vpotTouched;

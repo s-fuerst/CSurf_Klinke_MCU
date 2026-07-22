@@ -15,7 +15,7 @@ PanMode::PanMode(CCSManager *pManager) : MultiTrackMode(pManager) {}
 PanMode::~PanMode(void) {}
 
 void PanMode::activate() {
-  // WP-F: call MultiTrackMode::activate() first to handle display init
+  // call MultiTrackMode::activate() first to handle display init
   // (MultiDisplay::switchToAll for N>1, clear + switch for N=1)
   MultiTrackMode::activate();
   m_pCCSManager->getDisplayHandler()->enableMCUMeter(true);
@@ -46,12 +46,12 @@ void PanMode::updateDisplay() {
 	m_pCCSManager->switchToDisplay(this, m_pDisplay);
 	
   MultiTrackMode::updateDisplay();
-  // WP-F: widened from 8 to getNumberOfChannelStrips()
+  // widened from 8 to getNumberOfChannelStrips()
   int nStrips = Tracks::instance()->getNumberOfChannelStrips();
     for (int iTrack = 1; iTrack <= nStrips; iTrack++) {
       MediaTrack *tr = getMediaTrackForChannel(iTrack);
       if (tr) {
-        // WP-F: per-unit ProX check
+        // per-unit ProX check
         HardwareUnit *u = m_pCCSManager->getMCU()->unitForChannel(iTrack);
         if (u && u->isProX()) {
           if (s_flipmode) {

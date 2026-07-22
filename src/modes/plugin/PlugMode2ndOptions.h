@@ -25,7 +25,7 @@ public:
 public:
   virtual ~PlugMode2ndOptions(void);
 
-  // WP-PlugMode Phase 5a (R2): returns the follow-change target unit index
+  // returns the follow-change target unit index
   // (0-based) selected for PMO2_FOLLOW_CHANGE, or -1 if OFF or if the
   // selected unit is >= numUnits().
   int followChangeUnit(int numUnits);

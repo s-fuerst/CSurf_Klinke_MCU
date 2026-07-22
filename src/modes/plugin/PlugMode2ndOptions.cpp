@@ -23,7 +23,7 @@ PlugMode2ndOptions::PlugMode2ndOptions(DisplayHandler *pDH) : Options(pDH) {
 	addAttribute(PMO2_SHOW_DETAILS, PMO2A_OFF);
 	addAttribute(PMO2_SHOW_DETAILS, PMO2A_ON, true);
 
-	// WP-PlugMode Phase 5a (R2): multi-valued follow-change target.
+	// multi-valued follow-change target.
 	// OFF (default) + "Unit 1" .. "Unit N" (N = MAX_SURFACE_UNITS).
 	// The cyclic VPOT selection reaches all values; units beyond numUnits()
 	// are ignored at runtime by PlugMode::followChangeUnit().
