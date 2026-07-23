@@ -29,29 +29,29 @@ public:
 public:
   ~PlugMode(void);
 
-  void activate();
-  void deactivate();
+  void activate() override;
+  void deactivate() override;
 
   // from MCU via CCSManager
-  bool buttonFaderBanks(int button, bool pressed);
-  bool buttonFlip(bool pressed);
-  bool buttonGView(bool pressed);
-  bool buttonNameValue(bool pressed);
+  bool buttonFaderBanks(int button, bool pressed) override;
+  bool buttonFlip(bool pressed) override;
+  bool buttonGView(bool pressed) override;
+  bool buttonNameValue(bool pressed) override;
 
   // channels are 1-based, channel 0 exist for fader, it is the Master-Fader
-  bool buttonRec(int channel, bool pressed);   // select Preset
-  bool buttonRecDC(int channel, bool pressed); // all presets in the channel
+  bool buttonRec(int channel, bool pressed) override;   // select Preset
+  bool buttonRecDC(int channel, bool pressed) override; // all presets in the channel
 
-  bool buttonMute(int channel, bool pressed); // select Page
-  bool buttonSolo(int channel, bool pressed); // select Bank
-  bool buttonSelect(int channel, bool pressed);
+  bool buttonMute(int channel, bool pressed) override; // select Page
+  bool buttonSolo(int channel, bool pressed) override; // select Bank
+  bool buttonSelect(int channel, bool pressed) override;
 
-  bool fader(int channel, int value);
+  bool fader(int channel, int value) override;
   bool singleFaderTouched(
-      int channel); // channels are 1-based, channel 0 is called, when no fader
+      int channel) override; // channels are 1-based, channel 0 is called, when no fader
                     // or more then one fader is touched
   bool singleVPotTouched(
-      int channel); // channels are 1-based, channel 0 is called, when no vpot
+      int channel) override; // channels are 1-based, channel 0 is called, when no vpot
                     // or more then one vpot is touched
   //      virtual bool faderTouched(int channel, bool touched){return false;}
   //      virtual bool someFadersTouched(bool touched){return false;} // is
@@ -59,27 +59,27 @@ public:
   //      released (incl. a short delay)
 
   bool vpotMoved(int channel,
-                 int numSteps); // numSteps are negativ for left rotation
-  bool vpotPressed(int channel, bool pressed);
+                 int numSteps) override; // numSteps are negativ for left rotation
+  bool vpotPressed(int channel, bool pressed) override;
 
   // default update implementation turn LEDs off
-  void updateRecLEDs();
-  void updateSelectLEDs();
-  void updateSoloLEDs();
-  void updateMuteLEDs();
-  void updateFlipLED();
-  void updateGlobalViewLED() {
+  void updateRecLEDs() override;
+  void updateSelectLEDs() override;
+  void updateSoloLEDs() override;
+  void updateMuteLEDs() override;
+  void updateFlipLED() override;
+  void updateGlobalViewLED() override {
     m_pCCSManager->setGlobalViewLED(this, m_followTrack ? LED_OFF : LED_ON);
   }
-  void updateAssignmentDisplay();
-  void updateDisplay();
-  void updateEverything();
+  void updateAssignmentDisplay() override;
+  void updateDisplay() override;
+  void updateEverything() override;
 
   // default update implementation does nothing
-  void updateFaders();
-  void updateVPOTs();
+  void updateFaders() override;
+  void updateVPOTs() override;
 
-  void trackListChange();
+  void trackListChange() override;
   void trackVolume(MediaTrack *trackid, double volume) {
     updateFaders();
     updateVPOTs();
@@ -90,15 +90,15 @@ public:
   void trackSelected(MediaTrack *trackid, bool selected);
   void trackSolo(MediaTrack *trackid, bool solo) {}
   void trackRecArm(MediaTrack *trackid, bool recarm) {}
-  void trackName(MediaTrack *trackid, const char *pName) {}
+  void trackName(MediaTrack *trackid, const char *pName) override {}
 
-  void frameUpdate();
-  PlugModeSelector *getSelector() { return m_pPlugSelector; }
-  Options *getOptions() { return m_pPlugModeOptions; }
-  Options *get2ndOptions() { return m_pPlugMode2ndOptions; }
+  void frameUpdate() override;
+  PlugModeSelector *getSelector() override { return m_pPlugSelector; }
+  Options *getOptions() override { return m_pPlugModeOptions; }
+  Options *get2ndOptions() override { return m_pPlugMode2ndOptions; }
 
-  Component **createEditorComponent();
-  void deleteEditorComponent();
+  Component **createEditorComponent() override;
+  void deleteEditorComponent() override;
   void removeEditor();
 
   // ---- active unit management ----

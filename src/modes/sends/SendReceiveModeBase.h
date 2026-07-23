@@ -32,44 +32,44 @@ public:
   // Send and receive windows span all configured surface units.
   bool supportsExtendedChannels() const override { return true; }
 
-  virtual void activate();
+  virtual void activate() override;
 
-	virtual bool buttonRec(int channel, bool pressed);
+	virtual bool buttonRec(int channel, bool pressed) override;
 	
-  virtual bool buttonFaderBanks(int button, bool pressed);
-  virtual bool buttonFlip(bool pressed);
+  virtual bool buttonFaderBanks(int button, bool pressed) override;
+  virtual bool buttonFlip(bool pressed) override;
 
-  virtual bool buttonMute(int channel, bool pressed);
-  virtual bool buttonSolo(int channel, bool pressed);
+  virtual bool buttonMute(int channel, bool pressed) override;
+  virtual bool buttonSolo(int channel, bool pressed) override;
 
-  virtual bool fader(int channel, int value);
-  virtual bool faderTouched(int channel, bool touched);
+  virtual bool fader(int channel, int value) override;
+  virtual bool faderTouched(int channel, bool touched) override;
 
   virtual bool
   vpotMoved(int channel,
-            int numSteps); // numSteps are negativ for left rotation
+            int numSteps) override; // numSteps are negativ for left rotation
 
-	virtual void updateRecLEDs();
-  virtual void updateSoloLEDs();
-  virtual void updateMuteLEDs();
-  virtual void updateFlipLED();
+	virtual void updateRecLEDs() override;
+  virtual void updateSoloLEDs() override;
+  virtual void updateMuteLEDs() override;
+  virtual void updateFlipLED() override;
 
-  virtual void updateDisplay();
+  virtual void updateDisplay() override;
 	
-  virtual void updateFaders();
-  virtual void updateVPOTs();
+  virtual void updateFaders() override;
+  virtual void updateVPOTs() override;
 
-  virtual void trackName(MediaTrack *trackid, const char *pName);
+  virtual void trackName(MediaTrack *trackid, const char *pName) override;
 
-  virtual void frameUpdate();
+  virtual void frameUpdate() override;
 
   virtual bool somethingTouched(
-      bool touched); // is called when the first fader is touched or the last
+      bool touched) override; // is called when the first fader is touched or the last
                      // fader touch is released (incl. a short delay)
 
   int getNumSends();
 
-	bool setAutoMode(AutoMode mode);
+	bool setAutoMode(AutoMode mode) override;
 	
   virtual void getSendInfos(std::vector<void *> *pResult,
                             ESendInfo sendInfo) = 0;

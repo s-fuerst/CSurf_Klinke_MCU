@@ -24,37 +24,37 @@ public:
   MultiTrackMode(CCSManager *pManager);
   virtual ~MultiTrackMode(void);
 
-  void activate();
+  void activate() override;
 
-  bool buttonFaderBanks(int button, bool pressed);
-  bool buttonFlip(bool pressed);
-  bool buttonGView(bool pressed);
+  bool buttonFaderBanks(int button, bool pressed) override;
+  bool buttonFlip(bool pressed) override;
+  bool buttonGView(bool pressed) override;
 
-  bool buttonRec(int channel, bool pressed);
-  bool buttonMute(int channel, bool pressed);
-  bool buttonSolo(int channel, bool pressed);
-  bool buttonSoloDC(int channel);
-  bool buttonSelect(int channel, bool pressed);
+  bool buttonRec(int channel, bool pressed) override;
+  bool buttonMute(int channel, bool pressed) override;
+  bool buttonSolo(int channel, bool pressed) override;
+  bool buttonSoloDC(int channel) override;
+  bool buttonSelect(int channel, bool pressed) override;
 
-  bool buttonSelectLong(int channel);
+  bool buttonSelectLong(int channel) override;
 
-  bool fader(int channel, int value);
+  bool fader(int channel, int value) override;
   //      bool someFadersTouched(bool touched); // is called when the first
   //      fader is touched or the last fader touch is released
-  void updateRecLEDs();
-  void updateSoloLEDs();
-  void updateMuteLEDs();
-  void updateSelectLEDs();
-  void updateFlipLED();
-  void updateGlobalViewLED();
-  void updateAssignmentDisplay();
+  void updateRecLEDs() override;
+  void updateSoloLEDs() override;
+  void updateMuteLEDs() override;
+  void updateSelectLEDs() override;
+  void updateFlipLED() override;
+  void updateGlobalViewLED() override;
+  void updateAssignmentDisplay() override;
 
-  void updateFaders();
-  virtual void updateVPOTs();
+  void updateFaders() override;
+  virtual void updateVPOTs() override;
 
-  virtual void updateDisplay();
+  virtual void updateDisplay() override;
 
-  virtual void trackListChange();
+  virtual void trackListChange() override;
   virtual void trackVolume(int id, double volume);
   virtual void trackPan(int id, double pan);
   virtual void trackMute(MediaTrack *trackid, bool mute) {}
@@ -64,10 +64,10 @@ public:
   static bool getFlipMode() { return s_flipmode; }
   static bool getMCPMode() { return s_mcpmode; }
 
-  virtual void frameUpdate();
+  virtual void frameUpdate() override;
 
-  virtual Options *getOptions() { return Tracks::instance()->getOptions(); }
-  virtual Options *get2ndOptions() {
+  virtual Options *getOptions() override { return Tracks::instance()->getOptions(); }
+  virtual Options *get2ndOptions() override {
     return Tracks::instance()->get2ndOptions();
   }
 
@@ -75,8 +75,8 @@ public:
   // extended channels from extender units.
   virtual bool supportsExtendedChannels() const override { return true; }
 
-  virtual Component **createEditorComponent();
-  virtual void deleteEditorComponent();
+  virtual Component **createEditorComponent() override;
+  virtual void deleteEditorComponent() override;
 
 protected:
   void toggleShowInMixer(MediaTrack *tr);
