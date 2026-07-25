@@ -563,7 +563,10 @@ void CCSManager::trackSelected(MediaTrack *trackid, bool selected) {
   else
     deselectTrack(trackid);
 
-  m_pMCU->UpdateAutoModes();
+  // UpdateAutoModes() is now called once per frame in CSurf_MCU::Run().
+  // REAPER broadcasts SetSurfaceSelected to all tracks on bank operations, so
+  // calling it here fired it once per track and flooded the MCU's MIDI receive
+  // buffer (the midiEvents spikes during banking).
 }
 
 void CCSManager::selectTrack(MediaTrack *trackid) {

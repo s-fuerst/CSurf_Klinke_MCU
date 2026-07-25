@@ -1056,6 +1056,7 @@ void CSurf_MCU::Run() {
     Tracks::instance()->adjust(availableChannels());
 
     UpdateGlobalSoloLED();
+    UpdateAutoModes();
     UpdateMetronomLED();
 
     while (m_schedule && now >= m_schedule->time) {
@@ -1344,7 +1345,11 @@ void CSurf_MCU::SetSurfaceSelected(MediaTrack *trackid, bool selected) {
 }
 
 void CSurf_MCU::SetSurfaceSolo(MediaTrack *trackid, bool solo) {
-  UpdateGlobalSoloLED();
+  // UpdateGlobalSoloLED() is called once per frame in Run(); firing it here
+  // too means it runs once per track callback. REAPER broadcasts SetSurfaceSolo
+  // to all tracks on every bank operation, so this per-track call flooded the
+  // MCU's MIDI receive buffer (the midiEvents spikes during banking). Run()
+  // already covers it.
 }
 
 void CSurf_MCU::SetSurfaceRecArm(MediaTrack *trackid, bool recarm) {}
