@@ -534,6 +534,12 @@ bool Tracks::tracksStatesChanged(bool checkProjectChange) {
       delete (m_trackStates[guid]);
       m_trackStates.erase(m_trackStates.find(guid));
     }
+    // Keep m_selectedTracks consistent: REAPER does not always fire
+    // SetSurfaceSelected(child, false) before deleting a folder track, so
+    // stale pointers would remain here and be dereferenced by
+    // moveSelectedTrack2MCU()/getSelectedSingleTrack(). erase() of a
+    // non-present pointer is a no-op.
+    m_selectedTracks.erase(pMT);
     signalTrackRemoved(pMT);
   }
 
