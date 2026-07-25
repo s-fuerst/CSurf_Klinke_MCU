@@ -190,6 +190,7 @@ public:
   virtual ~Tracks(void);
 
   void selectionChanged();
+  void updateSelection(MediaTrack *pMT, bool selected);
   bool tracksStatesChanged(bool checkProjectChange = true);
   MediaTrack *getSelectedSingleTrack(bool includeMaster = false);
 

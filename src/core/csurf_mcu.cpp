@@ -1325,11 +1325,17 @@ void CSurf_MCU::SetTrackListChange() {
 }
 
 void CSurf_MCU::SetSurfaceVolume(MediaTrack *trackid, double volume) {
-  if (Tracks::instance()->tracksStatesChanged())
-    m_pCCSManager->trackListChange();
-
+  // REAPER calls SetSurfaceVolume() once per track on every bank operation
+  // via TrackList_UpdateAllExternalSurfaces(). The two calls that used to run
+  // here were both redundant and expensive at scale:
+  //  - tracksStatesChanged()/trackListChange(): volume changes never add,
+  //    remove, or reorder tracks. Run() already polls tracksStatesChanged()
+  //    every frame (with a cheap early-exit) — that is the only place needed.
+  //  - updateFader(): sent MIDI for all visible channels on every per-track
+  //    callback. With 250+ tracks that is hundreds of redundant MIDI bursts
+  //    per bank where one per frame suffices. MultiTrackMode::frameUpdate()
+  //    calls updateFaders() every frame and picks up the stored volume there.
   m_surface_volume[trackid] = volume;
-  m_pCCSManager->updateFader();
 }
 
 void CSurf_MCU::SetSurfacePan(MediaTrack *trackid, double pan) {
@@ -1339,7 +1345,11 @@ void CSurf_MCU::SetSurfacePan(MediaTrack *trackid, double pan) {
 void CSurf_MCU::SetSurfaceMute(MediaTrack *trackid, bool mute) {}
 
 void CSurf_MCU::SetSurfaceSelected(MediaTrack *trackid, bool selected) {
-  Tracks::instance()->selectionChanged();
+  // updateSelection() applies the single trackid/selected change REAPER passes
+  // directly to m_selectedTracks (O(log n)) instead of selectionChanged()'s
+  // full O(n) rebuild. REAPER fires this callback once per track on operations
+  // like Ctrl+A, so the O(n) rebuild made selection O(n^2) overall.
+  Tracks::instance()->updateSelection(trackid, selected);
 
   m_pCCSManager->trackSelected(trackid, selected);
 }

@@ -434,6 +434,24 @@ void Tracks::selectionChanged() {
   }
 }
 
+void Tracks::updateSelection(MediaTrack *pMT, bool selected) {
+  // REAPER calls SetSurfaceSelected() once per track when the selection
+  // changes (e.g. Ctrl+A across 256 tracks). selectionChanged() rebuilds
+  // m_selectedTracks from scratch via TrackIterator — O(n) per call, O(n^2)
+  // total for a full-selection operation. REAPER already passes exactly what
+  // changed via the trackid/selected params, so update the set directly in
+  // O(log n) per call and only re-evaluate the single-selected track.
+  if (selected)
+    m_selectedTracks.insert(pMT);
+  else
+    m_selectedTracks.erase(pMT);
+
+  if (m_pLastSelectedSingleTrack != getSelectedSingleTrack()) {
+    m_pLastSelectedSingleTrack = getSelectedSingleTrack();
+    moveSelectedTrack2MCU();
+  }
+}
+
 void Tracks::moveSelectedTrack2MCU() {
   // without this check we will never leave the while loop below
   if (getNumberOfActiveAnchors() == m_numMCUChannels)
