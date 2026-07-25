@@ -1039,10 +1039,12 @@ void CSurf_MCU::Run() {
 
     ProjectConfig::instance()->checkReaProjectChange();
 
-		runCounter++;
-		if (runCounter % 3 == 0)
-			if (Tracks::instance()->tracksStatesChanged())
-				m_pCCSManager->trackListChange();
+		// tracksStatesChanged() is called every frame (not every 3rd) so a
+		// deleted/changed track is flushed before any code can dereference a
+		// stale MediaTrack*. The fast-exit in tracksStatesChanged() makes this
+		// cheap (~0.001ms) when the track list is unchanged.
+		if (Tracks::instance()->tracksStatesChanged())
+			m_pCCSManager->trackListChange();
 
     PlugMoveWatcher::instance()->checkMovement();
 

@@ -299,7 +299,10 @@ private:
   typedef ::std::vector<MediaTrack *> tTracks;
   tTracks m_channelTracks;
 
-  typedef std::set<MediaTrack *> tTrackSet;
+  // Vector (not set) so element order reflects REAPER track order. This lets
+  // operator== detect adds, removes, and reorders in one O(n) comparison,
+  // which is used to skip the O(n^2) buildGraph() on unchanged frames.
+  typedef std::vector<MediaTrack *> tTrackSet;
   tTrackSet *m_pAllTracksBefore;
   tTrackSet *m_pAllTracksNow;
 

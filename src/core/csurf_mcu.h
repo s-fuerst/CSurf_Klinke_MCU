@@ -554,7 +554,6 @@ public:
   ButtonManager *GetButtonManager() { return m_pButtonManager; }
 
 private:
-	int runCounter = 0;
 };
 
 class SelectedTrack {

@@ -291,7 +291,7 @@ bool MediaTrackInfo::isShownInTCP(MediaTrack *pMT) {
   if (pMT == NULL)
     return false;
   bool *bShown = (bool *)GetSetMediaTrackInfo(pMT, "B_SHOWINTCP", NULL);
-  return *bShown;
+  return bShown ? *bShown : false;
 }
 
 bool MediaTrackInfo::isShownInMCP(MediaTrack *pMT) {
@@ -299,7 +299,7 @@ bool MediaTrackInfo::isShownInMCP(MediaTrack *pMT) {
   if (pMT == NULL)
     return false;
   bool *bShown = (bool *)GetSetMediaTrackInfo(pMT, "B_SHOWINMIXER", NULL);
-  return *bShown;
+  return bShown ? *bShown : false;
 }
 
 void MediaTrackInfo::showInTCP(MediaTrack *pMT, bool bShow) {
@@ -324,7 +324,7 @@ int MediaTrackInfo::getHeight(MediaTrack *pMT) {
   if (pMT == NULL)
     return 0;
   int *pHeight = (int *)GetSetMediaTrackInfo(pMT, "I_WNDH", NULL);
-  return *pHeight;
+  return pHeight ? *pHeight : 0;
 }
 
 void MediaTrackInfo::setHeight(MediaTrack *pMT, int height) {
@@ -443,6 +443,13 @@ void Tracks::moveSelectedTrack2MCU() {
   if (trackid && Tracks::instance()->get2ndOptions()->isOptionSetTo(
                      MTO2_FOLLOW_REAPER, MTO2A_FOLLOW_REAPER_ON)) {
     tracksStatesChanged();
+    // trackid was captured before tracksStatesChanged() ran. If the track was
+    // deleted, it has been removed from m_trackStates (and, after P7, from
+    // m_tracksByPointer) but trackid still holds the (now freed) pointer. Guard
+    // before calling getTrackStateForMediaTrack, whose slow path would call
+    // GetTrackGUID on freed memory.
+    if (!m_structure.trackExists(trackid))
+      return;
     TrackState *pTS = Tracks::instance()->getTrackStateForMediaTrack(trackid);
     if (pTS && pTS->getAnchorChannel() == 0 && !pTS->isOnMCU()) {
 			MediaTrack *newParent = Tracks::instance()->getParentForMediaTrack(trackid);
@@ -481,21 +488,28 @@ bool Tracks::tracksStatesChanged(bool checkProjectChange) {
   if (checkProjectChange)
     ProjectConfig::instance()->checkReaProjectChange();
 
-  bool somethingHasChanged = false;
   m_pAllTracksNow->clear();
 
-  for (TrackIterator ti; !ti.end(); ++ti) {
-    m_pAllTracksNow->insert(*ti);
-  }
+  for (TrackIterator ti; !ti.end(); ++ti)
+    m_pAllTracksNow->push_back(*ti);
 
-  // send signals for all added or removed tracks, therefore we build
-  // the difference between the old and new set of tracks
-  tTrackSet dif;
+  // O(n) comparison catches adds, removes, and reorders. Skip the O(n^2)
+  // buildGraph() on the vast majority of frames where nothing has changed.
+  // This early-exit is what makes it safe to call tracksStatesChanged() every
+  // frame (see CSurf_MCU::Run()): it costs ~0.001ms on stable frames.
+  if (*m_pAllTracksNow == *m_pAllTracksBefore)
+    return false;
+
+  // set_difference requires sorted ranges, so build temporary sets from the
+  // ordered vectors to identify which tracks were added or removed.
+  std::set<MediaTrack *> nowSet(m_pAllTracksNow->begin(), m_pAllTracksNow->end());
+  std::set<MediaTrack *> beforeSet(m_pAllTracksBefore->begin(),
+                                   m_pAllTracksBefore->end());
+  std::set<MediaTrack *> dif;
 
   // new - old: tracks added
-  set_difference(m_pAllTracksNow->begin(), m_pAllTracksNow->end(),
-                 m_pAllTracksBefore->begin(), m_pAllTracksBefore->end(),
-                 inserter(dif, dif.begin()));
+  set_difference(nowSet.begin(), nowSet.end(), beforeSet.begin(),
+                 beforeSet.end(), inserter(dif, dif.begin()));
 
   BOOST_FOREACH (MediaTrack *pMT, dif) {
     TrackState *pTS = getTrackStateForMediaTrack(pMT);
@@ -505,14 +519,12 @@ bool Tracks::tracksStatesChanged(bool checkProjectChange) {
       m_trackStates[GUID2String(GetTrackGUID(pMT))] = new TrackState(pMT);
     }
     signalTrackAdded(pMT);
-    somethingHasChanged = true;
   }
 
   // old - new: tracks removed
   dif.clear();
-  set_difference(m_pAllTracksBefore->begin(), m_pAllTracksBefore->end(),
-                 m_pAllTracksNow->begin(), m_pAllTracksNow->end(),
-                 inserter(dif, dif.begin()));
+  set_difference(beforeSet.begin(), beforeSet.end(), nowSet.begin(),
+                 nowSet.end(), inserter(dif, dif.begin()));
 
   BOOST_FOREACH (MediaTrack *pMT, dif) {
     TrackState *pTS = getTrackStateForMediaTrack(pMT);
@@ -523,21 +535,15 @@ bool Tracks::tracksStatesChanged(bool checkProjectChange) {
       m_trackStates.erase(m_trackStates.find(guid));
     }
     signalTrackRemoved(pMT);
-    somethingHasChanged = true;
   }
 
-  m_pAllTracksBefore->clear();
-
-  for (TrackIterator ti; !ti.end(); ++ti) {
-    m_pAllTracksBefore->insert(*ti);
-  }
+  *m_pAllTracksBefore = *m_pAllTracksNow;
 
   buildGraph();
-  if (!m_structure.trackExists(m_pCurrentBaseTrack)) {
+  if (!m_structure.trackExists(m_pCurrentBaseTrack))
     m_pCurrentBaseTrack = NULL;
-  }
 
-  return somethingHasChanged;
+  return true;
 }
 
 MediaTrack *Tracks::getSelectedSingleTrack(bool includeMaster) {
@@ -765,7 +771,7 @@ void Tracks::adjust(int numMCUChannels) {
       if (pTS->getMediaTrack()) {
         bool *pShowInMixer = (bool *)GetSetMediaTrackInfo(
             pTS->getMediaTrack(), "B_SHOWINMIXER", NULL);
-        if (*pShowInMixer == false) {
+        if (pShowInMixer && *pShowInMixer == false) {
           *pShowInMixer = true;
           GetSetMediaTrackInfo(pTS->getMediaTrack(), "B_SHOWINMIXER",
                                pShowInMixer);
@@ -789,6 +795,8 @@ void Tracks::adjust(int numMCUChannels) {
 
       bool *pShowInTCP = (bool *)GetSetMediaTrackInfo(pTS->getMediaTrack(),
                                                       "B_SHOWINTCP", NULL);
+      if (!pShowInTCP)
+        continue;
       if (m_pOptions2->isOptionSetTo(MTO2_TCP_ADJUCT, MTO2A_TCP_BANK) &&
               (*pShowInTCP != pTS->isOnMCU()) ||
           m_pOptions2->isOptionSetTo(MTO2_TCP_ADJUCT, MTO2A_TCP_SELECTED) &&
