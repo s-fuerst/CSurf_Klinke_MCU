@@ -711,6 +711,12 @@ bool Tracks::moveBaseTrackToParent() {
   m_pCurrentBaseTrack = m_structure.nodeOfTrack(m_pCurrentBaseTrack)
                             ->getParentNode()
                             ->getMediaTrack();
+  // Rebuild the graph for the new base track. moveBaseTrack() does this
+  // explicitly; moveBaseTrackToParent() previously relied on tracksStatesChanged()
+  // calling buildGraph() unconditionally as a side-effect. After that call was
+  // made conditional (early-exit when the track list is unchanged), folder-up
+  // navigation left m_structure stale and the controller was not updated.
+  buildGraph();
   return true;
 }
 
