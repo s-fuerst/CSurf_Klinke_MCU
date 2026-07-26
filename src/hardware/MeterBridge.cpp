@@ -6,6 +6,12 @@
 #include "csurf_mcu.h"
 #include "McuAssert.h"
 #include "Tracks.h"
+#include "HardwareUnit.h"
+#include "DisplayHandler.h"
+#include "Display.h"
+
+#include <algorithm>
+#include <cstring>
 
 MeterBridge::MeterBridge() {
   m_stripMeterPos.assign(8, -100000.0);
@@ -22,14 +28,11 @@ void MeterBridge::ensureStripMeterState(int channelCount) {
 void MeterBridge::updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
                               double decay, int pin) {
   auto ts = Tracks::instance()->getTrackStateForMediaTrack(pMT);
-  if (ts == nullptr) return;
-
-  // check mute/solo state of track(s), maybe the signal is muted
-  bool isActive = ts->getVUactive();
-
   int v = 0x0;
   int x = iChannel - 1; // 0-based strip index
-  if (isActive && pMT) {
+  // Check mute/solo state of the track. Muted and missing tracks render as
+  // an empty software meter so a stale bar cannot remain on the display.
+  if (ts && ts->getVUactive() && pMT) {
     v = 0xd; // 0xe turns on clip indicator, 0xf turns it off
     double pp = 0.0;
     // get peak
@@ -57,6 +60,13 @@ void MeterBridge::updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
     }
     sendToHardware(pMCU, x, v);
   }
+  // Software-meter bars are only drawn for modes that opt in via
+  // alsoOnDisplay() (MultiTrack/Pan/Send). Plug Mode never draws them —
+  // they would overwrite the parameter name/value text on the LCD.
+  // Inside showMeterOnDisplay the per-unit metersOnDisplay() option is the
+  // final gate, so even opted-in modes only paint on units with the option.
+  if (alsoOnDisplay())
+    showMeterOnDisplay(pMCU, iChannel, v);
 }
 
 void MeterBridge::updateMasterLEDs(CSurf_MCU *pMCU, double decay) {
@@ -99,4 +109,32 @@ void MeterBridge::sendToHardware(CSurf_MCU *pMCU, int pos, short meter) {
   // Master meters route via sendMasterMetersToProXUnits (0xD1).
   // pos is 0-based strip index.
   pMCU->sendStripMeter(pos + 1, meter);
+}
+
+void MeterBridge::showMeterOnDisplay(CSurf_MCU *pMCU, int channel,
+                                     short meter) {
+  HardwareUnit *unit = pMCU->unitForChannel(channel);
+  if (!unit)
+    return;
+
+  // The software meter bars are only drawn on units that opted into
+  // "Emulate level meters on the display". Without this guard the bars
+  // overwrite the regular row-1 text on every unit (e.g. the FADER
+  // name/value in Plug Mode), so extenders appear to have no text and
+  // units that never enabled the option still show meters.
+  if (!unit->metersOnDisplay())
+    return;
+
+  Display *display = unit->displayHandler()->getDisplay();
+  if (!display)
+    return;
+
+  // The LCD field is six characters wide. Meter values 1..12 become one to
+  // six bars; silence clears the field. This does not depend on Mackie's
+  // optional LCD-meter SysEx support.
+  int bars = std::min(6, std::max(0, (int)((meter + 1) / 2)));
+  char text[7];
+  memset(text, '|', bars);
+  text[bars] = 0;
+  display->changeField(1, CSurf_MCU::localOf(channel), text);
 }

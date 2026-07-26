@@ -45,7 +45,7 @@ void SendReceiveModeBase::activate() {
     md->switchToAll();
   else
     m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
-	m_pCCSManager->getDisplayHandler()->enableMCUMeter(true);
+	m_pCCSManager->getMCU()->enableMCUMeters(true);
 }
 
 void SendReceiveModeBase::updateRecLEDs() {
@@ -537,14 +537,13 @@ void SendReceiveModeBase::updateFlipLED() {
 }
 
 void SendReceiveModeBase::frameUpdate() {
-  m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU());
-	
   updateFaders();
   updateVPOTs();
 	updateRecLEDs();
   updateSoloLEDs();
   updateMuteLEDs();
   updateDisplay();
+  m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU());
 }
 
 bool SendReceiveModeBase::somethingTouched(bool touched) {

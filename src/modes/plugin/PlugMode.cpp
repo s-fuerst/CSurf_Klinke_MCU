@@ -123,6 +123,11 @@ void PlugMode::activate() {
 
   CCSMode::activate();
 
+  // Plug Mode shows parameter names/values on the LCD. Mackie's LCD-meter
+  // SysEx mode must be off on those units (the bars would overwrite the
+  // text), but QCon ProX units keep their own hardware meters.
+  m_pCCSManager->getMCU()->enableMCUMeters(false, /*excludeProX=*/true);
+
   // Sync known chain/window states so the next frame update doesn't detect
   // false changes from deactivate/activate cycles and spuriously switch
   // the selected track.
@@ -361,7 +366,7 @@ bool PlugMode::vpotMoved(int channel, int numSteps) {
     int index = findIndexFromKeyInMap(val, pStepMap);
     (numSteps < 0) ? index-- : index++;
     if (index >= (signed)pStepMap->size()) {
-      index = pStepMap->size() - 1;
+      index = static_cast<int>(pStepMap->size()) - 1;
     } else if (index < 0) {
       index = 0;
     }
@@ -404,10 +409,10 @@ bool PlugMode::vpotPressed(int channel, bool pressed) {
     if (pStepMap && !pStepMap->empty()) {
       int index = findIndexFromKeyInMap(val, pStepMap);
       isModifierPressed(VK_SHIFT) ? index-- : index++;
-      if (index >= (signed)pStepMap->size()) {
-        index = 0;
-      } else if (index < 0) {
-        index = pStepMap->size() - 1;
+    if (index >= (signed)pStepMap->size()) {
+      index = 0;
+    } else if (index < 0) {
+      index = static_cast<int>(pStepMap->size()) - 1;
       }
       m_pAccess->setParamValueDouble(bank, page, PlugAccess::ElementDesc::VPOT,
                                      localCh,
@@ -1006,14 +1011,13 @@ void PlugMode::removeEditor() {
 }
 
 void PlugMode::frameUpdate() {
-  m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU());
-
 	// workaround for controllers, that doesn send all touched events
 	// (in combination with the ResetAllTouch action)
 	if (m_pCCSManager->getNumFadersTouched() == 0)
 		m_iSingleFaderTouched = 0;
 	
   updateEverything();
+  m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU());
   if (m_pCCSManager->getNumSelectButtonsPressed() == 0 &&
       m_lastTimePlugWasSelected + TIMETOSWITCHPLUGINMS <
           m_pCCSManager->getLastTime()) {

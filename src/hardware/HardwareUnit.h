@@ -24,11 +24,19 @@ class CSurf_MCU;
 // assignment-display suppression, ...). lcdPanels = isProX()?2:1.
 enum DeviceModel { Mackie, QConProX };
 
+// Per-unit option bits (persisted in the KLINKE2 config string as the 4th
+// field of every unit entry). These used to be global CONFIG_FLAG_* bits.
+#define UNIT_FLAG_FADER_TOUCH_FAKE 1
+#define UNIT_FLAG_EMULATE_BLINKING 2
+#define UNIT_FLAG_METERS_ON_DISPLAY 4
+#define UNIT_FLAG_SWITCH_ROWS 8
+
 struct UnitConfig {
   int midiInDev;
   int midiOutDev;
   bool isMain;      // main => devId 0x14 + transport; extender => 0x15
   DeviceModel model; // isProX() == (model == QConProX)
+  int unitFlags;     // UNIT_FLAG_* bits
 };
 
 // Input-side listener (CSurf_MCU implements). HardwareUnit emits GLOBAL
@@ -63,6 +71,16 @@ public:
   int stripBase() const { return m_unitIndex * 8; } // first global channel
   unsigned char deviceId() const { return m_deviceId; }
   const UnitConfig &cfg() const { return m_cfg; }
+
+  // --- per-unit options (were global CONFIG_FLAG_* bits) ---
+  bool unitFlagSet(int flag) const { return (m_cfg.unitFlags & flag) != 0; }
+  bool fakeFaderTouch() const { return unitFlagSet(UNIT_FLAG_FADER_TOUCH_FAKE); }
+  bool metersOnDisplay() const { return unitFlagSet(UNIT_FLAG_METERS_ON_DISPLAY); }
+  bool switchRows() const { return unitFlagSet(UNIT_FLAG_SWITCH_ROWS); }
+  // ProX hardware always needs software blink emulation.
+  bool needsBlinkEmulation() const {
+    return isProX() || unitFlagSet(UNIT_FLAG_EMULATE_BLINKING);
+  }
 
   midi_Output *midiOutput() { return m_midiout; }
   midi_Input *midiInput() { return m_midiin; }

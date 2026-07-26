@@ -308,7 +308,8 @@ bool CCSManager::fader(int channel, int value) {
   ASSERT(channel >= 0 && channel <= m_pMCU->availableChannels());
   m_switchBack = true;
 
-  if (m_pMCU->IsFlagSet(CONFIG_FLAG_FADER_TOUCH_FAKE)) {
+  // per-unit option (the unit owning this channel)
+  if (m_pMCU->fakeFaderTouch(channel)) {
     m_faderTouchedTill[channel] = m_lastTime + TOUCHED_MS;
     elementTouched(FADER, channel, true);
     m_pActualMode->faderTouched(channel, true);
@@ -322,7 +323,8 @@ bool CCSManager::faderTouched(int channel, bool touched) {
   ASSERT(channel >= 0 && channel <= m_pMCU->availableChannels());
   m_switchBack = true;
 
-  if (m_pMCU->IsFlagSet(CONFIG_FLAG_FADER_TOUCH_FAKE)) {
+  // per-unit option: units with fake touch ignore real touch messages
+  if (m_pMCU->fakeFaderTouch(channel)) {
     return true;
   }
 
@@ -695,7 +697,7 @@ void CCSManager::frameUpdate(DWORD time) {
     }
   }
 
-  if (m_pMCU->IsFlagSet(CONFIG_FLAG_FADER_TOUCH_FAKE)) {
+  if (m_pMCU->anyUnitFakeFaderTouch()) {
     for (int i = 0; i <= m_pMCU->availableChannels(); i++) {
       if (m_faderTouchedTill[i] > 0 && time > m_faderTouchedTill[i]) {
         elementTouched(FADER, i, false);

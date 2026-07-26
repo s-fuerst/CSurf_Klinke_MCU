@@ -18,7 +18,7 @@ void PanMode::activate() {
   // call MultiTrackMode::activate() first to handle display init
   // (MultiDisplay::switchToAll for N>1, clear + switch for N=1)
   MultiTrackMode::activate();
-  m_pCCSManager->getDisplayHandler()->enableMCUMeter(true);
+  m_pCCSManager->getMCU()->enableMCUMeters(true);
 }
 
 bool PanMode::vpotMoved(int channel, int numSteps) {

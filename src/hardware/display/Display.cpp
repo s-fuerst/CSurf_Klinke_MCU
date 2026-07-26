@@ -83,7 +83,8 @@ void Display::changeTextFullLine(int row, const char *text, bool centered) {
 
 void Display::changeTextAutoPad(int row, int pos, const char *text,
                                 bool centered) {
-  changeText(row, pos, text, strnlen(text, getRowLength(row)), centered);
+  changeText(row, pos, text,
+             static_cast<int>(strnlen(text, getRowLength(row))), centered);
 }
 
 void Display::clearLine(int row) { changeTextFullLine(row, ""); }
@@ -112,7 +113,7 @@ void Display::writeToBuffer(int row, int pos, const char *text, int pad) {
   if (pad + pos > getRowLength(row))
     pad = getRowLength(row) - pos;
 
-  int l = strnlen(text, getRowLength(row));
+  int l = static_cast<int>(strnlen(text, getRowLength(row)));
   if (pad < l)
     l = pad;
 

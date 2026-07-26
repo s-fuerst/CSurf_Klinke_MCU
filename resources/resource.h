@@ -35,6 +35,12 @@
 #define IDC_MIDI_INPUT_LABEL            1204
 #define IDC_MIDI_OUTPUT_LABEL           1205
 
+// per-unit options + grouping (fake touch / blink emulation moved from global)
+#define IDC_UNIT_GROUP                  1206
+#define IDC_GLOBAL_GROUP                1207
+#define IDC_METERS_ON_DISPLAY           1208
+#define IDC_SWITCH_ROWS                 1209
+
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED

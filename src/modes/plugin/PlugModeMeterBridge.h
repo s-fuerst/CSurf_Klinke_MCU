@@ -14,7 +14,10 @@ class PlugMode;
 class PlugModeMeterBridge : public MeterBridge {
 public:
   PlugModeMeterBridge(PlugMode *pPlugMode);
-	bool alsoOnDisplay() { return true; }
+  // Plug Mode shows parameter names/values on the LCD; the software-meter
+  // bars must never be drawn over that text. Strip/master meters are still
+  // sent to the hardware (0xD0/0xD1), only the on-display bars are off.
+  bool alsoOnDisplay() { return false; }
   void updateMeterBridge(CSurf_MCU *pMCU);
 
 private:

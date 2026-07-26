@@ -30,7 +30,8 @@ void Options::addAttribute(String optionName, String attribute,
     if (m_optionList[i].first.equalsIgnoreCase(optionName)) {
       m_optionList[i].second.first.push_back(attribute);
       if (defaultAtt) {
-        m_optionList[i].second.second = m_optionList[i].second.first.size() - 1;
+        m_optionList[i].second.second =
+            static_cast<int>(m_optionList[i].second.first.size()) - 1;
       }
     }
   }
@@ -83,7 +84,7 @@ void Options::move(unsigned int index, int steps) {
   } else if (m_optionList[numOpt].second.second >=
              (int)m_optionList[numOpt].second.first.size()) {
     m_optionList[numOpt].second.second =
-        m_optionList[numOpt].second.first.size() - 1;
+        static_cast<int>(m_optionList[numOpt].second.first.size()) - 1;
   }
 
   displaySelectedOptions();

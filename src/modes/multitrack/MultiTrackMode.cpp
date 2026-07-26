@@ -41,9 +41,9 @@ MediaTrack *MultiTrackMode::getMediaTrackForChannel(int channel) {
 }
 
 void MultiTrackMode::frameUpdate() {
-  m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU());
-	
   updateEverything();
+
+  m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU());
 
   if (Tracks::instance()->clampCurrentGlobalOffset()) {
     TrackList_UpdateAllExternalSurfaces();

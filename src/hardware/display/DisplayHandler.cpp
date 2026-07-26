@@ -66,6 +66,13 @@ void DisplayHandler::sendDifferences(Display *pDisplay, int row,
 
 void DisplayHandler::sendToHardware(int row, int pos, char const *text,
                                     int len) {
+  // Displays keep their logical row order. Apply the per-unit preference only
+  // while addressing the physical LCD, so it affects every display user
+  // (modes, selectors, splash screen, and ProX panels) uniformly.
+  int hardwareRow = row;
+  if (m_pUnit->switchRows() && hardwareRow < 2)
+    hardwareRow = 1 - hardwareRow;
+
   if (row == 0 || row == 1) {
     char tmp[56] = {};
     for (int k = 0; k < len && k < 55; k++)
@@ -73,19 +80,19 @@ void DisplayHandler::sendToHardware(int row, int pos, char const *text,
     MCU_LOG("ROW%d snd pos=%d len=%d [%s]", row, pos, len, tmp);
   }
 
-  m_pHardwareState->changeText(row, pos, text, len);
+  m_pHardwareState->changeText(hardwareRow, pos, text, len);
 
   if (!m_pActualDisplay)
     return;
 
-	if (row > 1 && !m_isProX)
+	if (hardwareRow > 1 && !m_isProX)
 		return;
 
-	pos += m_pActualDisplay->getRowLength(row) * (row % 2) +
-           (row == 1); // + row because there is one unused byte at the end of each row
+	pos += m_pActualDisplay->getRowLength(hardwareRow) * (hardwareRow % 2) +
+           (hardwareRow == 1); // + row because there is one unused byte at the end of each row
 
   MIDI_Message mm;
-  addHeader(&mm, row);
+  addHeader(&mm, hardwareRow);
   //  F0 00 00 66 14 12 xx <data> F7   : update LCD. xx=offset (0-112), string.
   //  display is 55 chars wide, second line begins at 56, though.
 
@@ -93,7 +100,7 @@ void DisplayHandler::sendToHardware(int row, int pos, char const *text,
   //  mm.evt.size=0;
 
 
-	mm.evt.midi_message[mm.evt.size++] = (row > 1) ? 0x13 : 0x12; // 0x12
+	mm.evt.midi_message[mm.evt.size++] = (hardwareRow > 1) ? 0x13 : 0x12; // 0x12
   mm.evt.midi_message[mm.evt.size++] = pos;
 
   int cnt = 0;
@@ -120,8 +127,10 @@ void DisplayHandler::enableMCUMeter(int channel, bool enable) // channel is 1 ba
   // widened from fixed <=9 to vector bounds
   ASSERT(channel > 0 && channel < (int)m_metersEnabled.size());
 
-  // if (! m_pMCU->IsFlagSet(CONFIG_FLAG_MACKIE_LEVEL_METER))
-  //   enable = false;
+  // This is Mackie's LCD-meter SysEx mode. Controllers without that feature
+  // must not receive it; their software meter is rendered separately.
+  if (enable && !m_pUnit->metersOnDisplay())
+    enable = false;
 
   if (enable == m_metersEnabled[channel])
     return;

@@ -36,17 +36,21 @@ SurfaceConfig makeDefaultSurfaceConfig();
 
 // Parses a config string. Handles both:
 //   legacy: "0 8 <midiIn> <midiOut> <flags>"
-//   KLINKE2: "KLINKE2 flags=<flags> <in>,<out>,<type> ..." (8 entries)
+//   KLINKE2: "KLINKE2 flags=<flags> <in>,<out>,<type>[,<unitFlags>] ..."
+//            (8 entries; the 3-field form is the pre-per-unit-flags variant)
 SurfaceConfig parseSurfaceConfig(const char *str);
 
-// Serializes to KLINKE2 format, always 8 entries.
+// Serializes to KLINKE2 format, always 8 entries
+// ("<in>,<out>,<type>,<unitFlags>").
 std::string serializeSurfaceConfig(const SurfaceConfig &cfg);
 
 // Converts isMain/model to the stable KLINKE2 type token.
 const char *unitTypeToken(const UnitConfig &cfg);
 
 // Returns the UnitConfig for a given unit type index (0..3).
-UnitConfig unitConfigFromType(int typeIndex, int midiIn, int midiOut);
+// unitFlags carries the per-unit UNIT_FLAG_* option bits.
+UnitConfig unitConfigFromType(int typeIndex, int midiIn, int midiOut,
+                              int unitFlags = 0);
 
 // The one definition of Disabled used by dialog, parser, and constructor.
 bool unitIsDisabled(const UnitConfig &cfg);

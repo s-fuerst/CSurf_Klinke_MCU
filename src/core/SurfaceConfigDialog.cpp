@@ -64,6 +64,35 @@ static int currentUnitIndex(HWND hwndDlg) {
   return (u == CB_ERR) ? 0 : (int)u;
 }
 
+// Per-unit checkbox ids and their UNIT_FLAG_* bits.
+struct UnitFlagCheck { int ctrlId; int flag; };
+static const UnitFlagCheck s_unitFlagChecks[] = {
+  { IDC_FAKE_TOUCH,        UNIT_FLAG_FADER_TOUCH_FAKE },
+  { IDC_EMULATE_BLINKING,  UNIT_FLAG_EMULATE_BLINKING },
+  { IDC_METERS_ON_DISPLAY, UNIT_FLAG_METERS_ON_DISPLAY },
+  { IDC_SWITCH_ROWS,       UNIT_FLAG_SWITCH_ROWS },
+};
+static const int s_unitFlagCheckCount =
+    sizeof(s_unitFlagChecks) / sizeof(s_unitFlagChecks[0]);
+
+static int unitFlagsFromDialog(HWND hwndDlg) {
+  int flags = 0;
+  for (int i = 0; i < s_unitFlagCheckCount; i++)
+    if (IsDlgButtonChecked(hwndDlg, s_unitFlagChecks[i].ctrlId))
+      flags |= s_unitFlagChecks[i].flag;
+  return flags;
+}
+
+static void unitFlagsIntoDialog(HWND hwndDlg, int unitFlags, bool enabled) {
+  for (int i = 0; i < s_unitFlagCheckCount; i++) {
+    CheckDlgButton(hwndDlg, s_unitFlagChecks[i].ctrlId,
+                   (enabled && (unitFlags & s_unitFlagChecks[i].flag))
+                       ? BST_CHECKED : BST_UNCHECKED);
+    HWND c = GetDlgItem(hwndDlg, s_unitFlagChecks[i].ctrlId);
+    if (c) EnableWindow(c, enabled);
+  }
+}
+
 static void saveUnitFromDialog(HWND hwndDlg, SurfaceConfig *cfg, int i) {
   LRESULT r = SendDlgItemMessage(hwndDlg, IDC_UNIT_TYPE, CB_GETCURSEL, 0, 0);
   int typeIdx = UNIT_TYPE_DISABLED;
@@ -79,7 +108,8 @@ static void saveUnitFromDialog(HWND hwndDlg, SurfaceConfig *cfg, int i) {
   r = SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_GETCURSEL, 0, 0);
   if (r != CB_ERR)
     outDev = (int)SendDlgItemMessage(hwndDlg, IDC_COMBO3, CB_GETITEMDATA, r, 0);
-  cfg->units[i] = unitConfigFromType(typeIdx, inDev, outDev);
+  cfg->units[i] =
+      unitConfigFromType(typeIdx, inDev, outDev, unitFlagsFromDialog(hwndDlg));
 }
 
 static void loadUnitIntoDialog(HWND hwndDlg, const SurfaceConfig *cfg, int i,
@@ -105,6 +135,8 @@ static void loadUnitIntoDialog(HWND hwndDlg, const SurfaceConfig *cfg, int i,
   int show = disabled ? SW_HIDE : SW_SHOW;
   ShowWindow(inCb, show);
   ShowWindow(outCb, show);
+
+  unitFlagsIntoDialog(hwndDlg, u.unitFlags, !disabled);
 
   if (!disabled) {
     SendMessage(inCb, CB_RESETCONTENT, 0, 0);
@@ -155,9 +187,13 @@ static const LayoutControl s_layoutControls[] = {
   { IDC_COMBO2,            LAYOUT_STRETCH_RIGHT },
   { IDC_MIDI_OUTPUT_LABEL, LAYOUT_FIXED },
   { IDC_COMBO3,            LAYOUT_STRETCH_RIGHT },
-  { IDC_EMULATE_BLINKING,  LAYOUT_STRETCH_RIGHT },
+  { IDC_UNIT_GROUP,        LAYOUT_STRETCH_RIGHT },
+  { IDC_EMULATE_BLINKING,  LAYOUT_FIXED },
+  { IDC_FAKE_TOUCH,        LAYOUT_FIXED },
+  { IDC_METERS_ON_DISPLAY, LAYOUT_FIXED },
+  { IDC_SWITCH_ROWS,       LAYOUT_FIXED },
+  { IDC_GLOBAL_GROUP,      LAYOUT_STRETCH_RIGHT },
   { IDC_KEYBOARD_MODIFIER, LAYOUT_STRETCH_RIGHT },
-  { IDC_FAKE_TOUCH,        LAYOUT_STRETCH_RIGHT },
   { IDC_CHECK2,            LAYOUT_STRETCH_RIGHT },
   { BTN_OPEN_MANUAL,       LAYOUT_MOVE_RIGHT | LAYOUT_MOVE_DOWN },
   { BTN_DONATE,            LAYOUT_MOVE_RIGHT | LAYOUT_MOVE_DOWN }
@@ -239,9 +275,9 @@ static void layoutDlgControls(HWND hwndDlg, DialogState *state) {
 
     if (anchors & LAYOUT_STRETCH_RIGHT)
       width = width + dx > 40 ? width + dx : 40;
-    if (anchors & LAYOUT_MOVE_RIGHT)
+    if (anchors & LAYOUT_MOVE_RIGHT && dx > 0)
       x += dx;
-    if (anchors & LAYOUT_MOVE_DOWN)
+    if (anchors & LAYOUT_MOVE_DOWN && dy > 0)
       y += dy;
 
     HWND control = GetDlgItem(hwndDlg, s_layoutControls[i].id);
@@ -279,12 +315,10 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
     HWND proxChk = GetDlgItem(hwndDlg, IDC_PROX);
     if (proxChk) ShowWindow(proxChk, SW_HIDE);
 
-    if (cfg->flags & CONFIG_FLAG_FADER_TOUCH_FAKE)
-      CheckDlgButton(hwndDlg, IDC_FAKE_TOUCH, BST_CHECKED);
+    // fake touch / blink emulation / display meters are per-unit and were
+    // already applied by loadUnitIntoDialog() above.
     if (cfg->flags & CONFIG_FLAG_SWAPZOOM)
       CheckDlgButton(hwndDlg, IDC_CHECK2, BST_CHECKED);
-    if (cfg->flags & CONFIG_FLAG_EMULATING_BLINKING)
-      CheckDlgButton(hwndDlg, IDC_EMULATE_BLINKING, BST_CHECKED);
     if (cfg->flags & CONFIG_FLAG_KEYBOARD_MODIFIER)
       CheckDlgButton(hwndDlg, IDC_KEYBOARD_MODIFIER, BST_CHECKED);
 
@@ -308,6 +342,12 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
           ? (int)SendDlgItemMessage(hwndDlg, IDC_UNIT_TYPE, CB_GETITEMDATA, r, 0)
           : -1;
       bool disabled = (typeIdx == UNIT_TYPE_DISABLED);
+      for (int i = 0; i < s_unitFlagCheckCount; i++) {
+        HWND c = GetDlgItem(hwndDlg, s_unitFlagChecks[i].ctrlId);
+        if (c) EnableWindow(c, !disabled);
+        if (disabled)
+          CheckDlgButton(hwndDlg, s_unitFlagChecks[i].ctrlId, BST_UNCHECKED);
+      }
       ShowWindow(GetDlgItem(hwndDlg, IDC_COMBO2), disabled ? SW_HIDE : SW_SHOW);
       ShowWindow(GetDlgItem(hwndDlg, IDC_COMBO3), disabled ? SW_HIDE : SW_SHOW);
       if (!disabled) {
@@ -355,12 +395,8 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
       saveUnitFromDialog(hwndDlg, cfg, cur);
 
       cfg->flags = 0;
-      if (IsDlgButtonChecked(hwndDlg, IDC_FAKE_TOUCH))
-        cfg->flags |= CONFIG_FLAG_FADER_TOUCH_FAKE;
       if (IsDlgButtonChecked(hwndDlg, IDC_CHECK2))
         cfg->flags |= CONFIG_FLAG_SWAPZOOM;
-      if (IsDlgButtonChecked(hwndDlg, IDC_EMULATE_BLINKING))
-        cfg->flags |= CONFIG_FLAG_EMULATING_BLINKING;
       if (IsDlgButtonChecked(hwndDlg, IDC_KEYBOARD_MODIFIER))
         cfg->flags |= CONFIG_FLAG_KEYBOARD_MODIFIER;
 

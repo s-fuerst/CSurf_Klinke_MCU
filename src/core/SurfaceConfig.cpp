@@ -26,6 +26,16 @@ static const char *s_typeTokens[] = {
 // read only for migration; ProX is now represented solely by UnitConfig::model.
 static const int kLegacyProXConfigBit = 16;
 
+// Legacy global bits for options that are now per-unit. Read for migration
+// only; never re-emitted (see stripLegacyGlobalBits()).
+static const int kLegacyFakeTouchConfigBit = 1; // was CONFIG_FLAG_FADER_TOUCH_FAKE
+static const int kLegacyBlinkConfigBit = 4;     // was CONFIG_FLAG_EMULATING_BLINKING
+
+static int stripLegacyGlobalBits(int flags) {
+  return flags & ~(kLegacyProXConfigBit | kLegacyFakeTouchConfigBit |
+                   kLegacyBlinkConfigBit);
+}
+
 const char *unitTypeToken(const UnitConfig &cfg) {
   // Disabled: both MIDI devices are -1 and not a main unit
   if (cfg.midiInDev == -1 && cfg.midiOutDev == -1 && !cfg.isMain)
@@ -36,10 +46,12 @@ const char *unitTypeToken(const UnitConfig &cfg) {
     return (cfg.model == QConProX) ? s_typeTokens[3] : s_typeTokens[1];
 }
 
-UnitConfig unitConfigFromType(int typeIndex, int midiIn, int midiOut) {
+UnitConfig unitConfigFromType(int typeIndex, int midiIn, int midiOut,
+                              int unitFlags) {
   UnitConfig cfg;
   cfg.midiInDev = midiIn;
   cfg.midiOutDev = midiOut;
+  cfg.unitFlags = unitFlags;
   switch (typeIndex) {
     case UNIT_TYPE_MACKIE_MAIN: cfg.isMain = true;  cfg.model = Mackie;   break;
     case UNIT_TYPE_MACKIE_EXT:  cfg.isMain = false; cfg.model = Mackie;   break;
@@ -158,7 +170,8 @@ static SurfaceConfig parseKlinke2(const std::vector<std::string> &tokens) {
       return makeFailedConfig();
 
     std::vector<std::string> parts = splitComma(tokens[tokIdx]);
-    if (parts.size() != 3)
+    // 3 fields: pre-per-unit-flags format. 4 fields: current format.
+    if (parts.size() != 3 && parts.size() != 4)
       return makeFailedConfig();
 
     int inDev = atoi(parts[0].c_str());
@@ -170,7 +183,22 @@ static SurfaceConfig parseKlinke2(const std::vector<std::string> &tokens) {
       typeIdx = UNIT_TYPE_DISABLED;
     }
 
-    cfg.units[i] = unitConfigFromType(typeIdx, inDev, outDev);
+    int unitFlags = (parts.size() == 4) ? atoi(parts[3].c_str()) : 0;
+
+    cfg.units[i] = unitConfigFromType(typeIdx, inDev, outDev, unitFlags);
+  }
+
+  // Migration: older configs stored fake-touch / blink-emulation globally.
+  // Move them onto every configured unit, then drop the global bits.
+  if (cfg.flags & (kLegacyFakeTouchConfigBit | kLegacyBlinkConfigBit)) {
+    int migrated = 0;
+    if (cfg.flags & kLegacyFakeTouchConfigBit)
+      migrated |= UNIT_FLAG_FADER_TOUCH_FAKE;
+    if (cfg.flags & kLegacyBlinkConfigBit)
+      migrated |= UNIT_FLAG_EMULATE_BLINKING;
+    for (int i = 0; i < MAX_SURFACE_UNITS; i++)
+      cfg.units[i].unitFlags |= migrated;
+    cfg.flags &= ~(kLegacyFakeTouchConfigBit | kLegacyBlinkConfigBit);
   }
 
   // Earlier KLINKE2 versions persisted the legacy ProX compatibility bit.
@@ -196,10 +224,15 @@ static SurfaceConfig parseLegacy(const std::vector<std::string> &tokens) {
 
   // Populate unit 1 from legacy params
   DeviceModel model = (parms[4] & kLegacyProXConfigBit) ? QConProX : Mackie;
+  int unitFlags = 0;
+  if (parms[4] & kLegacyFakeTouchConfigBit)
+    unitFlags |= UNIT_FLAG_FADER_TOUCH_FAKE;
+  if (parms[4] & kLegacyBlinkConfigBit)
+    unitFlags |= UNIT_FLAG_EMULATE_BLINKING;
   cfg.units[0] = unitConfigFromType(
       model == QConProX ? UNIT_TYPE_PROX_MAIN : UNIT_TYPE_MACKIE_MAIN,
-      parms[2], parms[3]);
-  cfg.flags = parms[4] & ~kLegacyProXConfigBit;
+      parms[2], parms[3], unitFlags);
+  cfg.flags = stripLegacyGlobalBits(parms[4]);
 
   // Units 2–8 stay at defaults (Disabled)
   // cfg.valid is true — no error for empty strings or simple digit strings
@@ -240,12 +273,13 @@ SurfaceConfig parseSurfaceConfig(const char *str) {
 std::string serializeSurfaceConfig(const SurfaceConfig &cfg) {
   char buf[1024];
   int pos = snprintf(buf, sizeof(buf), "KLINKE2 flags=%d",
-                     cfg.flags & ~kLegacyProXConfigBit);
+                     stripLegacyGlobalBits(cfg.flags));
   for (int i = 0; i < MAX_SURFACE_UNITS; i++) {
-    pos += snprintf(buf + pos, sizeof(buf) - pos, " %d,%d,%s",
+    pos += snprintf(buf + pos, sizeof(buf) - pos, " %d,%d,%s,%d",
                     cfg.units[i].midiInDev,
                     cfg.units[i].midiOutDev,
-                    unitTypeToken(cfg.units[i]));
+                    unitTypeToken(cfg.units[i]),
+                    cfg.units[i].unitFlags);
   }
   return std::string(buf);
 }

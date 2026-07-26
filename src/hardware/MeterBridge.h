@@ -25,6 +25,7 @@ protected:
                            double decay, int pin);
   virtual void updateMasterLEDs(CSurf_MCU *pMCU, double decay);
   void sendToHardware(CSurf_MCU *pMCU, int pos, short meter);
+  void showMeterOnDisplay(CSurf_MCU *pMCU, int channel, short meter);
 
   // strip-meter state dynamically sized (availableChannels() entries).
   // Master-meter state is separate (L/R, always 2 values, never indexed by strip pos).

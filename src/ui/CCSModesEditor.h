@@ -64,7 +64,7 @@ public:
   void removeComponent() {
     if (m_ppLastUsedComponent)
       safe_delete(*m_ppLastUsedComponent);
-    setContentComponent(NULL, false, false);
+    setContentNonOwned(NULL, false);
   }
 
   Component **getLastUsedComponent() { return m_ppLastUsedComponent; }

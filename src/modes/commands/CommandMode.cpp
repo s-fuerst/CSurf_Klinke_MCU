@@ -156,7 +156,7 @@ void CommandMode::activate() {
     md->switchToAll();
   else
     m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
-	m_pCCSManager->getDisplayHandler()->enableMCUMeter(false);
+	m_pCCSManager->getMCU()->enableMCUMeters(false);
 }
 
 // P1: persist config when leaving the mode (covers the mode-switch path and,

@@ -1309,10 +1309,23 @@ void CSurf_MCU::EmulateBlinkingLEDs(DWORD now) {
 }
 
 bool CSurf_MCU::anyUnitNeedsBlinkEmulation() const {
-  if (IsFlagSet(CONFIG_FLAG_EMULATING_BLINKING))
-    return true;
   for (size_t i = 0; i < m_units.size(); i++)
-    if (m_units[i]->isProX())
+    if (m_units[i]->needsBlinkEmulation())
+      return true;
+  return false;
+}
+
+bool CSurf_MCU::fakeFaderTouch(int globalChannel) const {
+  // channel 0 is the logical master fader — attribute it to the first unit.
+  const HardwareUnit *u = (globalChannel <= 0)
+                              ? (m_units.empty() ? NULL : m_units[0])
+                              : unitForChannel(globalChannel);
+  return u ? u->fakeFaderTouch() : false;
+}
+
+bool CSurf_MCU::anyUnitFakeFaderTouch() const {
+  for (size_t i = 0; i < m_units.size(); i++)
+    if (m_units[i]->fakeFaderTouch())
       return true;
   return false;
 }
@@ -1593,6 +1606,19 @@ void CSurf_MCU::sendStripMeter(int globalChannel, short meter) {
   if (!u) return;
   int local = (globalChannel - 1) % 8;
   u->sendMidi(0xD0, (local << 4) | meter, 0, -1);
+}
+
+void CSurf_MCU::enableMCUMeters(bool enable) {
+  for (size_t i = 0; i < m_units.size(); i++)
+    m_units[i]->displayHandler()->enableMCUMeter(enable);
+}
+
+void CSurf_MCU::enableMCUMeters(bool enable, bool excludeProX) {
+  for (size_t i = 0; i < m_units.size(); i++) {
+    if (excludeProX && m_units[i]->isProX())
+      continue;
+    m_units[i]->displayHandler()->enableMCUMeter(enable);
+  }
 }
 
 void CSurf_MCU::sendMasterMetersToProXUnits(short left, short right) {
