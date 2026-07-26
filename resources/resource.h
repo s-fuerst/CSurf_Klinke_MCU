@@ -1,6 +1,6 @@
 /**
-* Copyright (C) 2009-2012 Steffen Fuerst 
-* Distributed under the GNU GPL v2. For full terms see the file gplv2.txt.
+* Copyright (C) 2009-2026 Steffen Fuerst
+* Distributed under the GNU GPL v3. 
 */
 
 //{{NO_DEPENDENCIES}}
@@ -30,6 +30,10 @@
 // WP-B: unit selector + per-unit type combo
 #define IDC_UNIT_SELECT                 1200
 #define IDC_UNIT_TYPE                   1201
+#define IDC_UNIT_LABEL                  1202
+#define IDC_UNIT_TYPE_LABEL             1203
+#define IDC_MIDI_INPUT_LABEL            1204
+#define IDC_MIDI_OUTPUT_LABEL           1205
 
 // Next default values for new objects
 // 

@@ -134,91 +134,134 @@ createFunc(const char *type_string, const char *configString, int *errStats) {
 
 // --- layout ---
 
-static void layoutDlgControls(HWND hwndDlg) {
-  RECT cr;
-  GetClientRect(hwndDlg, &cr);
-  int W = cr.right, H = cr.bottom;
-  if (W < 40 || H < 40) return;
+enum LayoutAnchor {
+  LAYOUT_FIXED = 0,
+  LAYOUT_STRETCH_RIGHT = 1,
+  LAYOUT_MOVE_RIGHT = 2,
+  LAYOUT_MOVE_DOWN = 4
+};
 
-  auto move = [&](int id, int x, int y, int w, int h) {
-    HWND c = GetDlgItem(hwndDlg, id);
-    if (c) SetWindowPos(c, NULL, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
-  };
+struct LayoutControl {
+  int id;
+  int anchors;
+};
 
-  auto nthStatic = [&](int n) -> HWND {
-    int count = 0;
-    HWND ch = GetWindow(hwndDlg, GW_CHILD);
-    while (ch) {
-      if (GetWindowLong(ch, GWL_ID) == 0 && count++ == n) return ch;
-      ch = GetWindow(ch, GW_HWNDNEXT);
+static const LayoutControl s_layoutControls[] = {
+  { IDC_UNIT_LABEL,        LAYOUT_FIXED },
+  { IDC_UNIT_SELECT,       LAYOUT_FIXED },
+  { IDC_UNIT_TYPE_LABEL,   LAYOUT_FIXED },
+  { IDC_UNIT_TYPE,         LAYOUT_STRETCH_RIGHT },
+  { IDC_MIDI_INPUT_LABEL,  LAYOUT_FIXED },
+  { IDC_COMBO2,            LAYOUT_STRETCH_RIGHT },
+  { IDC_MIDI_OUTPUT_LABEL, LAYOUT_FIXED },
+  { IDC_COMBO3,            LAYOUT_STRETCH_RIGHT },
+  { IDC_EMULATE_BLINKING,  LAYOUT_STRETCH_RIGHT },
+  { IDC_KEYBOARD_MODIFIER, LAYOUT_STRETCH_RIGHT },
+  { IDC_FAKE_TOUCH,        LAYOUT_STRETCH_RIGHT },
+  { IDC_CHECK2,            LAYOUT_STRETCH_RIGHT },
+  { BTN_OPEN_MANUAL,       LAYOUT_MOVE_RIGHT | LAYOUT_MOVE_DOWN },
+  { BTN_DONATE,            LAYOUT_MOVE_RIGHT | LAYOUT_MOVE_DOWN }
+};
+
+static const int s_layoutControlCount =
+    sizeof(s_layoutControls) / sizeof(s_layoutControls[0]);
+
+struct DialogState {
+  explicit DialogState(const char *configString)
+      : config(parseSurfaceConfig(configString)), currentUnit(0),
+        layoutCaptured(false), initialWidth(0), initialHeight(0) {}
+
+  SurfaceConfig config;
+  int currentUnit;
+  bool layoutCaptured;
+  int initialWidth;
+  int initialHeight;
+  RECT initialRects[s_layoutControlCount];
+};
+
+static DialogState *getDialogState(HWND hwndDlg) {
+  return (DialogState *)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
+}
+
+static RECT controlRectInDialog(HWND hwndDlg, HWND control) {
+  RECT rect;
+  GetWindowRect(control, &rect);
+  ScreenToClient(hwndDlg, (POINT *)&rect);
+  ScreenToClient(hwndDlg, ((POINT *)&rect) + 1);
+
+  RECT normalized;
+  normalized.left = rect.left < rect.right ? rect.left : rect.right;
+  normalized.right = rect.left < rect.right ? rect.right : rect.left;
+  normalized.top = rect.top < rect.bottom ? rect.top : rect.bottom;
+  normalized.bottom = rect.top < rect.bottom ? rect.bottom : rect.top;
+  return normalized;
+}
+
+static void captureDialogLayout(HWND hwndDlg, DialogState *state) {
+  RECT client;
+  GetClientRect(hwndDlg, &client);
+  state->initialWidth = client.right - client.left;
+  state->initialHeight = client.bottom - client.top;
+
+  for (int i = 0; i < s_layoutControlCount; i++) {
+    HWND control = GetDlgItem(hwndDlg, s_layoutControls[i].id);
+    if (control)
+      state->initialRects[i] = controlRectInDialog(hwndDlg, control);
+    else {
+      state->initialRects[i].left = 0;
+      state->initialRects[i].top = 0;
+      state->initialRects[i].right = 0;
+      state->initialRects[i].bottom = 0;
     }
-    return NULL;
-  };
+  }
+  state->layoutCaptured = true;
+}
 
-  const int mx = 8, gap = 4;
-  const int rowH = 22, comboH = 20, lblH = 18;
-  int y = mx;
+static void layoutDlgControls(HWND hwndDlg, DialogState *state) {
+  if (!state || !state->layoutCaptured)
+    return;
 
-  // Row 0: Unit selector + Type combo. Keep explicit columns; SWELL can make
-  // expanding controls overlap adjacent labels in this compact dialog.
-  const int unitLabelX = mx;
-  const int unitLabelW = 30;
-  const int unitComboX = 42;
-  const int unitComboW = 64;
-  const int typeLabelX = 118;
-  const int typeLabelW = 32;
-  const int typeComboX = 156;
-  const int typeComboW = 200;
-  HWND lblUnit = nthStatic(0);
-  if (lblUnit) SetWindowPos(lblUnit, NULL, unitLabelX, y + 3, unitLabelW, lblH, SWP_NOZORDER | SWP_NOACTIVATE);
-  move(IDC_UNIT_SELECT, unitComboX, y + 2, unitComboW, comboH);
-  HWND lblType = nthStatic(1);
-  if (lblType) SetWindowPos(lblType, NULL, typeLabelX, y + 3, typeLabelW, lblH, SWP_NOZORDER | SWP_NOACTIVATE);
-  move(IDC_UNIT_TYPE, typeComboX, y + 2, typeComboW, comboH);
-  y += rowH + gap;
+  RECT client;
+  GetClientRect(hwndDlg, &client);
+  int dx = (client.right - client.left) - state->initialWidth;
+  int dy = (client.bottom - client.top) - state->initialHeight;
 
-  // Row 1+2: MIDI input / output
-  const int midiLabelX = mx;
-  const int midiLabelW = 86;
-  const int midiComboX = 100;
-  const int midiComboW = 400;
-  HWND lblIn = nthStatic(2);
-  if (lblIn) SetWindowPos(lblIn, NULL, midiLabelX, y + 3, midiLabelW, lblH, SWP_NOZORDER | SWP_NOACTIVATE);
-  move(IDC_COMBO2, midiComboX, y + 2, midiComboW, comboH);
-  y += rowH + gap;
+  for (int i = 0; i < s_layoutControlCount; i++) {
+    const RECT &initial = state->initialRects[i];
+    if (initial.right <= initial.left || initial.bottom <= initial.top)
+      continue;
 
-  HWND lblOut = nthStatic(3);
-  if (lblOut) SetWindowPos(lblOut, NULL, midiLabelX, y + 3, midiLabelW, lblH, SWP_NOZORDER | SWP_NOACTIVATE);
-  move(IDC_COMBO3, midiComboX, y + 2, midiComboW, comboH);
-  y += rowH + gap + gap;
+    int x = initial.left;
+    int y = initial.top;
+    int width = initial.right - initial.left;
+    int height = initial.bottom - initial.top;
+    int anchors = s_layoutControls[i].anchors;
 
-  // Checkboxes
-  int chkW = W - 2 * mx;
-  int checkH = 16;
-  move(IDC_EMULATE_BLINKING,  mx, y, chkW, checkH); y += checkH;
-  move(IDC_KEYBOARD_MODIFIER, mx, y, chkW, checkH); y += checkH;
-  move(IDC_FAKE_TOUCH,        mx, y, chkW, checkH); y += checkH;
-  move(IDC_CHECK2,            mx, y, W / 2, checkH);
+    if (anchors & LAYOUT_STRETCH_RIGHT)
+      width = width + dx > 40 ? width + dx : 40;
+    if (anchors & LAYOUT_MOVE_RIGHT)
+      x += dx;
+    if (anchors & LAYOUT_MOVE_DOWN)
+      y += dy;
 
-  // Buttons at bottom
-  int btnW = 90, btnH = 20;
-  move(BTN_OPEN_MANUAL, W - 2 * (btnW + gap), H - btnH - mx, btnW, btnH);
-  move(BTN_DONATE,      W - (btnW + mx),       H - btnH - mx, btnW, btnH);
+    HWND control = GetDlgItem(hwndDlg, s_layoutControls[i].id);
+    if (control)
+      SetWindowPos(control, NULL, x, y, width, height,
+                   SWP_NOZORDER | SWP_NOACTIVATE);
+  }
 
   InvalidateRect(hwndDlg, NULL, TRUE);
 }
 
 // --- dialog procedure ---
 
-static int s_dlgCurrentUnit = 0;
-
 static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
                           LPARAM lParam) {
   switch (uMsg) {
   case WM_INITDIALOG: {
-    SurfaceConfig *cfg = new SurfaceConfig(parseSurfaceConfig((const char *)lParam));
-    SetWindowLongPtr(hwndDlg, GWLP_USERDATA, (LONG_PTR)cfg);
-    s_dlgCurrentUnit = 0;
+    DialogState *state = new DialogState((const char *)lParam);
+    SurfaceConfig *cfg = &state->config;
+    SetWindowLongPtr(hwndDlg, GWLP_USERDATA, (LONG_PTR)state);
 
     int nIn = GetNumMIDIInputs();
     int nOut = GetNumMIDIOutputs();
@@ -245,24 +288,18 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
     if (cfg->flags & CONFIG_FLAG_KEYBOARD_MODIFIER)
       CheckDlgButton(hwndDlg, IDC_KEYBOARD_MODIFIER, BST_CHECKED);
 
-    RECT rc;
-    GetClientRect(hwndDlg, &rc);
-    if (rc.right < 268 || rc.bottom < 114) {
-      SetWindowPos(hwndDlg, NULL, 0, 0, 268, 130, SWP_NOMOVE | SWP_NOZORDER);
-    }
-
-    layoutDlgControls(hwndDlg);
+    captureDialogLayout(hwndDlg, state);
   } break;
 
   case WM_COMMAND: {
     if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == IDC_UNIT_SELECT) {
-      SurfaceConfig *cfg = (SurfaceConfig *)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
-      if (cfg) {
+      DialogState *state = getDialogState(hwndDlg);
+      if (state) {
         int nIn = GetNumMIDIInputs();
         int nOut = GetNumMIDIOutputs();
-        saveUnitFromDialog(hwndDlg, cfg, s_dlgCurrentUnit);
-        s_dlgCurrentUnit = currentUnitIndex(hwndDlg);
-        loadUnitIntoDialog(hwndDlg, cfg, s_dlgCurrentUnit, nIn, nOut);
+        saveUnitFromDialog(hwndDlg, &state->config, state->currentUnit);
+        state->currentUnit = currentUnitIndex(hwndDlg);
+        loadUnitIntoDialog(hwndDlg, &state->config, state->currentUnit, nIn, nOut);
       }
     }
     if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == IDC_UNIT_TYPE) {
@@ -274,11 +311,11 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
       ShowWindow(GetDlgItem(hwndDlg, IDC_COMBO2), disabled ? SW_HIDE : SW_SHOW);
       ShowWindow(GetDlgItem(hwndDlg, IDC_COMBO3), disabled ? SW_HIDE : SW_SHOW);
       if (!disabled) {
-        SurfaceConfig *cfg = (SurfaceConfig *)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
-        if (cfg) {
+        DialogState *state = getDialogState(hwndDlg);
+        if (state) {
           int nIn = GetNumMIDIInputs();
           int nOut = GetNumMIDIOutputs();
-          const UnitConfig &u = cfg->units[s_dlgCurrentUnit];
+          const UnitConfig &u = state->config.units[state->currentUnit];
           HWND inCb = GetDlgItem(hwndDlg, IDC_COMBO2);
           SendMessage(inCb, CB_RESETCONTENT, 0, 0);
           populateMidiCombo(inCb, nIn, GetMIDIInputName, u.midiInDev);
@@ -305,13 +342,14 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
   } break;
 
   case WM_SIZE:
-    layoutDlgControls(hwndDlg);
+    layoutDlgControls(hwndDlg, getDialogState(hwndDlg));
     break;
 
   case WM_USER + 1024: {
     if (wParam > 1 && lParam) {
-      SurfaceConfig *cfg = (SurfaceConfig *)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
-      if (!cfg) break;
+      DialogState *state = getDialogState(hwndDlg);
+      if (!state) break;
+      SurfaceConfig *cfg = &state->config;
 
       int cur = currentUnitIndex(hwndDlg);
       saveUnitFromDialog(hwndDlg, cfg, cur);
@@ -340,14 +378,14 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
       std::string s = serializeSurfaceConfig(*cfg);
       lstrcpyn((char *)lParam, s.c_str(), (int)wParam);
 
-      delete cfg;
+      delete state;
       SetWindowLongPtr(hwndDlg, GWLP_USERDATA, 0);
     }
   } break;
 
   case WM_DESTROY: {
-    SurfaceConfig *cfg = (SurfaceConfig *)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
-    delete cfg;
+    DialogState *state = getDialogState(hwndDlg);
+    delete state;
     SetWindowLongPtr(hwndDlg, GWLP_USERDATA, 0);
   } break;
   }

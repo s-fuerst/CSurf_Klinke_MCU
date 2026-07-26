@@ -400,10 +400,6 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
 };
 
 #ifndef _WIN32 // MAC resources
-#include "swell-dlggen.h"
-#include "res.rc_mac_dlg"
-#undef BEGIN
-#undef END
 #include "swell-menugen.h"
 #include "res.rc_mac_menu"
 #endif

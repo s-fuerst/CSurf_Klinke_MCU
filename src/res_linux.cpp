@@ -3,8 +3,8 @@
  * Distributed under the GNU GPL v3. For full terms see the file gplv3.txt.
  */
 
-// SWELL dialog resource definitions for Linux
-// Generated from res.rc via swell_resgen.pl, included here for Linux builds.
+// SWELL dialog resource definitions for Linux and macOS.
+// Generated from res.rc via swell_resgen.pl and compiled exactly once.
 #include "resource.h"
 #include "swell.h"
 #include "swell-dlggen.h"
