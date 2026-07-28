@@ -87,9 +87,9 @@ struct ScheduledAction {
   ScheduleFunc func;
 };
 
-// Global config flags. Bit 1 (fake fader touch), bit 4 (emulate blinking LEDs)
-// and bit 16 (ProX) are LEGACY and are now per-unit (see UNIT_FLAG_* in
-// HardwareUnit.h); do not reuse those bit values.
+// Global config flags. Bit 1 (formerly fake fader touch — removed), bit 4
+// (emulate blinking LEDs) and bit 16 (ProX) are LEGACY and are now per-unit
+// (see UNIT_FLAG_* in HardwareUnit.h); do not reuse those bit values.
 #define CONFIG_FLAG_SWAPZOOM 2
 #define CONFIG_FLAG_KEYBOARD_MODIFIER 8
 #define CONFIG_FLAG_STARTGLOBALVIEW 32
@@ -395,9 +395,6 @@ public:
   void EmulateBlinkingLEDs(DWORD now);
   bool anyUnitNeedsBlinkEmulation() const;
 
-  // per-unit "fake fader touch" option; channel 0 (master) uses unit 1.
-  bool fakeFaderTouch(int globalChannel) const;
-  bool anyUnitFakeFaderTouch() const;
 
   void UpdateAutoModes();
   void UpdateGlobalSoloLED();

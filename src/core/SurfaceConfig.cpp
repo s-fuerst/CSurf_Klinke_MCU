@@ -28,12 +28,11 @@ static const int kLegacyProXConfigBit = 16;
 
 // Legacy global bits for options that are now per-unit. Read for migration
 // only; never re-emitted (see stripLegacyGlobalBits()).
-static const int kLegacyFakeTouchConfigBit = 1; // was CONFIG_FLAG_FADER_TOUCH_FAKE
 static const int kLegacyBlinkConfigBit = 4;     // was CONFIG_FLAG_EMULATING_BLINKING
 
 static int stripLegacyGlobalBits(int flags) {
-  return flags & ~(kLegacyProXConfigBit | kLegacyFakeTouchConfigBit |
-                   kLegacyBlinkConfigBit);
+  // Also strips bit 1 (formerly CONFIG_FLAG_FADER_TOUCH_FAKE — removed feature).
+  return flags & ~(kLegacyProXConfigBit | 1 | kLegacyBlinkConfigBit);
 }
 
 const char *unitTypeToken(const UnitConfig &cfg) {
@@ -188,18 +187,18 @@ static SurfaceConfig parseKlinke2(const std::vector<std::string> &tokens) {
     cfg.units[i] = unitConfigFromType(typeIdx, inDev, outDev, unitFlags);
   }
 
-  // Migration: older configs stored fake-touch / blink-emulation globally.
-  // Move them onto every configured unit, then drop the global bits.
-  if (cfg.flags & (kLegacyFakeTouchConfigBit | kLegacyBlinkConfigBit)) {
-    int migrated = 0;
-    if (cfg.flags & kLegacyFakeTouchConfigBit)
-      migrated |= UNIT_FLAG_FADER_TOUCH_FAKE;
-    if (cfg.flags & kLegacyBlinkConfigBit)
-      migrated |= UNIT_FLAG_EMULATE_BLINKING;
+  // Migration: older configs stored blink-emulation globally.
+  // Move it onto every configured unit, then drop the global bit.
+  // Fake fader touch (bit 1) was removed entirely — it is silently dropped.
+  if (cfg.flags & kLegacyBlinkConfigBit) {
+    int migrated = UNIT_FLAG_EMULATE_BLINKING;
     for (int i = 0; i < MAX_SURFACE_UNITS; i++)
       cfg.units[i].unitFlags |= migrated;
-    cfg.flags &= ~(kLegacyFakeTouchConfigBit | kLegacyBlinkConfigBit);
+    cfg.flags &= ~kLegacyBlinkConfigBit;
   }
+  // Strip removed UNIT_FLAG_FADER_TOUCH_FAKE (bit 0) from all unitFlags.
+  for (int i = 0; i < MAX_SURFACE_UNITS; i++)
+    cfg.units[i].unitFlags &= ~1;
 
   // Earlier KLINKE2 versions persisted the legacy ProX compatibility bit.
   // It has no meaning now that every unit carries its own device model.
@@ -225,8 +224,7 @@ static SurfaceConfig parseLegacy(const std::vector<std::string> &tokens) {
   // Populate unit 1 from legacy params
   DeviceModel model = (parms[4] & kLegacyProXConfigBit) ? QConProX : Mackie;
   int unitFlags = 0;
-  if (parms[4] & kLegacyFakeTouchConfigBit)
-    unitFlags |= UNIT_FLAG_FADER_TOUCH_FAKE;
+  // Fake fader touch (bit 1) was removed — silently dropped.
   if (parms[4] & kLegacyBlinkConfigBit)
     unitFlags |= UNIT_FLAG_EMULATE_BLINKING;
   cfg.units[0] = unitConfigFromType(

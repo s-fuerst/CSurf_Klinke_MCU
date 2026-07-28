@@ -47,7 +47,6 @@ CCSManager::CCSManager(CSurf_MCU *pMCU) {
   m_pVPOTS = new VPOT_LED[nCh];
   m_faderTouched = new bool[nCh];
   m_vpotTouched = new bool[nCh];
-  m_faderTouchedTill = new DWORD[nCh];
   m_vpotTouchedTill = new DWORD[nCh];
   for (int i = 0; i < nCh; i++) {
     // VPOT 0 (unused master slot) has no owning unit.
@@ -56,7 +55,6 @@ CCSManager::CCSManager(CSurf_MCU *pMCU) {
     m_pVPOTS[i].init(getMCU(), i, isProX);
     m_faderTouched[i] = false;
     m_vpotTouchedTill[i] = 0;
-    m_faderTouchedTill[i] = 0;
     m_vpotTouched[i] = false;
   }
   m_stateFlip = LED_UNKNOWN;
@@ -83,7 +81,6 @@ CCSManager::~CCSManager(void) {
   safe_delete_array(m_pVPOTS);
   safe_delete_array(m_faderTouched);
   safe_delete_array(m_vpotTouched);
-  safe_delete_array(m_faderTouchedTill);
   safe_delete_array(m_vpotTouchedTill);
   m_pActualMode = NULL;
 }
@@ -308,13 +305,6 @@ bool CCSManager::fader(int channel, int value) {
   ASSERT(channel >= 0 && channel <= m_pMCU->availableChannels());
   m_switchBack = true;
 
-  // per-unit option (the unit owning this channel)
-  if (m_pMCU->fakeFaderTouch(channel)) {
-    m_faderTouchedTill[channel] = m_lastTime + TOUCHED_MS;
-    elementTouched(FADER, channel, true);
-    m_pActualMode->faderTouched(channel, true);
-  }
-
   return m_pActualMode->fader(channel, value);
 }
 
@@ -322,11 +312,6 @@ bool CCSManager::faderTouched(int channel, bool touched) {
   if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
   ASSERT(channel >= 0 && channel <= m_pMCU->availableChannels());
   m_switchBack = true;
-
-  // per-unit option: units with fake touch ignore real touch messages
-  if (m_pMCU->fakeFaderTouch(channel)) {
-    return true;
-  }
 
   elementTouched(FADER, channel, touched);
   return m_pActualMode->faderTouched(channel, touched);
@@ -694,16 +679,6 @@ void CCSManager::frameUpdate(DWORD time) {
     if (m_vpotTouchedTill[i] > 0 && time > m_vpotTouchedTill[i]) {
       elementTouched(VPOT, i, false);
       m_vpotTouchedTill[i] = 0;
-    }
-  }
-
-  if (m_pMCU->anyUnitFakeFaderTouch()) {
-    for (int i = 0; i <= m_pMCU->availableChannels(); i++) {
-      if (m_faderTouchedTill[i] > 0 && time > m_faderTouchedTill[i]) {
-        elementTouched(FADER, i, false);
-        m_faderTouchedTill[i] = 0;
-        m_pActualMode->faderTouched(i, false);
-      }
     }
   }
 

@@ -1315,21 +1315,6 @@ bool CSurf_MCU::anyUnitNeedsBlinkEmulation() const {
   return false;
 }
 
-bool CSurf_MCU::fakeFaderTouch(int globalChannel) const {
-  // channel 0 is the logical master fader — attribute it to the first unit.
-  const HardwareUnit *u = (globalChannel <= 0)
-                              ? (m_units.empty() ? NULL : m_units[0])
-                              : unitForChannel(globalChannel);
-  return u ? u->fakeFaderTouch() : false;
-}
-
-bool CSurf_MCU::anyUnitFakeFaderTouch() const {
-  for (size_t i = 0; i < m_units.size(); i++)
-    if (m_units[i]->fakeFaderTouch())
-      return true;
-  return false;
-}
-
 
 void CSurf_MCU::SetTrackListChange() {
   //  ProjectConfig::instance()->checkReaProjectChange();

@@ -454,6 +454,14 @@ callers that a single-file read misses.
   a real Reaper performance readout (CPU/disk meter, etc. on the MCU
   display). Leave the stub in place; do not remove it or wire up a trivial
   activation that would just show the placeholder text.
+- **Pan-Mode VPot press should reset panorama to center.** Currently
+  pressing a VPot in Pan-Mode has no defined behaviour. It should reset
+  that channel's panorama to center (0). Low-hanging fruit for a future
+  PR.
+- **Leak detection:** Run a leak detection pass (valgrind / AddressSanitizer)
+  before the first release to identify and fix any memory leaks. Bitbucket
+  issue #27 reported a leak detector warning on Reaper close; the
+  CCSModesEditor destructor crash (#50) may also be leak-related.
 
 ## 7. References
 - **Reaper Extension / csurf SDK** — https://github.com/justinfrankel/reaper-sdk

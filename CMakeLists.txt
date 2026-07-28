@@ -209,12 +209,12 @@ if(UNIX AND NOT APPLE)
     target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE
         SWELL_LOAD_SWELL_DYLIB   # bind SWELL from REAPER's libSwell.so at load
         # res.rc_mac_dlg auto-generates FLIPPED|NOAUTOSIZE dialog flags that yield a
-        # 0x0 dialog on Linux. Override to a plain WS_CHILD style (=1) at scale 1.0.
+        # 0x0 dialog on Linux. Override them with a plain WS_CHILD style (=1).
+        # Leave the scale unspecified so SWELL's generic Linux backend applies its
+        # standard 1.9 dialog scale; at 1.0 the native controls are too cramped.
         "SET_IDD_SURFACEEDIT_MCUMAIN_STYLE=1"
         "SET_IDD_SURFACEEDIT_MCUEX_STYLE=1"
-        "SET_IDD_SURFACEEDIT_MCUMAIN_SCALE=1.0"
-        "SET_IDD_SURFACEEDIT_MCUEX_SCALE=1.0"
-        "SWELL_DLG_WS_DEFAULT_SCALING=0")  # macOS macro; 0 so _BEGIN compiles
+        )
     target_compile_options(reaper_csurf_mcu_klinke PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-std=c++17> -fPIC -fvisibility=hidden
         $<$<COMPILE_LANGUAGE:CXX>:-fpermissive>

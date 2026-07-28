@@ -21,7 +21,6 @@
 #define IDC_EMULATE_BLINKING            1009
 #define IDC_KEYBOARD_MODIFIER           1010
 #define BTN_OPEN_MANUAL                 1020
-#define IDC_FAKE_TOUCH                  1011
 #define IDC_PROX                        1012
 #define IDC_EDIT1_LBL                   1276
 #define IDC_EDIT2_LBL                   1277
@@ -35,7 +34,7 @@
 #define IDC_MIDI_INPUT_LABEL            1204
 #define IDC_MIDI_OUTPUT_LABEL           1205
 
-// per-unit options + grouping (fake touch / blink emulation moved from global)
+// per-unit options + grouping (blink emulation moved from global)
 #define IDC_UNIT_GROUP                  1206
 #define IDC_GLOBAL_GROUP                1207
 #define IDC_METERS_ON_DISPLAY           1208

@@ -169,7 +169,6 @@ private:
 
   // dynamically sized to availableChannels()+1 (0=master, 1..N*8 strips)
   bool *m_faderTouched;
-  DWORD *m_faderTouchedTill;
   bool *m_vpotTouched;
   DWORD *m_vpotTouchedTill;
   DWORD m_lastTime;

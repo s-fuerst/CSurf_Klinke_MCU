@@ -80,9 +80,8 @@ BEGIN
     COMBOBOX        IDC_COMBO3,74,56,182,14,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     CONTROL         "Icon QCon Pro X support",IDC_PROX,"Button",BS_AUTOCHECKBOX,12,72,120,10
     CONTROL         "Emulate blinking LEDs",IDC_EMULATE_BLINKING,"Button",BS_AUTOCHECKBOX,12,72,125,10
-    CONTROL         "Fake fader touch",IDC_FAKE_TOUCH,"Button",BS_AUTOCHECKBOX,140,72,120,10
     CONTROL         "Emulate level meters",IDC_METERS_ON_DISPLAY,"Button",BS_AUTOCHECKBOX,12,84,125,10
-    CONTROL         "Switch 1st and 2nd row",IDC_SWITCH_ROWS,"Button",BS_AUTOCHECKBOX,140,84,120,10
+    CONTROL         "Switch 1st and 2nd row",IDC_SWITCH_ROWS,"Button",BS_AUTOCHECKBOX,140,72,120,10
     GROUPBOX        "Global settings (all units)",IDC_GLOBAL_GROUP,4,112,260,34
     CONTROL         "Use keyboard modifier (right Alt substitute the OPTION button)",IDC_KEYBOARD_MODIFIER,
                     "Button",BS_AUTOCHECKBOX,12,124,244,10
@@ -131,4 +130,3 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED
-

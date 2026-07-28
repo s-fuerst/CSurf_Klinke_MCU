@@ -25,8 +25,8 @@ class CSurf_MCU;
 enum DeviceModel { Mackie, QConProX };
 
 // Per-unit option bits (persisted in the KLINKE2 config string as the 4th
-// field of every unit entry). These used to be global CONFIG_FLAG_* bits.
-#define UNIT_FLAG_FADER_TOUCH_FAKE 1
+// field of every unit entry).
+// Bit 0 (value 1) was UNIT_FLAG_FADER_TOUCH_FAKE — removed; do not reuse.
 #define UNIT_FLAG_EMULATE_BLINKING 2
 #define UNIT_FLAG_METERS_ON_DISPLAY 4
 #define UNIT_FLAG_SWITCH_ROWS 8
@@ -74,7 +74,6 @@ public:
 
   // --- per-unit options (were global CONFIG_FLAG_* bits) ---
   bool unitFlagSet(int flag) const { return (m_cfg.unitFlags & flag) != 0; }
-  bool fakeFaderTouch() const { return unitFlagSet(UNIT_FLAG_FADER_TOUCH_FAKE); }
   bool metersOnDisplay() const { return unitFlagSet(UNIT_FLAG_METERS_ON_DISPLAY); }
   bool switchRows() const { return unitFlagSet(UNIT_FLAG_SWITCH_ROWS); }
   // ProX hardware always needs software blink emulation.
