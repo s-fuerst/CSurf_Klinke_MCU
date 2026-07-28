@@ -4,15 +4,12 @@
  *
  * On-screen editor for Channel Strip Mode. Opened via ALT+TRACK.
  *
- *   +--------------------------------------------------+
- *   | Unit: [combo 1..N]   Channel Strip editor        |
- *   +--------------------------------------------------+
- *   | # | Plugin | Abbrev | InsPos | Parameter          |  (16 rows)
- *   | ...                                              |
- *   +--------------------------------------------------+
+ * Purely global: manages the 16 global channel strips, independent of any
+ * track or unit. One table, one row per strip.
  *
- * Edits flow straight into the active unit's ChannelStripMap and notify the
- * mode so the hardware reflects them immediately.
+ *   +------------------------------------------------------+
+ *   | # | Plugin | Abbrev | InsPos | Parameter              | (16 rows = 16 strips)
+ *   +------------------------------------------------------+
  */
 #pragma once
 #include "JuceHeader.h"
@@ -20,19 +17,15 @@
 
 class ChannelStripMode;
 
-class ChannelStripComponent : public Component, public ComboBox::Listener {
+class ChannelStripComponent : public Component {
 public:
   ChannelStripComponent(ChannelStripMode *pMode);
   ~ChannelStripComponent();
 
   void resized() override;
-  void comboBoxChanged(ComboBox *combo) override;
-
   void updateEverything();
 
 private:
   ChannelStripMode *m_pMode;
-  Label *m_unitLabel;
-  ComboBox *m_unitCombo;
   ChannelStripBindingTable *m_table;
 };

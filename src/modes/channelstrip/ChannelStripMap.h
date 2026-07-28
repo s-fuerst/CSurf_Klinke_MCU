@@ -2,51 +2,88 @@
  * Copyright (C) 2009-2026 Steffen Fuerst
  * Distributed under the GNU GPL v3. For full terms see the file gplv3.txt.
  *
- * A Channel Strip Map — exactly 16 flat parameter bindings operated by the
- * 8 VPOTs of one unit (slots 1..8 normal, 9..16 with Shift).
+ * One Channel Strip — a single plugin plus the mapping of its parameters onto
+ * the 8 VPOTs (16 with Shift). One of 16 GLOBAL strips, shared across all
+ * Reaper projects and tracks (see ChannelStripMode). Each unit on each track
+ * is assigned one strip index; that unit's VPOTs then drive this strip.
  *
- * One map exists per (trackGUID, unitIndex); the per-track/per-unit storage is
- * handled by ChannelStripTrackState (Step E). A map can also be saved to /
- * loaded from a file (the editor's save/load, Step C9).
+ *   fxIdent    — EnumInstalledFX ident (e.g. "VST3:ReaEQ (Cockos)"), used to
+ *                find/add the plugin on a track.
+ *   fxGUID     — stringified TrackFX_GetFXGUID of the live instance (runtime).
+ *   shortName  — up to 5 chars shown on the MCU display.
+ *   insertPos  — where TrackFX_AddByName inserts the plugin ("+" flow).
+ *   vpotParam  — paramIndex (of this plugin) for each VPOT position 1..8 normal
+ *                and 9..16 with Shift. -1 = unbound.
  *
  * XML:
- *   <CHANNELSTRIPMAP creator="..." info="...">
- *     <SLOT nr="1" fxident="VST3:ReaEQ (Cockos)" fxguid="{..}" param="3" name="EQG1" inspos="last"/>
- *     ...up to 16...
- *   </CHANNELSTRIPMAP>
+ *   <STRIP nr="1" fxident="VST3:ReaEQ (Cockos)" fxguid="{..}" name="EQ" inspos="last">
+ *     <VPOT nr="1" param="3"/>
+ *     ...
+ *   </STRIP>
  */
 #pragma once
 #include "JuceHeader.h"
-#include "ChannelStripBinding.h"
-#include <vector>
+
+// shared XML tokens + insert-position helpers
+#define CSB_ATT_NR String("nr")
+#define CSB_ATT_FXIDENT String("fxident")
+#define CSB_ATT_FXGUID String("fxguid")
+#define CSB_ATT_NAME String("name")
+#define CSB_ATT_INSPOS String("inspos")
+#define CSB_ATT_PARAM String("param")
+#define CSB_INS_FIRST String("first")
+#define CSB_INS_LAST String("last")
 
 class ChannelStripMap {
 public:
-  static const int kNumSlots = 16; // 8 normal + 8 Shift
+  enum InsertPos {
+    FIRST = 0, // top of the chain
+    POS2, POS3, POS4, POS5, POS6, POS7, POS8,
+    LAST, // append at the end (resolved at add time)
+    INSERT_COUNT
+  };
+
+  static const int kNumVPOTs = 16; // VPOTs 1..8 normal, 9..16 with Shift
 
   ChannelStripMap();
-  ~ChannelStripMap();
+  ~ChannelStripMap() {}
 
   void initEmpty();
 
-  // slot index 0..15
-  ChannelStripBinding *getSlot(int i) { return &m_slots[i]; }
-  const ChannelStripBinding *getSlot(int i) const { return &m_slots[i]; }
+  bool isAssigned() const { return m_fxIdent.isNotEmpty(); }
+  bool isResolved() const { return m_fxGUID.isNotEmpty(); }
 
-  int numAssigned() const;
+  // --- the plugin ---
+  const String &getFxIdent() const { return m_fxIdent; }
+  void setFxIdent(const String &ident) { m_fxIdent = ident; }
+  const String &getFxGUID() const { return m_fxGUID; }
+  void setFxGUID(const String &guid) { m_fxGUID = guid; }
+  const String &getShortName() const { return m_shortName; }
+  void setShortName(const String &name) { m_shortName = name; }
+  InsertPos getInsertPos() const { return m_insertPos; }
+  void setInsertPos(InsertPos pos) { m_insertPos = pos; }
 
-  const String &getCreator() const { return m_creator; }
-  void setCreator(const String &creator) { m_creator = creator; }
-  const String &getInfo() const { return m_info; }
-  void setInfo(const String &info) { m_info = info; }
+  // --- VPOT → parameter mapping (position 0..15, i.e. VPOT 1..8 + 9..16 shift)
+  int getParamForVPOT(int position) const;        // -1 = unbound
+  void setParamForVPOT(int position, int paramIdx);
+  const String &getVPOTName(int position) const;
+  void setVPOTName(int position, const String &name);
+  int numBoundVPOTs() const;
 
-  // Writes into (or reads from) a parent element by adding/finding <SLOT>
-  // children. writeToXml adds a child per assigned slot.
-  void writeToXml(XmlElement *pParent) const;
-  bool readFromXml(const XmlElement *pParent);
+  // insert-pos helpers (shared with ChannelStripAccess)
+  int fixedChainPosition() const; // 1..8 or -1 for LAST
+  static InsertPos insertPosFromToken(const String &token);
+  static String tokenForInsertPos(InsertPos pos);
+
+  // --- XML ---
+  void writeToXml(XmlElement *pParent) const;   // adds a <STRIP> child
+  bool readFromXml(const XmlElement *pStrip);   // reads a <STRIP> element
 
 private:
-  std::vector<ChannelStripBinding> m_slots; // size kNumSlots
-  String m_creator;
-  String m_info;
+  String m_fxIdent;
+  String m_fxGUID;
+  String m_shortName;
+  InsertPos m_insertPos;
+  int m_vpotParam[kNumVPOTs]; // -1 = unbound
+  String m_vpotName[kNumVPOTs];
 };

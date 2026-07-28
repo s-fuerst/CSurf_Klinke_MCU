@@ -4,12 +4,19 @@
  *
  * Channel Strip Mode
  *
- * Exposes the most-used FX parameters of the selected track's FX chain as a
- * flat surface of 8 VPOTs (16 with Shift). See ai-docs/channelstrip-mode-plan.md.
+ * Exposes the most-used FX parameters of the selected track's FX chain on the
+ * 8 VPOTs (16 with Shift). See ai-docs/channelstrip-mode-plan.md.
  *
- * One ChannelStripMap (16 flat parameter bindings) per (trackGUID, unitIndex):
- *   slot 1..8  -> VPOTs 1..8 of the unit (normal)
- *   slot 9..16 -> VPOTs 1..8 of the unit (Shift held)
+ * Architecture:
+ *   • 16 GLOBAL Channel Strips (projektübergreifend). Each strip = one plugin +
+ *     its parameter→VPOT mapping (8 VPOTs + 8 with Shift).
+ *   • Per-(trackGUID, unitIndex): an assignment to one of the 16 strips
+ *     (–1 = none). Persisted in the project (Step E).
+ *   • A unit's 8 VPOTs drive the parameters of its assigned strip.
+ *
+ * The on-screen editor (ALT+TRACK) manages the 16 strips globally — it is
+ * independent of any track or unit. The per-track/unit assignment is a separate
+ * concern (not in that editor).
  *
  * Activated by the TRACK assign button (B_VPOT_TRACK). Stays active until
  * another assign button is pressed (same behaviour as Plug/Pan/Action).
@@ -18,8 +25,8 @@
 
 #include "CCSMode.h"
 #include "ChannelStripMap.h"
+#include "SurfaceConfig.h" // MAX_SURFACE_UNITS
 #include <map>
-#include <vector>
 
 class Display;
 class ChannelStripAccess;
@@ -27,16 +34,18 @@ class ChannelStripComponent;
 
 class ChannelStripMode : public CCSMode {
 public:
+  static const int kNumStrips = 16;
+  static const int kVPOTsPerUnit = 16; // 8 normal + 8 Shift
+
   ChannelStripMode(CCSManager *pManager);
   ~ChannelStripMode() override;
 
-  // opt into extender (channel > 8) events — one strip per unit
   bool supportsExtendedChannels() const override { return true; }
 
   void activate() override;
   void deactivate() override;
 
-  // from MCU via CCSManager
+  // hardware events
   bool vpotMoved(int channel, int numSteps) override;
   bool vpotPressed(int channel, bool pressed) override;
 
@@ -49,42 +58,50 @@ public:
   }
   void frameUpdate() override;
 
+  // editor lifecycle
   Component **createEditorComponent() override;
   void deleteEditorComponent() override;
   void removeEditor();
 
-  // the number of parameter slots a single strip exposes (8 + 8 Shift)
-  static const int kSlotsPerUnit = 16;
-
+  // --- accessors ---
   ChannelStripAccess *getAccess() { return m_pAccess; }
-  MediaTrack *getSelectedTrack(); // public wrapper of CCSMode::selectedTrack()
-
-  // The per-(trackGUID, unit) maps. In-memory for now (Step E adds project
-  // persistence). Returns NULL if no track is selected.
-  ChannelStripMap *getMapForUnit(int unit);
+  MediaTrack *getSelectedTrack();
   int numUnits() const;
 
-  // Called by the editor after editing a binding so the hardware reflects it.
+  // 16 global strips (index 0..15), shared across all projects/tracks
+  ChannelStripMap *getStrip(int index); // never NULL
+
+  // per-unit assignment on the CURRENT track (–1 = unassigned)
+  int getAssignedStripIndex(int unit);
+  void setAssignedStripIndex(int unit, int stripIndex, bool notifyHardware = true);
+
+  // runtime: the strip active for this unit (NULL if unassigned / no track)
+  ChannelStripMap *getStripForUnit(int unit);
+
+  // called by the editor after a strip is mutated
   void bindingChanged();
 
 private:
-  // resolve channel(1-based global) -> (unit, localCh 0..7)
   void resolveChannel(int channel, int &unit, int &localCh);
-  // slot index 0..15 for a given unit+localCh, honouring Shift
-  int slotFor(int localCh);
-  // (re)bind to the selected track: loads/creates its per-unit maps
+  int slotFor(int localCh); // VPOT position 0..15 (8 normal + 8 Shift)
   void trackChanged(MediaTrack *pTrack);
-  // update one channel's VPOT ring + display fields
   void updateChannel(int globalChannel);
 
-  Display *m_pDisplay; // per-unit composite (MultiDisplay if N>1)
+  Display *m_pDisplay;
 
   ChannelStripAccess *m_pAccess;
   ChannelStripComponent *m_pEditor;
 
-  // current track's maps (point into m_mapsByTrack), NULL if no selection
-  std::vector<ChannelStripMap> *m_pCurrentMaps;
-  std::map<String, std::vector<ChannelStripMap>> m_mapsByTrack;
+  // 16 global channel strips
+  ChannelStripMap m_strips[kNumStrips];
+
+  // per-track per-unit: which strip index (–1 = none)
+  struct PerTrackAssignments {
+    int stripIndexForUnit[MAX_SURFACE_UNITS];
+    PerTrackAssignments();
+  };
+  std::map<String, PerTrackAssignments> m_assignments;
   String m_currentTrackGUID;
+
   bool m_lastShiftState;
 };

@@ -81,25 +81,25 @@ int ChannelStripAccess::findSlotByIdent(MediaTrack *tr,
 }
 
 int ChannelStripAccess::resolveBinding(MediaTrack *tr,
-                                        ChannelStripBinding &b) {
-  if (!tr || !b.isAssigned())
+                                        ChannelStripMap &strip) {
+  if (!tr || !strip.isAssigned())
     return -1;
   // Prefer the instance GUID (survives reordering, disambiguates duplicates).
-  if (b.isResolved()) {
-    int slot = findSlotByGUID(tr, b.getFxGUID());
+  if (strip.isResolved()) {
+    int slot = findSlotByGUID(tr, strip.getFxGUID());
     if (slot >= 0)
       return slot;
     // GUID stale (plugin removed/moved): fall through to name match.
   }
-  int slot = findSlotByIdent(tr, b.getFxIdent());
+  int slot = findSlotByIdent(tr, strip.getFxIdent());
   if (slot >= 0) {
     GUID *g = TrackFX_GetFXGUID(tr, slot);
     if (g)
-      b.setFxGUID(GUID2String(g));
+      strip.setFxGUID(GUID2String(g));
     return slot;
   }
-  // Not on the track: clear any stale GUID so the binding reads as "+"/dangling.
-  b.setFxGUID(String());
+  // Not on the track: clear any stale GUID so the strip reads as "+"/dangling.
+  strip.setFxGUID(String());
   return -1;
 }
 
@@ -156,9 +156,9 @@ String ChannelStripAccess::getParamName(MediaTrack *tr, int slot, int param) {
   return String();
 }
 
-int ChannelStripAccess::instantiateArgFor(ChannelStripBinding::InsertPos pos,
+int ChannelStripAccess::instantiateArgFor(ChannelStripMap::InsertPos pos,
                                           int chainLen) {
-  using IP = ChannelStripBinding::InsertPos;
+  using IP = ChannelStripMap::InsertPos;
   // TrackFX_AddByName: instantiate <= -1000 -> -(1000) is first, -(1001) second
   if (pos == IP::LAST)
     return -(1000 + (chainLen < 0 ? 0 : chainLen)); // append after current end
@@ -166,26 +166,26 @@ int ChannelStripAccess::instantiateArgFor(ChannelStripBinding::InsertPos pos,
   return -(999 + chainPos);
 }
 
-int ChannelStripAccess::addPlugin(ChannelStripBinding &b) {
-  if (!m_pTrack || !b.isAssigned() || !TrackFX_AddByName)
+int ChannelStripAccess::addPlugin(ChannelStripMap &strip) {
+  if (!m_pTrack || !strip.isAssigned() || !TrackFX_AddByName)
     return -1;
   // Reuse an existing instance of the same plugin if one is present (notes.org:
   // reusing the same plugin does NOT add a second instance).
-  int existing = findSlotByIdent(m_pTrack, b.getFxIdent());
+  int existing = findSlotByIdent(m_pTrack, strip.getFxIdent());
   if (existing >= 0) {
     GUID *g = TrackFX_GetFXGUID(m_pTrack, existing);
     if (g)
-      b.setFxGUID(GUID2String(g));
+      strip.setFxGUID(GUID2String(g));
     return existing;
   }
   int chainLen = TrackFX_GetCount(m_pTrack);
-  int instArg = instantiateArgFor(b.getInsertPos(), chainLen);
+  int instArg = instantiateArgFor(strip.getInsertPos(), chainLen);
   int slot =
-      TrackFX_AddByName(m_pTrack, b.getFxIdent().toRawUTF8(), false, instArg);
+      TrackFX_AddByName(m_pTrack, strip.getFxIdent().toRawUTF8(), false, instArg);
   if (slot < 0)
     return -1;
   GUID *g = TrackFX_GetFXGUID(m_pTrack, slot);
   if (g)
-    b.setFxGUID(GUID2String(g));
+    strip.setFxGUID(GUID2String(g));
   return slot;
 }
