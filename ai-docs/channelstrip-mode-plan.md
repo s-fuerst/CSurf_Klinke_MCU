@@ -26,7 +26,7 @@ new, and it is deliberately simpler (flat 16 slots vs. PlugMode's
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Slot model | **Flat: 1 VPOT = 1 parameter** | A curated list of the 16 most important knobs across the whole FX chain. Simpler than reusing PlugMap; no bank/page navigation. |
+| Slot model | **Nested: 1 plugin per strip** | Each of the 16 global strips is ONE plugin; its parameters are mapped onto the 8 VPOTs (16 with Shift) in a second editor (opened by the "Parameter" button). Evolved from the initially-chosen flat model. |
 | Persistence key | **Per-track + per-unit** `(trackGUID, unitIndex)` | Matches `notes.org` ("the track remembers the assignment of each unit to the plugins"). Each 8-channel unit has its own strip for the same track. |
 | Activation behaviour | **Stay active** (like Plug/Pan/Action) | The mode is most similar to PlugMode; no switch-back. |
 | Shift / Multi-Unit | **Baked in from step 1** | Not deferred to a late phase. The 16-slot map is shift-aware by construction; per-track+per-unit storage is multi-unit aware by construction. |
@@ -101,48 +101,46 @@ PlugMode is the template. The new mode reuses its infrastructure directly:
 ## 3. Data model
 
 ```cpp
-// One VPOT slot (1..16). 16 = 8 normal + 8 Shift.
-struct ChannelStripBinding {
-    String fxIdent;                 // EnumInstalledFX ident, stable across tracks
-                                    //   -> used to find/add the plugin on the track
-    GUID    fxGUID;                 // TrackFX_GetFXGUID of the instance (runtime)
-                                    //   -> used to address it; survives reordering
-    int     paramIndex;             // parameter index within that FX
-    String  shortName;              // <=5 chars for the display
-    enum InsertPos { FIRST, P2, P3, P4, P5, P6, P7, P8, LAST };
-    InsertPos insertPos;            // where "+" inserts the plugin
+// One global Channel Strip (one of 16). A single plugin plus the mapping
+// of its parameters onto the 8 VPOTs (16 with Shift).
+class ChannelStripMap {
+    String fxIdent;                 // EnumInstalledFX ident, to find/add the plugin
+    String fxGUID;                  // stringified instance GUID (runtime)
+    String shortName;               // <=5 chars for the display
+    enum InsertPos { FIRST, P2..P8, LAST } insertPos;
+    int vpotParam[16];              // param index per VPOT pos (1..8 normal, 9..16 Shift);
+                                    // -1 = unbound
+    void writeToXml / readFromXml;
 };
-
-class ChannelStripMap {             // exactly 16 bindings, flat
-    ChannelStripBinding slots[16];
-    String creator;
-    String info;
-    void writeToXml(XmlElement*);
-    bool readFromXml(XmlElement*);
-};
-```
 
 **Two-stage plugin identification** (important):
 - `fxIdent` (stable, track-independent) drives the "+" logic via
   `TrackFX_AddByName`.
 - `fxGUID` (per-instance) drives runtime access and survives reordering.
 
-On activation the mode resolves `fxIdent → fxGUID` by scanning the track's FX
-chain (`TrackFX_GetFXName` match). If the plugin is missing the binding is
-shown in "+" state and is not auto-added until the user selects it.
+On activation the mode resolves the assigned strip's `fxIdent → fxGUID` by
+scanning the track's FX chain (`TrackFX_GetFXName` match). If the plugin is
+missing, the binding is shown in "+" state and is not auto-added until the
+user triggers it via the editor's "Parameter" button (Step D).
 
-### Persistence (key = trackGUID, unitIndex)
+### Persistence (Step E, not yet implemented)
+
+- 16 global strip files: `<STRIP>` elements stored in
+  `GetResourcePath()/UserPlugins/MCU/ChannelStripMaps/` — same pattern as
+  `PlugMapManager` installed/user maps.
+- Per-track per-unit assignment: `int[8]` (strip indices, –1 = none) stored
+  per trackGUID via `ProjectConfig::connect2ProjectChangeSignal`.
 
 ```xml
-<CHANNELSTRIP>
-  <UNIT index="0">
-    <SLOT nr="1" fxident="VST3:ReaEQ (Cockos)" fxguid="{..}" param="3" name="EQG1" inspos="last"/>
-    ...up to 16...
-  </UNIT>
-  <UNIT index="1"/>
+<!-- global strip file -->
+<STRIP nr="1" fxident="VST3:ReaEQ (Cockos)" fxguid="{..}" name="EQ" inspos="last">
+  <VPOT nr="1" param="3"/>
+  <VPOT nr="2" param="4"/>
   ...
-</CHANNELSTRIP>
-```
+</STRIP>
+
+<!-- per-track assignment (inside project) -->
+<CHANNELSTRIP_ASSIGN unit="0" strip="3"/>
 
 Stored via `ProjectConfig::connect2ProjectChangeSignal`, handled for
 `READ` / `WRITE` / `FREE` exactly like the existing per-track state.
@@ -156,14 +154,12 @@ New directory `src/modes/channelstrip/`, mirrored on `src/modes/plugin/`:
 ```
 src/modes/channelstrip/
 ├── ChannelStripMode.{cpp,h}          # CCSMode subclass, wired to B_VPOT_TRACK; stays active
-├── ChannelStripBinding.{cpp,h}       # one slot: fxIdent/fxGUID/param/shortName/insertPos
-├── ChannelStripMap.{cpp,h}           # 16 bindings + XML (flat)
+├── ChannelStripMap.{cpp,h}           # 1 strip: plugin + metadata + 16 VPOT→param bindings
 ├── ChannelStripAccess.{cpp,h}        # TrackFX_* wrapper; fxIdent<->fxGUID resolution
-├── ChannelStripTrackState.{cpp,h}    # per-(trackGUID,unitIndex) assignment + ProjectConfig
 └── editor/
-    ├── ChannelStripComponent.{cpp,h}        # main editor (unit selector + table)
-    ├── ChannelStripBindingTable.{cpp,h}     # 16 rows: # | Plugin | abbrev | InsPos | PickParam
-    └── ChannelStripParamPicker.{cpp,h}      # parameter list per plugin
+    ├── ChannelStripComponent.{cpp,h}        # main editor (table of 16 strips)
+    ├── ChannelStripBindingTable.{cpp,h}     # 16 rows: # | Plugin | abbrev | InsPos | edit…
+    └── ChannelStripParamEditor.{cpp,h}      # 2nd editor: VPOT→param mapping for one strip
 ```
 
 ### Wiring changes to existing files
@@ -212,8 +208,9 @@ the first runtime step, not as a late phase.
 6. **`ChannelStripComponent`** + active-unit selector.
 7. **`ChannelStripBindingTable`**: 16 rows — # | Plugin (combo from
    `EnumInstalledFX`) | abbreviation (max 5) | InsertPos.
-8. **`ChannelStripParamPicker`**: parameter list per plugin
-   (`TrackFX_GetParamName`).
+8. **`ChannelStripParamEditor`**: VPOT→param mapping for one strip (opened by
+   the "Parameter" button in the main table). Lists the strip's plugin
+   parameters in 16 rows (VPOT 1..8 + 9..16 Shift).
 9. **Hook up + file I/O**: `createEditorComponent`; the editor is opened by
    **ALT+TRACK** (added to the ALT branch of `CCSManager::buttonVPOTassign`);
    edits write back to the per-unit map and refresh the display. Map
@@ -231,10 +228,15 @@ the first runtime step, not as a late phase.
 
 ### E — Persistence
 
-12. **`ChannelStripTrackState`**: per-`(trackGUID, unitIndex)` map +
+12. **Global map save/load**: save/load individual `ChannelStripMap` files from
+    the global user location (`GetResourcePath()/UserPlugins/MCU/ChannelStripMaps/`)
+    — ship a few example maps there. Every unit across all tracks shares the same
+    16-map pool.
+13. **Per-track per-unit assignments**: persist the `int[MAX_SURFACE_UNITS]`
+    assignment table (unit → global-map index, –1 = none) per track via
     `ProjectConfig` signal connect/disconnect + XML. `READ`/`WRITE`/`FREE`.
-13. **Roundtrip**: load on project open, write on change, survives a REAPER
-    restart — now testable because the editor and "+" flow exist.
+14. **Roundtrip**: both the global maps and the per-track assignments survive a
+    REAPER restart — now testable because the editor and "+" flow exist.
 
 ### F — Move/delete tracking
 

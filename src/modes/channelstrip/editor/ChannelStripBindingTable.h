@@ -2,24 +2,23 @@
  * Copyright (C) 2009-2026 Steffen Fuerst
  * Distributed under the GNU GPL v3. For full terms see the file gplv3.txt.
  *
- * Editor table for one unit's Channel Strip Map: 16 rows (slots), one per
- * VPOT position (1..8 normal, 9..16 Shift). Modeled on
- * TrackStatesTableComponent (hand-written TableListBoxModel).
+ * Editor table for the 16 GLOBAL Channel Strips — one row per strip.
+ * Modeled on TrackStatesTableComponent.
  *
- *   # | Plugin (EnumInstalledFX combo) | Abbrev (<=5) | InsPos | Param… (button)
+ *   # | Plugin | Abbrev (≤5) | InsPos | Parameter…
  *
- * Editing a cell writes straight into the active unit's ChannelStripMap and
- * notifies ChannelStripMode::bindingChanged() so the hardware reflects it.
+ * Each row is one ChannelStripMap (a plugin + its VPOT→param mapping). The
+ * Plugin/Abbrev/InsPos cells edit the strip's header fields. The Parameter
+ * button opens the VPOT→param sub-editor for that strip. Editing notifies
+ * ChannelStripMode::bindingChanged() so the hardware refreshes.
  */
 #pragma once
 #include "JuceHeader.h"
 #include "ChannelStripAccess.h"
-#include "ChannelStripBinding.h"
 #include "ChannelStripMap.h"
 
 class ChannelStripMode;
 
-// column ids
 #define CST_COL_NR 1
 #define CST_COL_PLUGIN 2
 #define CST_COL_ABBREV 3
@@ -33,97 +32,96 @@ public:
 
   void resized() override;
 
-  int getNumRows() override { return ChannelStripMap::kNumSlots; }
-  void paintRowBackground(Graphics &g, int rowNumber, int width, int height,
+  int getNumRows() override;
+  void paintRowBackground(Graphics &g, int row, int w, int h,
                           bool rowIsSelected) override;
-  void paintCell(Graphics &g, int rowNumber, int columnId, int width,
-                 int height, bool rowIsSelected) override;
-  Component *refreshComponentForCell(int rowNumber, int columnId,
-                                     bool isRowSelected,
-                                     Component *existingComponentToUpdate) override;
+  void paintCell(Graphics &g, int row, int col, int w, int h,
+                 bool rowIsSelected) override;
+  Component *refreshComponentForCell(int row, int col, bool selected,
+                                     Component *existing) override;
 
-  // the active unit whose map is shown
-  void setActiveUnit(int unit);
-  int getActiveUnit() const { return m_activeUnit; }
-  void updateEverything() {
-    if (m_table)
-      m_table->updateContent();
-  }
-
-  // access for the custom cell components
   ChannelStripMode *getMode() { return m_pMode; }
   const std::vector<ChannelStripAccess::InstalledFX> &installedFX() const {
     return m_installedFX;
   }
-  ChannelStripBinding *bindingForRow(int row); // may be NULL (no track/unit)
-
-  // called by cell components after they mutate a binding
+  // the strip shown in this row (always valid, may be unassigned)
+  ChannelStripMap *stripForRow(int row);
   void notifyBindingChanged();
 
-  // (re)read the current track's installed FX list
   void refreshInstalledFX();
+  void updateEverything() { if (m_table) m_table->updateContent(); }
 
 private:
   ChannelStripMode *m_pMode;
-  int m_activeUnit;
   TableListBox *m_table;
   std::vector<ChannelStripAccess::InstalledFX> m_installedFX;
 };
 
-// --- custom cell components (live in the same translation unit) ---
+// --- custom cell components ---
 
-class CSTPluginCombo : public Component, public ComboBox::Listener {
+class CSTPluginCombo : public Component,
+                       public TextEditor::Listener,
+                       public ListBoxModel {
 public:
-  CSTPluginCombo(ChannelStripBindingTable &owner);
-  ~CSTPluginCombo() { deleteAllChildren(); }
-  void resized() override { m_combo->setBoundsInset(BorderSize(2)); }
-  void setRowAndColumn(int row, int column);
-  void comboBoxChanged(ComboBox *) override;
+  CSTPluginCombo(ChannelStripBindingTable &o);
+  ~CSTPluginCombo() override;
+  void resized() override { m_editor->setBoundsInset(BorderSize(1)); }
+  void setRowAndColumn(int r, int c);
+
+  void textEditorTextChanged(TextEditor &) override;
+  void textEditorFocusLost(TextEditor &) override;
+  void textEditorReturnKeyPressed(TextEditor &) override;
+  void textEditorEscapeKeyPressed(TextEditor &) override;
+
+  int getNumRows() override;
+  void paintListBoxItem(int row, Graphics &, int w, int h, bool sel) override;
+  void listBoxItemClicked(int row, const MouseEvent &) override;
 
 private:
-  ChannelStripBindingTable &m_owner;
-  ComboBox *m_combo;
-  int m_row, m_columnId;
+  void applyFilter(const String &text);
+  void showPopup();
+  void hidePopup();
+  void pickFiltered(int filteredRow);
+  void setSelectedByIdent(const String &ident);
+
+  ChannelStripBindingTable &owner;
+  TextEditor *m_editor;
+  int row, column;
+  String m_lastValidText;
+
+  std::vector<ChannelStripAccess::InstalledFX> m_filtered;
+  Component::SafePointer<ListBox> m_popupList;
 };
 
 class CSTAbbrevLabel : public Component, public Label::Listener {
 public:
-  CSTAbbrevLabel(ChannelStripBindingTable &owner);
+  CSTAbbrevLabel(ChannelStripBindingTable &o);
   ~CSTAbbrevLabel() { deleteAllChildren(); }
   void resized() override { m_label->setBoundsInset(BorderSize(2)); }
-  void setRowAndColumn(int row, int column);
+  void setRowAndColumn(int r, int c);
   void labelTextChanged(Label *) override;
-
 private:
-  ChannelStripBindingTable &m_owner;
-  Label *m_label;
-  int m_row, m_columnId;
+  ChannelStripBindingTable &owner; Label *m_label; int row, column;
 };
 
 class CSTInsPosCombo : public Component, public ComboBox::Listener {
 public:
-  CSTInsPosCombo(ChannelStripBindingTable &owner);
+  CSTInsPosCombo(ChannelStripBindingTable &o);
   ~CSTInsPosCombo() { deleteAllChildren(); }
   void resized() override { m_combo->setBoundsInset(BorderSize(2)); }
-  void setRowAndColumn(int row, int column);
+  void setRowAndColumn(int r, int c);
   void comboBoxChanged(ComboBox *) override;
-
 private:
-  ChannelStripBindingTable &m_owner;
-  ComboBox *m_combo;
-  int m_row, m_columnId;
+  ChannelStripBindingTable &owner; ComboBox *m_combo; int row, column;
 };
 
 class CSTParamButton : public Component, public Button::Listener {
 public:
-  CSTParamButton(ChannelStripBindingTable &owner);
+  CSTParamButton(ChannelStripBindingTable &o);
   ~CSTParamButton() { deleteAllChildren(); }
   void resized() override { m_button->setBoundsInset(BorderSize(2)); }
-  void setRowAndColumn(int row, int column);
+  void setRowAndColumn(int r, int c);
   void buttonClicked(Button *) override;
-
 private:
-  ChannelStripBindingTable &m_owner;
-  TextButton *m_button;
-  int m_row, m_columnId;
+  ChannelStripBindingTable &owner; TextButton *m_button; int row, column;
 };

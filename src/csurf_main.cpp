@@ -127,6 +127,7 @@ bool (*EnumInstalledFX)(int index, const char **nameOut,
                         const char **identOut);
 int (*TrackFX_AddByName)(MediaTrack *track, const char *fxname, bool recFX,
                          int instantiate);
+bool (*TrackFX_Delete)(MediaTrack *track, int fx);
 GUID *(*GetTrackGUID)(MediaTrack *tr);
 
 int *g_config_csurf_rate, *g_config_zoommode;
@@ -369,6 +370,7 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
 
   IMPAPI(EnumInstalledFX)
   IMPAPI(TrackFX_AddByName)
+  IMPAPI(TrackFX_Delete)
 
 	IMPAPI(GetResourcePath)
 		

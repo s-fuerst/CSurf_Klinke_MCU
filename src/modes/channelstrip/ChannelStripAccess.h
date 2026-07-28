@@ -15,7 +15,7 @@
  */
 #pragma once
 #include "JuceHeader.h"
-#include "ChannelStripBinding.h"
+#include "ChannelStripMap.h"
 #include <vector>
 
 class ChannelStripMode;
@@ -44,7 +44,7 @@ public:
   // Resolve a binding against the track: if its fxGUID matches a live slot,
   // keep it; otherwise try fxIdent by name. Updates b.fxGUID. Returns the slot
   // index or -1 if the plugin is not on the track (dangling / needs "+").
-  static int resolveBinding(MediaTrack *tr, ChannelStripBinding &b);
+  static int resolveBinding(MediaTrack *tr, ChannelStripMap &strip);
 
   // --- parameter I/O (normalized 0..1) ---
   static double getParamValue(MediaTrack *tr, int slot, int param);
@@ -61,9 +61,9 @@ public:
   // --- add plugin ("+" flow) ---
   // Adds the binding's plugin at its insert position on the current track and
   // fills b.fxGUID. Returns the new 0-based slot index, or -1 on failure.
-  int addPlugin(ChannelStripBinding &b);
+  int addPlugin(ChannelStripMap &strip);
   // TrackFX_AddByName instantiate argument for (insertPos, current chain len).
-  static int instantiateArgFor(ChannelStripBinding::InsertPos pos,
+  static int instantiateArgFor(ChannelStripMap::InsertPos pos,
                                int chainLen);
 
 private:

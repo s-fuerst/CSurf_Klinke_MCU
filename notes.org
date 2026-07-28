@@ -8,3 +8,61 @@
 ** [#B] Installation via ReaPack
 ** TODO [#A] Pull Request(s) integrieren
 ** TODO [#B] Jump to touched 
+* ChannelStrip Idee (Sketch)
+Für 8 (oder mit Shift 16 FX) kann eine ChannelStrip Map angelegt
+werden, diese besteht nur aus 16 Parametern (9-16 per Shift), welche
+über die VPOTs bedient werden, sprich die Basis dieses Modes ist ein
+Track Mode.
+
+Das sind globale Maps, für StockPlugins werden welche schon mit
+ausgeliefert.
+
+Wird der ChannelStrip Mode ausgewählt (durch den TRACK button in der
+VPOT assign section (logischer wäre eigentlich FX, aber da liegt die
+ganze Zeit schon Action drauf)), und einer unit wurde für diesen track
+noch kein ChannelStrip Mode Plugin zugewiesen, erscheinen die 8 Namen
+im Display und können per VPOT ausgewählt werden. Gibt es in dem Track
+noch kein Plugin, erscheint ein + vor dem Namen, und bei der Auswahl
+wird es dem Track zugefügt.
+
+Bei den noch genauer zu definieren JUCE-Editor für ein solches Plugin
+gibt es eine Option, über welche festgelegt wird, ob das Plugin an die
+erste, n-te (n=2 bis 8) oder letzte Position kommt.
+
+Offene Fragen: Wie lege ich eigentlich überhaupt fest, welche Plugins
+zu den ausgewählten 8/16 werden?  Evtl. auch durch einen JUCE Editor,
+der durch ALT-TRACK geöffnet wird. Dort dann für 16 Slots die Plugins
+auswählen. Und daneben ein button, welcher den Map Editor öffnet.
+
+Das erscheint sehr sinnvoll, in diesem Editor haben wir dann
+
+| Nummer | Plugin | 5 Zeichen Kürzel für das Display | Einfüge Pos | Open Map  button |
+
+Es ist erlaubt, dass gleiche Plugin mehrfach zu werden, um
+z.B. verschiedene Aspekte von einem Channel Stripe Plugin zu editieren
+(einmal den EQ, einmal den Kompressor ...). Es wird dann auch nicht
+ein weiteres Plugin hinzugefügt.
+
+Das verschieben eines Plugins muss getrackt werden, genauso wie das
+löschen (kann der PlugMode ja auch)
+
+Der Track merkt sich die zuordnung jeder unit zu den Plugins, und
+speichert diese auch im Projekt mit ab.
+
+Wie gesagt, es gibt nur ein Mapping auf 16 Parameter, es gibt kein
+seperates Mapping für das drücken von VPOTs, diese setzen einfach den
+Parameter auf 1, falls der aktuelle werte != 1 ist, und ansonsten
+auf 0.
+
+ALT-VPOT-1 öffnet den zugehörigen Editor auf dem Bildschirm, dabei
+werden die Regeln vom PlugMode bzgl. der Anzahl der offenen
+Plugin-Fenster mit berücksichtigt. Evtl. die entsprechenden Optionen
+in diesen Mode mit duplizieren.
+
+ALT-VPOT-7 verschiebt das FX nach open, 8 nach unten. Diese ALT-VPOT
+kürzel werden auch im PlugMode implementiert.
+
+ALT-Name/Values zeigt diese Befehle im Display an.
+
+Vielleicht nehmen wir auch CONTROL anstatt ALT, wobei im PlugMode halt
+ALT-SELECT schon Plugin Fenster öffnet.

@@ -162,6 +162,7 @@ extern int (*TrackFX_GetParamFromIdent)(MediaTrack* track, int fx, const char* i
 // pin). Bound in csurf_main.cpp via IMPAPI, same as the entries above.
 extern bool (*EnumInstalledFX)(int index, const char** nameOut, const char** identOut);
 extern int (*TrackFX_AddByName)(MediaTrack* track, const char* fxname, bool recFX, int instantiate);
+extern bool (*TrackFX_Delete)(MediaTrack* track, int fx);
 
 extern const char* (*GetResourcePath)();
 
