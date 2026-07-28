@@ -160,6 +160,11 @@ extern void* (*ThemeLayout_RefreshAll)();
 
 extern int (*TrackFX_GetParamFromIdent)(MediaTrack* track, int fx, const char* ident_str);
 
+// Newer-SDK FX APIs added for Channel Strip mode (not in the original v5.92
+// pin). Bound in csurf_main.cpp via IMPAPI, same as the entries above.
+extern bool (*EnumInstalledFX)(int index, const char** nameOut, const char** identOut);
+extern int (*TrackFX_AddByName)(MediaTrack* track, const char* fxname, bool recFX, int instantiate);
+
 extern const char* (*GetResourcePath)();
 
 
