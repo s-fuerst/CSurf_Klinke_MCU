@@ -122,6 +122,13 @@ bool (*TrackFX_GetParamName)(MediaTrack *tr, int fx, int param, char *buf,
                              int buflen);
 bool (*TrackFX_FormatParamValue)(MediaTrack *tr, int fx, int param, double val,
                                  char *buf, int buflen);
+// newer-SDK FX APIs (defined for Channel Strip mode; declared extern in csurf.h)
+bool (*EnumInstalledFX)(int index, const char **nameOut,
+                        const char **identOut);
+int (*TrackFX_AddByName)(MediaTrack *track, const char *fxname, bool recFX,
+                         int instantiate);
+bool (*TrackFX_Delete)(MediaTrack *track, int fx);
+bool (*TrackFX_GetNamedConfigParm)(MediaTrack *track, int fx, const char *parmname, char *bufOut, int bufOut_sz);
 bool (*TrackFX_FormatParamValueNormalized)(MediaTrack *tr, int fx, int param,
                                            double value, char *buf,
                                            int buflen);
@@ -312,7 +319,6 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   IMPAPI(TrackFX_GetParam)
   IMPAPI(TrackFX_SetParam)
   IMPAPI(TrackFX_GetParamName)
-  IMPAPI(TrackFX_FormatParamValue)
   IMPAPI(TrackFX_FormatParamValueNormalized)
   IMPAPI(TrackFX_GetParameterStepSizes)
   IMPAPI(TrackFX_GetFXName)
@@ -370,8 +376,18 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
 
 	IMPAPI(TrackFX_GetParamFromIdent)
 
-	IMPAPI(GetResourcePath)
-		
+  IMPAPI(EnumInstalledFX)
+  IMPAPI(TrackFX_AddByName)
+  IMPAPI(TrackFX_Delete)
+
+  IMPAPI(GetResourcePath)
+
+  // Optional — do not increment errcnt if missing (older REAPER versions).
+  // TrackFX_FormatParamValue is cosmetic (formatted value display) and
+  // TrackFX_GetNamedConfigParm is used for exact VST2/VST3 ident matching.
+  *(void **)&TrackFX_FormatParamValue = (void *)rec->GetFunc("TrackFX_FormatParamValue");
+  *(void **)&TrackFX_GetNamedConfigParm = (void *)rec->GetFunc("TrackFX_GetNamedConfigParm");
+
   if (errcnt)
     return 0;
 

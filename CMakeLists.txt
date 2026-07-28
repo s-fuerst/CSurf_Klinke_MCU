@@ -161,6 +161,8 @@ target_include_directories(reaper_csurf_mcu_klinke PRIVATE
     ${SRC_DIR}/src/modes/sends
     ${SRC_DIR}/src/modes/plugin
     ${SRC_DIR}/src/modes/plugin/editor
+    ${SRC_DIR}/src/modes/channelstrip
+    ${SRC_DIR}/src/modes/channelstrip/editor
     ${SRC_DIR}/vendor     # checked-in vendored headers (csurf.h, reaper_plugin_functions.h @v5.92)
     ${SRC_DIR}/resources  # dialog resources (resource.h, res.rc_mac_dlg)
     ${JUCE_DIR}
