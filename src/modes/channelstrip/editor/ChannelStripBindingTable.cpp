@@ -3,41 +3,41 @@
  * Distributed under the GNU GPL v3. For full terms see the file gplv3.txt.
  */
 #include "ChannelStripBindingTable.h"
-#include "ChannelStripMap.h"
 #include "ChannelStripMode.h"
-#include "csurf_mcu.h"
+#include "ChannelStripParamEditor.h"
 
 ChannelStripBindingTable::ChannelStripBindingTable(ChannelStripMode *pMode)
-    : m_pMode(pMode), m_activeUnit(0), m_table(NULL) {
+    : m_pMode(pMode), m_table(NULL) {
   refreshInstalledFX();
-  addAndMakeVisible(m_table =
-                        new TableListBox(String("ChannelStrip bindings"), this));
+  addAndMakeVisible(m_table = new TableListBox("ChannelStrip strips", this));
   m_table->setHeaderHeight(22);
   m_table->setColour(ListBox::outlineColourId, Colours::grey);
   m_table->setOutlineThickness(1);
 
-  m_table->getHeader().addColumn(String("#"), CST_COL_NR, 28, 28, 28,
+  m_table->getHeader().addColumn("#", CST_COL_NR, 28, 28, 28,
                                  TableHeaderComponent::notResizable);
-  m_table->getHeader().addColumn(String("Plugin"), CST_COL_PLUGIN, 230, 120, 400,
+  m_table->getHeader().addColumn("Plugin", CST_COL_PLUGIN, 230, 120, 400,
                                  TableHeaderComponent::notResizable);
-  m_table->getHeader().addColumn(String("Abbrev"), CST_COL_ABBREV, 60, 50, 80,
+  m_table->getHeader().addColumn("Abbrev", CST_COL_ABBREV, 60, 50, 80,
                                  TableHeaderComponent::notResizable);
-  m_table->getHeader().addColumn(String("InsPos"), CST_COL_INSPOS, 70, 60, 90,
+  m_table->getHeader().addColumn("InsPos", CST_COL_INSPOS, 70, 60, 90,
                                  TableHeaderComponent::notResizable);
-  m_table->getHeader().addColumn(String("Parameter"), CST_COL_PARAM, 160, 120, 300,
+  m_table->getHeader().addColumn("Parameter", CST_COL_PARAM, 130, 100, 200,
                                  TableHeaderComponent::notResizable);
 
   m_table->setMultipleSelectionEnabled(false);
   m_table->setAutoSizeMenuOptionShown(false);
   m_table->updateContent();
-  m_table->setAutoSizeMenuOptionShown(false);
 }
 
 ChannelStripBindingTable::~ChannelStripBindingTable() { deleteAllChildren(); }
 
 void ChannelStripBindingTable::resized() {
-  if (m_table)
-    m_table->setBounds(getLocalBounds());
+  if (m_table) m_table->setBounds(getLocalBounds());
+}
+
+int ChannelStripBindingTable::getNumRows() {
+  return ChannelStripMode::kNumStrips;
 }
 
 void ChannelStripBindingTable::refreshInstalledFX() {
@@ -45,146 +45,196 @@ void ChannelStripBindingTable::refreshInstalledFX() {
   ChannelStripAccess::getInstalledFX(m_installedFX);
 }
 
-void ChannelStripBindingTable::setActiveUnit(int unit) {
-  m_activeUnit = unit;
-  if (m_table)
-    m_table->updateContent();
-}
-
-ChannelStripBinding *ChannelStripBindingTable::bindingForRow(int row) {
-  if (!m_pMode)
+ChannelStripMap *ChannelStripBindingTable::stripForRow(int row) {
+  if (!m_pMode || row < 0 || row >= ChannelStripMode::kNumStrips)
     return NULL;
-  ChannelStripMap *map = m_pMode->getMapForUnit(m_activeUnit);
-  if (!map || row < 0 || row >= ChannelStripMap::kNumSlots)
-    return NULL;
-  return map->getSlot(row);
+  return m_pMode->getStrip(row);
 }
 
 void ChannelStripBindingTable::notifyBindingChanged() {
-  if (m_pMode)
-    m_pMode->bindingChanged();
+  if (m_pMode) m_pMode->bindingChanged();
 }
 
-void ChannelStripBindingTable::paintRowBackground(Graphics &g, int /*row*/,
-                                                  int width, int height,
-                                                  bool rowIsSelected) {
-  g.fillAll(rowIsSelected ? Colours::lightblue : Colours::white);
-  g.setColour(Colours::grey);
-  g.drawRect(0, 0, width, height);
+void ChannelStripBindingTable::paintRowBackground(Graphics &g, int, int w,
+                                                  int h, bool sel) {
+  g.fillAll(sel ? Colours::lightblue : Colours::white);
+  g.setColour(Colours::grey); g.drawRect(0, 0, w, h);
 }
 
-void ChannelStripBindingTable::paintCell(Graphics &g, int rowNumber,
-                                         int columnId, int width, int height,
-                                         bool /*rowIsSelected*/) {
-  if (columnId != CST_COL_NR)
-    return;
+void ChannelStripBindingTable::paintCell(Graphics &g, int row, int col,
+                                         int w, int h, bool) {
+  if (col != CST_COL_NR) return;
   g.setColour(Colours::black);
   g.setFont(Font(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain));
-  // 1..16; mark the Shift half (9..16)
-  String n = String(rowNumber + 1);
-  g.drawText(n, 2, 1, width - 4, height, Justification::centred, true);
+  String n = (row < 8) ? String(row + 1) : ("S" + String(row - 7));
+  g.drawText(n, 2, 1, w - 4, h, Justification::centred, true);
 }
 
 Component *ChannelStripBindingTable::refreshComponentForCell(
-    int rowNumber, int columnId, bool /*isRowSelected*/,
-    Component *existingComponentToUpdate) {
-  switch (columnId) {
+    int row, int col, bool, Component *existing) {
+  switch (col) {
   case CST_COL_PLUGIN: {
-    CSTPluginCombo *c = (CSTPluginCombo *)existingComponentToUpdate;
-    if (!c)
-      c = new CSTPluginCombo(*this);
-    c->setRowAndColumn(rowNumber, columnId);
-    return c;
+    auto *c = (CSTPluginCombo *)existing;
+    if (!c) c = new CSTPluginCombo(*this);
+    c->setRowAndColumn(row, col); return c;
   }
   case CST_COL_ABBREV: {
-    CSTAbbrevLabel *c = (CSTAbbrevLabel *)existingComponentToUpdate;
-    if (!c)
-      c = new CSTAbbrevLabel(*this);
-    c->setRowAndColumn(rowNumber, columnId);
-    return c;
+    auto *c = (CSTAbbrevLabel *)existing;
+    if (!c) c = new CSTAbbrevLabel(*this);
+    c->setRowAndColumn(row, col); return c;
   }
   case CST_COL_INSPOS: {
-    CSTInsPosCombo *c = (CSTInsPosCombo *)existingComponentToUpdate;
-    if (!c)
-      c = new CSTInsPosCombo(*this);
-    c->setRowAndColumn(rowNumber, columnId);
-    return c;
+    auto *c = (CSTInsPosCombo *)existing;
+    if (!c) c = new CSTInsPosCombo(*this);
+    c->setRowAndColumn(row, col); return c;
   }
   case CST_COL_PARAM: {
-    CSTParamButton *c = (CSTParamButton *)existingComponentToUpdate;
-    if (!c)
-      c = new CSTParamButton(*this);
-    c->setRowAndColumn(rowNumber, columnId);
-    return c;
+    auto *c = (CSTParamButton *)existing;
+    if (!c) c = new CSTParamButton(*this);
+    c->setRowAndColumn(row, col); return c;
   }
-  default:
-    jassert(existingComponentToUpdate == nullptr);
-    return nullptr;
+  default: jassert(!existing); return nullptr;
   }
 }
 
-//==============================================================================
-// Plugin combo
+// ===== Plugin combo (autocomplete) =====
 
-CSTPluginCombo::CSTPluginCombo(ChannelStripBindingTable &owner)
-    : m_owner(owner), m_combo(NULL), m_row(0), m_columnId(0) {
-  addAndMakeVisible(m_combo = new ComboBox());
-  m_combo->addItem(String("(none)"), 1);
-  const std::vector<ChannelStripAccess::InstalledFX> &fx = m_owner.installedFX();
-  for (size_t i = 0; i < fx.size(); i++)
-    m_combo->addItem(fx[i].name, (int)i + 2);
-  m_combo->addListener(this);
-  m_combo->setWantsKeyboardFocus(true);
+CSTPluginCombo::CSTPluginCombo(ChannelStripBindingTable &o)
+    : owner(o), m_editor(NULL), row(0), column(0) {
+  addAndMakeVisible(m_editor = new TextEditor());
+  m_editor->setFont(
+      Font(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain));
+  m_editor->setTextToShowWhenEmpty("type plugin name here", Colours::lightgrey);
+  m_editor->addListener(this);
 }
 
-void CSTPluginCombo::setRowAndColumn(int row, int column) {
-  m_row = row;
-  m_columnId = column;
-  ChannelStripBinding *b = m_owner.bindingForRow(m_row);
-  int sel = 1; // (none)
-  if (b && b->isAssigned()) {
-    const String &ident = b->getFxIdent();
-    const std::vector<ChannelStripAccess::InstalledFX> &fx =
-        m_owner.installedFX();
-    for (size_t i = 0; i < fx.size(); i++) {
-      if (fx[i].ident == ident) {
-        sel = (int)i + 2;
+CSTPluginCombo::~CSTPluginCombo() {
+  hidePopup();
+  deleteAllChildren();
+}
+
+void CSTPluginCombo::setRowAndColumn(int r, int c) {
+  row = r; column = c;
+  ChannelStripMap *strip = owner.stripForRow(row);
+  String name;
+  if (strip && strip->isAssigned()) {
+    const auto &fx = owner.installedFX();
+    for (const auto &f : fx) {
+      if (f.ident == strip->getFxIdent()) { name = f.name; break; }
+    }
+    if (name.isEmpty()) name = strip->getFxIdent();
+  }
+  m_editor->setText(name, dontSendNotification);
+  m_lastValidText = name;
+}
+
+void CSTPluginCombo::applyFilter(const String &text) {
+  String f = text.trim();
+  m_filtered.clear();
+  const auto &fx = owner.installedFX();
+  for (const auto &item : fx) {
+    if (f.isEmpty() || item.name.containsIgnoreCase(f))
+      m_filtered.push_back(item);
+  }
+  if (m_popupList) {
+    m_popupList->updateContent();
+    int h = jlimit(4, 12, (int)m_filtered.size()) * 22 + 4;
+    m_popupList->setSize(m_popupList->getWidth(), h);
+  }
+}
+
+void CSTPluginCombo::showPopup() {
+  if (m_popupList || !m_editor) return;
+  applyFilter(m_editor->getText());
+  if (m_filtered.empty()) return;
+  ListBox *lb = new ListBox();
+  lb->setModel(this);
+  lb->setRowHeight(22);
+  lb->setColour(ListBox::outlineColourId, Colours::grey);
+  lb->setOutlineThickness(1);
+  int width = jmax(m_editor->getWidth(), 280);
+  int h = jlimit(4, 12, (int)m_filtered.size()) * 22 + 4;
+  lb->setSize(width, h);
+  Component *top = getTopLevelComponent();
+  Point<int> rel = m_editor->getScreenPosition() - top->getScreenPosition();
+  lb->setTopLeftPosition(rel.x, rel.y + m_editor->getHeight());
+  top->addAndMakeVisible(lb);
+  lb->toFront(false);
+  m_popupList = lb;
+}
+
+void CSTPluginCombo::hidePopup() {
+  if (m_popupList) delete m_popupList.getComponent();
+}
+
+void CSTPluginCombo::pickFiltered(int filteredRow) {
+  if (filteredRow < 0 || filteredRow >= (int)m_filtered.size()) return;
+  setSelectedByIdent(m_filtered[filteredRow].ident);
+  hidePopup();
+}
+
+void CSTPluginCombo::setSelectedByIdent(const String &ident) {
+  ChannelStripMap *strip = owner.stripForRow(row);
+  if (!strip) return;
+  if (ident.isEmpty()) {
+    strip->setFxIdent(String());
+    strip->setFxGUID(String());
+    for (int i = 0; i < ChannelStripMap::kNumVPOTs; i++)
+      strip->setParamForVPOT(i, -1);
+    m_editor->setText(String(), dontSendNotification);
+  } else {
+    const auto &fx = owner.installedFX();
+    for (const auto &f : fx) {
+      if (f.ident == ident) {
+        strip->setFxIdent(f.ident);
+        strip->setFxGUID(String());
+        // new plugin -> its parameter indices differ, clear the VPOT map
+        for (int i = 0; i < ChannelStripMap::kNumVPOTs; i++)
+          strip->setParamForVPOT(i, -1);
+        if (strip->getShortName().isEmpty())
+          strip->setShortName(f.name.substring(0, 5));
+        m_editor->setText(f.name, dontSendNotification);
         break;
       }
     }
   }
-  m_combo->setSelectedId(sel, dontSendNotification);
+  m_lastValidText = m_editor->getText();
+  owner.notifyBindingChanged();
 }
 
-void CSTPluginCombo::comboBoxChanged(ComboBox *) {
-  ChannelStripBinding *b = m_owner.bindingForRow(m_row);
-  if (!b)
-    return;
-  int sel = m_combo->getSelectedId();
-  if (sel <= 1) {
-    b->setFxIdent(String());
-    b->setFxGUID(String());
-    b->setParamIndex(-1);
-  } else {
-    const std::vector<ChannelStripAccess::InstalledFX> &fx =
-        m_owner.installedFX();
-    int idx = sel - 2;
-    if (idx >= 0 && idx < (int)fx.size()) {
-      b->setFxIdent(fx[idx].ident);
-      b->setFxGUID(String()); // re-resolved on the track at runtime
-      b->setParamIndex(-1);
-      if (b->getShortName().isEmpty())
-        b->setShortName(fx[idx].name.substring(0, 5));
-    }
-  }
-  m_owner.notifyBindingChanged();
+void CSTPluginCombo::textEditorTextChanged(TextEditor &) {
+  if (!m_popupList) showPopup(); else applyFilter(m_editor->getText());
 }
+void CSTPluginCombo::textEditorFocusLost(TextEditor &) {
+  SafePointer<CSTPluginCombo> sp(this);
+  MessageManager::callAsync([sp]() {
+    if (!sp || !sp->m_popupList) return;
+    Component *focused = Component::getCurrentlyFocusedComponent();
+    if (focused && (focused == sp->m_popupList ||
+                    sp->m_popupList->isParentOf(focused)))
+      return;
+    sp->hidePopup();
+  });
+}
+void CSTPluginCombo::textEditorReturnKeyPressed(TextEditor &) { pickFiltered(0); }
+void CSTPluginCombo::textEditorEscapeKeyPressed(TextEditor &) {
+  hidePopup();
+  m_editor->setText(m_lastValidText, dontSendNotification);
+}
+int CSTPluginCombo::getNumRows() { return (int)m_filtered.size(); }
+void CSTPluginCombo::paintListBoxItem(int r, Graphics &g, int w, int h, bool sel) {
+  if (r < 0 || r >= (int)m_filtered.size()) return;
+  g.fillAll(sel ? Colours::lightblue : Colours::white);
+  g.setColour(Colours::black);
+  g.setFont(Font(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain));
+  g.drawText(m_filtered[r].name, 6, 0, w - 8, h, Justification::centredLeft, true);
+}
+void CSTPluginCombo::listBoxItemClicked(int r, const MouseEvent &) { pickFiltered(r); }
 
-//==============================================================================
-// Abbrev label
+// ===== Abbrev label =====
 
-CSTAbbrevLabel::CSTAbbrevLabel(ChannelStripBindingTable &owner)
-    : m_owner(owner), m_label(NULL), m_row(0), m_columnId(0) {
+CSTAbbrevLabel::CSTAbbrevLabel(ChannelStripBindingTable &o)
+    : owner(o), m_label(NULL), row(0), column(0) {
   addAndMakeVisible(m_label = new Label(String(), String()));
   m_label->setFont(Font(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain));
   m_label->setJustificationType(Justification::centredLeft);
@@ -195,113 +245,72 @@ CSTAbbrevLabel::CSTAbbrevLabel(ChannelStripBindingTable &owner)
   m_label->addListener(this);
 }
 
-void CSTAbbrevLabel::setRowAndColumn(int row, int column) {
-  m_row = row;
-  m_columnId = column;
-  ChannelStripBinding *b = m_owner.bindingForRow(m_row);
-  m_label->setText(b ? b->getShortName() : String(), dontSendNotification);
+void CSTAbbrevLabel::setRowAndColumn(int r, int c) {
+  row = r; column = c;
+  ChannelStripMap *strip = owner.stripForRow(row);
+  m_label->setText(strip ? strip->getShortName() : String(), dontSendNotification);
 }
 
 void CSTAbbrevLabel::labelTextChanged(Label *l) {
-  ChannelStripBinding *b = m_owner.bindingForRow(m_row);
-  if (!b)
-    return;
+  ChannelStripMap *strip = owner.stripForRow(row);
+  if (!strip) return;
   String s = l->getText().substring(0, 5);
-  b->setShortName(s);
+  strip->setShortName(s);
   l->setText(s, dontSendNotification);
-  m_owner.notifyBindingChanged();
+  owner.notifyBindingChanged();
 }
 
-//==============================================================================
-// Insert-position combo
+// ===== InsPos combo =====
 
-CSTInsPosCombo::CSTInsPosCombo(ChannelStripBindingTable &owner)
-    : m_owner(owner), m_combo(NULL), m_row(0), m_columnId(0) {
+CSTInsPosCombo::CSTInsPosCombo(ChannelStripBindingTable &o)
+    : owner(o), m_combo(NULL), row(0), column(0) {
   addAndMakeVisible(m_combo = new ComboBox());
-  using IP = ChannelStripBinding::InsertPos;
-  m_combo->addItem(ChannelStripBinding::tokenForInsertPos(IP::FIRST),
-                   (int)IP::FIRST + 1);
+  using IP = ChannelStripMap::InsertPos;
+  m_combo->addItem(ChannelStripMap::tokenForInsertPos(IP::FIRST), (int)IP::FIRST + 1);
   for (int p = (int)IP::POS2; p <= (int)IP::POS8; p++)
     m_combo->addItem(String(p), p + 1);
-  m_combo->addItem(ChannelStripBinding::tokenForInsertPos(IP::LAST),
-                   (int)IP::LAST + 1);
+  m_combo->addItem(ChannelStripMap::tokenForInsertPos(IP::LAST), (int)IP::LAST + 1);
   m_combo->addListener(this);
   m_combo->setWantsKeyboardFocus(true);
 }
 
-void CSTInsPosCombo::setRowAndColumn(int row, int column) {
-  m_row = row;
-  m_columnId = column;
-  ChannelStripBinding *b = m_owner.bindingForRow(m_row);
-  if (b)
-    m_combo->setSelectedId((int)b->getInsertPos() + 1, dontSendNotification);
+void CSTInsPosCombo::setRowAndColumn(int r, int c) {
+  row = r; column = c;
+  ChannelStripMap *strip = owner.stripForRow(row);
+  if (strip) m_combo->setSelectedId((int)strip->getInsertPos() + 1, dontSendNotification);
 }
 
 void CSTInsPosCombo::comboBoxChanged(ComboBox *) {
-  ChannelStripBinding *b = m_owner.bindingForRow(m_row);
-  if (!b)
-    return;
+  ChannelStripMap *strip = owner.stripForRow(row);
+  if (!strip) return;
   int sel = m_combo->getSelectedId() - 1;
-  if (sel >= 0 && sel < (int)ChannelStripBinding::INSERT_COUNT)
-    b->setInsertPos((ChannelStripBinding::InsertPos)sel);
-  m_owner.notifyBindingChanged();
+  if (sel >= 0 && sel < (int)ChannelStripMap::INSERT_COUNT)
+    strip->setInsertPos((ChannelStripMap::InsertPos)sel);
+  owner.notifyBindingChanged();
 }
 
-//==============================================================================
-// Parameter picker (button -> popup menu of the plugin's parameters)
+// ===== Parameter button -> VPOT/param sub-editor =====
 
-CSTParamButton::CSTParamButton(ChannelStripBindingTable &owner)
-    : m_owner(owner), m_button(NULL), m_row(0), m_columnId(0) {
-  addAndMakeVisible(m_button = new TextButton(String("pick...")));
+CSTParamButton::CSTParamButton(ChannelStripBindingTable &o)
+    : owner(o), m_button(NULL), row(0), column(0) {
+  addAndMakeVisible(m_button = new TextButton("edit..."));
   m_button->addListener(this);
 }
 
-void CSTParamButton::setRowAndColumn(int row, int column) {
-  m_row = row;
-  m_columnId = column;
-  ChannelStripBinding *b = m_owner.bindingForRow(m_row);
-  String label = String("pick...");
-  if (b && b->isAssigned()) {
-    if (b->getParamIndex() >= 0)
-      label = "#" + String(b->getParamIndex());
-    else
-      label = String("(none)");
-  }
+void CSTParamButton::setRowAndColumn(int r, int c) {
+  row = r; column = c;
+  ChannelStripMap *strip = owner.stripForRow(row);
+  String label = "edit...";
+  if (strip && strip->isAssigned())
+    label = String(strip->numBoundVPOTs()) + "/" + String(ChannelStripMap::kNumVPOTs);
+  else
+    label = "-";
   m_button->setButtonText(label);
 }
 
 void CSTParamButton::buttonClicked(Button *) {
-  ChannelStripBinding *b = m_owner.bindingForRow(m_row);
-  if (!b || !b->isAssigned())
+  ChannelStripMap *strip = owner.stripForRow(row);
+  if (!strip || !strip->isAssigned())
     return;
-  ChannelStripMode *mode = m_owner.getMode();
-  MediaTrack *tr = mode ? mode->getSelectedTrack() : NULL;
-  if (!tr)
-    return;
-  ChannelStripAccess *access = mode->getAccess();
-  access->trackChanged(tr);
-  // ensure the plugin is on the track so we can enumerate its parameters
-  int fxSlot = access->resolveBinding(tr, *b);
-  if (fxSlot < 0)
-    fxSlot = access->addPlugin(*b);
-  if (fxSlot < 0) {
-    AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
-                                     String("Channel Strip"),
-                                     String("Could not add the plugin to the track."));
-    return;
-  }
-  int n = access->getNumParams(tr, fxSlot);
-  if (n <= 0)
-    return;
-  PopupMenu menu;
-  for (int i = 0; i < n; i++)
-    menu.addItem(i + 1, access->getParamName(tr, fxSlot, i));
-  int result = menu.show(); // modal (JUCE_MODAL_LOOPS_PERMITTED=1)
-  if (result > 0) {
-    int param = result - 1;
-    b->setParamIndex(param);
-    if (b->getShortName().isEmpty())
-      b->setShortName(access->getParamName(tr, fxSlot, param).substring(0, 5));
-    m_owner.notifyBindingChanged();
-  }
+  ChannelStripParamEditor::open(owner.getMode(), row);
 }

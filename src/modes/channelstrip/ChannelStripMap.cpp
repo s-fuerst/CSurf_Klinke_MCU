@@ -4,55 +4,117 @@
  */
 #include "ChannelStripMap.h"
 
-#define CSM_TAG_SLOT String("SLOT")
-#define CSM_ATT_CREATOR String("creator")
-#define CSM_ATT_INFO String("info")
+#define CSM_TAG_STRIP String("STRIP")
+#define CSM_TAG_VPOT String("VPOT")
 
 ChannelStripMap::ChannelStripMap() { initEmpty(); }
 
-ChannelStripMap::~ChannelStripMap() {}
-
 void ChannelStripMap::initEmpty() {
-  m_slots.assign(kNumSlots, ChannelStripBinding());
-  m_creator = String();
-  m_info = String();
+  m_fxIdent = String();
+  m_fxGUID = String();
+  m_shortName = String();
+  m_insertPos = LAST;
+  for (int i = 0; i < kNumVPOTs; i++) {
+    m_vpotParam[i] = -1;
+    m_vpotName[i] = String();
+  }
 }
 
-int ChannelStripMap::numAssigned() const {
+int ChannelStripMap::getParamForVPOT(int position) const {
+  if (position < 0 || position >= kNumVPOTs)
+    return -1;
+  return m_vpotParam[position];
+}
+
+void ChannelStripMap::setParamForVPOT(int position, int paramIdx) {
+  if (position < 0 || position >= kNumVPOTs)
+    return;
+  m_vpotParam[position] = paramIdx;
+}
+
+const String &ChannelStripMap::getVPOTName(int position) const {
+  static const String empty;
+  if (position < 0 || position >= kNumVPOTs)
+    return empty;
+  return m_vpotName[position];
+}
+
+void ChannelStripMap::setVPOTName(int position, const String &name) {
+  if (position < 0 || position >= kNumVPOTs)
+    return;
+  m_vpotName[position] = name;
+}
+
+int ChannelStripMap::numBoundVPOTs() const {
   int n = 0;
-  for (int i = 0; i < kNumSlots; i++)
-    if (m_slots[i].isAssigned())
+  for (int i = 0; i < kNumVPOTs; i++)
+    if (m_vpotParam[i] >= 0)
       n++;
   return n;
+}
+
+int ChannelStripMap::fixedChainPosition() const {
+  if (m_insertPos == LAST)
+    return -1;
+  return static_cast<int>(m_insertPos) + 1;
+}
+
+String ChannelStripMap::tokenForInsertPos(InsertPos pos) {
+  if (pos == FIRST)
+    return CSB_INS_FIRST;
+  if (pos == LAST)
+    return CSB_INS_LAST;
+  return String(static_cast<int>(pos) + 1); // POS2..POS8 -> "2".."8"
+}
+
+ChannelStripMap::InsertPos
+ChannelStripMap::insertPosFromToken(const String &token) {
+  if (token == CSB_INS_FIRST)
+    return FIRST;
+  if (token == CSB_INS_LAST)
+    return LAST;
+  int n = token.getIntValue();
+  if (n >= 2 && n <= 8)
+    return static_cast<InsertPos>(n - 1);
+  return LAST;
 }
 
 void ChannelStripMap::writeToXml(XmlElement *pParent) const {
   if (!pParent)
     return;
-  pParent->setAttribute(CSM_ATT_CREATOR, m_creator);
-  pParent->setAttribute(CSM_ATT_INFO, m_info);
-  for (int i = 0; i < kNumSlots; i++) {
-    const ChannelStripBinding &b = m_slots[i];
-    if (!b.isAssigned())
+  XmlElement *pStrip = new XmlElement(CSM_TAG_STRIP);
+  pStrip->setAttribute(CSB_ATT_FXIDENT, m_fxIdent);
+  pStrip->setAttribute(CSB_ATT_FXGUID, m_fxGUID);
+  pStrip->setAttribute(CSB_ATT_NAME, m_shortName);
+  pStrip->setAttribute(CSB_ATT_INSPOS, tokenForInsertPos(m_insertPos));
+  for (int i = 0; i < kNumVPOTs; i++) {
+    if (m_vpotParam[i] < 0 && m_vpotName[i].isEmpty())
       continue;
-    XmlElement *pSlot = new XmlElement(CSM_TAG_SLOT);
-    pSlot->setAttribute(CSB_ATT_NR, i + 1);
-    b.writeToXml(pSlot);
-    pParent->addChildElement(pSlot);
+    XmlElement *pV = new XmlElement(CSM_TAG_VPOT);
+    pV->setAttribute(CSB_ATT_NR, i + 1);
+    pV->setAttribute(CSB_ATT_PARAM, m_vpotParam[i]);
+    if (!m_vpotName[i].isEmpty())
+      pV->setAttribute(CSB_ATT_NAME, m_vpotName[i]);
+    pStrip->addChildElement(pV);
   }
+  pParent->addChildElement(pStrip);
 }
 
-bool ChannelStripMap::readFromXml(const XmlElement *pParent) {
-  if (!pParent)
+bool ChannelStripMap::readFromXml(const XmlElement *pStrip) {
+  if (!pStrip)
     return false;
-  initEmpty();
-  m_creator = pParent->getStringAttribute(CSM_ATT_CREATOR);
-  m_info = pParent->getStringAttribute(CSM_ATT_INFO);
-  forEachXmlChildElementWithTagName(*pParent, pSlot, CSM_TAG_SLOT) {
-    int nr = pSlot->getIntAttribute(CSB_ATT_NR, 0);
-    if (nr < 1 || nr > kNumSlots)
-      continue;
-    m_slots[nr - 1].readFromXml(pSlot);
+  m_fxIdent = pStrip->getStringAttribute(CSB_ATT_FXIDENT);
+  m_fxGUID = pStrip->getStringAttribute(CSB_ATT_FXGUID);
+  m_shortName = pStrip->getStringAttribute(CSB_ATT_NAME);
+  m_insertPos = insertPosFromToken(pStrip->getStringAttribute(CSB_ATT_INSPOS));
+  for (int i = 0; i < kNumVPOTs; i++)
+    m_vpotParam[i] = -1;
+  forEachXmlChildElementWithTagName(*pStrip, pV, CSM_TAG_VPOT) {
+    int nr = pV->getIntAttribute(CSB_ATT_NR, 0);
+    if (nr >= 1 && nr <= kNumVPOTs) {
+      m_vpotParam[nr - 1] = pV->getIntAttribute(CSB_ATT_PARAM, -1);
+      m_vpotName[nr - 1] = pV->getStringAttribute(CSB_ATT_NAME);
+    }
   }
   return true;
 }
