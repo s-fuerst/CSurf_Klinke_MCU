@@ -122,6 +122,11 @@ bool (*TrackFX_GetParamName)(MediaTrack *tr, int fx, int param, char *buf,
                              int buflen);
 bool (*TrackFX_FormatParamValue)(MediaTrack *tr, int fx, int param, double val,
                                  char *buf, int buflen);
+// newer-SDK FX APIs (defined for Channel Strip mode; declared extern in csurf.h)
+bool (*EnumInstalledFX)(int index, const char **nameOut,
+                        const char **identOut);
+int (*TrackFX_AddByName)(MediaTrack *track, const char *fxname, bool recFX,
+                         int instantiate);
 GUID *(*GetTrackGUID)(MediaTrack *tr);
 
 int *g_config_csurf_rate, *g_config_zoommode;
@@ -361,6 +366,9 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
 	IMPAPI(ThemeLayout_RefreshAll)
 
 	IMPAPI(TrackFX_GetParamFromIdent)
+
+  IMPAPI(EnumInstalledFX)
+  IMPAPI(TrackFX_AddByName)
 
 	IMPAPI(GetResourcePath)
 		

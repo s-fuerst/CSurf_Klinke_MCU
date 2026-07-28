@@ -16,6 +16,7 @@
 #include "SendMode.h"
 #include "ReceiveMode.h"
 #include "PlugMode.h"
+#include "ChannelStripMode.h"
 #include "csurf_mcu.h"
 #include "McuAssert.h"
 #include "CCSModesEditor.h"
@@ -32,6 +33,7 @@ CCSManager::CCSManager(CSurf_MCU *pMCU) {
   m_pSendMode = new SendMode(this);
   m_pReceiveMode = new ReceiveMode(this);
   m_pPlugMode = new PlugMode(this);
+  m_pChannelStripMode = new ChannelStripMode(this);
 
   m_pEditor = new CCSModesEditor(this);
 
@@ -78,6 +80,7 @@ CCSManager::~CCSManager(void) {
   safe_delete(m_pSendMode);
   safe_delete(m_pReceiveMode);
   safe_delete(m_pPlugMode);
+  safe_delete(m_pChannelStripMode);
   safe_delete_array(m_pVPOTS);
   safe_delete_array(m_faderTouched);
   safe_delete_array(m_vpotTouched);
@@ -116,6 +119,9 @@ bool CCSManager::buttonVPOTassign(int button, bool pressed) {
       case B_VPOT_PAN:
         m_pEditor->setMainComponent(m_pPanMode, true);
         break;
+      case B_VPOT_TRACK:
+        m_pEditor->setMainComponent(m_pChannelStripMode, true);
+        break;
       }
     }
     return true;
@@ -152,6 +158,9 @@ bool CCSManager::buttonVPOTassign(int button, bool pressed) {
       break;
     case B_VPOT_PLUG:
 			pNewMode = m_pPlugMode;
+      break;
+    case B_VPOT_TRACK:
+      pNewMode = m_pChannelStripMode;
       break;
     }
   } else if (m_selectorActive) {
@@ -218,6 +227,12 @@ void CCSManager::updateVPOTLeds() {
   } else {
     m_pMCU->SetLED(B_VPOT_PLUG, LED_OFF);
   }
+
+  // B_VPOT_TRACK (Channel Strip Mode)
+  // Blink while active; otherwise off until a strip is configurable for the
+  // selected track. Presence detection is refined in later steps.
+  m_pMCU->SetLED(B_VPOT_TRACK,
+                 m_pActualMode == m_pChannelStripMode ? LED_BLINK : LED_OFF);
 }
 
 bool CCSManager::buttonFaderBanks(int button, bool pressed) {

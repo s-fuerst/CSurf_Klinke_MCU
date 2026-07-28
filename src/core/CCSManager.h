@@ -16,6 +16,7 @@ class SendMode;
 class ReceiveMode;
 class CCSModesEditor;
 class PlugMode;
+class ChannelStripMode;
 class Options;
 
 #define CHECKMODE                                                              \
@@ -137,6 +138,7 @@ public:
 	
 	void resetAllFaderTouch();
 	PlugMode *getPlugMode() { return m_pPlugMode; }
+	ChannelStripMode *getChannelStripMode() { return m_pChannelStripMode; }
 	
 private:
   void elementTouched(EElement fader, int channel, bool touched);
@@ -159,6 +161,7 @@ private:
   SendMode *m_pSendMode;
   ReceiveMode *m_pReceiveMode;
   PlugMode *m_pPlugMode;
+  ChannelStripMode *m_pChannelStripMode;
 
   // all the following stuff is one based ([0] is the master fader)
   VPOT_LED *m_pVPOTS;
