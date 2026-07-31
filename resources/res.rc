@@ -89,6 +89,7 @@ BEGIN
     CONTROL         "Swap left/right arrow on zoom",IDC_CHECK2,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,12,135,244,10
     PUSHBUTTON      "Open Manual",BTN_OPEN_MANUAL,158,152,50,14
     PUSHBUTTON      "Donate",BTN_DONATE,212,152,50,14
+    LTEXT           "",IDC_VERSION_LABEL,8,156,146,10
 END
 
 

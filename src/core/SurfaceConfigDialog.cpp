@@ -322,6 +322,19 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
     if (cfg->flags & CONFIG_FLAG_KEYBOARD_MODIFIER)
       CheckDlgButton(hwndDlg, IDC_KEYBOARD_MODIFIER, BST_CHECKED);
 
+    // Show the loaded build; the private KLINKE build appends a "k" so it
+    // is distinguishable from the public release in this dialog.
+    HWND vLabel = GetDlgItem(hwndDlg, IDC_VERSION_LABEL);
+    if (vLabel) {
+      char vbuf[128];
+#ifdef KLINKE
+      sprintf(vbuf, "Version: " MCU_VERSION_STRING "k");
+#else
+      sprintf(vbuf, "Version: " MCU_VERSION_STRING);
+#endif
+      SetWindowText(vLabel, vbuf);
+    }
+
     captureDialogLayout(hwndDlg, state);
   } break;
 

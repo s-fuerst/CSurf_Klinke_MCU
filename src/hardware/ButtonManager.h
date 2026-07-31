@@ -42,6 +42,15 @@ private:
   int m_button_last;
   DWORD m_button_last_time;
 
+#ifdef KLINKE
+  // Hand-off combo state (Platform M+, see KLINKE_COMBO_UNIT_INDEX):
+  //   hold Channel up (0x31) + press Bank down (0x2e) -> surface enabled
+  //   hold Channel up (0x31) + press Bank up   (0x2f) -> surface disabled
+  bool m_comboChUpHeld = false;
+  bool m_comboBankHeld = false;
+  bool m_comboSession = false; // combo in progress -> swallow bank events
+#endif
+
   // shared fallback for backward compat (isButtonPressed)
   bool m_button_pressed[NUM_BUTTONS];
   DWORD m_button_pressed_time[NUM_BUTTONS];

@@ -317,6 +317,10 @@ private:
 
   ButtonManager *m_pButtonManager;
 
+#ifdef KLINKE
+  bool m_surfaceEnabled = true; // startup: the CSurf extension has control
+#endif
+
   ActionsDisplay *m_pActionDisplay;
   Component *m_pActionsDialogComponent;
 
@@ -434,7 +438,16 @@ public:
   int  getFaderPos(int channel);              // reads unit's cached position
 
   // channel-to-unit translation helpers
-  int  numUnits() const { return (int)m_units.size(); }
+  int  numUnits() const {
+#ifdef KLINKE
+    // Inactive = behave exactly as if units 2+ (the iCON controllers shared
+    // with Schaltmix) were disabled: only unit 1's strips remain, which also
+    // limits the bank up/down navigation on unit 1 to that channel count.
+    if (!m_surfaceEnabled)
+      return 1;
+#endif
+    return (int)m_units.size();
+  }
   HardwareUnit *unitForChannel(int g) const {
     if (g < 1 || g > availableChannels()) return NULL;
     return m_units[(g - 1) / 8];
@@ -562,6 +575,14 @@ public:
   unsigned int GetActualFrameTime() { return m_frameupd_lastrun; }
 
   ButtonManager *GetButtonManager() { return m_pButtonManager; }
+
+#ifdef KLINKE
+  // Hand-off with the Schaltmix plugin (see ButtonManager): while disabled,
+  // all outgoing MIDI is suppressed and only the Platform M+ combo is
+  // monitored so the extension can be re-activated from the hardware.
+  void setSurfaceEnabled(bool enabled);
+  bool isSurfaceEnabled() const { return m_surfaceEnabled; }
+#endif
 
 private:
 };

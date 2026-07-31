@@ -445,17 +445,7 @@ relevant files and confirm the blast radius → `read` for the exact text → `e
 change that touches more than one subsystem — the graph catches cross-subsystem
 callers that a single-file read misses.
 
-## 6. Known issues & open work (from `notes.org`, `whats_new.org`)
-- **Distribution:** ReaPack packaging is desired but not done.
-- **PerformanceMode is a stub, intentionally kept.** `PerformanceMode.*`
-  is allocated/freed by `CCSManager` but never activated — the
-  `B_VPOT_INSTRUMENT` → `m_pPerformanceMode` assignment is commented out in
-  `CCSManager::buttonVPOTassign()`. The plan is to **implement it later** as
-  a real Reaper performance readout (CPU/disk meter, etc. on the MCU
-  display). Leave the stub in place; do not remove it or wire up a trivial
-  activation that would just show the placeholder text.
-
-## 7. References
+## 6. References
 - **Reaper Extension / csurf SDK** — https://github.com/justinfrankel/reaper-sdk
   (most relevant: `reaper-sdk/reaper-plugins/reaper_csurf/`)
 - **Reaper** — https://www.reaper.fm/
@@ -464,7 +454,7 @@ callers that a single-file read misses.
   - DrivenByMoss — https://github.com/git-moss/DrivenByMoss
 - **JUCE 8** — https://github.com/juce-framework/JUCE (tag 8.0.14)
 
-## 8. Patterns
+## 7. Patterns
 
 - User can run sudo commands when requested — just tell them what to
   run and they'll execute it. No sudo password prompt needed from
@@ -573,7 +563,7 @@ callers that a single-file read misses.
 
 
 
-## 9. Repo layout (quick map)
+## 8. Repo layout (quick map)
 
 ```
 # === Build-system files (repo root) ===
@@ -675,3 +665,15 @@ dist/                   portable-Linux .so artifact output
 build/  build_win/      local build outputs (gitignored)
 .prettierrc             (not currently enforced — see §5 conventions)
 ```
+
+## 10. MCU hand-off with the Schaltmix plugin (KLINKE-only feature)
+
+The private `--klinke` build (`MCU_KLINKE_BUILD=ON` → `#ifdef KLINKE`) can share
+the iCON controllers (Platform M+ = unit 3 = `KLINKE_COMBO_UNIT_INDEX` 2,
+Platform X+ = unit 2) with the Schaltmix VST plugin. Both programs keep their
+MIDI ports open (multiclient).
+
+The version label in the surface config dialog (`IDC_VERSION_LABEL`) appends a
+"k" to the version string in KLINKE builds so the private build is
+distinguishable from the public release.
+

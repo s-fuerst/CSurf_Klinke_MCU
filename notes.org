@@ -1,10 +1,27 @@
+* TODO [0/5] Bugs to fix before release
+** TODO PlugMode: focus lag with many FX parameters
+   Reaper freezes/stalls for several seconds when switching to PlugMode
+   on an FX with a very large number of parameters.
+** TODO Track-Mode: show value on fader touch with Emulate Level Meter active
+   The displays should show the current value (Volume or Pan depending on
+   flip mode) on fader touch, even when "Emulate Level Meter" is enabled
+   (in the lower row where the level meters are).
+** TODO VPOT motion: briefly show Pan/Volume value
+   Moving a VPOT should briefly display Pan (or Volume) for about 1 second.
+** TODO PlugMode: select buttons per unit should map to plugin ranges 1-8, 9-16, ...
+   The Select buttons on the different units currently always show the same
+   8 plugins. Unit 2 should show plugins 9-16, unit 3 17-24, and so on.
+   With Shift held, the step should be 8 * number of units instead of 8.
+** TODO PlugMode: disabled-plugin Select blink only works on unit 1
+   When a plugin is disabled, its Select button should blink very slowly
+   (brief off intervals, longer on). This works on unit 1 but not on unit 2.
+   Possibly related to "Emulate blinking LED", which must be enabled for
+   unit 2 and unit 3.
 * TODO [2/8] v0.9.1 Release
 ** TODO [#A] #46 Improved Documentation (also #49 add link to overlay)
 ** TODO [#C] Support for Move Plugins
 ** TODO [#C] #36 Try to improve record mode
 ** TODO [#C] Check #10: Touch automation with fake fader touch doesn't work 
-** DONE [#A] Remove KLINKE_BUILD 
 ** DONE [#A] Fadertouch Problem
 ** [#B] Installation via ReaPack
-** TODO [#A] Pull Request(s) integrieren
 ** TODO [#B] Jump to touched 

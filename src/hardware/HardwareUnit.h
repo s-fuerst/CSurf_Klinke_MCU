@@ -77,6 +77,14 @@ public:
   bool fakeFaderTouch() const { return unitFlagSet(UNIT_FLAG_FADER_TOUCH_FAKE); }
   bool metersOnDisplay() const { return unitFlagSet(UNIT_FLAG_METERS_ON_DISPLAY); }
   bool switchRows() const { return unitFlagSet(UNIT_FLAG_SWITCH_ROWS); }
+
+#ifdef KLINKE
+  // Hand-off gate: while this unit is disabled (i.e. the iCON controllers
+  // belong to Schaltmix), ALL outgoing MIDI is suppressed — faders, LEDs,
+  // LCD and sysex. Unit 1 is never disabled.
+  void setUnitEnabled(bool enabled) { m_unitEnabled = enabled; }
+  bool unitEnabled() const { return m_unitEnabled; }
+#endif
   // ProX hardware always needs software blink emulation.
   bool needsBlinkEmulation() const {
     return isProX() || unitFlagSet(UNIT_FLAG_EMULATE_BLINKING);
@@ -114,6 +122,10 @@ private:
   int m_unitIndex;
   UnitConfig m_cfg;
   unsigned char m_deviceId; // isMain ? 0x14 : 0x15
+
+#ifdef KLINKE
+  bool m_unitEnabled = true; // set false by CSurf_MCU::setSurfaceEnabled for units 2+
+#endif
 
   midi_Output *m_midiout;
   midi_Input *m_midiin;
