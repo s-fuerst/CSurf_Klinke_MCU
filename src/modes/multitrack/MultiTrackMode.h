@@ -66,6 +66,13 @@ public:
 
   virtual void frameUpdate() override;
 
+  // Returns true when row 1 should keep showing a value (instead of the LCD
+  // level-meter bar) for this channel. Base behaviour: non-ProX units while
+  // the channel's fader is touched, so the Volume/Pan value the fader controls
+  // stays visible even with "meters on display" active. PanMode extends this
+  // to also cover the brief VPOT-value display window.
+  virtual bool suppressDisplayMeterForValue(int channel);
+
   virtual Options *getOptions() override { return Tracks::instance()->getOptions(); }
   virtual Options *get2ndOptions() override {
     return Tracks::instance()->get2ndOptions();

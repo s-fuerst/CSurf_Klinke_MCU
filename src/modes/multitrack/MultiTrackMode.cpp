@@ -43,12 +43,30 @@ MediaTrack *MultiTrackMode::getMediaTrackForChannel(int channel) {
 void MultiTrackMode::frameUpdate() {
   updateEverything();
 
+  // Let the mode pin row 1 to a value for some channels (touched fader /
+  // briefly-shown VPOT value) by suppressing the LCD meter bar there. Must
+  // happen before updateMeterBridge() paints the bars.
+  int nAvail = m_pCCSManager->getMCU()->availableChannels();
+  for (int ch = 1; ch <= nAvail; ch++)
+    m_pMeterBridge->setDisplayMeterSuppressed(ch,
+                                              suppressDisplayMeterForValue(ch));
+
   m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU());
 
   if (Tracks::instance()->clampCurrentGlobalOffset()) {
     TrackList_UpdateAllExternalSurfaces();
     updateAssignmentDisplay();
   }
+}
+
+bool MultiTrackMode::suppressDisplayMeterForValue(int channel) {
+  // ProX units show every value on their 4 rows anyway, so never suppress.
+  HardwareUnit *u = m_pCCSManager->getMCU()->unitForChannel(channel);
+  if (!u || u->isProX())
+    return false;
+  // While the fader is touched, keep the Volume/Pan value it controls
+  // visible on row 1 instead of the meter bar.
+  return m_pCCSManager->getFaderTouched(channel);
 }
 
 void MultiTrackMode::activate() {
@@ -446,12 +464,10 @@ void MultiTrackMode::trackVolume(int id, double volume) {
     } else {
       int volint = volToInt14(volume);
       m_pCCSManager->setFader(this, id, volint);
-      if (m_pCCSManager->getFaderTouched(id)) {
-        //        if (m_pCCSManager->getNumFadersTouched() > 1) {
-        //          m_pCCSManager->getDisplayHandler()->waitForMoreChanges(true);
-        //        }
-        //m_pDisplay->showDB(1, id, volume);
-      }
+      // While a fader is touched, the Volume/Pan value is revealed on row 1
+      // by suppressing the LCD meter bar for that channel
+      // (see MultiTrackMode::frameUpdate / suppressDisplayMeterForValue),
+      // so there is nothing extra to do here on every volume change.
     }
   }
 }

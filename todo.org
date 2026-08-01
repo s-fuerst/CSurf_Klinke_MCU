@@ -1,10 +1,31 @@
 * [1/10] v0.9.5 Release
-** TODO Track-Mode: show value on fader touch with Emulate Level Meter active
-   The displays should show the current value (Volume or Pan depending on
-   flip mode) on fader touch, even when "Emulate Level Meter" is enabled
-   (in the lower row where the level meters are).
-** TODO VPOT motion: briefly show Pan/Volume value
-   Moving a VPOT should briefly display Pan (or Volume) for about 1 second.
+** TODO Track/Mixer mode (PanMode): show fader value on touch with meters-on-display
+   While a fader is touched, keep the value it controls (Volume, or Pan in
+   flip mode) visible on row 1, even when "meters on display"
+   (UNIT_FLAG_METERS_ON_DISPLAY) is active and would otherwise cover it with
+   the level-meter bar.
+   Scope (confirmed):
+   - Non-ProX units only. ProX units show every value on their 4 rows anyway.
+   - On extender units this only makes a difference when meters-on-display is
+     ON; with it off the fader-controlled value is already visible in row 1.
+   - Implemented by suppressing the LCD meter bar for the touched channel
+     (MultiTrackMode::suppressDisplayMeterForValue + MeterBridge); the value
+     text is already written every frame by PanMode::updateDisplay.
+   Mode assignment: Track/Mixer (PanMode). Fader-controlled value.
+** TODO Pan-Mode VPOT motion: briefly show the VPOT value
+   For ~1 second after a VPOT is turned, row 1 shows the value the VPOT
+   controls (Pan, or Volume in flip mode) instead of the fader-controlled
+   value, then reverts.
+   Scope (confirmed):
+   - Pan-Mode only (the mixer/track mode). NOT Action/Command mode: turning a
+     VPOT there triggers a Reaper action, so there is no meaningful value to
+     show.
+   - Non-ProX units only. The VPOT-controlled value is otherwise not visible
+     on a single-panel unit (row 1 shows the fader's value), so this applies
+     regardless of meters-on-display (and also suppresses the LCD meter bar
+     during the window).
+   - Implemented via PanMode (VPOT_VALUE_SHOW_MS window, updateDisplay swap,
+     suppressDisplayMeterForValue override).
 ** TODO PlugMode: select buttons per unit should map to plugin ranges 1-8, 9-16, ...
    The Select buttons on the different units currently always show the same
    8 plugins. Unit 2 should show plugins 9-16, unit 3 17-24, and so on.

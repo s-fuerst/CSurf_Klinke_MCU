@@ -20,6 +20,13 @@ public:
   virtual bool alsoOnDisplay() { return false; }
   virtual void updateMeterBridge(CSurf_MCU *pMCU) = 0;
 
+  // While a channel's display-value is "locked" (e.g. a fader is touched or
+  // a VPOT value is briefly shown), the mode asks the bridge to skip the
+  // LCD meter bar for that channel so the value text on row 1 stays visible.
+  // This only matters on units with meters-on-display; on other units
+  // showMeterOnDisplay() returns early anyway. Indexed by global channel.
+  void setDisplayMeterSuppressed(int channel, bool suppressed);
+
 protected:
   virtual void updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
                            double decay, int pin);
@@ -32,6 +39,11 @@ protected:
   std::vector<double> m_stripMeterPos;
   double m_masterMeterPos[2];
   void ensureStripMeterState(int channelCount);
+
+  // Per-global-channel flag set by the mode each frame. When true,
+  // showMeterOnDisplay() skips the LCD bar so a value shown on row 1
+  // (touched fader or briefly-shown VPOT value) is not overwritten.
+  std::vector<bool> m_displayMeterSuppressed;
 
   DWORD m_mcu_meter_lastrun;
 };

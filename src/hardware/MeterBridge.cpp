@@ -25,6 +25,14 @@ void MeterBridge::ensureStripMeterState(int channelCount) {
     m_stripMeterPos.assign(channelCount, -100000.0);
 }
 
+void MeterBridge::setDisplayMeterSuppressed(int channel, bool suppressed) {
+  // Indexed by global channel (1..availableChannels()). Grow defensively so
+  // a channel number seen before updateMeterBridge sized the vector is safe.
+  if ((int)m_displayMeterSuppressed.size() <= channel)
+    m_displayMeterSuppressed.assign(channel + 1, false);
+  m_displayMeterSuppressed[channel] = suppressed;
+}
+
 void MeterBridge::updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
                               double decay, int pin) {
   auto ts = Tracks::instance()->getTrackStateForMediaTrack(pMT);
@@ -123,6 +131,12 @@ void MeterBridge::showMeterOnDisplay(CSurf_MCU *pMCU, int channel,
   // name/value in Plug Mode), so extenders appear to have no text and
   // units that never enabled the option still show meters.
   if (!unit->metersOnDisplay())
+    return;
+
+  // The mode can ask to keep row 1 for a value (touched fader or a briefly
+  // shown VPOT value) by suppressing the LCD bar for this channel.
+  if (channel < (int)m_displayMeterSuppressed.size() &&
+      m_displayMeterSuppressed[channel])
     return;
 
   Display *display = unit->displayHandler()->getDisplay();
