@@ -23,12 +23,18 @@ void PlugModeSelector::writeTrackPlugTopLine(Display *d) {
                   m_pPlugMode->getCCSManager()->getMCU()->GetTrackName(
                       m_pPlugMode->getPlugAccess()->getPlugTrack()),
                   17);
-    d->changeText(
-        0, 28,
-        String::formatted(String("FX%2d "),
-                          m_pPlugMode->getPlugAccess()->getPlugSlot() + 1)
-            .toRawUTF8(),
-        10);
+    // Only show the "FX <slot>" marker when a plugin is actually selected.
+    // With slot -1 (no selection yet) it would print "FX 0" — leave the
+    // position blank instead.
+    int slot = m_pPlugMode->getPlugAccess()->getPlugSlot();
+    if (slot >= 0) {
+      d->changeText(0, 28,
+                    String::formatted(String("FX%2d "), slot + 1)
+                        .toRawUTF8(),
+                    10);
+    } else {
+      d->changeText(0, 28, "          ", 10);
+    }
     d->changeText(0, 33,
                   m_pPlugMode->getPlugAccess()->getPlugNameLong().toRawUTF8(),
                   17);
