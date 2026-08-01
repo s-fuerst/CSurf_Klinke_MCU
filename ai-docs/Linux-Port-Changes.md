@@ -297,16 +297,33 @@ Dieses Rework wurde **vollständig zurückgerollt** auf den Originalzustand (`ce
 - `PanMode.h`, `Options.cpp`, `ActionsDisplay.cpp`: Meter-Shifts entfernt
 - Diverse `enableMCUMeter`-Aufrufe rückgängig
 
-### 4.2 SysEx-Chunking (CHUNK=4)
+### 4.2 SysEx-Chunking + Diff (CHUNK=4)
 
-**Problem:** JACK-MIDI liefert lange SysEx-Nachrichten nur fragmentiert aus (~4 Zeichen pro `SendMsg`). Ganze Display-Zeilen (55 Zeichen) kamen verstümmelt an.
+**Problem:** JACK-MIDI delivers long SysEx messages only fragmentarily
+(~4 characters per `SendMsg`). Whole display rows (55 characters) arrived
+garbled.
 
-**Lösung:** Display-Zeilen werden in 4-Zeichen-Chunks aufgeteilt:
+**Solution:** `DisplayHandler::sendDifferences()` diffs the logical row
+text against `m_pHardwareState` (the last-sent hardware contents) and sends
+only the maximal runs of changed characters. Each run is still split into
+`CHUNK=4`-byte SysEx messages so no single message exceeds the JACK/MIDI
+fragmentation threshold. A one-field value change therefore costs one short
+run instead of a full 55-char row resend.
 
-- `DisplayHandler.cpp`: `sendDifferences()` teilt jede Display-Zeile in 4-Char-Chunks
-- `csurf_mcu.cpp`: Die Goodbye-Nachricht im Destruktor wird ebenfalls gechunkt
+- `DisplayHandler.cpp`: `sendDifferences()` — diff against the hardware row
+  index of `m_pHardwareState` (mirrors `switchRows()`, which is applied in
+  `sendToHardware` before writing the state). Each changed run is chunked.
+- `csurf_mcu.cpp`: the Goodbye message and the Schaltmix-handoff blanking
+  are chunked too; the blanking also updates `m_pHardwareState`, so the
+  diff-driven repaint is correct (no stale Schaltmix characters remain).
 
-Betrifft **alle** Geräte (nicht nur PROX), da das Chunking auch auf nativem JACK-MIDI korrekt funktioniert.
+Applies to **all** devices (not only PROX), because the chunking works
+correctly on native JACK-MIDI too.
+
+**History:** the original pure diff (master branch) sent each changed run as
+one long SysEx and was garbled on the QConPro X for exactly that reason; it
+was reverted in `35bf711` together with the first whole-row chunking. The
+diff was re-introduced with per-run chunking so both properties hold.
 
 ---
 

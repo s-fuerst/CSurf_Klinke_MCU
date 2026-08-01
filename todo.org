@@ -1,4 +1,4 @@
-* [0/9] v0.9.5 Release
+* [1/10] v0.9.5 Release
 ** TODO Track-Mode: show value on fader touch with Emulate Level Meter active
    The displays should show the current value (Volume or Pan depending on
    flip mode) on fader touch, even when "Emulate Level Meter" is enabled
@@ -14,21 +14,20 @@
    (brief off intervals, longer on). This works on unit 1 but not on unit 2.
    Possibly related to "Emulate blinking LED", which must be enabled for
    unit 2 and unit 3.
-** TODO Optimize DisplayHandler::sendDifferences()
-   Re-introduce diffing against m_pHardwareState (currently maintained in
-   sendToHardware() but never read): only send the changed runs, each still
-   chunked (CHUNK=4) to stay under the JACK/MIDI SysEx fragmentation
-   threshold. Today the whole row is always re-sent (14 SysEx per 55-char
-   row per update); a fader value change (a few chars) should cost a few
-   chars, not the whole row.
-   Context: the diff-based rework by Rothchild caused garbled/stale
-   displays on the QConPro X and was reverted (commit 35bf711); the
-   current whole-row chunked strategy is documented in
-   ai-docs/Linux-Port-Changes.md section 4.2. The original diff algorithm
-   lives on the master branch in DisplayHandler.cpp::sendDifferences().
-   Careful with: switchRows() row-swapping (diff must compare logical
-   rows while sendToHardware stores hardware rows), the 0x01 invalid-text
-   init, and the memset in switchTo().
+** DONE Optimize DisplayHandler::sendDifferences()
+   Re-introduce diffing against m_pHardwareState: only send the changed
+   runs, each still chunked (CHUNK=4) to stay under the JACK/MIDI SysEx
+   fragmentation threshold. Implemented 2026-07-21: sendDifferences() now
+   diffs the logical row against m_pHardwareState (read at the HARDWARE row
+   index to mirror switchRows(), which sendToHardware applies before writing
+   the state), finds maximal changed runs, and sends each run in 4-byte
+   SysEx chunks. A one-field value change costs one short run, not the whole
+   row. Correctness anchors preserved: 0x01 invalid-text init (forces first
+   paint), the memset in switchTo(), and sendToHardware updating
+   m_pHardwareState for every byte emitted (keeps the diff accurate, incl.
+   after the Schaltmix-handoff blanking in csurf_mcu.cpp). The stale
+   'whole-row' comment in csurf_mcu.cpp was rewritten; see ai-docs
+   Linux-Port-Changes.md 4.2.
 ** TODO Installation via ReaPack
 ** TODO Improved Documentation #5
 ** TODO Pan-Mode VPot press should reset panorama to center.
@@ -37,6 +36,7 @@ Run a leak detection pass (valgrind / AddressSanitizer)
 before the first release to identify and fix any memory leaks. Bitbucket
 issue #27 reported a leak detector warning on Reaper close; the
 CCSModesEditor destructor crash (#50) may also be leak-related.
+** TODO Always emulate blinking leds 
 * [0/1] v0.9.5.5 Release
 ** TODO #1 Monitor and RecArm can only be changed for armed tracks :bug:
 * [0/2] v0.9.7 (ChannelStrip)

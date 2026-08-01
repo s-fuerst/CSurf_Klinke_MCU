@@ -1320,12 +1320,15 @@ void CSurf_MCU::setSurfaceEnabled(bool enabled) {
     m_units[ui]->setUnitEnabled(enabled || (int)ui == 0);
 
   if (enabled) {
-    // The re-activated units were driven by Schaltmix in between. Clear ALL
+    // The re-activated units were driven by Schaltmix in between, which
+    // wrote to the LCD directly (bypassing our m_pHardwareState). Clear ALL
     // visual elements so nothing stays on the hardware: every button LED off
     // (also resets the LED cache), LCD rows blanked, fader cache invalidated
-    // (so the pushed volumes/pan are re-sent). The per-frame refresh then
-    // repopulates displays/LEDs — sendDifferences always re-sends the whole
-    // row, so no Schaltmix characters can remain.
+    // (so the pushed volumes/pan are re-sent). The explicit sendToHardware
+    // blanking below writes spaces to BOTH the physical LCD and
+    // m_pHardwareState (sendToHardware updates the diff state too), so the
+    // per-frame refresh's diff-driven sendDifferences correctly repaints the
+    // whole row — no Schaltmix characters can remain.
     for (size_t ui = 1; ui < m_units.size(); ui++) {
       m_units[ui]->forceAllLEDsOff();
       m_units[ui]->invalidateFaderCache();

@@ -47,20 +47,39 @@ void DisplayHandler::sendDifferences(Display *pDisplay, int row,
   if (pDisplay != m_pActualDisplay)
     return;
 
-  // Send the line as MULTIPLE SMALL SysEx instead of one big message.
-  // Rationale: a long SysEx issued via CSurf_MCU::SendMsg() only delivers
-  // the first ~4 characters on the Linux JACK/MIDI path (observed
-  // 2026-06-23 with iCON QConPro X); everything after is garbled. Splitting
-  // the line into small chunks, each its own SysEx, keeps every message
-  // under the fragmentation threshold so the whole line arrives intact.
-  // Applied to ALL devices for a simple, uniform update model (no diff
-  // memory to drift out of sync). CHUNK is tunable — 4 matched the
-  // observed clean prefix.
-  const int CHUNK = 4;
+  // m_pHardwareState mirrors what the physical LCD currently shows, but it
+  // is indexed by the HARDWARE row: sendToHardware() applies switchRows()
+  // before writing it, so logical row 0's last-sent content lives at index 1
+  // when the unit swaps rows. Mirror that mapping here so the diff compares
+  // the caller's logical-row text against the matching physical-row state.
+  int hardwareRow = row;
+  if (m_pUnit->switchRows() && hardwareRow < 2)
+    hardwareRow = 1 - hardwareRow;
+
+  const char *hwState = m_pHardwareState->getText()[hardwareRow];
   int rowLen = pDisplay->getRowLength(row);
-  for (int pos = 0; pos < rowLen; pos += CHUNK) {
-    int len = std::min(CHUNK, rowLen - pos);
-    sendToHardware(row, pos, text + pos, len);
+
+  // Diff: find each maximal run of changed characters and send only those.
+  // Each run is still split into CHUNK-byte SysEx messages so no single
+  // message exceeds the JACK/MIDI SysEx fragmentation threshold (~4 chars
+  // on the Linux JACK path, observed 2026-06-23 with iCON QConPro X; the
+  // earlier pure diff was garbled exactly because it sent a whole run as one
+  // long SysEx). A one-field value change now costs one short run, not a
+  // full 55-char row resend. sendToHardware() updates m_pHardwareState for
+  // every byte it emits, so the next diff starts from an accurate picture.
+  const int CHUNK = 4;
+  int runStart = -1;
+  for (int i = 0; i <= rowLen; i++) {
+    bool changed = (i < rowLen) && (hwState[i] != text[i]);
+    if (changed && runStart == -1) {
+      runStart = i;
+    } else if (!changed && runStart != -1) {
+      for (int pos = runStart; pos < i; pos += CHUNK) {
+        int len = std::min(CHUNK, i - pos);
+        sendToHardware(row, pos, text + pos, len);
+      }
+      runStart = -1;
+    }
   }
 }
 
