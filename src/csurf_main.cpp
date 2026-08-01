@@ -128,6 +128,7 @@ bool (*EnumInstalledFX)(int index, const char **nameOut,
 int (*TrackFX_AddByName)(MediaTrack *track, const char *fxname, bool recFX,
                          int instantiate);
 bool (*TrackFX_Delete)(MediaTrack *track, int fx);
+bool (*TrackFX_GetNamedConfigParm)(MediaTrack *track, int fx, const char *parmname, char *bufOut, int bufOut_sz);
 GUID *(*GetTrackGUID)(MediaTrack *tr);
 
 int *g_config_csurf_rate, *g_config_zoommode;
@@ -312,7 +313,6 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   IMPAPI(TrackFX_GetParam)
   IMPAPI(TrackFX_SetParam)
   IMPAPI(TrackFX_GetParamName)
-  IMPAPI(TrackFX_FormatParamValue)
   IMPAPI(TrackFX_GetFXName)
 
   IMPAPI(GetTrackGUID)
@@ -372,8 +372,14 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   IMPAPI(TrackFX_AddByName)
   IMPAPI(TrackFX_Delete)
 
-	IMPAPI(GetResourcePath)
-		
+  IMPAPI(GetResourcePath)
+
+  // Optional — do not increment errcnt if missing (older REAPER versions).
+  // TrackFX_FormatParamValue is cosmetic (formatted value display) and
+  // TrackFX_GetNamedConfigParm is used for exact VST2/VST3 ident matching.
+  *(void **)&TrackFX_FormatParamValue = (void *)rec->GetFunc("TrackFX_FormatParamValue");
+  *(void **)&TrackFX_GetNamedConfigParm = (void *)rec->GetFunc("TrackFX_GetNamedConfigParm");
+
   if (errcnt)
     return 0;
 

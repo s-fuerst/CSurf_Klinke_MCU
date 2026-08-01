@@ -14,15 +14,15 @@ ChannelStripBindingTable::ChannelStripBindingTable(ChannelStripMode *pMode)
   m_table->setColour(ListBox::outlineColourId, Colours::grey);
   m_table->setOutlineThickness(1);
 
-  m_table->getHeader().addColumn("#", CST_COL_NR, 28, 28, 28,
+  m_table->getHeader().addColumn("VPOT", CST_COL_NR, 60, 60, 60,
                                  TableHeaderComponent::notResizable);
   m_table->getHeader().addColumn("Plugin", CST_COL_PLUGIN, 230, 120, 400,
                                  TableHeaderComponent::notResizable);
   m_table->getHeader().addColumn("Abbrev", CST_COL_ABBREV, 60, 50, 80,
                                  TableHeaderComponent::notResizable);
-  m_table->getHeader().addColumn("InsPos", CST_COL_INSPOS, 70, 60, 90,
+  m_table->getHeader().addColumn("Insert Position", CST_COL_INSPOS, 110, 90, 130,
                                  TableHeaderComponent::notResizable);
-  m_table->getHeader().addColumn("Parameter", CST_COL_PARAM, 130, 100, 200,
+  m_table->getHeader().addColumn("Edit Mapping", CST_COL_PARAM, 130, 100, 200,
                                  TableHeaderComponent::notResizable);
 
   m_table->setMultipleSelectionEnabled(false);
@@ -45,6 +45,19 @@ void ChannelStripBindingTable::refreshInstalledFX() {
   ChannelStripAccess::getInstalledFX(m_installedFX);
 }
 
+void ChannelStripBindingTable::updateEverything() {
+  if (!m_table)
+    return;
+  m_table->updateContent();
+  // JUCE's TableListBox::updateContent() does NOT re-run
+  // refreshComponentForCell when the row count is unchanged, so custom cell
+  // components (plugin names etc.) keep stale state when the editor is
+  // re-opened. Resetting the model forces a full recreation of all cell
+  // components, re-running setRowAndColumn with current data.
+  m_table->setModel(nullptr);
+  m_table->setModel(this);
+}
+
 ChannelStripMap *ChannelStripBindingTable::stripForRow(int row) {
   if (!m_pMode || row < 0 || row >= ChannelStripMode::kNumStrips)
     return NULL;
@@ -58,7 +71,8 @@ void ChannelStripBindingTable::notifyBindingChanged() {
 void ChannelStripBindingTable::paintRowBackground(Graphics &g, int, int w,
                                                   int h, bool sel) {
   g.fillAll(sel ? Colours::lightblue : Colours::white);
-  g.setColour(Colours::grey); g.drawRect(0, 0, w, h);
+  // No grid lines between rows — keep the look identical to the
+  // ChannelStripParamEditor table (which also draws no row separators).
 }
 
 void ChannelStripBindingTable::paintCell(Graphics &g, int row, int col,
@@ -66,7 +80,7 @@ void ChannelStripBindingTable::paintCell(Graphics &g, int row, int col,
   if (col != CST_COL_NR) return;
   g.setColour(Colours::black);
   g.setFont(Font(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain));
-  String n = (row < 8) ? String(row + 1) : ("S" + String(row - 7));
+  String n = (row < 8) ? String(row + 1) : ("Shift " + String(row - 7));
   g.drawText(n, 2, 1, w - 4, h, Justification::centred, true);
 }
 
@@ -126,6 +140,16 @@ void CSTPluginCombo::setRowAndColumn(int r, int c) {
   }
   m_editor->setText(name, dontSendNotification);
   m_lastValidText = name;
+  // Defer layout + repaint to after the table has positioned this cell.
+  // During refreshComponentForCell the cell bounds may still be 0, so sizing
+  // the TextEditor synchronously leaves it blank — most visible when the
+  // editor is re-opened (the cell components are recreated then).
+  SafePointer<CSTPluginCombo> sp(this);
+  MessageManager::callAsync([sp]() {
+    if (!sp) return;
+    sp->resized();
+    if (sp->m_editor) sp->m_editor->repaint();
+  });
 }
 
 void CSTPluginCombo::applyFilter(const String &text) {
@@ -178,7 +202,6 @@ void CSTPluginCombo::setSelectedByIdent(const String &ident) {
   if (!strip) return;
   if (ident.isEmpty()) {
     strip->setFxIdent(String());
-    strip->setFxGUID(String());
     for (int i = 0; i < ChannelStripMap::kNumVPOTs; i++)
       strip->setParamForVPOT(i, -1);
     m_editor->setText(String(), dontSendNotification);
@@ -187,12 +210,20 @@ void CSTPluginCombo::setSelectedByIdent(const String &ident) {
     for (const auto &f : fx) {
       if (f.ident == ident) {
         strip->setFxIdent(f.ident);
-        strip->setFxGUID(String());
         // new plugin -> its parameter indices differ, clear the VPOT map
         for (int i = 0; i < ChannelStripMap::kNumVPOTs; i++)
           strip->setParamForVPOT(i, -1);
-        if (strip->getShortName().isEmpty())
-          strip->setShortName(f.name.substring(0, 5));
+        if (strip->getShortName().isEmpty()) {
+          // auto-fill shortName: strip "TYPE:" prefix and " (Manufacturer)"
+          String base = f.name;
+          int colon = base.indexOfChar(':');
+          if (colon >= 0)
+            base = base.substring(colon + 1).trimStart();
+          int paren = base.indexOfChar('(');
+          if (paren > 0)
+            base = base.substring(0, paren).trimEnd();
+          strip->setShortName(base.substring(0, 5));
+        }
         m_editor->setText(f.name, dontSendNotification);
         break;
       }
@@ -268,7 +299,7 @@ CSTInsPosCombo::CSTInsPosCombo(ChannelStripBindingTable &o)
   using IP = ChannelStripMap::InsertPos;
   m_combo->addItem(ChannelStripMap::tokenForInsertPos(IP::FIRST), (int)IP::FIRST + 1);
   for (int p = (int)IP::POS2; p <= (int)IP::POS8; p++)
-    m_combo->addItem(String(p), p + 1);
+    m_combo->addItem(String(p + 1), p + 1);
   m_combo->addItem(ChannelStripMap::tokenForInsertPos(IP::LAST), (int)IP::LAST + 1);
   m_combo->addListener(this);
   m_combo->setWantsKeyboardFocus(true);
@@ -293,16 +324,23 @@ void CSTInsPosCombo::comboBoxChanged(ComboBox *) {
 
 CSTParamButton::CSTParamButton(ChannelStripBindingTable &o)
     : owner(o), m_button(NULL), row(0), column(0) {
-  addAndMakeVisible(m_button = new TextButton("edit..."));
+  addAndMakeVisible(m_button = new TextButton("edit"));
+  // Make it unmistakably a button: light-grey fill + dark border so users see
+  // it opens the VPOT->param mapping dialog.
+  m_button->setColour(TextButton::buttonColourId, Colour(0xffe8e8e8));
+  m_button->setColour(TextButton::buttonOnColourId, Colour(0xffc8c8c8));
+  m_button->setColour(TextButton::textColourOffId, Colours::black);
+  m_button->setColour(ComboBox::outlineColourId, Colours::darkgrey);
   m_button->addListener(this);
 }
 
 void CSTParamButton::setRowAndColumn(int r, int c) {
   row = r; column = c;
   ChannelStripMap *strip = owner.stripForRow(row);
-  String label = "edit...";
+  String label;
   if (strip && strip->isAssigned())
-    label = String(strip->numBoundVPOTs()) + "/" + String(ChannelStripMap::kNumVPOTs);
+    label = "Edit " + String(strip->numBoundVPOTs()) + "/" +
+            String(ChannelStripMap::kNumVPOTs);
   else
     label = "-";
   m_button->setButtonText(label);

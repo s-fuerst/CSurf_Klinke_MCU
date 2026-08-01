@@ -11,9 +11,8 @@ ChannelStripMap::ChannelStripMap() { initEmpty(); }
 
 void ChannelStripMap::initEmpty() {
   m_fxIdent = String();
-  m_fxGUID = String();
   m_shortName = String();
-  m_insertPos = LAST;
+  m_insertPos = FIRST; // default insert position is "first"
   for (int i = 0; i < kNumVPOTs; i++) {
     m_vpotParam[i] = -1;
     m_vpotName[i] = String();
@@ -79,12 +78,12 @@ ChannelStripMap::insertPosFromToken(const String &token) {
   return LAST;
 }
 
-void ChannelStripMap::writeToXml(XmlElement *pParent) const {
+void ChannelStripMap::writeToXml(XmlElement *pParent, int nr) const {
   if (!pParent)
     return;
   XmlElement *pStrip = new XmlElement(CSM_TAG_STRIP);
+  pStrip->setAttribute(CSB_ATT_NR, nr);
   pStrip->setAttribute(CSB_ATT_FXIDENT, m_fxIdent);
-  pStrip->setAttribute(CSB_ATT_FXGUID, m_fxGUID);
   pStrip->setAttribute(CSB_ATT_NAME, m_shortName);
   pStrip->setAttribute(CSB_ATT_INSPOS, tokenForInsertPos(m_insertPos));
   for (int i = 0; i < kNumVPOTs; i++) {
@@ -104,7 +103,6 @@ bool ChannelStripMap::readFromXml(const XmlElement *pStrip) {
   if (!pStrip)
     return false;
   m_fxIdent = pStrip->getStringAttribute(CSB_ATT_FXIDENT);
-  m_fxGUID = pStrip->getStringAttribute(CSB_ATT_FXGUID);
   m_shortName = pStrip->getStringAttribute(CSB_ATT_NAME);
   m_insertPos = insertPosFromToken(pStrip->getStringAttribute(CSB_ATT_INSPOS));
   for (int i = 0; i < kNumVPOTs; i++)

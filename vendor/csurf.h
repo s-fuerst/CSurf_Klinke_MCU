@@ -163,6 +163,7 @@ extern int (*TrackFX_GetParamFromIdent)(MediaTrack* track, int fx, const char* i
 extern bool (*EnumInstalledFX)(int index, const char** nameOut, const char** identOut);
 extern int (*TrackFX_AddByName)(MediaTrack* track, const char* fxname, bool recFX, int instantiate);
 extern bool (*TrackFX_Delete)(MediaTrack* track, int fx);
+extern bool (*TrackFX_GetNamedConfigParm)(MediaTrack* track, int fx, const char* parmname, char* bufOut, int bufOut_sz);
 
 extern const char* (*GetResourcePath)();
 

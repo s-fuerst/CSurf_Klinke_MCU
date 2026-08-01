@@ -74,6 +74,7 @@ public:
   PluginWatcher *m_pWatcher;
   int m_paramChangedConnectionId;
   int m_learnVPOT;
+  bool m_ownsTempPlugin; // true only if we added a temp instance to learn from
 
   static bool s_dialogOpen;
 };
