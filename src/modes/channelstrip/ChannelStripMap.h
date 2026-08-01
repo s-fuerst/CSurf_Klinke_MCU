@@ -9,14 +9,17 @@
  *
  *   fxIdent    — EnumInstalledFX ident (e.g. "VST3:ReaEQ (Cockos)"), used to
  *                find/add the plugin on a track.
- *   fxGUID     — stringified TrackFX_GetFXGUID of the live instance (runtime).
  *   shortName  — up to 5 chars shown on the MCU display.
  *   insertPos  — where TrackFX_AddByName inserts the plugin ("+" flow).
  *   vpotParam  — paramIndex (of this plugin) for each VPOT position 1..8 normal
  *                and 9..16 with Shift. -1 = unbound.
  *
+ * NOTE: the live FX slot (fxGUID) is instance-specific and therefore does
+ * NOT live in this global map. It is resolved at runtime per (track, strip)
+ * and cached in ChannelStripAccess.
+ *
  * XML:
- *   <STRIP nr="1" fxident="VST3:ReaEQ (Cockos)" fxguid="{..}" name="EQ" inspos="last">
+ *   <STRIP nr="1" fxident="VST3:ReaEQ (Cockos)" name="EQ" inspos="last">
  *     <VPOT nr="1" param="3"/>
  *     ...
  *   </STRIP>
@@ -27,7 +30,6 @@
 // shared XML tokens + insert-position helpers
 #define CSB_ATT_NR String("nr")
 #define CSB_ATT_FXIDENT String("fxident")
-#define CSB_ATT_FXGUID String("fxguid")
 #define CSB_ATT_NAME String("name")
 #define CSB_ATT_INSPOS String("inspos")
 #define CSB_ATT_PARAM String("param")
@@ -51,13 +53,10 @@ public:
   void initEmpty();
 
   bool isAssigned() const { return m_fxIdent.isNotEmpty(); }
-  bool isResolved() const { return m_fxGUID.isNotEmpty(); }
 
   // --- the plugin ---
   const String &getFxIdent() const { return m_fxIdent; }
   void setFxIdent(const String &ident) { m_fxIdent = ident; }
-  const String &getFxGUID() const { return m_fxGUID; }
-  void setFxGUID(const String &guid) { m_fxGUID = guid; }
   const String &getShortName() const { return m_shortName; }
   void setShortName(const String &name) { m_shortName = name; }
   InsertPos getInsertPos() const { return m_insertPos; }
@@ -76,12 +75,15 @@ public:
   static String tokenForInsertPos(InsertPos pos);
 
   // --- XML ---
-  void writeToXml(XmlElement *pParent) const;   // adds a <STRIP> child
-  bool readFromXml(const XmlElement *pStrip);   // reads a <STRIP> element
+  // Everything for one strip goes into a single <STRIP> element (header attrs
+  // + <VPOT> children) inside the one global channelstrips.xml file.
+  // nr = 1-based slot number (1..16) so the file can route each element back
+  // to its slot.
+  void writeToXml(XmlElement *pParent, int nr) const; // adds a <STRIP> child
+  bool readFromXml(const XmlElement *pStrip);         // reads a <STRIP> element
 
 private:
   String m_fxIdent;
-  String m_fxGUID;
   String m_shortName;
   InsertPos m_insertPos;
   int m_vpotParam[kNumVPOTs]; // -1 = unbound

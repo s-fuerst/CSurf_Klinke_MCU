@@ -4,19 +4,26 @@
  *
  * TrackFX_* wrapper for Channel Strip Mode.
  *
- * Responsibilities (Step B4):
+ * Responsibilities:
  *   • enumerate installed FX (EnumInstalledFX) — for the editor combo box
- *   • resolve a binding's fxIdent/fxGUID to a live 0-based FX slot on a track
+ *   • resolve a strip's fxIdent to a live 0-based FX slot on a track, with a
+ *     per-(trackGUID, stripIndex) slot cache that survives reorders and is
+ *     invalidated by PlugMoveWatcher
  *   • read/write a bound parameter (normalized 0..1) and toggle 0/1
- *   • add a missing plugin at the binding's insert position (the "+" flow)
+ *   • add a missing plugin at the strip's insert position (the "+" flow)
  *
  * Parameter values use REAPER's NORMALIZED 0..1 APIs so a generic VPOT can
  * drive any parameter type without per-plugin range knowledge.
+ *
+ * The strip's live fxGUID is NOT stored in the global ChannelStripMap (which
+ * is shared across all tracks); it lives only in this per-(track, strip)
+ * cache.
  */
 #pragma once
 #include "JuceHeader.h"
 #include "ChannelStripMap.h"
 #include <vector>
+#include <map>
 
 class ChannelStripMode;
 class MediaTrack;
@@ -31,20 +38,23 @@ public:
   ChannelStripAccess(ChannelStripMode *pMode);
   ~ChannelStripAccess();
 
-  // Called when the selected track changes.
-  void trackChanged(MediaTrack *pTrack);
-  MediaTrack *getTrack() const { return m_pTrack; }
-
   // --- installed FX enumeration ---
   static void getInstalledFX(std::vector<InstalledFX> &out);
 
   // --- resolution (all return a 0-based slot index, or -1 if not found) ---
   static int findSlotByGUID(MediaTrack *tr, const String &guid);
   static int findSlotByIdent(MediaTrack *tr, const String &fxIdent);
-  // Resolve a binding against the track: if its fxGUID matches a live slot,
-  // keep it; otherwise try fxIdent by name. Updates b.fxGUID. Returns the slot
-  // index or -1 if the plugin is not on the track (dangling / needs "+").
-  static int resolveBinding(MediaTrack *tr, ChannelStripMap &strip);
+
+  // Resolve a strip against the given track using the slot cache. Returns the
+  // 0-based slot or -1 if the plugin is not on the track (dangling / "+").
+  // The cache is keyed by (trackGUID, stripIndex) and stores the slot plus the
+  // instance GUID at cache time; a stale slot (GUID mismatch after reorder)
+  // triggers a re-resolve by fxIdent.
+  int resolveSlot(MediaTrack *tr, int stripIndex, const ChannelStripMap &strip);
+
+  // Invalidate all cache entries for one track (called on plugMoved / delete).
+  void invalidateTrack(MediaTrack *tr);
+  void invalidateAll();
 
   // --- parameter I/O (normalized 0..1) ---
   static double getParamValue(MediaTrack *tr, int slot, int param);
@@ -57,14 +67,21 @@ public:
   // --- parameter metadata ---
   static int getNumParams(MediaTrack *tr, int slot);
   static String getParamName(MediaTrack *tr, int slot, int param);
+  // Formatted parameter value (e.g. "1.0k", "-3.2 dB"). Uses the optional
+  // TrackFX_FormatParamValue API; returns "" if unavailable.
+  static String getFormattedParamValue(MediaTrack *tr, int slot, int param);
 
   // --- add plugin ("+" flow) ---
-  // Adds the binding's plugin at its insert position on the current track and
-  // fills b.fxGUID. Returns the new 0-based slot index, or -1 on failure.
-  int addPlugin(ChannelStripMap &strip);
+  // Adds the strip's plugin at its insert position on the given track and
+  // updates the slot cache for (track, stripIndex). Returns the new 0-based
+  // slot index, or -1 on failure.
+  int addPlugin(MediaTrack *tr, int stripIndex, const ChannelStripMap &strip);
   // TrackFX_AddByName instantiate argument for (insertPos, current chain len).
-  static int instantiateArgFor(ChannelStripMap::InsertPos pos,
-                               int chainLen);
+  static int instantiateArgFor(ChannelStripMap::InsertPos pos, int chainLen);
+
+  // --- PlugMoveWatcher hook ---
+  void plugMoved(MediaTrack *pOldTrack, int oldSlot,
+                 MediaTrack *pNewTrack, int newSlot);
 
 private:
   // Strip a "TYPE:" prefix and surrounding whitespace from a name or ident so
@@ -72,5 +89,13 @@ private:
   static String normalizeName(const String &nameOrIdent);
 
   ChannelStripMode *m_pMode;
-  MediaTrack *m_pTrack;
+
+  // cache key: (trackGUID, stripIndex) -> (slot, instance GUID at cache time)
+  struct CacheEntry {
+    int slot;
+    String fxGUID;
+  };
+  std::map<std::pair<String, int>, CacheEntry> m_slotCache;
+
+  int m_plugMoveConnectionId;
 };

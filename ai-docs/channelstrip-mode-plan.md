@@ -1,102 +1,105 @@
 # Channel Strip Mode — Implementation Plan
 
-> Date: 2026-07-28
-> Status: **PLANNING** (no code changes yet)
-> Origin: `notes.org` → "ChannelStripe Idee (Sketch)"
+> Status: **REFACTORING** (architecture corrected — see §0 for what changed)
+> Origin: `notes.org` → "ChannelStrip Idee (Sketch)"
 
-## 0. Executive Summary
+## 0. What changed in this revision (why we are refactoring)
 
-A new MCU mode — **Channel Strip Mode** — that exposes the most-used FX
-parameters of the selected track's FX chain as a flat surface of 8 VPOTs
-(16 with Shift). The classic mixing-console idea: EQ + dynamics + gain on one
-channel, without opening each plugin.
+The first implementation (DeepSeek) made a fundamental architecture error:
+it built the mode bank-based on `MultiTrackMode`'s channel logic — each of the
+8 channels addressed a **different bank track** via `getMediaTrackForChannel(c)`,
+and the strip was looked up per `(trackGUID, unitIndex)` against that bank
+track. That made every VPOT control a parameter on a *different* track
+simultaneously (e.g. VPOT 1 reached the track holding ReaEQ, VPOT 2 the track
+holding ReaComp), instead of all 16 VPOTs of a unit driving the 16 parameters
+of one strip on the **selected track**.
 
-It is activated by the **TRACK button** (`B_VPOT_TRACK`, `0x28`) in the VPOT
-assign section — the only assign button not yet bound to a mode
-(`EQ`=Action, `SEND`=Send/Receive, `PAN`=Pan, `PLUG`=Plug). It stays active
-until another assign button is pressed (same behaviour as Plug/Pan/Action,
-not the momentary switch-back of Send/Receive).
+This revision corrects the model. The `(trackGUID, unitIndex) → stripIndex`
+assignment table is correct and stays; what changes is **which track the
+VPOTs act on** (the selected track, not the bank track) and how the strip's
+live FX slot is resolved (cached per track+strip, not stored in the global
+map). Selection semantics are also clarified: a unit without a strip always
+shows the strip-name list and is always pickable; a unit with a strip shows
+its parameters and is only re-pickable while B_VPOT_TRACK is held.
 
-The mode reuses the established architectural patterns of **PlugMode** (the
-closest existing mode) almost wholesale — only the parameter-mapping model is
-new, and it is deliberately simpler (flat 16 slots vs. PlugMode's
-8×8×8 bank/page/fader/vpot cube).
-
-### Confirmed design decisions
-
-| Decision | Choice | Rationale |
-|---|---|---|
-| Slot model | **Nested: 1 plugin per strip** | Each of the 16 global strips is ONE plugin; its parameters are mapped onto the 8 VPOTs (16 with Shift) in a second editor (opened by the "Parameter" button). Evolved from the initially-chosen flat model. |
-| Persistence key | **Per-track + per-unit** `(trackGUID, unitIndex)` | Matches `notes.org` ("the track remembers the assignment of each unit to the plugins"). Each 8-channel unit has its own strip for the same track. |
-| Activation behaviour | **Stay active** (like Plug/Pan/Action) | The mode is most similar to PlugMode; no switch-back. |
-| Shift / Multi-Unit | **Baked in from step 1** | Not deferred to a late phase. The 16-slot map is shift-aware by construction; per-track+per-unit storage is multi-unit aware by construction. |
-| Stock-plugin maps | **No catalog code** | Ship a few example map files into the user save location (same dir `ChannelStripMapManager` loads from). No dedicated "recommended params" table. |
-
----
-
-## 1. Feature (from `notes.org`)
+## 1. Feature (from `notes.org`, clarified)
 
 - A **Channel Strip Map** = exactly 16 parameter bindings (VPOTs 1–8 normal,
-  9–16 via Shift). Operated via VPOTs. Base is a Track Mode.
-- **First-time selection**: if no channel-strip plugin is assigned to this
-  unit for the selected track yet, the 8 names appear in the display and can
-  be selected via VPOT. If the track does not yet have the plugin, a `+`
-  appears before the name; selecting it adds the plugin to the track.
-- **Insert position** (per binding): first, n-th (2–8), or last — controls
-  where `+` inserts the plugin into the chain.
-- **Duplicates allowed**: the same plugin may occupy several slots to edit
-  different aspects (e.g. EQ bands once, compressor once). Selecting it again
-  does **not** add a second instance — it reuses the existing one.
-- **VPOT press**: no separate press mapping. A press sets the parameter to 1
-  if the current value != 1, otherwise to 0 (toggle).
-- **Track remembers per-unit plugin assignments** and saves them in the
-  project.
-- **On-screen editor**: opened by **ALT+TRACK** (the assign button, like
-  Plug/Pan/Action). The editor is a 16-row table —
-  `Number | Plugin | 5-char display abbreviation | Insert Pos | Open Map`.
-- **ALT+VPOT-1**: opens the floating FX window of the plugin controlled by
-  that slot's binding (respecting PlugMode's open-window-count rules;
-  duplicate that option into this mode).
-- **ALT+VPOT-7 / ALT+VPOT-8**: move the FX up / down in the chain. These
-  shortcuts are also implemented in PlugMode.
-- **ALT+Name/Values**: shows these commands in the display.
+  9–16 via Shift) of **one plugin**. Operated via VPOTs. Base is a Track Mode.
+- **16 GLOBAL strips**, shared across all projects/tracks. Stock-plugin maps
+  ship pre-made. Each strip is ONE plugin + its 16 VPOT→param mapping.
+- **Selected track is the reference.** If 0 or ≥2 tracks are selected there is
+  no active channel strip (VPOTs dark, row 1 shows the "select one track"
+  hint — same text PlugMode uses).
+- **Per (trackGUID, unitIndex): an assignment to one of the 16 strips**
+  (–1 = none). Persisted in the project (Step E). Each unit on a track may be
+  assigned a different strip.
+- **VPOTs act on the selected track.** A unit's 8 VPOTs (16 with Shift) drive
+  the 16 parameters of the strip assigned to that unit for the selected track.
+- **Selection (State 0):** a unit with no assigned strip always shows the 8
+  global strip names in row 1 (VPOT 1 → strip 0 … VPOT 8 → strip 7; with
+  Shift strips 8–15). VPOT press picks that strip for this unit on the
+  selected track and auto-adds the plugin if missing. This is always available
+  — no need to hold B_VPOT_TRACK.
+- **Re-pick (held TRACK):** a unit that already has a strip shows its
+  parameters normally. While B_VPOT_TRACK is **held down**, every unit
+  (including those with a strip) shows the strip-name list and a VPOT press
+  re-assigns that unit's strip. On release, VPOTs return to parameter control.
+- **Insert position** (per strip): first, n-th (2–8), or last — controls where
+  `+` inserts the plugin into the chain.
+- **Duplicates allowed:** the same plugin may occupy several strips to edit
+  different aspects (e.g. EQ once, compressor once). Selecting it again does
+  **not** add a second instance — the existing instance is reused.
+- **VPOT press (active state):** no separate press mapping. A press sets the
+  parameter to 1 if the current value != 1, otherwise to 0 (toggle).
+- **Track remembers per-unit strip assignments** and saves them in the project.
+- **On-screen editor:** opened by **ALT+TRACK**. A 16-row table —
+  `Number | Plugin | short display abbreviation | Insert Pos | Open Map`.
+  Global (independent of track/unit).
+- **ALT+VPOT-1:** opens the floating FX window of the plugin controlled by
+  that slot's binding (PlugMode's open-window-count rules duplicated).
+- **ALT+VPOT-7 / ALT+VPOT-8:** move the FX up / down in the chain.
+- **ALT+Name/Values:** shows these command labels in the display.
 - Modifier choice (ALT vs CONTROL) to be finalised during implementation;
   PlugMode already uses ALT+SELECT for plugin windows, so ALT is the default.
 
----
-
 ## 2. How it maps onto the existing architecture
 
-PlugMode is the template. The new mode reuses its infrastructure directly:
+Like `PanMode` and `CommandMode`, `ChannelStripMode` inherits from
+`MultiTrackMode` and overrides only the VPOT/Display behaviour. Faders,
+Sel/Mute/Solo/Rec, bank navigation, LEDs, and row-0 track names come from
+`MultiTrackMode` unchanged. The difference from Pan/Action: the VPOTs do
+**not** operate on the per-channel bank track (`getMediaTrackForChannel`) but
+on the **selected track** (`getSelectedSingleTrack`).
 
 | Concept (notes.org) | Existing pattern to reuse |
 |---|---|
-| New CCSMode, "Track Mode" base | `CCSMode` subclass, mirroring `PlugMode` (signal wiring in ctor, `activate`/`updateDisplay`) |
-| Activation via TRACK button | `B_VPOT_TRACK` (`0x28`) — free — added as a `case` in `CCSManager::buttonVPOTassign` |
-| "+ adds plugin to track" | `TrackFX_AddByName` (insert pos via `instantiate <= -1000`); ident list from `EnumInstalledFX` |
-| Read/write parameters | `TrackFX_GetParam` / `TrackFX_SetParam`; names from `TrackFX_GetParamName` (a `PlugAccess`-style wrapper) |
-| Track plugin move/delete | `PlugMoveWatcher` singleton, `connectPlugMoveSignal` — exactly as PlugMode uses it |
-| Per-track persistence in project | `ProjectConfig::connect2ProjectChangeSignal` + XML (like `TrackState` / `PlugMapManager::writeLocalMapsToProjectConfig`) |
+| New CCSMode, "Track Mode" base | `MultiTrackMode` subclass (like Pan/Command) |
+| Activation via TRACK button | `B_VPOT_TRACK` (`0x28`) — `case` in `CCSManager::buttonVPOTassign` (stays active); press/release sets selection mode |
+| "+ adds plugin to track" | `TrackFX_AddByName` (insert pos via `instantiate`); ident list from `EnumInstalledFX` |
+| Read/write parameters | `TrackFX_GetParam` / `TrackFX_SetParam`; names from `TrackFX_GetParamName` |
+| Track plugin move/delete tracking | `PlugMoveWatcher` singleton — used to invalidate the slot cache |
+| Per-track persistence in project | `ProjectConfig::connect2ProjectChangeSignal` + XML |
 | Map save/load to file | `PlugMapManager`-style installed/user map locations under `GetResourcePath()` |
 | VPOT LEDs, assignment display | `updateVPOTLeds`, `setAssignmentDisplay` in `CCSManager` |
 | On-screen JUCE editor | `createEditorComponent`, mirroring `PlugModeComponent` |
+| "select one track" hint | same text PlugMode uses (`"You must select a single track."`) |
 
 ### REAPER API surface used
 
-- `EnumInstalledFX(index, &name, &ident)` — enumerate installed FX for the
-  editor's plugin combo box; `ident` carries the type prefix
-  (`VST3:`, `VST:`, `AU:`, `JS:`, `DX:`, `CLAP:`).
+- `EnumInstalledFX(index, &name, &ident)` — editor combo box; `ident` carries
+  the type prefix (`VST3:`, `VST:`, `AU:`, `JS:`, `DX:`, `CLAP:`).
 - `TrackFX_AddByName(track, ident, recFX, instantiate)` — the "+" flow;
   `instantiate <= -1000` encodes the insert position.
-- `TrackFX_GetCount`, `TrackFX_GetFXName`, `TrackFX_GetFXGUID` —
-  `fxIdent → fxGUID` resolution by name match.
+- `TrackFX_GetCount`, `TrackFX_GetFXName`, `TrackFX_GetFXGUID` — slot resolution.
+- `TrackFX_GetNamedConfigParm(slot, "fx_ident")` — exact VST2/VST3 matching
+  (optional API; loaded via `rec->GetFunc`, not `IMPAPI`).
 - `TrackFX_GetNumParams`, `TrackFX_GetParamName`, `TrackFX_GetParam`,
-  `TrackFX_SetParam` — parameter enumeration, display, and control.
-- `TrackFX_CopyToTrack(src, srcFx, dst, dstFx, is_move)` — ALT+VPOT-7/8
-  reorder; `src == dst`, `is_move = true` reorders in place.
-- `TrackFX_Delete` — kept available for future "remove binding" actions.
-
----
+  `TrackFX_SetParam` — parameter enumeration, display, control.
+- `TrackFX_FormatParamValue` — formatted value display (e.g. "1.0k"). **Optional
+  API** (via `rec->GetFunc`, not `IMPAPI`) — cosmetic only; must not block load.
+- `TrackFX_CopyToTrack(src, srcFx, dst, dstFx, is_move)` — ALT+VPOT-7/8 reorder.
+- `TrackFX_Delete` — available for future "remove binding".
 
 ## 3. Data model
 
@@ -105,168 +108,283 @@ PlugMode is the template. The new mode reuses its infrastructure directly:
 // of its parameters onto the 8 VPOTs (16 with Shift).
 class ChannelStripMap {
     String fxIdent;                 // EnumInstalledFX ident, to find/add the plugin
-    String fxGUID;                  // stringified instance GUID (runtime)
     String shortName;               // <=5 chars for the display
     enum InsertPos { FIRST, P2..P8, LAST } insertPos;
-    int vpotParam[16];              // param index per VPOT pos (1..8 normal, 9..16 Shift);
-                                    // -1 = unbound
-    void writeToXml / readFromXml;
+    int vpotParam[16];              // param index per VPOT pos; -1 = unbound
+    String vpotName[16];            // per-VPOT display name (max 6 chars)
+    // NO fxGUID here — instance-specific, must not live in a GLOBAL map.
+    void writeToXml / readFromXml;  // persists fxident, shortName, inspos, vpotParam/Name
 };
+```
 
-**Two-stage plugin identification** (important):
-- `fxIdent` (stable, track-independent) drives the "+" logic via
-  `TrackFX_AddByName`.
-- `fxGUID` (per-instance) drives runtime access and survives reordering.
+**fxIdent (stable, track-independent)** drives the "+" logic via
+`TrackFX_AddByName`. The live FX slot is resolved at runtime against the
+selected track's FX chain and **cached per (trackGUID, stripIndex)**, then
+invalidated by `PlugMoveWatcher` (reorder) and FX-delete tracking. The cache
+does NOT touch the global `ChannelStripMap`.
 
-On activation the mode resolves the assigned strip's `fxIdent → fxGUID` by
-scanning the track's FX chain (`TrackFX_GetFXName` match). If the plugin is
-missing, the binding is shown in "+" state and is not auto-added until the
-user triggers it via the editor's "Parameter" button (Step D).
+### Runtime slot cache
 
-### Persistence (Step E, not yet implemented)
+```cpp
+// per (trackGUID, stripIndex) -> 0-based FX slot on that track, or -1 (dangling)
+std::map<std::pair<String,int>, int> m_slotCache;
+```
 
-- 16 global strip files: `<STRIP>` elements stored in
-  `GetResourcePath()/UserPlugins/MCU/ChannelStripMaps/` — same pattern as
-  `PlugMapManager` installed/user maps.
-- Per-track per-unit assignment: `int[8]` (strip indices, –1 = none) stored
-  per trackGUID via `ProjectConfig::connect2ProjectChangeSignal`.
+- `resolveSlot(tr, stripIndex)` returns the cached slot or re-resolves via
+  `findSlotByIdent` (exact `fx_ident` first, normalised-name fallback) and
+  stores it.
+- `PlugMoveWatcher` signal → invalidate all entries for that track.
+- FX delete → invalidate that track's entries (re-resolved lazily on next use).
+
+### Persistence (Step E) — implemented
+
+All strip data lives in **one** file:
+`~/.config/REAPER/MCU/ChannelStripMaps/channelstrips.xml` (user location,
+same style as `PlugMapManager` user maps). One `<STRIP>` per ASSIGNED slot,
+holding the header fields AND the VPOT→param mapping together:
 
 ```xml
-<!-- global strip file -->
-<STRIP nr="1" fxident="VST3:ReaEQ (Cockos)" fxguid="{..}" name="EQ" inspos="last">
-  <VPOT nr="1" param="3"/>
-  <VPOT nr="2" param="4"/>
+<CHANNELSTRIPS>
+  <STRIP nr="1" fxident="VST3:ReaEQ (Cockos)" name="EQ" inspos="first">
+    <VPOT nr="1" param="3" name="Band1"/>
+    <VPOT nr="2" param="4"/>
+    ...
+  </STRIP>
   ...
-</STRIP>
+</CHANNELSTRIPS>
+```
 
-<!-- per-track assignment (inside project) -->
-<CHANNELSTRIP_ASSIGN unit="0" strip="3"/>
+- Loaded once at startup (`loadStripsFromFile` in the ctor).
+- Saved when either editor closes: the main editor (`saveStripsToFile` in
+  `removeEditor`) and the mapping editor (`saveStripsToFile` in the
+  `ChannelStripParamEditor` destructor).
 
-Stored via `ProjectConfig::connect2ProjectChangeSignal`, handled for
-`READ` / `WRITE` / `FREE` exactly like the existing per-track state.
+Per-track per-unit assignment is stored **in the Reaper project** via
+`ProjectConfig` (`projectChanged` WRITE/READ/FREE):
 
----
+```xml
+<CHANNELSTRIP_ASSIGNMENTS>
+  <ASSIGN track="{guid}" unit="0" strip="3"/>
+  ...
+</CHANNELSTRIP_ASSIGNMENTS>
+```
 
-## 4. Module structure
+`ChannelStripMap` exposes `writeToXml(parent, nr)` (header + VPOT children)
+and `readFromXml(pStrip)` (header attrs + VPOT children).
 
-New directory `src/modes/channelstrip/`, mirrored on `src/modes/plugin/`:
+## 4. Runtime states (per unit, derived — not switched)
+
+The display/VPOT behaviour of a unit is fully derived from three facts:
+(selected track present?) × (unit has strip?) × (selection mode = TRACK held?).
+
+| selected track? | unit has strip? | TRACK held? | Row 1 shows | VPOT turn | VPOT press |
+|---|---|---|---|---|---|
+| no  | –   | –   | "You must select a single track." | –    | –           |
+| yes | no  | any | strip names (1–8 / Shift 9–16)    | –    | pick strip for this unit (+auto-add) |
+| yes | yes | no  | param name (idle) / value (1 s after turn) | nudge | toggle 0/1 |
+| yes | yes | yes | strip names                       | –    | re-pick strip for this unit |
+
+Selection mode is a single bool `m_selectionMode` set by CCSManager on
+B_VPOT_TRACK press/release. It only affects units that already have a strip;
+units without a strip are always in pick mode.
+
+## 5. Module structure
 
 ```
 src/modes/channelstrip/
-├── ChannelStripMode.{cpp,h}          # CCSMode subclass, wired to B_VPOT_TRACK; stays active
-├── ChannelStripMap.{cpp,h}           # 1 strip: plugin + metadata + 16 VPOT→param bindings
-├── ChannelStripAccess.{cpp,h}        # TrackFX_* wrapper; fxIdent<->fxGUID resolution
+├── ChannelStripMode.{cpp,h}          # MultiTrackMode subclass; VPOTs act on selected track
+├── ChannelStripMap.{cpp,h}           # 1 strip: plugin + metadata + 16 VPOT→param bindings (NO fxGUID)
+├── ChannelStripAccess.{cpp,h}        # TrackFX_* wrapper; fxIdent→slot resolution + slot cache
 └── editor/
-    ├── ChannelStripComponent.{cpp,h}        # main editor (table of 16 strips)
+    ├── ChannelStripComponent.{cpp,h}        # main editor (16 global strips)
     ├── ChannelStripBindingTable.{cpp,h}     # 16 rows: # | Plugin | abbrev | InsPos | edit…
     └── ChannelStripParamEditor.{cpp,h}      # 2nd editor: VPOT→param mapping for one strip
 ```
 
-### Wiring changes to existing files
+### Wiring (existing files)
 
-- **`src/core/CCSManager.{h,cpp}`** — add `ChannelStripMode* m_pChannelStripMode`;
-  construct/free it; add `case B_VPOT_TRACK: pNewMode = m_pChannelStripMode;`
-  in the pressed branch of `buttonVPOTassign`; open its editor in the ALT
-  branch (`setMainComponent(m_pChannelStripMode, true)`); add B_VPOT_TRACK
-  LED logic in `updateVPOTLeds` (blink if active / on if the selected track
-  has a strip / off otherwise — mirror the PLUG logic); add
-  `getChannelStripMode()`.
-- **`src/hardware/mcu_button_defines.h`** — `B_VPOT_TRACK` (`0x28`) already
-  defined; no change.
-- **`CMakeLists.txt`** — add the new sources.
+- **`CCSManager.{h,cpp}`** — `ChannelStripMode* m_pChannelStripMode`;
+  ctor/dtor; `case B_VPOT_TRACK` (stays active); on press set
+  `m_selectionMode=true` and activate, on release set `m_selectionMode=false`;
+  ALT branch opens the editor; LED logic (BLINK active / ON if selected track
+  has a configurable strip / OFF otherwise); `getChannelStripMode()`.
+- **`CMakeLists.txt`** — new sources (already added).
+- **`csurf_main.cpp`** — `TrackFX_FormatParamValue` and
+  `TrackFX_GetNamedConfigParm` both optional via `rec->GetFunc` (not `IMPAPI`).
 
----
+## 6. Refactor steps (ordered)
 
-## 5. Implementation steps (ordered)
+### R — Core architecture fix (current milestone)
 
-19 steps across 7 milestones. Each step is a buildable, testable increment;
-dependencies resolve downward. Shift and multi-unit are handled inline from
-the first runtime step, not as a late phase.
+1. **`ChannelStripMap`**: remove `m_fxGUID`/`isResolved`/`getFxGUID`/`setFxGUID`
+   and the `fxguid` XML attribute. Strip is now pure data (fxIdent + metadata
+   + 16 VPOT bindings).
+2. **`ChannelStripAccess`**: `resolveBinding` no longer mutates the map; it
+   returns a slot. Add the per-(trackGUID, stripIndex) slot cache with
+   `PlugMoveWatcher` invalidation. `addPlugin` returns the slot without
+   writing a GUID into the map.
+3. **`ChannelStripMode` core**:
+   - `getStripForChannel(c)`: use `getSelectedSingleTrack()` (not
+     `getMediaTrackForChannel`); unit = `(c-1)/8`; strip =
+     `stripIndexForUnit[unit]` for the selected track.
+   - `vpotMoved`/`vpotPressed`: branch on (has strip?) × `m_selectionMode`
+     per §4 table. Pick/re-pick assigns `stripIndexForUnit[unit]` and
+     auto-adds the plugin.
+   - `updateChannel`/`updateVPOTs`: render per §4 table; VPOTs OFF when no
+     selected track.
+   - `m_lastVPOTChangeTime` → array per channel.
+   - Remove `returnToStripSelection()` (re-pick is momentary now).
+   - No-selected-track guard + `"You must select a single track."` on row 1.
+4. **`CCSManager`**: B_VPOT_TRACK press → `m_selectionMode=true` + activate;
+   release → `m_selectionMode=false`. Remove the re-press `returnToStripSelection`
+   block. LED logic refined.
+5. **`csurf_main.cpp`**: `TrackFX_FormatParamValue` optional.
+6. **Build + deploy + user test.**
 
-### A — Reachable skeleton
+### D — First-time / "+" flow (folded into R)
 
-1. **Directory + skeleton**: `src/modes/channelstrip/` with an empty
-   `ChannelStripMode` (`CCSMode` subclass); add to `CMakeLists.txt`. Multi-unit
-   from the start: the mode knows about all units.
-2. **CCSManager wiring**: member, ctor/dtor, `case B_VPOT_TRACK` (stays
-   active), LED stub in `updateVPOTLeds`, `getChannelStripMode()`.
-   → pressing TRACK switches to an empty mode.
-
-### B — Data + access (drivable from hardware; Shift + multi-unit inline)
-
-3. **`ChannelStripBinding` + `ChannelStripMap`**: 16 slots (= 8 + 8 Shift),
-   XML read/write.
-4. **`ChannelStripAccess`**: `fxIdent → fxGUID` per unit, `TrackFX_GetParam`/
-   `SetParam`, `TrackFX_GetParamName`, dangling detection.
-5. **Runtime path**: the runtime entry points (`vpotMoved`/`vpotPressed`/
-   `updateDisplay`/`updateVPOTs`) read the per-unit map and drive
-   `ChannelStripAccess`. No throwaway test map — the editor (Step C) is the
-   real configuration surface and thus the end-to-end test.
-
-### C — JUCE editor (manual configuration)
-
-6. **`ChannelStripComponent`** + active-unit selector.
-7. **`ChannelStripBindingTable`**: 16 rows — # | Plugin (combo from
-   `EnumInstalledFX`) | abbreviation (max 5) | InsertPos.
-8. **`ChannelStripParamEditor`**: VPOT→param mapping for one strip (opened by
-   the "Parameter" button in the main table). Lists the strip's plugin
-   parameters in 16 rows (VPOT 1..8 + 9..16 Shift).
-9. **Hook up + file I/O**: `createEditorComponent`; the editor is opened by
-   **ALT+TRACK** (added to the ALT branch of `CCSManager::buttonVPOTassign`);
-   edits write back to the per-unit map and refresh the display. Map
-   save/load to file in the user location — **ship a few example maps there**
-   (no catalog code).
-   The runtime entry points (`vpotMoved`/`vpotPressed`/`updateDisplay`/
-   `updateVPOTs`) read the per-unit map and drive `ChannelStripAccess`, so the
-   editor is the real end-to-end test surface (no throwaway test map).
-
-### D — First-time / "+" flow
-
-10. **"+" state**: plugin missing → `+` before the name in the display.
-11. **Auto-add**: selection inserts via `TrackFX_AddByName(fxIdent, insPos)`,
-    captures the new `fxGUID`.
+- State-1 ("+") display: strip name + " +" when the strip is assigned but the
+  plugin is not on the selected track. VPOT press auto-adds at insert pos.
+- Auto-add on pick: when a unit picks a strip (State 0 or re-pick), add the
+  plugin if missing.
 
 ### E — Persistence
 
-12. **Global map save/load**: save/load individual `ChannelStripMap` files from
-    the global user location (`GetResourcePath()/UserPlugins/MCU/ChannelStripMaps/`)
-    — ship a few example maps there. Every unit across all tracks shares the same
-    16-map pool.
-13. **Per-track per-unit assignments**: persist the `int[MAX_SURFACE_UNITS]`
-    assignment table (unit → global-map index, –1 = none) per track via
-    `ProjectConfig` signal connect/disconnect + XML. `READ`/`WRITE`/`FREE`.
-14. **Roundtrip**: both the global maps and the per-track assignments survive a
-    REAPER restart — now testable because the editor and "+" flow exist.
+- Global map save/load (16 strip files in the user location).
+- Per-track per-unit assignments via `ProjectConfig` (READ/WRITE/FREE).
+- Roundtrip survives a REAPER restart.
 
 ### F — Move/delete tracking
 
-14. **`PlugMoveWatcher`**: reorder → re-resolve `fxGUID`.
-15. **FX delete / track remove**: mark binding dangling, update display.
+- `PlugMoveWatcher`: reorder → invalidate the slot cache for that track.
+- FX delete / track remove → mark strip dangling, update display.
 
 ### G — ALT shortcuts
 
-16. **ALT+VPOT-7 / ALT+VPOT-8**: move the FX up/down in the chain
-    (`TrackFX_CopyToTrack`, `is_move = true`).
-17. **ALT+VPOT-1**: open the floating FX window of the plugin controlled by
-    that slot's binding (window-count option reused/duplicated from PlugMode's
-    `PlugWindowManager`).
-18. **ALT+Name/Values**: show the command labels in the display.
-19. **ALT+VPOT-7/8 also in PlugMode** (per `notes.org`: "also implemented in
-    PlugMode").
+- ALT+VPOT-7 / ALT+VPOT-8: move FX up/down (`TrackFX_CopyToTrack`, `is_move=true`).
+- ALT+VPOT-1: open floating FX window (PlugMode window-count rules duplicated).
+- ALT+Name/Values: show command labels in the display.
+- ALT+VPOT-7/8 also in PlugMode (per `notes.org`).
 
----
+## 7. Open items / notes
 
-## 6. Notes / open items
-
-- **Modifier choice** (ALT vs CONTROL) — default ALT for consistency with
-  PlugMode (ALT+SELECT opens plugin windows); confirm during implementation.
 - **Insert-position semantics** — `instantiate <= -1000` encodes position
-  (`-1000` = first, `-1001` = second, …); `LAST` is resolved at add time as
-  the current chain length.
-- **Duplicate-instance reuse** — when a binding's `fxIdent` matches an FX
-  already on the track, reuse that instance's `fxGUID`; do not add another.
-- **Per-unit cost** — up to 8 units × 16 slots = 128 bindings per track in the
-  project XML; acceptable.
+  (`-1000` = first/pos 0, `-1001` = pos 1, …); `LAST` = `-(1000 + chainLen)`.
+  Code is correct; comments will be cleaned up.
+- **`fx_ident`-Parm format** — verify at runtime (log) that
+  `TrackFX_GetNamedConfigParm("fx_ident")` strings match `EnumInstalledFX`
+  idents; keep the normalised-name fallback for older REAPER.
+- **Duplicate-instance reuse** — when a strip's `fxIdent` matches an FX already
+  on the track, reuse that instance; do not add another.
 - Release hardening (three-platform build, ASan/leak pass, manual + AGENTS.md
   mode-table docs, `notes.org` → DONE) is tracked separately under the general
   pre-release checklist, not as feature-plan steps.
+
+---
+
+## 8. Current status (work log — read this first when resuming)
+
+**Date of this snapshot:** see git log of the latest commit on the
+`channel-strip` branch. **Branch:** `channel-strip`.
+
+### What is done (builds + deploys, Linux)
+
+- **Architecture fix (R):** `ChannelStripMode` now acts on the SELECTED track
+  (`getSelectedSingleTrack`), not the per-channel bank track. Per-unit state is
+  DERIVED from `(selected track?) × (unit has strip?) × (selection mode =
+  B_VPOT_TRACK held)` — see §4. `MultiTrackMode` base kept; only VPOTs/row 1
+  differ.
+- **fxGUID removed from `ChannelStripMap`** (global map must be instance-
+  agnostic). Live FX slot resolved at runtime via `ChannelStripAccess` slot
+  cache keyed by `(trackGUID, stripIndex)` + GUID verify, invalidated by
+  `PlugMoveWatcher`.
+- **CCSManager wiring:** B_VPOT_TRACK press → `setSelectionMode(true)`+
+  activate; release → `setSelectionMode(false)`. LED: BLINK active / ON if
+  selected track has ≥1 assigned strip / OFF otherwise.
+- **Optional APIs:** `TrackFX_FormatParamValue` and
+  `TrackFX_GetNamedConfigParm` loaded via `rec->GetFunc` (not `IMPAPI`).
+- **Editor fixes already applied:**
+  - Column "#" → "VPOT" (wider, "Shift 1" readable) in both tables.
+  - Column "Parameter" → "Edit Mapping"; the cell button is styled clearly as a
+    button (light-grey fill + dark border, label "Edit N/16").
+  - Both tables draw NO row-separator lines.
+  - `ChannelStripMeterBridge` (`alsoOnDisplay() == false`) replaces
+    MultiTrackMode's meter bridge so the LCD meter bars do NOT overwrite row 1
+    (strip names) — this was why strips names were missing on unit 2+.
+  - Unbound VPOT shows an empty field on the hardware display (not the plugin
+    name).
+- **Persistence (Step E) — implemented (single-file model):**
+  - One file `~/.config/REAPER/MCU/ChannelStripMaps/channelstrips.xml`, one
+    `<STRIP nr=.. fxident=.. name=.. inspos=..>` per assigned slot, containing
+    header AND `<VPOT>` mapping together.
+  - Loaded once in the `ChannelStripMode` ctor (`loadStripsFromFile`).
+  - Saved when EITHER editor closes: main editor (`saveStripsToFile` in
+    `removeEditor`) and mapping editor (`saveStripsToFile` in the
+    `ChannelStripParamEditor` destructor).
+  - Per-track per-unit assignments stored in the Reaper project via
+    `ProjectConfig` (`projectChanged` WRITE/READ/FREE →
+    `<CHANNELSTRIP_ASSIGNMENTS><ASSIGN track= unit= strip=/>`). Slot cache
+    invalidated on READ/FREE.
+- **`ChannelStripMap` XML:** combined `writeToXml(parent, nr)` /
+  `readFromXml(pStrip)` (header + VPOT children in one element).
+- **Diagnostic logging** is currently built IN (`MCU_DEBUG_LOG=ON`) and present
+  in `findSlotByIdent`, `resolveSlot`, `addPlugin`, `vpotPressed` (prefix
+  `CSA`/`CSM`). Log file:
+  `~/.config/REAPER/mcu_klinke_debug.log` (truncated on each REAPER start via
+  `MCU_LOG_INIT`). **Remember to turn `MCU_DEBUG_LOG` back OFF for a release
+  build.**
+
+### Open bugs (NOT yet fixed — resume here)
+
+- **Bug A — regression / "logic stuck at selection, plugin re-added":** after
+  assigning a strip (parameter names appear on the display), pressing a VPOT
+  re-adds the plugin instead of toggling the parameter. Symptom says the press
+  goes through the pick/"+" path (`resolveSlot` returns −1) even though the
+  display's `resolveSlot` finds the plugin (shows param names). Contradiction
+  not yet explained by code reading. **Diagnostic logging is in place — the
+  user must restart REAPER with the current build and reproduce** (assign a
+  strip, then press a VPOT that re-adds), then the agent reads
+  `~/.config/REAPER/mcu_klinke_debug.log` and looks at the `CSM vpotPressed`
+  (branch + `stripIdx`/`selMode`) and `CSA resolveSlot`/`CSA findSlotByIdent`
+  (pass1/pass2 strings) lines to find the exact cause. Likely a format mismatch
+  between `EnumInstalledFX` ident and `TrackFX_GetNamedConfigParm("fx_ident")`
+  / `TrackFX_GetFXName`, OR `m_selectionMode` stuck true.
+- **Bug B — duplicate plugin add:** plugins are still added to the track even
+  when an instance already exists. Same root cause as Bug A: `findSlotByIdent`
+  fails to match the existing instance, so `addPlugin` falls through to
+  `TrackFX_AddByName` and inserts a second copy. Fix is the same fix as Bug A
+  (make `findSlotByIdent` match reliably).
+- **Bug C — plugin column blank on editor re-open (NOT fixed):** the deferred
+  `MessageManager::callAsync` resize/repaint in `CSTPluginCombo::
+  setRowAndColumn` did NOT fix it. Last attempt was
+  `m_table->setModel(nullptr); setModel(this)` in `BindingTable::updateEverything`
+  to force cell-component recreation — **needs user re-test** to confirm. If
+  still broken, investigate deeper (likely the JUCE `TableListBox` cell
+  lifecycle when the editor is re-shown via the `CCSModesEditor` "re-show same
+  component" path — see `setMainComponent` in `src/ui/CCSModesEditor.cpp`).
+
+### Next concrete steps when resuming
+
+1. **Confirm Bug A/B root cause from the log** (user reproduces, agent reads
+   `~/.config/REAPER/mcu_klinke_debug.log`).
+2. **Fix `findSlotByIdent`** so it reliably matches an existing instance (likely
+   normalise/compare the `fx_ident`-parm string and/or the `GetFXName` string
+   against the stored `EnumInstalledFX` ident; the log shows the exact
+   strings). This should fix both Bug A and Bug B.
+3. **Re-test Bug C** (plugin column on re-open); if the `setModel` reset didn't
+   help, debug the `CCSModesEditor` re-show path.
+4. **Step E verification:** confirm `channelstrips.xml` is written/read correctly
+   (one file, no per-Abbrev files left over) and assignments survive a project
+   save/reload.
+5. After bugs are fixed: continue with **Step F** (PlugMoveWatcher reorder →
+   re-resolve slot cache; FX delete / track remove) and **Step G** (ALT+VPOT-1
+   open FX window, ALT+VPOT-7/8 move FX, ALT+Name/Values labels).
+6. Before release: **set `MCU_DEBUG_LOG=OFF`** and rebuild.
+
+### Build/deploy reminder
+
+- Build with logging (current state): `cd build && cmake .. -DCMAKE_BUILD_TYPE=
+  Release -DMCU_DEBUG_LOG=ON && cmake --build . -- -j$(nproc)`
+- Deploy: `cp build/reaper_csurf_mcu_klinke.so ~/.config/REAPER/UserPlugins/`
+- REAPER must be **fully restarted** to reload the `.so`.
+- Start for testing: `GDK_BACKEND=x11 /home/fuerst/opt/REAPER/reaper`
