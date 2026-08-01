@@ -140,6 +140,18 @@ bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt, int unitIndex) {
   if (evt_code >= NUM_BUTTONS)
     return false;
 
+#ifdef KLINKE
+  // iCON units (2+) physically swap Select/RecArm and Mute/Solo rows: remap
+  // the note BEFORE the pressed-state storage and handler dispatch, and also
+  // rewrite evt->midi_message[1] — the strip handlers (OnRecArm/OnSolo/OnMute/
+  // OnChannelSelect) read it to compute the global channel. The hand-off combo
+  // notes (0x2e..0x31) are outside the swapped range and stay untouched.
+  if (klinkeNeedsButtonSwap(unitIndex)) {
+    evt_code = klinkeSwapStripNote(evt_code);
+    evt->midi_message[1] = (unsigned char)evt_code;
+  }
+#endif
+
 #if 0
   char buf[512];
   sprintf( buf, "   0x%08x %02x %02x %02x %02x 0x%08x 0x%08x %s", evt_code,

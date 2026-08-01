@@ -3,6 +3,8 @@
  * Distributed under the GNU GPL v3. For full terms see the file gplv3.txt.
  */
 
+#pragma once
+
 /*
   MCU documentation:
 
@@ -116,6 +118,26 @@
 // bank/channel buttons used for the KLINKE hand-off combo (see ButtonManager
 // and CSurf_MCU::setSurfaceEnabled).
 #define KLINKE_COMBO_UNIT_INDEX 2 
+
+#ifdef KLINKE
+// iCON controllers (units 2+) physically swap their strip button rows
+// relative to the Mackie layout: Select<->RecArm and Mute<->Solo. Unit 1 is
+// a real Mackie and keeps the standard layout. The swap applies to BOTH the
+// button presses (input, ButtonManager) and the strip LEDs (output,
+// CSurf_MCU::setStripLED) — the logical note codes 0x00..0x1f.
+inline bool klinkeNeedsButtonSwap(int unitIndex) { return unitIndex >= 1; }
+
+// Translate a strip note code (0x00..0x1f) between the logical Mackie layout
+// and the physical iCON layout. Self-inverse (idempotent in both directions).
+inline int klinkeSwapStripNote(int note) {
+  if (note >= 0x00 && note <= 0x07) return note + 0x18; // RecArm  -> Select
+  if (note >= 0x18 && note <= 0x1f) return note - 0x18; // Select  -> RecArm
+  if (note >= 0x10 && note <= 0x17) return note - 0x08; // Mute    -> Solo
+  if (note >= 0x08 && note <= 0x0f) return note + 0x08; // Solo    -> Mute
+  return note;
+}
+#endif
+
 #define B_FLIP                                                  0x32 
 #define B_GLOBAL_VIEW                           0x33 
 #define B_NAME_VALUE                            0x34 

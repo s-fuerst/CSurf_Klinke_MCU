@@ -1619,6 +1619,13 @@ void CSurf_MCU::setLEDOnAllUnits(int note, int state) {
 void CSurf_MCU::setStripLED(int globalChannel, int localNote, int state) {
   HardwareUnit *u = unitForChannel(globalChannel);
   if (!u) return;
+#ifdef KLINKE
+  // iCON units (2+) swap their Select/RecArm and Mute/Solo rows: translate
+  // the logical note to the physical layout so the LED lights up on the
+  // button the user presses for that function.
+  if (klinkeNeedsButtonSwap(u->unitIndex()))
+    localNote = klinkeSwapStripNote(localNote);
+#endif
   u->setLED(localNote, state);
 }
 
