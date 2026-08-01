@@ -186,16 +186,22 @@ public:
   }
   int getSelectedPageInSelectedBank() {
     int u = m_pMode->getActiveUnit();
+    if (m_unitEmpty[u])
+      return -1;
     int bank = m_selectedBankPerUnit[u];
     return m_selectedPagePerUnit[u][bank];
   }
   String getPageNameLongInSelectedBank(int page) {
+    if (page < 0)
+      return String();
     return getMap()
         ->getBank(resolveBankReference())
         ->getPage(page)
         ->getNameLong();
   }
   String getPageNameShortInSelectedBank(int page) {
+    if (page < 0)
+      return String();
     return getMap()
         ->getBank(resolveBankReference())
         ->getPage(page)
@@ -209,15 +215,39 @@ public:
   // ---- per-unit accessors ----
   int  selectedBankForUnit(int u) const { return m_selectedBankPerUnit[u]; }
   int  selectedPageForUnit(int u) const {
-    return m_selectedPagePerUnit[u][m_selectedBankPerUnit[u]];
+    // A unit without a page (empty) shows -1 regardless of its bank.
+    return m_unitEmpty[u] ? -1
+                          : m_selectedPagePerUnit[u][m_selectedBankPerUnit[u]];
   }
   int  selectedPageForUnit(int u, int bank) const {
-    return m_selectedPagePerUnit[u][bank];
+    return m_unitEmpty[u] ? -1 : m_selectedPagePerUnit[u][bank];
   }
   void setSelectedBank(int bank, int unit);
   void setSelectedPage(int bank, int page, int unit);
   void setSelectedPageInSelectedBank(int page, int unit);
   int  getActiveUnit() const { return m_pMode->getActiveUnit(); }
+
+  // ---- empty-unit state (page uniqueness) ----
+  // A unit is "empty" when it shows no page: either the plugin has more
+  // units than used pages in the selected bank, or a page was moved to
+  // another unit. Empty units stay fully usable for bank/page selection.
+  bool isUnitEmpty(int u) const {
+    return u >= 0 && u < MAX_SURFACE_UNITS && m_unitEmpty[u];
+  }
+  void setUnitEmpty(int u, bool empty) {
+    ASSERT(u >= 0 && u < MAX_SURFACE_UNITS);
+    m_unitEmpty[u] = empty;
+  }
+  void clearUnitPage(int u) { setUnitEmpty(u, true); }
+  // Enforce the page-uniqueness invariant: no two units may display the same
+  // (bank, page). After a change on `changedUnit` that unit keeps its page;
+  // every other unit showing the same (bank, page) becomes empty. Pass -1 to
+  // keep the lowest unit index on collisions (used after state restore).
+  void enforceUniquePages(int changedUnit);
+  // First used page of `bank` that no other unit currently displays, or -1
+  // when every used page of that bank is taken. Used to auto-fill an empty
+  // unit when its bank is changed (SOLO).
+  int firstFreePageForUnit(int bank, int unit);
 
   // ---- used-page-sequence helpers ----
   std::vector<int> usedPages(int bank);
@@ -303,6 +333,8 @@ private:
   boost::array<int, MAX_SURFACE_UNITS> m_selectedBankPerUnit;
   // m_selectedPagePerUnit[u][bank] = selected page in bank for unit u.
   boost::array<boost::array<int, 8>, MAX_SURFACE_UNITS> m_selectedPagePerUnit;
+  // per-unit empty flag: true while the unit shows no page.
+  boost::array<bool, MAX_SURFACE_UNITS> m_unitEmpty;
 
   MediaTrack *m_pPlugTrack; // can be NULL
   GUID m_GUIDplugTrack; // GetTrackGUID only works as long as the track is in
@@ -316,11 +348,12 @@ private:
   PlugMode *m_pMode;
   PlugMapManager *m_pMapManager;
 
-  // widened tSlotState — per-unit banks + pages.
-  // Format: (plugName, banksPerUnit[], pagesPerUnit[][])
+  // widened tSlotState — per-unit banks + pages + empty flags.
+  // Format: (plugName, banksPerUnit[], pagesPerUnit[][], emptyPerUnit[])
   typedef boost::tuple<String,
                        boost::array<int, MAX_SURFACE_UNITS>,
-                       boost::array<boost::array<int, 8>, MAX_SURFACE_UNITS>>
+                       boost::array<boost::array<int, 8>, MAX_SURFACE_UNITS>,
+                       boost::array<bool, MAX_SURFACE_UNITS>>
       tSlotState;
   typedef boost::tuple<String /* GUID */, int> tSlotLocation;
   typedef std::pair<const tSlotLocation, tSlotState> tSlotStatePair;

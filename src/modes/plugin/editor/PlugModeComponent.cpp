@@ -281,6 +281,10 @@ void PlugModeComponent::selectedBankChanged(int iBank) {
 }
 
 void PlugModeComponent::selectedPageChanged(int iPage) {
+  // The active unit may show no page (empty unit) → -1; the page component
+  // cannot select a tab with a negative index.
+  if (iPage < 0)
+    iPage = 0;
   safe_call(m_bankComponent->getSelectedBankComponent(),
             getPageComponent()->selectedPageChanged(iPage))
 

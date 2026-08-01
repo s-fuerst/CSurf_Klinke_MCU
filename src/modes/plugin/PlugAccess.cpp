@@ -29,6 +29,7 @@ PlugAccess::PlugAccess(PlugMode *pMode)
   m_selectedBankPerUnit.assign(0);
   for (int u = 0; u < MAX_SURFACE_UNITS; u++)
     m_selectedPagePerUnit[u].assign(0);
+  m_unitEmpty.assign(false);
 
   m_pMapManager = new PlugMapManager(pMode);
   m_pWindowManager = new PlugWindowManager(pMode);
@@ -113,6 +114,7 @@ void PlugAccess::accessPlugin(MediaTrack *pMediaTrack, int iSlot,
   m_selectedBankPerUnit.assign(0);
   for (int u = 0; u < MAX_SURFACE_UNITS; u++)
     m_selectedPagePerUnit[u].assign(0);
+  m_unitEmpty.assign(false);
 
   if (changeTriggeredFromProjectChange || !plugExist()) {
     m_pMapManager->deselectMap();
@@ -136,18 +138,31 @@ void PlugAccess::accessPlugin(MediaTrack *pMediaTrack, int iSlot,
       // restore per-unit arrays
       m_selectedBankPerUnit = storedState.get<1>();
       m_selectedPagePerUnit = storedState.get<2>();
+      m_unitEmpty = storedState.get<3>();
       restoredFromStored = true;
     }
   }
 
   if (!restoredFromStored) {
-    // Default page spread across used pages.
-    // Unit u gets pageAtUsedOffset(bank0, u).  All units on bank 0.
+    // Default page spread across used pages. Unit u gets the page at
+    // used-page offset u; units beyond the number of used pages stay empty
+    // (no page) so no two units ever display the same page. All units on
+    // bank 0. The used-page sequence lives on the RESOLVED bank (bank 0
+    // may `refer` to another bank), mirroring the transport/cascade math.
     int nUnits = m_pMode->getCCSManager()->getMCU()->numUnits();
+    int resolved0 = resolveBankReference(0);
+    int count = usedPageCount(resolved0);
     for (int u = 0; u < nUnits; u++) {
       m_selectedBankPerUnit[u] = 0;
-      m_selectedPagePerUnit[u][0] = pageAtUsedOffset(0, u);
+      if (u < count)
+        m_selectedPagePerUnit[u][0] = pageAtUsedOffset(resolved0, u);
+      else
+        m_unitEmpty[u] = true;
     }
+  } else {
+    // Legacy/foreign states may contain duplicate (bank, page) assignments;
+    // normalize them so every page is shown at most once.
+    enforceUniquePages(-1);
   }
 
   m_pPlugWatcher->setPlugin(pMediaTrack, iSlot);
@@ -276,6 +291,12 @@ int PlugAccess::getNumParams(bool includeReaper) {
 
 PMParam *PlugAccess::getPMParam(ElementDesc *pElement) {
   if (!plugExist()) {
+    return NULL;
+  }
+
+  // A page of -1 marks a unit that shows no page (empty unit); there is no
+  // valid PMPage for it, so every param lookup must fail cleanly.
+  if (pElement->m_page < 0) {
     return NULL;
   }
 
@@ -457,6 +478,8 @@ PMVPot::tSteps *PlugAccess::getParamSteps(int bank, int page, int vpot) {
 
   ElementDesc desc(bank, page, ElementDesc::VPOT, vpot);
   PMVPot *pVPot = static_cast<PMVPot *>(getPMParam(&desc));
+  if (!pVPot)
+    return NULL;
 
   return pVPot->getStepsMap();
 }
@@ -554,6 +577,8 @@ void PlugAccess::setSelectedBank(int bank, int unit) {
 void PlugAccess::setSelectedPage(int bank, int page, int unit) {
   ASSERT(unit >= 0 && unit < MAX_SURFACE_UNITS);
   m_selectedPagePerUnit[unit][bank] = page;
+  // Selecting a page makes the unit non-empty.
+  m_unitEmpty[unit] = false;
   // Always update LEDs/faders — affects all units (N>1)
   m_pMode->updateMuteLEDs();
   m_pMode->updateFaders();
@@ -629,6 +654,50 @@ int PlugAccess::pageUsedOffsetForPage(int bank, int page) {
   return -1;
 }
 
+// ---- Page uniqueness ----
+
+int PlugAccess::firstFreePageForUnit(int bank, int unit) {
+  std::vector<int> pages = usedPages(bank);
+  int nUnits = m_pMode->getCCSManager()->getMCU()->numUnits();
+  for (size_t i = 0; i < pages.size(); i++) {
+    int p = pages[i];
+    bool taken = false;
+    for (int v = 0; v < nUnits; v++) {
+      if (v == unit || isUnitEmpty(v))
+        continue;
+      if (selectedBankForUnit(v) == bank && selectedPageForUnit(v) == p) {
+        taken = true;
+        break;
+      }
+    }
+    if (!taken)
+      return p;
+  }
+  return -1;
+}
+
+void PlugAccess::enforceUniquePages(int changedUnit) {
+  int nUnits = m_pMode->getCCSManager()->getMCU()->numUnits();
+  // Iterate from the highest unit index so that, when no changedUnit is
+  // given (-1), the lowest-index unit of a duplicate group keeps its page.
+  for (int v = nUnits - 1; v >= 0; v--) {
+    if (v == changedUnit || isUnitEmpty(v))
+      continue;
+    int bankV = selectedBankForUnit(v);
+    int pageV = selectedPageForUnit(v);
+    if (pageV < 0)
+      continue;
+    for (int w = 0; w < nUnits; w++) {
+      if (w == v || isUnitEmpty(w))
+        continue;
+      if (selectedBankForUnit(w) == bankV && selectedPageForUnit(w) == pageV) {
+        clearUnitPage(v);
+        break;
+      }
+    }
+  }
+}
+
 // ---- Persistence ----
 
 #define PLUGACCESS_NODE_ROOT String("PLUGACCESS")
@@ -646,6 +715,7 @@ int PlugAccess::pageUsedOffsetForPage(int bank, int page) {
 #define PLUGACCESS_NODE_UNIT String("UNIT")
 #define PLUGACCESS_ATT_UNIT_INDEX String("nr")
 #define PLUGACCESS_ATT_UNIT_BANK String("bank")
+#define PLUGACCESS_ATT_UNIT_EMPTY String("empty")
 
 #define PLUGACCESS_NODE_SELECTED_PLUG String("SELECTED_PLUG")
 #define PLUGACCESS_ATT_SELECTED_PLUG_TRACK String("track")
@@ -688,19 +758,21 @@ void PlugAccess::writeSlotStatesToProjectConfig(XmlElement *pNode) {
     tSlotState state = entry.second;
     pSlotState->setAttribute(PLUGACCESS_ATT_SLOTSTATE_PLUGNAME, state.get<0>());
 
-    // write versioned UNIT_STATES block
+    // write versioned UNIT_STATES block (v2 adds the per-unit empty flag)
     XmlElement *pUnitStates =
         new XmlElement(PLUGACCESS_NODE_UNIT_STATES);
-    pUnitStates->setAttribute(PLUGACCESS_ATT_VERSION, 1);
+    pUnitStates->setAttribute(PLUGACCESS_ATT_VERSION, 2);
 
     boost::array<int, MAX_SURFACE_UNITS> banksPerUnit = state.get<1>();
     boost::array<boost::array<int, 8>, MAX_SURFACE_UNITS> pagesPerUnit =
         state.get<2>();
+    boost::array<bool, MAX_SURFACE_UNITS> emptyPerUnit = state.get<3>();
 
     for (int u = 0; u < MAX_SURFACE_UNITS; u++) {
       XmlElement *pUnit = new XmlElement(PLUGACCESS_NODE_UNIT);
       pUnit->setAttribute(PLUGACCESS_ATT_UNIT_INDEX, u);
       pUnit->setAttribute(PLUGACCESS_ATT_UNIT_BANK, banksPerUnit[u]);
+      pUnit->setAttribute(PLUGACCESS_ATT_UNIT_EMPTY, emptyPerUnit[u]);
 
       for (int p = 0; p < 8; p++) {
         XmlElement *pPage = new XmlElement(PLUGACCESS_NODE_SLOTSTATE_PAGE);
@@ -727,14 +799,16 @@ void PlugAccess::readSlotStatesFromProjectConfig(XmlElement *pNode) {
 
       boost::array<int, MAX_SURFACE_UNITS> banksPerUnit;
       boost::array<boost::array<int, 8>, MAX_SURFACE_UNITS> pagesPerUnit;
+      boost::array<bool, MAX_SURFACE_UNITS> emptyPerUnit;
       banksPerUnit.assign(0);
       for (int u = 0; u < MAX_SURFACE_UNITS; u++)
         pagesPerUnit[u].assign(0);
+      emptyPerUnit.assign(false);
 
       // try versioned UNIT_STATES block first
       XmlElement *pUnitStates =
           pChild->getChildByName(PLUGACCESS_NODE_UNIT_STATES);
-      if (pUnitStates && pUnitStates->getIntAttribute(PLUGACCESS_ATT_VERSION) == 1) {
+      if (pUnitStates && pUnitStates->getIntAttribute(PLUGACCESS_ATT_VERSION) >= 1) {
         int unitCount = 0;
         forEachXmlChildElement(*pUnitStates, pUnit) {
           if (pUnit->getTagName() == PLUGACCESS_NODE_UNIT) {
@@ -742,6 +816,12 @@ void PlugAccess::readSlotStatesFromProjectConfig(XmlElement *pNode) {
             if (u >= 0 && u < MAX_SURFACE_UNITS) {
               banksPerUnit[u] =
                   pUnit->getIntAttribute(PLUGACCESS_ATT_UNIT_BANK);
+              // v1 states have no empty attribute; the flag defaults to
+              // false (unit shows its stored page). Duplicate pages in
+              // legacy states are normalized by enforceUniquePages on
+              // restore.
+              emptyPerUnit[u] =
+                  pUnit->getBoolAttribute(PLUGACCESS_ATT_UNIT_EMPTY, false);
               int page = 0;
               forEachXmlChildElement(*pUnit, pPage) {
                 if (page < 8)
@@ -767,7 +847,7 @@ void PlugAccess::readSlotStatesFromProjectConfig(XmlElement *pNode) {
         // (handled by accessPlugin when restoredFromStored is false for those)
       }
 
-      tSlotState state(plugName, banksPerUnit, pagesPerUnit);
+      tSlotState state(plugName, banksPerUnit, pagesPerUnit, emptyPerUnit);
       m_knownSlotStates[loc] = state;
     }
   }
@@ -777,7 +857,8 @@ void PlugAccess::storeActualSlotState() {
   // store per-unit arrays
   if (m_iSlot >= 0 && m_pPlugTrack != NULL) {
     tSlotLocation loc(GUID2String(&m_GUIDplugTrack), m_iSlot);
-    tSlotState state(m_plugName, m_selectedBankPerUnit, m_selectedPagePerUnit);
+    tSlotState state(m_plugName, m_selectedBankPerUnit, m_selectedPagePerUnit,
+                     m_unitEmpty);
     m_knownSlotStates.erase(loc);
     m_knownSlotStates.insert(std::pair<tSlotLocation, tSlotState>(loc, state));
   }

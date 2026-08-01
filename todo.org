@@ -1,4 +1,4 @@
-* [6/13] v0.9.5 Release
+* [7/14] v0.9.5 Release
 ** DONE Track/Mixer mode (PanMode): show fader value on touch with meters-on-display
    While a fader is touched, keep the value it controls (Volume, or Pan in
    flip mode) visible on row 1, even when "meters on display"
@@ -50,14 +50,25 @@ unit 2 and unit 3.
 When a plugin is disabled, its Select button should blink very slowly
 (brief off intervals, longer on). This works on unit 1 but not on unit 2.
 Possibly related to "Emulate blinking LED", which must be enabled for
-** TODO PlugMode: Do not allow that different units show the same page.
+** DONE PlugMode: Do not allow that different units show the same page.
 In the case that a plugin have more units then pages, leave the
 additional units empty.  But it must be still possible on this empty
 units to select a different bank/page.  In the case that the user try
 to select a page in this way, that is already shown on another unit,
 move the page to this unit and do not show it on the original unit
 anymore.
-
+Implemented 2026-08-01: per-unit "empty" flag (unit shows no page).
+Default page spread leaves units beyond the used-page count empty; the
+remaining units never share a page. On an empty unit, SOLO (bank
+select) auto-fills it with the first used page of the new bank that no
+other unit displays — if every page is taken the unit stays empty until
+a page is picked via MUTE. Selecting a page already shown on another
+unit moves it there and empties the source unit. Empty units render
+blank (display, faders 0, VPOTs off) but keep the bank LED and show the
+selectable (used) pages via the page LEDs; the current-page blink is
+off. Persisted as UNIT_STATES v2 (per-unit "empty" attribute); legacy
+states are normalized on restore.
+** TODO Test Plug-Favorites with extenders 
 ** TODO Pan-Mode VPot press should reset panorama to center.
 ** TODO Improved Documentation #5 (Dreieich)
 ** TODO Leak-Detection

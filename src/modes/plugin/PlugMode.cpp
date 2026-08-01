@@ -252,8 +252,19 @@ bool PlugMode::buttonSolo(int channel, bool pressed) {
     // Without Control the bank is set for this unit only (legacy behaviour).
     if (isModifierPressed(VK_CONTROL)) {
       cascadeFromUnit(unit, localCh, 0);
+      m_pAccess->enforceUniquePages(unit);
     } else {
       m_pAccess->setSelectedBank(localCh, unit);
+      if (m_pAccess->isUnitEmpty(unit)) {
+        // Auto-fill an empty unit with the first used page of the new bank
+        // that no other unit displays. If every page is taken, the unit
+        // stays empty until the user explicitly selects a page (MUTE).
+        int freePage = m_pAccess->firstFreePageForUnit(localCh, unit);
+        if (freePage >= 0)
+          m_pAccess->setSelectedPage(localCh, freePage, unit);
+      } else {
+        m_pAccess->enforceUniquePages(unit);
+      }
     }
   }
 
@@ -285,15 +296,18 @@ bool PlugMode::buttonMute(int channel, bool pressed) {
       int baseOffset = m_pAccess->pageUsedOffsetForPage(resolved, localCh);
       if (baseOffset >= 0)
         cascadeFromUnit(unit, bank, baseOffset);
+      m_pAccess->enforceUniquePages(unit);
     } else if (pressed && isModifierPressed(VK_SHIFT)) {
       for (int iBank = 0; iBank < 8; iBank++) {
         if (m_pAccess->isPageUsed(iBank, localCh)) {
           m_pAccess->setSelectedPage(iBank, localCh, unit);
         }
       }
+      m_pAccess->enforceUniquePages(unit);
     }
   else if (pressed && m_pAccess->isPageUsedInSelectedBank(localCh)) {
     m_pAccess->setSelectedPageInSelectedBank(localCh, unit);
+    m_pAccess->enforceUniquePages(unit);
   }
 
   if (pressed) {
@@ -527,6 +541,10 @@ void PlugMode::updateFaders() {
     int localCh = i % 8;
     int globalCh = i + 1;
     setActiveUnit(unit);
+    if (m_pAccess->isUnitEmpty(unit)) {
+      m_pCCSManager->setFader(this, globalCh, 0);
+      continue;
+    }
     int bank = m_pAccess->selectedBankForUnit(unit);
     int page = m_pAccess->selectedPageForUnit(unit);
     m_pCCSManager->setFader(
@@ -548,11 +566,16 @@ void PlugMode::updateVPOTs() {
     int localCh = i % 8;
     int globalCh = i + 1;
     setActiveUnit(unit);
+    VPOT_LED *pVPot = m_pCCSManager->getVPOT(globalCh);
+    if (m_pAccess->isUnitEmpty(unit)) {
+      pVPot->setBottom(false);
+      pVPot->setMode(VPOT_LED::OFF);
+      continue;
+    }
     int bank = m_pAccess->selectedBankForUnit(unit);
     int page = m_pAccess->selectedPageForUnit(unit);
 
     PMVPot::tSteps *pStepMap = m_pAccess->getParamSteps(bank, page, localCh);
-    VPOT_LED *pVPot = m_pCCSManager->getVPOT(globalCh);
     double val = m_pAccess->getParamValueDouble(bank, page,
         PlugAccess::ElementDesc::VPOT, localCh);
 
@@ -700,10 +723,25 @@ void PlugMode::updateParamsDisplay() {
   int nUnits = m_pCCSManager->getMCU()->numUnits();
   int nStrips = nUnits * 8;
 
+  // Blank the displays of units that show no page (more units than used
+  // pages, or the page was moved away). Their faders/VPOTs are handled in
+  // updateFaders/updateVPOTs.
+  MultiDisplay *emptyMd = dynamic_cast<MultiDisplay *>(m_pParamsDisplay);
+  for (int u = 0; u < nUnits; u++) {
+    if (!m_pAccess->isUnitEmpty(u))
+      continue;
+    if (emptyMd && u < (int)emptyMd->children().size())
+      emptyMd->children()[u]->clear();
+    else if (!emptyMd && u == 0)
+      m_pParamsDisplay->clear();
+  }
+
   for (int iChannel = 0; iChannel < nStrips; iChannel++) {
     int unit = iChannel / 8;
     int localCh = iChannel % 8;
     setActiveUnit(unit);
+    if (m_pAccess->isUnitEmpty(unit))
+      continue;
     int bank = m_pAccess->selectedBankForUnit(unit);
     int page = m_pAccess->selectedPageForUnit(unit);
     HardwareUnit *hu = m_pCCSManager->getMCU()->unitForChannel(iChannel + 1);
@@ -769,15 +807,17 @@ void PlugMode::updateParamsDisplay() {
   }
 
   // Field 9 is the ProX dry/wet column on the anchor unit.
-  Display *anchor = mainChildOrNull(m_pParamsDisplay);
-  if (anchor) {
-    HardwareUnit *anchorU = m_pCCSManager->getMCU()->unitForChannel(1);
-    if (anchorU && anchorU->isProX()) {
-      anchor->changeField(2, 9, " Wet");
-      int wet = m_pAccess->getParamValueInt(PlugAccess::ElementDesc::DRYWET);
-      char text[8];
-      sprintf(text, " %3.0f%%", (100 * (double)wet / 16368.));
-      anchor->changeField(3, 9, text);
+  if (!m_pAccess->isUnitEmpty(anchorUnit())) {
+    Display *anchor = mainChildOrNull(m_pParamsDisplay);
+    if (anchor) {
+      HardwareUnit *anchorU = m_pCCSManager->getMCU()->unitForChannel(1);
+      if (anchorU && anchorU->isProX()) {
+        anchor->changeField(2, 9, " Wet");
+        int wet = m_pAccess->getParamValueInt(PlugAccess::ElementDesc::DRYWET);
+        char text[8];
+        sprintf(text, " %3.0f%%", (100 * (double)wet / 16368.));
+        anchor->changeField(3, 9, text);
+      }
     }
   }
 }
@@ -798,6 +838,12 @@ void PlugMode::updateTouchedDisplay() {
   MultiDisplay *md = dynamic_cast<MultiDisplay *>(target);
   if (md && unit < (int)md->children().size())
     target = md->children()[unit];
+
+  // A touched element on an empty unit has no parameter to show.
+  if (m_pAccess->isUnitEmpty(unit)) {
+    target->clear();
+    return;
+  }
 
   HardwareUnit *hu =
       m_pCCSManager->getMCU()->unitForChannel(touchedCh > 0 ? touchedCh : 1);
@@ -1291,10 +1337,18 @@ bool PlugMode::buttonFaderBanks(int button, bool pressed) {
       }
     }
     if (newBank != refBank) {
+      // Used-page math runs on the RESOLVED bank (a bank may `refer` to
+      // another, where the used-page sequence actually lives); the selection
+      // is stored under the RAW bank, like cascadeFromUnit does.
+      int resolved = m_pAccess->resolveBankReference(newBank);
+      int count = m_pAccess->usedPageCount(resolved);
       for (int u = 0; u < N; u++) {
         m_pAccess->setSelectedBank(newBank, u);
-        m_pAccess->setSelectedPage(newBank,
-                                   m_pAccess->pageAtUsedOffset(newBank, u), u);
+        if (u < count)
+          m_pAccess->setSelectedPage(newBank,
+                                     m_pAccess->pageAtUsedOffset(resolved, u), u);
+        else
+          m_pAccess->clearUnitPage(u); // more units than used pages
       }
       safe_call(m_pPlugEditor, selectedBankChanged(newBank));
     }
@@ -1305,11 +1359,12 @@ bool PlugMode::buttonFaderBanks(int button, bool pressed) {
     // Page UP/DOWN: shift the page window start by +/-N sequence positions;
     // each unit u shows pageAtUsedOffset(bank, newOffset + u). Clamp, no wrap.
     int bank = m_pAccess->selectedBankForUnit(a);
+    int resolved = m_pAccess->resolveBankReference(bank);
     int curOffset = m_pAccess->pageUsedOffsetForPage(
-        bank, m_pAccess->selectedPageForUnit(a));
+        resolved, m_pAccess->selectedPageForUnit(a));
     if (curOffset < 0)
       curOffset = 0;
-    int count = m_pAccess->usedPageCount(bank);
+    int count = m_pAccess->usedPageCount(resolved);
     int delta = (button == B_CHANNEL_UP) ? N : -N;
     int newOffset = curOffset + delta;
     if (count <= 0) {
@@ -1322,11 +1377,14 @@ bool PlugMode::buttonFaderBanks(int button, bool pressed) {
     }
     if (newOffset != curOffset) {
       for (int u = 0; u < N; u++) {
-        m_pAccess->setSelectedPage(
-            bank, m_pAccess->pageAtUsedOffset(bank, newOffset + u), u);
+        if (newOffset + u < count)
+          m_pAccess->setSelectedPage(
+              bank, m_pAccess->pageAtUsedOffset(resolved, newOffset + u), u);
+        else
+          m_pAccess->clearUnitPage(u); // more units than used pages
       }
       safe_call(m_pPlugEditor,
-                selectedPageChanged(m_pAccess->pageAtUsedOffset(bank, newOffset)));
+                selectedPageChanged(m_pAccess->pageAtUsedOffset(resolved, newOffset)));
     }
     break;
   }
@@ -1505,6 +1563,8 @@ void PlugMode::followChanges() {
 		if (fu >= 0) {
 			m_pAccess->setSelectedBank(changeInBank, fu);
 			m_pAccess->setSelectedPage(changeInBank, changeInPage, fu);
+			// keep the page-uniqueness invariant under auto-follow
+			m_pAccess->enforceUniquePages(fu);
 		}
 	}
 }
@@ -1601,9 +1661,15 @@ void PlugMode::cascadeFromUnit(int unit, int bank, int baseOffset) {
   // the RAW bank (setSelectedBank/setSelectedPage key on the raw bank so
   // selectedPageForUnit reads it back correctly).
   int resolved = m_pAccess->resolveBankReference(bank);
+  int count = m_pAccess->usedPageCount(resolved);
   for (int u = unit; u < N; u++) {
-    int page = m_pAccess->pageAtUsedOffset(resolved, baseOffset + (u - unit));
+    int offset = baseOffset + (u - unit);
     m_pAccess->setSelectedBank(bank, u);
-    m_pAccess->setSelectedPage(bank, page, u);
+    if (offset < count)
+      m_pAccess->setSelectedPage(bank,
+                                 m_pAccess->pageAtUsedOffset(resolved, offset),
+                                 u);
+    else
+      m_pAccess->clearUnitPage(u); // more units than used pages: stay empty
   }
 }
