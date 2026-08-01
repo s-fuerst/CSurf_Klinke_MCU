@@ -20,7 +20,8 @@ ChannelStripParamEditor::ChannelStripParamEditor(ChannelStripMode *pMode,
                                                   MediaTrack *tr, int fxSlot)
     : m_pMode(pMode), m_stripIndex(stripIndex), m_pTrack(tr),
       m_fxSlot(fxSlot), m_strip(NULL), m_table(NULL),
-      m_pWatcher(NULL), m_paramChangedConnectionId(-1), m_learnVPOT(-1) {
+      m_pWatcher(NULL), m_paramChangedConnectionId(-1), m_learnVPOT(-1),
+      m_ownsTempPlugin(false) {
 
   m_strip = m_pMode ? m_pMode->getStrip(stripIndex) : NULL;
   int numParams =
@@ -44,7 +45,7 @@ ChannelStripParamEditor::ChannelStripParamEditor(ChannelStripMode *pMode,
   m_table->setColour(ListBox::outlineColourId, Colours::grey);
   m_table->setOutlineThickness(1);
 
-  m_table->getHeader().addColumn("#", CSTP_COL_NR, 38, 38, 38,
+  m_table->getHeader().addColumn("VPOT", CSTP_COL_NR, 60, 60, 60,
                                  TableHeaderComponent::notResizable);
   m_table->getHeader().addColumn("Parameter", CSTP_COL_PARAM, 180, 120, 300,
                                  TableHeaderComponent::notResizable);
@@ -52,26 +53,37 @@ ChannelStripParamEditor::ChannelStripParamEditor(ChannelStripMode *pMode,
                                  TableHeaderComponent::notResizable);
 
   m_table->setMultipleSelectionEnabled(false);
-  setSize(400, 24 + ChannelStripMap::kNumVPOTs * 24 + 8);
+  // 8px margin around the table so this dialog matches the BindingTable's
+  // look (which sits inside ChannelStripComponent with the same margin).
+  const int m = 8;
+  setSize(400 + 2 * m, 24 + ChannelStripMap::kNumVPOTs * 24 + 8 + 2 * m);
 
   startTimer(100);
 }
 
 ChannelStripParamEditor::~ChannelStripParamEditor() {
   stopTimer();
+  // Persist all strips to the single channelstrips.xml before tearing down
+  // (the mapping editor edits a strip's VPOT->param bindings).
+  if (m_pMode)
+    m_pMode->saveStripsToFile();
   if (m_pWatcher) {
     if (m_paramChangedConnectionId >= 0)
       m_pWatcher->disconnectParamChange(m_paramChangedConnectionId);
     safe_delete(m_pWatcher);
   }
-  if (m_pTrack && m_fxSlot >= 0)
+  // Only remove the plugin if we added a temporary instance for learning.
+  // If we reused an existing instance on the track, leave it untouched.
+  if (m_ownsTempPlugin && m_pTrack && m_fxSlot >= 0)
     TrackFX_Delete(m_pTrack, m_fxSlot);
   s_dialogOpen = false;
 }
 
 void ChannelStripParamEditor::resized() {
-  if (m_table)
-    m_table->setBounds(getLocalBounds());
+  if (m_table) {
+    const int m = 8;
+    m_table->setBounds(m, m, getWidth() - 2 * m, getHeight() - 2 * m);
+  }
 }
 
 int ChannelStripParamEditor::getNumRows() {
@@ -88,7 +100,7 @@ void ChannelStripParamEditor::paintCell(Graphics &g, int row, int col,
   if (col != CSTP_COL_NR) return;
   g.setColour(Colours::black);
   g.setFont(Font(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain));
-  String n = (row < 8) ? String(row + 1) : ("S" + String(row - 7));
+  String n = (row < 8) ? String(row + 1) : ("Shift " + String(row - 7));
   g.drawText(n, 2, 1, w - 4, h, Justification::centred, true);
 }
 
@@ -137,12 +149,12 @@ void ChannelStripParamEditor::setVPOTParam(int vpot, int paramIdx) {
   if (!m_strip || vpot < 0 || vpot >= ChannelStripMap::kNumVPOTs)
     return;
   m_strip->setParamForVPOT(vpot, paramIdx);
-  // update the combo cell — force a repaint by calling updateContent
-  m_table->updateContent();
   // auto-fill the name from the param name if empty
   if (paramIdx >= 0 && paramIdx < m_paramNames.size() &&
       m_strip->getVPOTName(vpot).isEmpty())
     m_strip->setVPOTName(vpot, m_paramNames[paramIdx].substring(0, 6));
+  // refresh AFTER setting both param and name so the name label picks it up
+  m_table->updateContent();
   if (m_pMode)
     m_pMode->bindingChanged();
 }
@@ -156,25 +168,32 @@ void ChannelStripParamEditor::notifyBindingChanged() {
 void ChannelStripParamEditor::open(ChannelStripMode *pMode, int stripIndex) {
   if (!pMode || s_dialogOpen)
     return;
-  MediaTrack *tr = pMode->getSelectedTrack();
+  MediaTrack *tr = pMode->selectedTrack();
   ChannelStripMap *strip = pMode->getStrip(stripIndex);
   if (!tr || !strip || !strip->isAssigned())
     return;
 
-  ChannelStripAccess *access = pMode->getAccess();
-  access->trackChanged(tr);
-
-  int chainLen = TrackFX_GetCount(tr);
-  int instArg = ChannelStripAccess::instantiateArgFor(ChannelStripMap::LAST,
-                                                      chainLen);
-  int slot = TrackFX_AddByName(tr, strip->getFxIdent().toRawUTF8(), false,
-                               instArg);
-  if (slot < 0) return;
+  // Reuse an existing instance of this plugin on the track if one is
+  // present (do NOT add a duplicate). Only add a temp instance at the end of
+  // the chain when the plugin is not yet on the track.
+  int slot = ChannelStripAccess::findSlotByIdent(tr, strip->getFxIdent());
+  bool ownsTemp = false;
+  if (slot < 0) {
+    int chainLen = TrackFX_GetCount(tr);
+    int instArg = ChannelStripAccess::instantiateArgFor(ChannelStripMap::LAST,
+                                                        chainLen);
+    slot = TrackFX_AddByName(tr, strip->getFxIdent().toRawUTF8(), false,
+                             instArg);
+    if (slot < 0)
+      return;
+    ownsTemp = true;
+  }
 
   TrackFX_Show(tr, slot, 3);
 
   ChannelStripParamEditor *content =
       new ChannelStripParamEditor(pMode, stripIndex, tr, slot);
+  content->m_ownsTempPlugin = ownsTemp;
 
   static KlinkeLookAndFeel klf;
   content->setLookAndFeel(&klf);

@@ -161,9 +161,19 @@ bool CCSManager::buttonVPOTassign(int button, bool pressed) {
       pNewMode = m_pPlugMode;
       break;
     case B_VPOT_TRACK:
+      // Hold-to-repick: while held, units with a strip show the strip-name
+      // list and a VPOT press re-assigns. On release the VPOTs return to
+      // parameter control. Activation (stays active) happens via changeMode.
+      m_pChannelStripMode->setSelectionMode(true);
       pNewMode = m_pChannelStripMode;
       break;
     }
+  } else if (button == B_VPOT_TRACK &&
+             m_pActualMode == m_pChannelStripMode) {
+    // release of TRACK: end re-pick mode and refresh back to parameters
+    m_pChannelStripMode->setSelectionMode(false);
+    m_pChannelStripMode->updateEverything();
+    return true;
   } else if (m_selectorActive) {
     m_selectorActive = false;
     m_pActualMode->activate();
@@ -229,11 +239,24 @@ void CCSManager::updateVPOTLeds() {
     m_pMCU->SetLED(B_VPOT_PLUG, LED_OFF);
   }
 
-  // B_VPOT_TRACK (Channel Strip Mode)
-  // Blink while active; otherwise off until a strip is configurable for the
-  // selected track. Presence detection is refined in later steps.
-  m_pMCU->SetLED(B_VPOT_TRACK,
-                 m_pActualMode == m_pChannelStripMode ? LED_BLINK : LED_OFF);
+  // B_VPOT_TRACK (Channel Strip Mode): blink while active, ON if the
+  // selected track has at least one strip assigned (configurable), else OFF.
+  if (m_pActualMode == m_pChannelStripMode) {
+    m_pMCU->SetLED(B_VPOT_TRACK, LED_BLINK);
+  } else {
+    MediaTrack *pSingle = Tracks::instance()->getSelectedSingleTrack();
+    bool configurable = false;
+    if (pSingle) {
+      int nUnits = m_pMCU->numUnits();
+      for (int u = 0; u < nUnits; u++) {
+        if (m_pChannelStripMode->getAssignedStripIndex(pSingle, u) >= 0) {
+          configurable = true;
+          break;
+        }
+      }
+    }
+    m_pMCU->SetLED(B_VPOT_TRACK, configurable ? LED_ON : LED_OFF);
+  }
 }
 
 bool CCSManager::buttonFaderBanks(int button, bool pressed) {

@@ -49,7 +49,7 @@ public:
   void notifyBindingChanged();
 
   void refreshInstalledFX();
-  void updateEverything() { if (m_table) m_table->updateContent(); }
+  void updateEverything();
 
 private:
   ChannelStripMode *m_pMode;
