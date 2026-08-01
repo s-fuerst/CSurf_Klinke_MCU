@@ -120,13 +120,17 @@ void HardwareUnit::setLED(int button_nr, int led_state) {
   if (!m_unitEnabled)
     return;
 #endif
-  // ProX quirk: LED_BLINK_BYPASSED is not supported on some hardware.
-  if (!isProX() && led_state == LED_BLINK_BYPASSED)
-    led_state = LED_ON;
+  // LED_BLINK_BYPASSED is a purely logical state — no hardware understands
+  // the raw 0x02 velocity. Keep it in the cache so emulateBlinkingLEDs()
+  // paints the slow bypassed pattern on EVERY unit, and translate the byte
+  // actually sent to LED_ON; the emulation loop overwrites it with
+  // LED_ON/LED_OFF in the slow pattern.
+  unsigned char sendState =
+      (led_state == LED_BLINK_BYPASSED) ? LED_ON : led_state;
 
   // per-unit dedup (was CCSManager::m_stateRec/Solo/Mute/Select + CSurf_MCU::m_led_state)
   if (m_led_state[button_nr] != led_state) {
-    sendMidi(0x90, button_nr, led_state, -1);
+    sendMidi(0x90, button_nr, sendState, -1);
     m_led_state[button_nr] = led_state;
   }
 }
@@ -154,9 +158,11 @@ void HardwareUnit::emulateBlinkingLEDs(DWORD now) {
   if (++m_blinkSometimes == 12) {
     m_blinkSometimes = 0;
   }
+  // Slow bypassed pattern: 3 ticks off, 9 ticks on (~0.8s / ~2.3s at the
+  // 256ms tick). Purely LED_ON/LED_OFF, same as the regular blink above.
   for (int i = 0; i < 128; i++) {
     if (m_led_state[i] == LED_BLINK_BYPASSED) {
-      sendMidi(0x90, i, m_blinkSometimes > 2, -1);
+      sendMidi(0x90, i, m_blinkSometimes > 2 ? LED_ON : LED_OFF, -1);
     }
   }
 }
