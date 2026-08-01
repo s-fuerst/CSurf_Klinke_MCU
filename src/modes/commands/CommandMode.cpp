@@ -16,7 +16,7 @@
 #include "ConfigPath.h"
 
 CommandMode::Page::Page(CommandMode *pMode, int index)
-    : m_pMode(pMode), m_iIndex(index) {
+  : m_pMode(pMode), m_iIndex(index) {
   m_strPageName = String("Bank ") + String(index + 1);
   for (int i = 0; i < 2; i++) {
     for (int j = 0; j < 8; j++) {
@@ -76,6 +76,8 @@ bool CommandMode::Page::readFromXML(XmlElement *pPageNode) {
   while (pVpot && pVpot->getTagName() == CM_NODE_VPOT) {
     int shift = pVpot->getBoolAttribute(CM_ATT_SHIFT);
     int channel = pVpot->getIntAttribute(CM_ATT_INDEX);
+    if (shift < 0 || shift >= 2 || channel < 0 || channel >= 8)
+      return false;
     m_strCommandName[shift][channel] = pVpot->getStringAttribute(CM_ATT_NAME);
     m_bRelative[shift][channel] = pVpot->getBoolAttribute(CM_ATT_RELATIVE);
     m_iNormalSpeed[shift][channel] = pVpot->getIntAttribute(CM_ATT_NORMAL);
@@ -122,8 +124,12 @@ bool CommandMode::readConfigFile() {
     return false;
 
   forEachXmlChildElement(*pRootElement, pPage) {
-    bool success =
-        m_pPage[pPage->getIntAttribute(CM_ATT_INDEX)]->readFromXML(pPage);
+    int pageIndex = pPage->getIntAttribute(CM_ATT_INDEX);
+    if (pageIndex < 0 || pageIndex >= 8) {
+      safe_delete(pXmlFile);
+      return false;
+    }
+    bool success = m_pPage[pageIndex]->readFromXML(pPage);
     if (!success) {
       safe_delete(pXmlFile);
       return false;
@@ -156,7 +162,7 @@ void CommandMode::activate() {
     md->switchToAll();
   else
     m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
-	m_pCCSManager->getMCU()->enableMCUMeters(false);
+  m_pCCSManager->getMCU()->enableMCUMeters(false);
 }
 
 // P1: persist config when leaving the mode (covers the mode-switch path and,
@@ -194,9 +200,9 @@ bool CommandMode::vpotMoved(int channel, int numSteps) {
   if (pActive->m_bRelative[shift][localChan] == true) {
     midi_byte1 += 0x0c;
     int relative =
-        0x40 + numSteps * (pVpot->isPressed()
-                               ? pActive->m_iPressedSpeed[shift][localChan]
-                               : pActive->m_iNormalSpeed[shift][localChan]);
+      0x40 + numSteps * (pVpot->isPressed()
+			 ? pActive->m_iPressedSpeed[shift][localChan]
+			 : pActive->m_iNormalSpeed[shift][localChan]);
     midi_byte2 = (unsigned char)std::min(255, std::max(0, relative));
   } else {
     bool left = (numSteps < 0);
@@ -253,7 +259,7 @@ void CommandMode::updateVPOTs() {
   for (int channel = 1; channel <= nStrips; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
       m_pCCSManager->getVPOT(channel)->setBottom(
-          Tracks::instance()->hasChilds(tr));
+						 Tracks::instance()->hasChilds(tr));
     }
   }
 }
@@ -262,26 +268,26 @@ void CommandMode::updateVPOTs() {
 void CommandMode::updateDisplay() {
   MultiTrackMode::updateDisplay();
 
-	// per-unit ProX check, widened loop
-	if (m_pCCSManager->getMCU()->unitForChannel(1) &&
-	    m_pCCSManager->getMCU()->unitForChannel(1)->isProX()) {
-		int nStrips = Tracks::instance()->getNumberOfChannelStrips();
-		for (int iChan = 1; iChan <= nStrips; iChan++) {
-			MediaTrack *tr = getMediaTrackForChannel(iChan);
-			if (tr) {
-				if (s_flipmode) {
-					m_pDisplay->showPan(3, iChan,
-													*((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
-				}
-				else {
-					m_pDisplay->showDB(3, iChan,
-													*((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
-				}
-			} else {
-				m_pDisplay->changeField(3, iChan, "");
-			}
-		}
+  // per-unit ProX check, widened loop
+  if (m_pCCSManager->getMCU()->unitForChannel(1) &&
+      m_pCCSManager->getMCU()->unitForChannel(1)->isProX()) {
+    int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+    for (int iChan = 1; iChan <= nStrips; iChan++) {
+      MediaTrack *tr = getMediaTrackForChannel(iChan);
+      if (tr) {
+	if (s_flipmode) {
+	  m_pDisplay->showPan(3, iChan,
+			      m_pCCSManager->getMCU()->GetSurfacePan(tr));
 	}
+	else {
+	  m_pDisplay->showDB(3, iChan,
+			     m_pCCSManager->getMCU()->GetSurfaceVolume(tr));
+	}
+      } else {
+	m_pDisplay->changeField(3, iChan, "");
+      }
+    }
+  }
 
   int shift = m_pCCSManager->getMCU()->IsModifierPressed(VK_SHIFT) ? 1 : 0;
   // P3: render line 1 per unit from each unit's own active page.
@@ -304,7 +310,7 @@ void CommandMode::updateDisplay() {
 
   MultiDisplay *md = dynamic_cast<MultiDisplay *>(m_pDisplay);
   static const char *kNoActionsHint =
-      "No actions are named for this bank (press Alt+EQ).";
+    "No actions are named for this bank (press Alt+EQ).";
   for (int u = 0; u < numUnits; u++) {
     Page *pActive = m_pPage[m_iActivePageIndex[u]];
 
@@ -319,7 +325,7 @@ void CommandMode::updateDisplay() {
     if (anyNamed) {
       for (int lc = 0; lc < 8; lc++)
         m_pDisplay->changeField(
-            1, u * 8 + lc + 1, pActive->getCommandName(shift, lc).toRawUTF8());
+				1, u * 8 + lc + 1, pActive->getCommandName(shift, lc).toRawUTF8());
     } else {
       // Per-unit hint: changeText pads/centers the line on this unit only.
       if (md && u < (int)md->children().size())

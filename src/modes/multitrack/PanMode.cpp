@@ -83,15 +83,15 @@ void PanMode::updateDisplay() {
         if (u && u->isProX()) {
           if (s_flipmode) {
             m_pDisplay->showPan(3, iTrack,
-                                *((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
+                                m_pCCSManager->getMCU()->GetSurfacePan(tr));
             m_pDisplay->showDB(1, iTrack,
-                              *((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
+                              m_pCCSManager->getMCU()->GetSurfaceVolume(tr));
           }
           else {
             m_pDisplay->showDB(3, iTrack,
-                              *((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
+                              m_pCCSManager->getMCU()->GetSurfaceVolume(tr));
             m_pDisplay->showPan(1, iTrack,
-                                *((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
+                                m_pCCSManager->getMCU()->GetSurfacePan(tr));
           }
         } else {
           // Non-ProX: row 1 normally shows the value the FADER controls
@@ -101,17 +101,17 @@ void PanMode::updateDisplay() {
           if (showingVpotValue(iTrack, now)) {
             if (s_flipmode)
               m_pDisplay->showDB(1, iTrack,
-                  *((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
+                  m_pCCSManager->getMCU()->GetSurfaceVolume(tr));
             else
               m_pDisplay->showPan(1, iTrack,
-                  *((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
+                  m_pCCSManager->getMCU()->GetSurfacePan(tr));
           } else {
             if (s_flipmode)
               m_pDisplay->showPan(1, iTrack,
-                  *((double *)GetSetMediaTrackInfo(tr, "D_PAN", NULL)));
+                  m_pCCSManager->getMCU()->GetSurfacePan(tr));
             else
               m_pDisplay->showDB(1, iTrack,
-                  *((double *)GetSetMediaTrackInfo(tr, "D_VOL", NULL)));
+                  m_pCCSManager->getMCU()->GetSurfaceVolume(tr));
           }
         }
       } else {

@@ -86,21 +86,27 @@ void MultiTrackMode::updateRecLEDs() {
   for (int channel = 1; channel <= nStrips; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
       int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
+      if (!pRecArm) {
+        m_pCCSManager->setRecLED(this, channel, LED_OFF);
+        continue;
+      }
       if (isModifierPressed(VK_SHIFT)) {
         if (*pRecArm) {
           int *pMonStatus = (int *)GetSetMediaTrackInfo(tr, "I_RECMON", NULL);
           m_pCCSManager->setRecLED(this, channel,
-                                   *pMonStatus ? LED_ON : LED_OFF);
+                                   pMonStatus && *pMonStatus ? LED_ON : LED_OFF);
         }
       } else if (isModifierPressed(VK_OPTION)) {
         if (*pRecArm) {
           int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
-          m_pCCSManager->setRecLED(this, channel, *pRecMode == 0 ? LED_ON : LED_OFF);
+          m_pCCSManager->setRecLED(
+              this, channel, pRecMode && *pRecMode == 0 ? LED_ON : LED_OFF);
         }
       } else if (isModifierPressed(VK_ALT)) {
         if (*pRecArm) {
           int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
-          m_pCCSManager->setRecLED(this, channel, *pRecMode == 2 ? LED_OFF : LED_ON);
+          m_pCCSManager->setRecLED(
+              this, channel, pRecMode && *pRecMode == 2 ? LED_OFF : LED_ON);
         }
       } else {
         m_pCCSManager->setRecLED(this, channel, *pRecArm ? LED_ON : LED_OFF);
@@ -117,7 +123,8 @@ void MultiTrackMode::updateSoloLEDs() {
   for (int channel = 1; channel <= nStrips; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
       int *pSolo = (int *)GetSetMediaTrackInfo(tr, "I_SOLO", NULL);
-      m_pCCSManager->setSoloLED(this, channel, *pSolo ? LED_ON : LED_OFF);
+      m_pCCSManager->setSoloLED(this, channel,
+                                pSolo && *pSolo ? LED_ON : LED_OFF);
     } else {
       m_pCCSManager->setSoloLED(this, channel, LED_OFF);
     }
@@ -130,7 +137,8 @@ void MultiTrackMode::updateMuteLEDs() {
   for (int channel = 1; channel <= nStrips; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
       bool *pMute = (bool *)GetSetMediaTrackInfo(tr, "B_MUTE", NULL);
-      m_pCCSManager->setMuteLED(this, channel, *pMute ? LED_ON : LED_OFF);
+      m_pCCSManager->setMuteLED(this, channel,
+                                pMute && *pMute ? LED_ON : LED_OFF);
     } else {
       m_pCCSManager->setMuteLED(this, channel, LED_OFF);
     }
@@ -143,7 +151,8 @@ void MultiTrackMode::updateSelectLEDs() {
   for (int channel = 1; channel <= nStrips; channel++) {
     if (MediaTrack *tr = getMediaTrackForChannel(channel)) {
       int *pSelect = (int *)GetSetMediaTrackInfo(tr, "I_SELECTED", NULL);
-      m_pCCSManager->setSelectLED(this, channel, *pSelect ? LED_ON : LED_OFF);
+      m_pCCSManager->setSelectLED(this, channel,
+                                  pSelect && *pSelect ? LED_ON : LED_OFF);
     } else {
       m_pCCSManager->setSelectLED(this, channel, LED_OFF);
     }
@@ -175,8 +184,8 @@ void MultiTrackMode::updateFaders() {
   }
   // master fader (doesn't flip)
   m_pCCSManager->setFader(this, 0,
-                          volToInt14(*((double *)GetSetMediaTrackInfo(
-                              getMediaTrackForChannel(0), "D_VOL", 0))));
+                          volToInt14(m_pCCSManager->getMCU()->GetSurfaceVolume(
+                              getMediaTrackForChannel(0))));
 }
 
 void MultiTrackMode::updateVPOTs() {
@@ -281,24 +290,30 @@ bool MultiTrackMode::buttonRec(int channel, bool pressed) {
   if (tr) {
     if (isModifierPressed(VK_SHIFT)) {
       int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
-      if (*pRecArm) {
+      if (pRecArm && *pRecArm) {
         int *pMonStatus = (int *)GetSetMediaTrackInfo(tr, "I_RECMON", NULL);
+        if (!pMonStatus)
+          return false;
         int newMon = *pMonStatus ? 0 : 1;
         GetSetMediaTrackInfo(tr, "I_RECMON", &newMon);
         TrackList_AdjustWindows(false);
       }
     } else if (isModifierPressed(VK_OPTION)) {
       int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
-      if (*pRecArm) {
+      if (pRecArm && *pRecArm) {
         int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
+        if (!pRecMode)
+          return false;
         int newMode = (*pRecMode == 0) ? 2 : 0;
         GetSetMediaTrackInfo(tr, "I_RECMODE", &newMode);
         TrackList_AdjustWindows(false);
       }
     } else if (isModifierPressed(VK_ALT)) {
       int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
-      if (*pRecArm) {
+      if (pRecArm && *pRecArm) {
         int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
+        if (!pRecMode)
+          return false;
         int newMode = (*pRecMode == 1) ? 5 : (*pRecMode == 5) ? 2 : 1;
         GetSetMediaTrackInfo(tr, "I_RECMODE", &newMode);
         TrackList_AdjustWindows(false);
@@ -306,6 +321,8 @@ bool MultiTrackMode::buttonRec(int channel, bool pressed) {
     } else {
       // Explicit toggle — CSurf_OnRecArmChange(-1) doesn't arm on Linux
       int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
+      if (!pRecArm)
+        return false;
       int newArm = (*pRecArm) ? 0 : 1;
       GetSetMediaTrackInfo(tr, "I_RECARM", &newArm);
       CSurf_OnRecArmChange(tr, newArm);
@@ -394,6 +411,8 @@ bool MultiTrackMode::buttonSelect(int channel, bool pressed) {
     } else if (isModifierPressed(VK_CONTROL)) {
       // Toggle selection of this track (add/remove from multi-select)
       int *sel = (int *)GetSetMediaTrackInfo(tr, "I_SELECTED", NULL);
+      if (!sel)
+        return false;
       bool newSel = !(*sel);
       SetTrackSelected(tr, newSel);
       if (newSel) CSurf_OnTrackSelection(tr);
@@ -524,9 +543,8 @@ void MultiTrackMode::updateDisplay() {
     if (pMainDisp) {
       pMainDisp->changeField(2, 9, "Master");
       pMainDisp->showDB(
-          3, 9,
-          *((double *)GetSetMediaTrackInfo(getMediaTrackForChannel(0), "D_VOL",
-                                           NULL)));
+          3, 9, m_pCCSManager->getMCU()->GetSurfaceVolume(
+                    getMediaTrackForChannel(0)));
     }
   }
 }
@@ -534,7 +552,11 @@ void MultiTrackMode::updateDisplay() {
 
 void MultiTrackMode::toggleShowInMixer(MediaTrack *tr) {
   // TODO: Add Implementation
+  if (!tr)
+    return;
   bool *shown = (bool *)GetSetMediaTrackInfo(tr, "B_SHOWINMIXER", NULL);
+  if (!shown)
+    return;
   *shown = !*shown;
   Undo_BeginBlock();
   GetSetMediaTrackInfo(tr, "B_SHOWINMIXER", shown);

@@ -21,13 +21,13 @@ Region::Region(double start, double end) {
 }
 
 bool Region::FindRegion(int searchedIndex) {
-  bool isrgn;
-  int lIndex;
+  bool isrgn = false;
+  int lIndex = -1;
 
   int idx = 0;
   do {
     idx = EnumProjectMarkers(idx, &isrgn, &m_start, &m_end, 0, &lIndex);
-    if (isrgn && lIndex == searchedIndex) {
+    if (idx > 0 && isrgn && lIndex == searchedIndex) {
       return true;
     }
   } while (idx > 0);
@@ -35,14 +35,14 @@ bool Region::FindRegion(int searchedIndex) {
 }
 
 double Region::MarkerPos(int markerID) {
-  bool isrgn;
-  int lIndex;
-  double start, end;
+  bool isrgn = false;
+  int lIndex = -1;
+  double start = 0.0, end = 0.0;
 
   int idx = 0;
   do {
     idx = EnumProjectMarkers(idx, &isrgn, &start, &end, 0, &lIndex);
-    if (!isrgn && lIndex == markerID) {
+    if (idx > 0 && !isrgn && lIndex == markerID) {
       return start;
     }
   } while (idx > 0);
@@ -51,22 +51,22 @@ double Region::MarkerPos(int markerID) {
 
 void Region::DeleteRegion(int index) {
   /*
-                double originalStart = m_start;
-                double originalEnd = m_end;
-                if (FindRegion(index)) {
+    double originalStart = m_start;
+    double originalEnd = m_end;
+    if (FindRegion(index)) {
     SetEditCurPos(m_start, false, false);
     SendMessage(g_hwnd, WM_COMMAND, 40615, 0); // Delete region
-                }
-                m_start = originalStart;
-                m_end = originalEnd;
+    }
+    m_start = originalStart;
+    m_end = originalEnd;
   */
   DeleteProjectMarker(NULL, index, true);
 }
 
 void Region::DeleteRegionStartWithPos(double pos) {
-  double start, end;
-  int lIndex;
-  bool isrgn;
+  double start = 0.0, end = 0.0;
+  int lIndex = -1;
+  bool isrgn = false;
 
   int idx = 0;
   do {
@@ -79,14 +79,14 @@ void Region::DeleteRegionStartWithPos(double pos) {
 }
 
 bool Region::FindRegionBefore(double pos) {
-  bool isrgn;
-  int lIndex;
+  bool isrgn = false;
+  int lIndex = -1;
   int foundIndex = -1;
 
   int idx = 0;
   do {
     idx = EnumProjectMarkers(idx, &isrgn, &m_start, &m_end, 0, &lIndex);
-    if (isrgn && m_end < pos) {
+    if (idx > 0 && isrgn && m_end < pos) {
       foundIndex = lIndex;
     }
   } while (idx > 0);
@@ -95,13 +95,13 @@ bool Region::FindRegionBefore(double pos) {
 }
 
 bool Region::FindRegionBehind(double pos) {
-  bool isrgn;
-  int lIndex;
+  bool isrgn = false;
+  int lIndex = -1;
 
   int idx = 0;
   do {
     idx = EnumProjectMarkers(idx, &isrgn, &m_start, &m_end, 0, &lIndex);
-    if (isrgn && m_start > pos) {
+    if (idx > 0 && isrgn && m_start > pos) {
       return true;
     }
   } while (idx > 0);

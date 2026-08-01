@@ -213,6 +213,7 @@ void Transport::playButton(bool down) {
         pRegion = new Region(m_pMCU->MoveInBars(GetCursorPosition(), -.5),
                              m_pMCU->MoveInBars(GetCursorPosition(), .5));
       pRegion->Set(true);
+      delete pRegion;
       if (m_pMCU->GetRepeatState() == false) {
         SendMessage(g_hwnd, WM_COMMAND, IDC_REPEAT, 0);
       }

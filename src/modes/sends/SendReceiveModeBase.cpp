@@ -412,7 +412,9 @@ bool SendReceiveModeBase::buttonFaderBanks(int button, bool pressed) {
     break;
   }
   // Clamp against the current send list.
-  if (m_startWithSend < 0)
+  if (m_sendInfos.empty())
+    m_startWithSend = 0;
+  else if (m_startWithSend < 0)
     m_startWithSend = 0;
   else if (m_startWithSend + 1 > (int)m_sendInfos.size())
     m_startWithSend = (int)m_sendInfos.size() - 1;

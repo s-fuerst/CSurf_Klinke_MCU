@@ -40,7 +40,10 @@ public:
   Display *getDisplay() const { return m_pActualDisplay; }
   void enableMCUMeter(bool enable);
   void enableMCUMeter(int channel, bool enable); // channel is 1 based
-  bool getMetersEnabled(int channel) const { return m_metersEnabled[channel]; }
+  bool getMetersEnabled(int channel) const {
+    return channel >= 0 && channel < (int)m_metersEnabled.size() &&
+      m_metersEnabled[channel];
+  }
   HardwareUnit *getUnit() const { return m_pUnit; }
 
   void waitForMoreChanges(bool block);

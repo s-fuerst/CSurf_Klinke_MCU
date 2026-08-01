@@ -50,8 +50,8 @@ public:
     }
 
     bool isValid() {
-      return (m_bank >= 0 && m_bank < 9 && m_page >= 0 && m_bank < 9 &&
-              m_type != UNKNOWN && m_channel >= 0 && m_channel < 9);
+      return (m_bank >= 0 && m_bank < 8 && m_page >= 0 && m_page < 8 &&
+              m_type != UNKNOWN && m_channel >= 0 && m_channel < 8);
     }
 
   public:
@@ -164,7 +164,8 @@ public:
   }
   int getSelectedBank() {
     int u = m_pMode->getActiveUnit();
-    ASSERT(u >= 0 && u < MAX_SURFACE_UNITS);
+    if (u < 0 || u >= MAX_SURFACE_UNITS)
+      return 0;
     return m_selectedBankPerUnit[u];
   }
   String getBankNameLong(int bank) {
@@ -186,9 +187,13 @@ public:
   }
   int getSelectedPageInSelectedBank() {
     int u = m_pMode->getActiveUnit();
+    if (u < 0 || u >= MAX_SURFACE_UNITS)
+      return -1;
     if (m_unitEmpty[u])
       return -1;
     int bank = m_selectedBankPerUnit[u];
+    if (bank < 0 || bank >= 8)
+      return -1;
     return m_selectedPagePerUnit[u][bank];
   }
   String getPageNameLongInSelectedBank(int page) {
@@ -213,14 +218,23 @@ public:
   bool isPageUsedInSelectedBank(int page); // 0 based
 
   // ---- per-unit accessors ----
-  int  selectedBankForUnit(int u) const { return m_selectedBankPerUnit[u]; }
+  int  selectedBankForUnit(int u) const {
+    return u >= 0 && u < MAX_SURFACE_UNITS ? m_selectedBankPerUnit[u] : 0;
+  }
   int  selectedPageForUnit(int u) const {
+    if (u < 0 || u >= MAX_SURFACE_UNITS)
+      return -1;
     // A unit without a page (empty) shows -1 regardless of its bank.
-    return m_unitEmpty[u] ? -1
-                          : m_selectedPagePerUnit[u][m_selectedBankPerUnit[u]];
+    int bank = m_selectedBankPerUnit[u];
+    return m_unitEmpty[u] || bank < 0 || bank >= 8
+               ? -1
+               : m_selectedPagePerUnit[u][bank];
   }
   int  selectedPageForUnit(int u, int bank) const {
-    return m_unitEmpty[u] ? -1 : m_selectedPagePerUnit[u][bank];
+    return u < 0 || u >= MAX_SURFACE_UNITS || bank < 0 || bank >= 8 ||
+                   m_unitEmpty[u]
+               ? -1
+               : m_selectedPagePerUnit[u][bank];
   }
   void setSelectedBank(int bank, int unit);
   void setSelectedPage(int bank, int page, int unit);
@@ -235,7 +249,8 @@ public:
     return u >= 0 && u < MAX_SURFACE_UNITS && m_unitEmpty[u];
   }
   void setUnitEmpty(int u, bool empty) {
-    ASSERT(u >= 0 && u < MAX_SURFACE_UNITS);
+    if (u < 0 || u >= MAX_SURFACE_UNITS)
+      return;
     m_unitEmpty[u] = empty;
   }
   void clearUnitPage(int u) { setUnitEmpty(u, true); }

@@ -17,7 +17,7 @@ Tracks* Tracks::s_instance = NULL;
 //======================================================== TSNode
 
 TSNode::TSNode(MediaTrack *pMT, TSNode *pParent)
-    : m_pMediaTrack(pMT), m_pParent(pParent) {}
+  : m_pMediaTrack(pMT), m_pParent(pParent) {}
 
 void TSNode::addChild(TSNode *pChild) { m_children.push_back(pChild); }
 
@@ -51,12 +51,18 @@ bool TSNode::showTrack(MediaTrack *pMT, EFilter filter) {
   case OFF:
     return true;
   case TCP:
-    return (*((bool *)GetSetMediaTrackInfo(pMT, "B_SHOWINTCP", NULL)));
+    {
+      bool *shown = (bool *)GetSetMediaTrackInfo(pMT, "B_SHOWINTCP", NULL);
+      return shown && *shown;
+    }
   case MCP:
-    return (*((bool *)GetSetMediaTrackInfo(pMT, "B_SHOWINMIXER", NULL)));
+    {
+      bool *shown = (bool *)GetSetMediaTrackInfo(pMT, "B_SHOWINMIXER", NULL);
+      return shown && *shown;
+    }
   case MCU:
     return Tracks::instance()->getTrackStateForMediaTrack(pMT) &&
-			Tracks::instance()->getTrackStateForMediaTrack(pMT)->isInSet();
+      Tracks::instance()->getTrackStateForMediaTrack(pMT)->isInSet();
   }
 
   return true;
@@ -119,21 +125,23 @@ void TSGraph::buildGraph(bool flat) {
   m_mapTrack[0] = new TSNode(NULL, NULL);
   TSNode *pParentNode = m_mapTrack[0];
 
-	bool anchors = Tracks::instance()->getOptions()->isOptionSetTo(MTO_DISABLE_ANCHORS,
-																																 MTOA_ANCHORS_YES);
+  bool anchors = Tracks::instance()->getOptions()->isOptionSetTo(MTO_DISABLE_ANCHORS,
+								 MTOA_ANCHORS_YES);
 
   for (TrackIterator ti; !ti.end(); ++ti) {
     TSNode *pNewNode = new TSNode(*ti, pParentNode);
     m_mapTrack[*ti] = pNewNode;
 
     if (Tracks::instance()->getTrackStateForMediaTrack(*ti) && !(anchors &&
-					Tracks::instance()->getTrackStateForMediaTrack(*ti)->getAnchorChannel() > 0)) 
+								 Tracks::instance()->getTrackStateForMediaTrack(*ti)->getAnchorChannel() > 0)) 
       pParentNode->addChild(pNewNode);
 
     if (flat) // ignore tree structure and add everything to the root (NULL)
       continue;
 
     int *pFD = (int *)GetSetMediaTrackInfo(*ti, "I_FOLDERDEPTH", NULL);
+    if (!pFD)
+      continue;
     if (*pFD == 1) {
       pParentNode = pNewNode;
     } else if (*pFD < 0) {
@@ -170,17 +178,17 @@ TSNode *TSGraph::nodeOfTrack(MediaTrack *pMT) {
 //======================================================== TracksState
 
 TrackState::TrackState()
-    : m_pMediaTrack(NULL), m_isInSet(true), m_isOnMCU(false), m_onMCUChannel(0),
-      m_anchorChannel(0), m_quickJumpChannel(0), m_isShownInMCP(true),
-      m_isShownInTCP(true), m_tcpHeight(16), m_quickJumpName(String()),
-      m_quickRoot(false), m_displayName(String()), m_vu(true),
-      m_guidAsString(String()) {}
+  : m_pMediaTrack(NULL), m_isInSet(true), m_isOnMCU(false), m_onMCUChannel(0),
+    m_anchorChannel(0), m_quickJumpChannel(0), m_isShownInMCP(true),
+    m_isShownInTCP(true), m_tcpHeight(16), m_quickJumpName(String()),
+    m_quickRoot(false), m_displayName(String()), m_vu(true),
+    m_guidAsString(String()) {}
 
 TrackState::TrackState(MediaTrack *pMT)
-    : m_pMediaTrack(NULL), m_isInSet(true), m_isOnMCU(false), m_onMCUChannel(0),
-      m_anchorChannel(0), m_quickJumpChannel(0), m_isShownInMCP(true),
-      m_isShownInTCP(true), m_tcpHeight(16), m_quickJumpName(String()),
-      m_quickRoot(false), m_vu(true), m_displayName(String()) {
+  : m_pMediaTrack(NULL), m_isInSet(true), m_isOnMCU(false), m_onMCUChannel(0),
+    m_anchorChannel(0), m_quickJumpChannel(0), m_isShownInMCP(true),
+    m_isShownInTCP(true), m_tcpHeight(16), m_quickJumpName(String()),
+    m_quickRoot(false), m_vu(true), m_displayName(String()) {
   m_pMediaTrack = pMT;
   if (pMT)
     m_guidAsString = GUID2String(GetTrackGUID(pMT));
@@ -224,8 +232,8 @@ String TrackState::showInDisplay() {
     String fullTrackName = MediaTrackInfo::getTrackName(m_pMediaTrack, true);
     if (fullTrackName.contains(String("|"))) {
       return fullTrackName.fromFirstOccurrenceOf(String("|"), false, false)
-          .trimStart()
-          .substring(0, 6);
+	.trimStart()
+	.substring(0, 6);
     }
     return fullTrackName.substring(0, 6);
   }
@@ -378,6 +386,8 @@ Colour MediaTrackInfo::getTrackColor(MediaTrack *pMT) {
   if (pMT == NULL)
     return Colours::black;
   int *pColor = (int *)GetSetMediaTrackInfo(pMT, "I_CUSTOMCOLOR", NULL);
+  if (!pColor)
+    return Colours::white;
   if (!(*pColor & 0x1000000))
     return Colours::white;
 
@@ -395,20 +405,20 @@ Tracks *Tracks::instance() {
 }
 
 Tracks::Tracks(void)
-    : m_pCurrentBaseTrack(NULL), m_pOptions1(NULL), m_pOptions2(NULL),
-      m_globalOffset(0), m_numMCUChannels(8) {
+  : m_pCurrentBaseTrack(NULL), m_pOptions1(NULL), m_pOptions2(NULL),
+    m_globalOffset(0), m_numMCUChannels(8) {
   m_selectedTracks.clear();
   m_pAllTracksBefore = new tTrackSet();
   m_pAllTracksNow = new tTrackSet();
 
   m_projectChangedConnectionId =
-      ProjectConfig::instance()->connect2ProjectChangeSignal(
-          boost::bind(&Tracks::projectChanged, this, _1, _2));
+    ProjectConfig::instance()->connect2ProjectChangeSignal(
+							   boost::bind(&Tracks::projectChanged, this, _1, _2));
 }
 
 Tracks::~Tracks(void) {
   ProjectConfig::instance()->disconnectProjectChangeSignal(
-      m_projectChangedConnectionId);
+							   m_projectChangedConnectionId);
 
   safe_delete(m_pAllTracksNow);
   safe_delete(m_pAllTracksBefore);
@@ -423,7 +433,7 @@ void Tracks::selectionChanged() {
 
   for (TrackIterator ti; !ti.end(); ++ti) {
     int *pSelected = (int *)GetSetMediaTrackInfo(*ti, "I_SELECTED", NULL);
-    if (*pSelected) {
+    if (pSelected && *pSelected) {
       m_selectedTracks.insert(*ti);
     }
   }
@@ -459,7 +469,7 @@ void Tracks::moveSelectedTrack2MCU() {
 
   MediaTrack *trackid = getSelectedSingleTrack();
   if (trackid && Tracks::instance()->get2ndOptions()->isOptionSetTo(
-                     MTO2_FOLLOW_REAPER, MTO2A_FOLLOW_REAPER_ON)) {
+								    MTO2_FOLLOW_REAPER, MTO2A_FOLLOW_REAPER_ON)) {
     tracksStatesChanged();
     // trackid was captured before tracksStatesChanged() ran. If the track was
     // deleted, it has been removed from m_trackStates (and, after P7, from
@@ -470,8 +480,8 @@ void Tracks::moveSelectedTrack2MCU() {
       return;
     TrackState *pTS = Tracks::instance()->getTrackStateForMediaTrack(trackid);
     if (pTS && pTS->getAnchorChannel() == 0 && !pTS->isOnMCU()) {
-			MediaTrack *newParent = Tracks::instance()->getParentForMediaTrack(trackid);
-			Tracks::instance()->moveBaseTrack(newParent);
+      MediaTrack *newParent = Tracks::instance()->getParentForMediaTrack(trackid);
+      Tracks::instance()->moveBaseTrack(newParent);
       int tracknr = MediaTrackInfo::getTrackNr(trackid);
       int numChannels = m_numMCUChannels - Tracks::instance()->getNumberOfActiveAnchors();
 
@@ -494,7 +504,7 @@ void Tracks::moveSelectedTrack2MCU() {
       }
 
       // track wasn't found (because it is not in the set of shown tracks, or
-			// on a different level
+      // on a different level
       if (Tracks::instance()->getGlobalOffset() >= tracknr) {
         Tracks::instance()->setGlobalOffset(originalOffset);
       }
@@ -571,25 +581,25 @@ bool Tracks::tracksStatesChanged(bool checkProjectChange) {
 }
 
 MediaTrack *Tracks::getSelectedSingleTrack(bool includeMaster) {
-	if (includeMaster) {
-		int masterSelected = *(int *)GetSetMediaTrackInfo(GetMasterTrack(NULL),
-																										"I_SELECTED",
-																										NULL);
+  if (includeMaster) {
+    int *masterSelection = (int *)GetSetMediaTrackInfo(
+						       GetMasterTrack(NULL), "I_SELECTED", NULL);
+    int masterSelected = masterSelection ? *masterSelection : 0;
 
-		if (m_selectedTracks.size() == 1 && masterSelected == 0) {
-			return *(m_selectedTracks.begin());
-		} else if (m_selectedTracks.size() == 0 && masterSelected == 1) {
-			return GetMasterTrack(NULL);
-		} else {
-			return NULL;
-		}
-	} else {
-		if (m_selectedTracks.size() == 1) {
-			return *(m_selectedTracks.begin());
-		} else {
-			return NULL;
-		}
-	}
+    if (m_selectedTracks.size() == 1 && masterSelected == 0) {
+      return *(m_selectedTracks.begin());
+    } else if (m_selectedTracks.size() == 0 && masterSelected == 1) {
+      return GetMasterTrack(NULL);
+    } else {
+      return NULL;
+    }
+  } else {
+    if (m_selectedTracks.size() == 1) {
+      return *(m_selectedTracks.begin());
+    } else {
+      return NULL;
+    }
+  }
 }
 
 void Tracks::createChannelTrackVector() {
@@ -625,27 +635,27 @@ MediaTrack *Tracks::getParentForMediaTrack(MediaTrack *pMT) {
   if (pNode == NULL)
     return NULL;
 
-	TSNode *pParentNode = pNode->getParentNode();
-	if (pParentNode == NULL)
-		return NULL;
+  TSNode *pParentNode = pNode->getParentNode();
+  if (pParentNode == NULL)
+    return NULL;
 
-	return pParentNode->getMediaTrack();
+  return pParentNode->getMediaTrack();
 }
 
 std::vector<MediaTrack *> Tracks::getChildredForMediaTrack(MediaTrack * pMT) {
-	std::vector<MediaTrack *> mediaTracks;
+  std::vector<MediaTrack *> mediaTracks;
 
   TSNode *pNode = m_structureVU.nodeOfTrack(pMT);
 
   if (pNode == NULL)
     return mediaTracks;
 	
-	std::vector<TSNode *> children = pNode->getChildren();
+  std::vector<TSNode *> children = pNode->getChildren();
   BOOST_FOREACH (TSNode *&pNode, children) {
-		mediaTracks.push_back(pNode->getMediaTrack());
+    mediaTracks.push_back(pNode->getMediaTrack());
   }
 
-	return mediaTracks;
+  return mediaTracks;
 }
 
 
@@ -668,8 +678,8 @@ MediaTrack *Tracks::findMediaTrackForChannel(int channel) {
   }
 
   int channelWithOffset = channel +
-                          Tracks::instance()->getGlobalOffset() -
-                          numAnchorsWithLowerChannel;
+    Tracks::instance()->getGlobalOffset() -
+    numAnchorsWithLowerChannel;
 
   TSNode *pNode = m_structure.nodeOfTrack(m_pCurrentBaseTrack);
   if (pNode == NULL)
@@ -678,9 +688,9 @@ MediaTrack *Tracks::findMediaTrackForChannel(int channel) {
   if (Tracks::instance()->getOptions()->isOptionSetTo(MTO_REFLECT_FOLDER,
                                                       MTOA_REFLECT_PLUS) &&
       !pNode->isRoot() &&
-			getTrackStateForMediaTrack(m_pCurrentBaseTrack) &&
+      getTrackStateForMediaTrack(m_pCurrentBaseTrack) &&
       getTrackStateForMediaTrack(m_pCurrentBaseTrack)->getAnchorChannel() ==
-          0) { // first non anchor channel must be the parent
+      0) { // first non anchor channel must be the parent
     if (channelWithOffset == 1) {
       return m_pCurrentBaseTrack;
     }
@@ -727,8 +737,8 @@ bool Tracks::moveBaseTrackToParent() {
     return false;
 
   m_pCurrentBaseTrack = m_structure.nodeOfTrack(m_pCurrentBaseTrack)
-                            ->getParentNode()
-                            ->getMediaTrack();
+    ->getParentNode()
+    ->getMediaTrack();
   // Rebuild the graph for the new base track. moveBaseTrack() does this
   // explicitly; moveBaseTrackToParent() previously relied on tracksStatesChanged()
   // calling buildGraph() unconditionally as a side-effect. After that call was
@@ -800,7 +810,7 @@ void Tracks::adjust(int numMCUChannels) {
 
       if (pTS->getMediaTrack()) {
         bool *pShowInMixer = (bool *)GetSetMediaTrackInfo(
-            pTS->getMediaTrack(), "B_SHOWINMIXER", NULL);
+							  pTS->getMediaTrack(), "B_SHOWINMIXER", NULL);
         if (pShowInMixer && *pShowInMixer == false) {
           *pShowInMixer = true;
           GetSetMediaTrackInfo(pTS->getMediaTrack(), "B_SHOWINMIXER",
@@ -828,10 +838,10 @@ void Tracks::adjust(int numMCUChannels) {
       if (!pShowInTCP)
         continue;
       if (m_pOptions2->isOptionSetTo(MTO2_TCP_ADJUCT, MTO2A_TCP_BANK) &&
-              (*pShowInTCP != pTS->isOnMCU()) ||
+	  (*pShowInTCP != pTS->isOnMCU()) ||
           m_pOptions2->isOptionSetTo(MTO2_TCP_ADJUCT, MTO2A_TCP_SELECTED) &&
-              (*pShowInTCP != (m_selectedTracks.find(pTS->getMediaTrack()) !=
-                               m_selectedTracks.end()))) {
+	  (*pShowInTCP != (m_selectedTracks.find(pTS->getMediaTrack()) !=
+			   m_selectedTracks.end()))) {
         updateTCP = true;
         break;
       }
@@ -844,7 +854,7 @@ void Tracks::adjust(int numMCUChannels) {
 
       bool *pShowInTCP = (bool *)GetSetMediaTrackInfo(pTS->getMediaTrack(),
                                                       "B_SHOWINTCP", NULL);
-      if (*pShowInTCP == false) {
+      if (pShowInTCP && *pShowInTCP == false) {
         updateTCP = true;
         break;
       }
@@ -854,15 +864,15 @@ void Tracks::adjust(int numMCUChannels) {
   if (updateTCP) {
     // first hide all tracks (or we can get problems with the scroll-bar)
     /*
-            bool bShow = false;
-            BOOST_FOREACH(tTrackStates::value_type& v, m_trackStates) {
-TrackState* pTS = v.second;
-GetSetMediaTrackInfo(pTS->getMediaTrack(), "B_SHOWINTCP", &bShow);
-            }
+      bool bShow = false;
+      BOOST_FOREACH(tTrackStates::value_type& v, m_trackStates) {
+      TrackState* pTS = v.second;
+      GetSetMediaTrackInfo(pTS->getMediaTrack(), "B_SHOWINTCP", &bShow);
+      }
 
-            int numShownTracks = calcNumShownTracks();
-            if (numShownTracks > 0) {
-int tcpSizeInPixel = calcTCPSizeInPixel();
+      int numShownTracks = calcNumShownTracks();
+      if (numShownTracks > 0) {
+      int tcpSizeInPixel = calcTCPSizeInPixel();
     */
     BOOST_FOREACH (tTrackStates::value_type &v, m_trackStates) {
       TrackState *pTS = v.second;
@@ -872,8 +882,9 @@ int tcpSizeInPixel = calcTCPSizeInPixel();
       //        &wndHeight);
 
       bool bShow = shouldTrackInTCP(pTS);
-      if (bShow != *((bool *)GetSetMediaTrackInfo(pTS->getMediaTrack(),
-																									"B_SHOWINTCP", NULL))) {
+      bool *shown = (bool *)GetSetMediaTrackInfo(pTS->getMediaTrack(),
+                                                 "B_SHOWINTCP", NULL);
+      if (shown && bShow != *shown) {
         GetSetMediaTrackInfo(pTS->getMediaTrack(), "B_SHOWINTCP", &bShow);
       }
     }
@@ -896,18 +907,19 @@ int Tracks::calcNumShownTracks() {
 bool Tracks::shouldTrackInTCP(TrackState *pTrackState) {
   return (m_pOptions2->isOptionSetTo(MTO2_TCP_ADJUCT, MTO2A_TCP_ALL) ||
           m_pOptions2->isOptionSetTo(MTO2_TCP_ADJUCT, MTO2A_TCP_BANK) &&
-              (pTrackState->isOnMCU()) ||
+	  (pTrackState->isOnMCU()) ||
           m_pOptions2->isOptionSetTo(MTO2_TCP_ADJUCT, MTO2A_TCP_SELECTED) &&
-              (m_selectedTracks.find(pTrackState->getMediaTrack()) !=
-               m_selectedTracks.end()));
+	  (m_selectedTracks.find(pTrackState->getMediaTrack()) !=
+	   m_selectedTracks.end()));
 }
 
 int Tracks::calcTCPSizeInPixel() {
   int maxSize = -1;
 
   bool *pMasterShown =
-      (bool *)GetSetMediaTrackInfo(GetMasterTrack(NULL), "B_SHOWINTCP", NULL);
-  if (*pMasterShown)
+    (bool *)GetSetMediaTrackInfo(GetMasterTrack(NULL), "B_SHOWINTCP", NULL);
+  bool masterShown = pMasterShown && *pMasterShown;
+  if (masterShown)
     SendMessage(g_hwnd, WM_COMMAND, ID_TOGGLE_MASTER_TRACK_TCP, 0);
 
   if (!m_trackStates.empty()) {
@@ -916,14 +928,14 @@ int Tracks::calcTCPSizeInPixel() {
     GetSetMediaTrackInfo(pMT, "B_SHOWINTCP", &bShow);
 
     int *pWndHeight = (int *)GetSetMediaTrackInfo(pMT, "I_WNDH", NULL);
-    if (*pWndHeight > maxSize) {
+    if (pWndHeight && *pWndHeight > maxSize) {
       maxSize = *pWndHeight;
     }
 
     SendMessage(g_hwnd, WM_COMMAND, ID_TOGGLE_TRACK_ZOOM_MAX_HEIGHT, 0);
 
     pWndHeight = (int *)GetSetMediaTrackInfo(pMT, "I_WNDH", NULL);
-    if (*pWndHeight > maxSize) {
+    if (pWndHeight && *pWndHeight > maxSize) {
       maxSize = *pWndHeight;
     }
 
@@ -932,11 +944,12 @@ int Tracks::calcTCPSizeInPixel() {
     GetSetMediaTrackInfo(pMT, "B_SHOWINTCP", &bShow);
   }
 
-  if (*pMasterShown) {
+  if (masterShown) {
     SendMessage(g_hwnd, WM_COMMAND, ID_TOGGLE_MASTER_TRACK_TCP, 0);
     int *pMasterHeight =
-        (int *)GetSetMediaTrackInfo(GetMasterTrack(NULL), "I_WNDH", NULL);
-    maxSize -= *pMasterHeight;
+      (int *)GetSetMediaTrackInfo(GetMasterTrack(NULL), "I_WNDH", NULL);
+    if (pMasterHeight)
+      maxSize -= *pMasterHeight;
     maxSize -= 10; // space below the master track
   }
 
@@ -955,14 +968,14 @@ void Tracks::updateTrackStates(int numMCUChannels) {
 
     if (m_pOptions2->isOptionSetTo(MTO2_TCP_ADJUCT, MTO2A_TCP_NO)) {
       v.second->setIsShownInTCP(
-          MediaTrackInfo::isShownInTCP(v.second->getMediaTrack()));
+				MediaTrackInfo::isShownInTCP(v.second->getMediaTrack()));
       v.second->setTCPHeight(
-          MediaTrackInfo::getHeight(v.second->getMediaTrack()));
+			     MediaTrackInfo::getHeight(v.second->getMediaTrack()));
     }
 
     if (m_pOptions2->isOptionSetTo(MTO2_MCP_ADJUCT, MTO2A_MCP_NO)) {
       v.second->setIsShownInMCP(
-          MediaTrackInfo::isShownInMCP(v.second->getMediaTrack()));
+				MediaTrackInfo::isShownInMCP(v.second->getMediaTrack()));
     }
   }
 
@@ -999,9 +1012,9 @@ void Tracks::setMCP2TrackStates() {
 }
 
 int Tracks::getNumberOfAnchors() {
-	if (Tracks::instance()->getOptions()->isOptionSetTo(MTO_DISABLE_ANCHORS,
-																											MTOA_ANCHORS_NO))
-		return 0;
+  if (Tracks::instance()->getOptions()->isOptionSetTo(MTO_DISABLE_ANCHORS,
+						      MTOA_ANCHORS_NO))
+    return 0;
 						
   int numAnchors = 0;
   BOOST_FOREACH (tTrackStates::value_type &v, m_trackStates) {
@@ -1013,9 +1026,9 @@ int Tracks::getNumberOfAnchors() {
 }
 
 int Tracks::getNumberOfActiveAnchors(int maxChannel /* = -1 */) {
-	if (Tracks::instance()->getOptions()->isOptionSetTo(MTO_DISABLE_ANCHORS,
-																																	MTOA_ANCHORS_NO))
-		return 0;
+  if (Tracks::instance()->getOptions()->isOptionSetTo(MTO_DISABLE_ANCHORS,
+						      MTOA_ANCHORS_NO))
+    return 0;
 
   int effectiveMax = (maxChannel < 0) ? m_numMCUChannels : maxChannel;
   int numAnchors = 0;
@@ -1054,21 +1067,21 @@ TrackState *Tracks::getTrackStateForMediaTrack(MediaTrack *pMediaTrack) {
 }
 
 void Tracks::buildGraph() {
-	m_structure.buildGraph(m_pOptions1->isOptionSetTo(MTO_REFLECT_FOLDER,
-																										MTOA_REFLECT_NO));
-	m_structureVU.buildGraph(false);
+  m_structure.buildGraph(m_pOptions1->isOptionSetTo(MTO_REFLECT_FOLDER,
+						    MTOA_REFLECT_NO));
+  m_structureVU.buildGraph(false);
 	
   createChannelTrackVector();
   updateVUactive();
 }
 
 bool Tracks::oneChildrenIsSoloed(MediaTrack * pMT) {
-	std::vector<MediaTrack *> children = getChildredForMediaTrack(pMT);
+  std::vector<MediaTrack *> children = getChildredForMediaTrack(pMT);
 
   int *soloState;
   for(MediaTrack *pMediaTrack : children) {
     soloState = (int *)GetSetMediaTrackInfo(pMediaTrack, "I_SOLO", NULL);
-    if (*soloState > 0)
+    if (soloState && *soloState > 0)
       return true;
     if (oneChildrenIsSoloed(pMediaTrack))
       return true;
@@ -1078,67 +1091,67 @@ bool Tracks::oneChildrenIsSoloed(MediaTrack * pMT) {
 }
 
 void Tracks::activeVUallChildren(MediaTrack *pMT) {
-	std::vector<MediaTrack *> children = getChildredForMediaTrack(pMT);
+  std::vector<MediaTrack *> children = getChildredForMediaTrack(pMT);
 
-	for (MediaTrack *pMediaTrack : children) {
-		safe_call(getTrackStateForMediaTrack(pMediaTrack), setVUactive(true));
-		activeVUallChildren(pMediaTrack);
-	}
+  for (MediaTrack *pMediaTrack : children) {
+    safe_call(getTrackStateForMediaTrack(pMediaTrack), setVUactive(true));
+    activeVUallChildren(pMediaTrack);
+  }
 }
 
 void Tracks::updateVUactive() {
-	if (!m_pMCU->SomethingSoloed()) {
-		for (auto &e : m_trackStates) {
-			TrackState &ts = *e.second;
-			bool *muteState = (bool *)GetSetMediaTrackInfo(ts.getMediaTrack(),
-																									 "B_MUTE", NULL);
-			e.second->setVUactive(! *muteState);
-		}
-		return;
-	}
+  if (!m_pMCU->SomethingSoloed()) {
+    for (auto &e : m_trackStates) {
+      TrackState &ts = *e.second;
+      bool *muteState = (bool *)GetSetMediaTrackInfo(ts.getMediaTrack(),
+						     "B_MUTE", NULL);
+      e.second->setVUactive(!muteState || !*muteState);
+    }
+    return;
+  }
 	
-	for(auto &e : m_trackStates) {
-		e.second->setVUactive(false);
-	}
+  for(auto &e : m_trackStates) {
+    e.second->setVUactive(false);
+  }
 
-	for(auto &e : m_trackStates) {
-		TrackState &ts = *e.second;
-		int *soloState = (int *)GetSetMediaTrackInfo(ts.getMediaTrack(),
-																								 "I_SOLO", NULL);
-		if (*soloState > 0) {
-			ts.setVUactive(true);
-			MediaTrack *p = getParentForMediaTrack(ts.getMediaTrack());
-			// solo all parents
-			while (p) {
-				safe_call(getTrackStateForMediaTrack(p), setVUactive(true));
-				p = getParentForMediaTrack(p);
-			}
-			// solo children
-			if (!oneChildrenIsSoloed(ts.getMediaTrack())) {
-				activeVUallChildren(ts.getMediaTrack());
-			}
-		}
-	}
+  for(auto &e : m_trackStates) {
+    TrackState &ts = *e.second;
+    int *soloState = (int *)GetSetMediaTrackInfo(ts.getMediaTrack(),
+						 "I_SOLO", NULL);
+    if (soloState && *soloState > 0) {
+      ts.setVUactive(true);
+      MediaTrack *p = getParentForMediaTrack(ts.getMediaTrack());
+      // solo all parents
+      while (p) {
+	safe_call(getTrackStateForMediaTrack(p), setVUactive(true));
+	p = getParentForMediaTrack(p);
+      }
+      // solo children
+      if (!oneChildrenIsSoloed(ts.getMediaTrack())) {
+	activeVUallChildren(ts.getMediaTrack());
+      }
+    }
+  }
 
-	// check sends
-	for (auto &e : m_trackStates) {
-		TrackState &ts = *e.second;
-		int i = 0;
-		MediaTrack *s = (MediaTrack *)
-			GetSetTrackSendInfo(ts.getMediaTrack(), -1, i, "P_SRCTRACK", NULL);
-		while (s) {
-			i++;
-			if (getTrackStateForMediaTrack(s) && getTrackStateForMediaTrack(s)->getVUactive())
-				ts.setVUactive(true);
-			s = (MediaTrack *)
-				GetSetTrackSendInfo(ts.getMediaTrack(), -1, i, "P_SRCTRACK", NULL);
-		}
-	}
+  // check sends
+  for (auto &e : m_trackStates) {
+    TrackState &ts = *e.second;
+    int i = 0;
+    MediaTrack *s = (MediaTrack *)
+      GetSetTrackSendInfo(ts.getMediaTrack(), -1, i, "P_SRCTRACK", NULL);
+    while (s) {
+      i++;
+      if (getTrackStateForMediaTrack(s) && getTrackStateForMediaTrack(s)->getVUactive())
+	ts.setVUactive(true);
+      s = (MediaTrack *)
+	GetSetTrackSendInfo(ts.getMediaTrack(), -1, i, "P_SRCTRACK", NULL);
+    }
+  }
 }
 
 int Tracks::connect2TrackAddedSignal(const tTrackSignalSlot &slot) {
   m_trackAddedConnections[++m_nextConnectionId] =
-      signalTrackAdded.connect(slot);
+    signalTrackAdded.connect(slot);
   return m_nextConnectionId;
 }
 
@@ -1149,7 +1162,7 @@ void Tracks::disconnectTrackAdded(int connectionId) {
 
 int Tracks::connect2TrackRemovedSignal(const tTrackSignalSlot &slot) {
   m_trackRemovedConnections[++m_nextConnectionId] =
-      signalTrackRemoved.connect(slot);
+    signalTrackRemoved.connect(slot);
   return m_nextConnectionId;
 }
 
@@ -1186,7 +1199,7 @@ void Tracks::projectChanged(XmlElement *pXmlElement,
           pTS->readTrackStatesFromProjectConfig(pChild);
           if (pTS->getMediaTrack()) {
             TrackState *pOldTS =
-                getTrackStateForMediaTrack(pTS->getMediaTrack());
+	      getTrackStateForMediaTrack(pTS->getMediaTrack());
             if (pOldTS) { // overwrite existing track state, so first delete old
                           // one
               delete (m_trackStates[pTS->getGuidAsString()]);
@@ -1216,14 +1229,14 @@ bool Tracks::moveTrackToLeftMostChannel(MediaTrack *pMT) {
   // if the pMT MediaTrack is an anchor, we need the next MediaTrack
   // that isn't an anchor
   if (getTrackStateForMediaTrack(pMT) &&
-			getTrackStateForMediaTrack(pMT)->getAnchorChannel() > 0 &&
+      getTrackStateForMediaTrack(pMT)->getAnchorChannel() > 0 &&
       m_pOptions1->isOptionSetTo(MTO_DISABLE_ANCHORS, MTOA_ANCHORS_YES)) {
     int depth = m_structure.nodeOfTrack(pMT)->getDepth();
     int channelNr = MediaTrackInfo::getTrackNr(pMT);
     bool trackFound = false;
     for (TrackIterator ti; !ti.end(); ++ti) {
       if (trackFound &&
-					getTrackStateForMediaTrack(*ti) &&
+	  getTrackStateForMediaTrack(*ti) &&
           getTrackStateForMediaTrack(*ti)->getAnchorChannel() == 0 &&
           depth == m_structure.nodeOfTrack(*ti)->getDepth()) {
         pMT = *ti;

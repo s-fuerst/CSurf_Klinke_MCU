@@ -7,7 +7,7 @@
 
 ButtonManager::ButtonManager(CSurf_MCU *pMCU) : m_pMCU(pMCU) {
   m_signalFrameConnection =
-      pMCU->connect2FrameSignal(boost::bind(&ButtonManager::frame, this, _1));
+    pMCU->connect2FrameSignal(boost::bind(&ButtonManager::frame, this, _1));
   reset();
 }
 
@@ -59,6 +59,9 @@ struct ButtonHandler {
 };
 
 bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt, int unitIndex) {
+  if (!evt || evt->size < 3)
+    return false;
+
   unsigned char status = evt->midi_message[0] & 0xf0;
 
   // MCU button release is Note-On velocity 0 (0x90). On Linux the
@@ -82,25 +85,25 @@ bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt, int unitIndex) {
 
   static const int nPressOnlyHandlers = 19;
   static const ButtonHandler pressOnlyHandlers[nPressOnlyHandlers] = {
-      // Press down only events
-      {0x08, 0x0f, NULL, &CSurf_MCU::OnSoloDC},
-      {0x18, 0x1f, NULL, &CSurf_MCU::OnChannelSelectDC},
-      {0x35, 0x35, &CSurf_MCU::OnSMPTEBeats, NULL},
-      {0x36, 0x3d, &CSurf_MCU::OnFunctionKey, NULL},
-      {0x3e, 0x45, &CSurf_MCU::OnGlobalViewKeys, NULL},
-      {0x4a, 0x4e, &CSurf_MCU::OnAutoMode, NULL},
-      {0x50, 0x50, &CSurf_MCU::OnSave, NULL},
-      {0x51, 0x51, &CSurf_MCU::OnUndo, NULL},
-      {0x52, 0x52, &CSurf_MCU::OnCancel, NULL},
-      {0x56, 0x56, &CSurf_MCU::OnCycle, NULL},
-      {0x57, 0x57, &CSurf_MCU::OnDropButton, NULL},
-      {0x59, 0x59, &CSurf_MCU::OnClick, NULL},
-      {0x5a, 0x5a, &CSurf_MCU::OnGlobalSoloButton, NULL},
-      {0X5b, 0x5f, NULL, &CSurf_MCU::OnTransportDC},
-      {0x64, 0x64, &CSurf_MCU::OnZoom, NULL},
-      {0x65, 0x65, &CSurf_MCU::OnScrub, NULL},
-      {0x71, 0x71, &CSurf_MCU::ResetAllFaderTouch, NULL},
-      {0x72, 0x79, &CSurf_MCU::OpenFXFavorite, NULL},
+    // Press down only events
+    {0x08, 0x0f, NULL, &CSurf_MCU::OnSoloDC},
+    {0x18, 0x1f, NULL, &CSurf_MCU::OnChannelSelectDC},
+    {0x35, 0x35, &CSurf_MCU::OnSMPTEBeats, NULL},
+    {0x36, 0x3d, &CSurf_MCU::OnFunctionKey, NULL},
+    {0x3e, 0x45, &CSurf_MCU::OnGlobalViewKeys, NULL},
+    {0x4a, 0x4e, &CSurf_MCU::OnAutoMode, NULL},
+    {0x50, 0x50, &CSurf_MCU::OnSave, NULL},
+    {0x51, 0x51, &CSurf_MCU::OnUndo, NULL},
+    {0x52, 0x52, &CSurf_MCU::OnCancel, NULL},
+    {0x56, 0x56, &CSurf_MCU::OnCycle, NULL},
+    {0x57, 0x57, &CSurf_MCU::OnDropButton, NULL},
+    {0x59, 0x59, &CSurf_MCU::OnClick, NULL},
+    {0x5a, 0x5a, &CSurf_MCU::OnGlobalSoloButton, NULL},
+    {0X5b, 0x5f, NULL, &CSurf_MCU::OnTransportDC},
+    {0x64, 0x64, &CSurf_MCU::OnZoom, NULL},
+    {0x65, 0x65, &CSurf_MCU::OnScrub, NULL},
+    {0x71, 0x71, &CSurf_MCU::ResetAllFaderTouch, NULL},
+    {0x72, 0x79, &CSurf_MCU::OpenFXFavorite, NULL},
   };
 
   //  static const int nReleaseOnlyHandlers = 1;
@@ -113,34 +116,36 @@ bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt, int unitIndex) {
   // holdEvent is send
   static const int nPressAndReleaseHandlers = 16;
   static const ButtonHandler pressAndReleaseHandlers[nPressAndReleaseHandlers] =
-      {
-          // Press and release events
-          {0x00, 0x07, &CSurf_MCU::OnRecArm, &CSurf_MCU::OnRecArmDC},
-          {0x08, 0x0f, &CSurf_MCU::OnSolo},
-          {0x10, 0x17, &CSurf_MCU::OnMute},
-          {0x18, 0x1f, &CSurf_MCU::OnChannelSelect},
-          {0x20, 0x27, &CSurf_MCU::OnRotaryEncoderPush},
-          {0x28, 0x2d, &CSurf_MCU::OnVPOTAssign},
-          {0x2e, 0x31, &CSurf_MCU::OnBankChannel},
-          {0x32, 0x32, &CSurf_MCU::OnFlip},
-          {0x33, 0x33, &CSurf_MCU::OnGlobal},
-          {0x34, 0x34, &CSurf_MCU::OnNameValue, &CSurf_MCU::OnNameValueDC},
-          {0x46, 0x49, &CSurf_MCU::OnKeyModifier},
-          {0x54, 0x54, &CSurf_MCU::OnMarker},
-          {0x55, 0x55, &CSurf_MCU::OnNudge},
-          {0x5b, 0x5f, &CSurf_MCU::OnTransport},
-          {0x60, 0x63, &CSurf_MCU::OnScroll},
-          {0x68, 0x70, &CSurf_MCU::OnTouch},
-      };
+    {
+      // Press and release events
+      {0x00, 0x07, &CSurf_MCU::OnRecArm, &CSurf_MCU::OnRecArmDC},
+      {0x08, 0x0f, &CSurf_MCU::OnSolo},
+      {0x10, 0x17, &CSurf_MCU::OnMute},
+      {0x18, 0x1f, &CSurf_MCU::OnChannelSelect},
+      {0x20, 0x27, &CSurf_MCU::OnRotaryEncoderPush},
+      {0x28, 0x2d, &CSurf_MCU::OnVPOTAssign},
+      {0x2e, 0x31, &CSurf_MCU::OnBankChannel},
+      {0x32, 0x32, &CSurf_MCU::OnFlip},
+      {0x33, 0x33, &CSurf_MCU::OnGlobal},
+      {0x34, 0x34, &CSurf_MCU::OnNameValue, &CSurf_MCU::OnNameValueDC},
+      {0x46, 0x49, &CSurf_MCU::OnKeyModifier},
+      {0x54, 0x54, &CSurf_MCU::OnMarker},
+      {0x55, 0x55, &CSurf_MCU::OnNudge},
+      {0x5b, 0x5f, &CSurf_MCU::OnTransport},
+      {0x60, 0x63, &CSurf_MCU::OnScroll},
+      {0x68, 0x70, &CSurf_MCU::OnTouch},
+    };
 
   unsigned int evt_code = evt->midi_message[1]; // get_midi_evt_code( evt );
+  if (evt_code >= NUM_BUTTONS)
+    return false;
 
 #if 0
   char buf[512];
   sprintf( buf, "   0x%08x %02x %02x %02x %02x 0x%08x 0x%08x %s", evt_code,
-					 evt->midi_message[0], evt->midi_message[1], evt->midi_message[2], evt->midi_message[3],
-					 handlers[0].evt_min, handlers[0].evt_max, 
-					 handlers[0].evt_min <= evt_code && evt_code <= handlers[0].evt_max ? "yes" : "no" );
+	   evt->midi_message[0], evt->midi_message[1], evt->midi_message[2], evt->midi_message[3],
+	   handlers[0].evt_min, handlers[0].evt_max, 
+	   handlers[0].evt_min <= evt_code && evt_code <= handlers[0].evt_max ? "yes" : "no" );
   UpdateMackieDisplay( 0, buf, 56 );
 #endif
 
@@ -166,8 +171,8 @@ bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt, int unitIndex) {
         m_comboSession = false;
     } else if (evt_code == 0x2e || evt_code == 0x2f) {
       const bool chUp = m_comboChUpHeld || m_comboSession ||
-                        (st.pressed_time[0x31] > 0 &&
-                         now - st.pressed_time[0x31] < 300);
+	(st.pressed_time[0x31] > 0 &&
+	 now - st.pressed_time[0x31] < 300);
       if (chUp) {
         if (pressed) {
           m_comboSession = true;
@@ -198,7 +203,7 @@ bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt, int unitIndex) {
     // e.g. selecting a plugin on unit 2 right after pressing unit 1's
     // select (both send evt_code 0x18..0x1f) within DOUBLE_CLICK_INTERVAL.
     bool double_click = (int)evt_code == st.last_code &&
-                        now - st.last_time < DOUBLE_CLICK_INTERVAL;
+      now - st.last_time < DOUBLE_CLICK_INTERVAL;
     st.last_code = evt_code;
     st.last_time = now;
     // global fallback kept for isLastButton() backward compat
@@ -257,8 +262,8 @@ struct ButtonHandlerLong {
 void ButtonManager::frame(DWORD time) {
   static const int nPressAndHoldHandlers = 1;
   static const ButtonHandlerLong pressAndHoldHandlers[nPressAndHoldHandlers] = {
-      // Press and hold events
-      {0x18, 0x1f, &CSurf_MCU::OnChannelSelectLong},
+    // Press and hold events
+    {0x18, 0x1f, &CSurf_MCU::OnChannelSelectLong},
   };
 
   // iterate per-unit button state for long-press detection

@@ -9,9 +9,9 @@
 #define CONFIG_ID_JUCE String("<MCU_KLINKE")
 
 bool ProcessExtensionLine(
-    const char *line, ProjectStateContext *ctx, bool isUndo,
-    struct project_config_extension_t *
-        reg) // returns BOOL if line (and optionally subsequent lines) processed
+			  const char *line, ProjectStateContext *ctx, bool isUndo,
+			  struct project_config_extension_t *
+			  reg) // returns BOOL if line (and optionally subsequent lines) processed
 {
   return ProjectConfig::instance()->processExtensionLine(line, ctx, isUndo,
                                                          reg);
@@ -28,10 +28,10 @@ void BeginLoadProjectState(bool isUndo,
 }
 
 project_config_extension_t csurf_mcu_pcreg = {
-    ProcessExtensionLine,
-    SaveExtensionConfig,
-    BeginLoadProjectState,
-    NULL,
+  ProcessExtensionLine,
+  SaveExtensionConfig,
+  BeginLoadProjectState,
+  NULL,
 };
 
 ProjectConfig *ProjectConfig::s_instance = NULL;
@@ -44,7 +44,7 @@ ProjectConfig *ProjectConfig::instance() {
 }
 
 ProjectConfig::ProjectConfig(void)
-    : m_pLastMaster(NULL), m_nextConnectionId(0) {}
+  : m_pLastMaster(NULL), m_nextConnectionId(0) {}
 
 ProjectConfig::~ProjectConfig(void) {
   for (tXMLStorage::iterator iterStorage = m_xmlStorage.begin();
@@ -61,9 +61,9 @@ project_config_extension_t *ProjectConfig::getRegisterInfo() {
 }
 
 bool ProjectConfig::processExtensionLine(
-    const char *line, ProjectStateContext *ctx, bool isUndo,
-    struct project_config_extension_t *
-        reg) // returns BOOL if line (and optionally subsequent lines) processed
+					 const char *line, ProjectStateContext *ctx, bool isUndo,
+					 struct project_config_extension_t *
+					 reg) // returns BOOL if line (and optionally subsequent lines) processed
 {
   bool commentign = false;
   String buildString;
@@ -84,8 +84,8 @@ bool ProjectConfig::processExtensionLine(
     // '<' and '>' can't be used in the project files, so i replace them with
     // |#{ and }#| before writing into the file and convert this back here
     XmlDocument *pTmpDoc =
-        new XmlDocument(buildString.replace(String("|#{"), String("<"))
-                            .replace(String("}#|"), String(">")));
+      new XmlDocument(buildString.replace(String("|#{"), String("<"))
+		      .replace(String("}#|"), String(">")));
     auto docRoot = pTmpDoc->getDocumentElement();
     XmlElement *pElement = docRoot.get();
     if (pElement) {
@@ -99,16 +99,16 @@ bool ProjectConfig::processExtensionLine(
 }
 
 void ProjectConfig::saveExtensionConfig(
-    ProjectStateContext *ctx, bool isUndo,
-    struct project_config_extension_t *reg) {
+					ProjectStateContext *ctx, bool isUndo,
+					struct project_config_extension_t *reg) {
   bool commentign = false;
 
   // '<' and '>' can't be used in the project files, so i replace them with |#{
   // and }#| before writing into the file and convert this back after reading
   // from it
   String xmlDocString = createXmlDocString()
-                            .replace(String("<"), String("|#{"))
-                            .replace(String(">"), String("}#|"));
+    .replace(String("<"), String("|#{"))
+    .replace(String(">"), String("}#|"));
 
   ctx->AddLine(CONFIG_ID);
   // the fucking buffer overwrite in ctx->AddLine took me two days of debugging
@@ -136,7 +136,7 @@ void ProjectConfig::saveExtensionConfig(
 }
 
 void ProjectConfig::beginLoadProjectState(
-    bool isUndo, struct project_config_extension_t *reg) {
+					  bool isUndo, struct project_config_extension_t *reg) {
   checkReaProjectChange();
   m_pLastMaster = GetMasterTrack(NULL);
   bool commentign = false;
@@ -161,7 +161,8 @@ void ProjectConfig::checkReaProjectChange() {
       m_signalProjectChanged(NULL, FREE);
       auto docRoot = m_xmlStorage[pActualMasterTrack]->getDocumentElement();
       XmlElement *pDocElement = docRoot.get();
-      m_signalProjectChanged(pDocElement, READ);
+      if (pDocElement)
+        m_signalProjectChanged(pDocElement, READ);
     }
     m_pLastMaster = pActualMasterTrack;
   }
@@ -175,14 +176,14 @@ void ProjectConfig::store(MediaTrack *pMT, String &xmlString) {
 }
 
 int ProjectConfig::connect2ProjectChangeSignal(
-    const tProjectChangedSignalSlot &slot) {
+					       const tProjectChangedSignalSlot &slot) {
   m_activeProjectChangedConnections[++m_nextConnectionId] =
-      m_signalProjectChanged.connect(slot);
+    m_signalProjectChanged.connect(slot);
   return m_nextConnectionId;
 }
 
 void ProjectConfig::disconnectProjectChangeSignal(int connectionId) {
   m_activeProjectChangedConnections[connectionId].disconnect();
   m_activeProjectChangedConnections.erase(
-      m_activeProjectChangedConnections.find(connectionId));
+					  m_activeProjectChangedConnections.find(connectionId));
 }

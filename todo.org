@@ -1,4 +1,4 @@
-* [7/14] v0.9.5 Release
+* [9/13] v0.9.5 Release
 ** DONE Track/Mixer mode (PanMode): show fader value on touch with meters-on-display
    While a fader is touched, keep the value it controls (Volume, or Pan in
    flip mode) visible on row 1, even when "meters on display"
@@ -69,16 +69,15 @@ selectable (used) pages via the page LEDs; the current-page blink is
 off. Persisted as UNIT_STATES v2 (per-unit "empty" attribute); legacy
 states are normalized on restore.
 ** TODO Test Plug-Favorites with extenders 
-** TODO Pan-Mode VPot press should reset panorama to center.
 ** TODO Improved Documentation #5 (Dreieich)
-** TODO Leak-Detection
-** TODO code check regarding null pointer tests etc.
-** TODO Test on original Mackie Control
-** TODO Installation via ReaPack
+** DONE Leak-Detection
 Run a leak detection pass (valgrind / AddressSanitizer)
 before the first release to identify and fix any memory leaks. Bitbucket
 issue #27 reported a leak detector warning on Reaper close; the
 CCSModesEditor destructor crash (#50) may also be leak-related.
+** DONE code check regarding null pointer tests etc.
+** TODO Test on original Mackie Control
+** TODO Installation via ReaPack
 * [0/1] v0.9.5.5 Release
 ** TODO #1 Monitor and RecArm can only be changed for armed tracks :bug:
 * [0/2] v0.9.7 (ChannelStrip)
@@ -86,7 +85,8 @@ CCSModesEditor destructor crash (#50) may also be leak-related.
 ** TODO Support for Move Plugins :feature:
 * [0/1] v0.9.9 PerformanceMode
 ** TODO PerformanceMode
-* [0/3] v1.0.0 Release
+* [0/4] v1.0.0 Release
+** TODO Improve Pan-Mode (Dual-Pan etc.)
 ** TODO #3 Try to improve record mode
 ** TODO Jump to touched 
 ** TODO VCV Rack zeigt sehr merkwuerdige Parameternamen an

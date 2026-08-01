@@ -29,8 +29,10 @@ void PluginWatcher::frame(DWORD time) {
 
   // check name
   if (m_activeNameConnections.size() > 0) {
-    char paramName[80];
+    char paramName[80] = {};
     bool valid = TrackFX_GetFXName(m_pMediaTrack, m_iSlot, paramName, 79);
+    if (!valid)
+      return;
     String name = String(paramName);
 
     if (name != m_plugName) {

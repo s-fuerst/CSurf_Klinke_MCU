@@ -974,7 +974,7 @@ void PlugMode::updateTouchedDisplay() {
 
 String PlugMode::getPlugNameShort(int iSlot) {
   if (selectedTrack()) {
-    char paramName[80];
+    char paramName[80] = {};
     bool valid = TrackFX_GetFXName(selectedTrack(), iSlot, paramName, 79);
     if (valid) {
       return shortPlugName(paramName);
@@ -1396,7 +1396,8 @@ bool PlugMode::buttonFaderBanks(int button, bool pressed) {
 }
 
 PlugMode::tFav PlugMode::getFavorite(unsigned i) {
-  ASSERT(i < NUM_FAVORITES);
+  if (i >= NUM_FAVORITES)
+    return tFav(GUID_NOT_ACTIVE, -1, 0);
   return m_favPlugins[i];
 }
 
@@ -1504,8 +1505,12 @@ void PlugMode::readFavsFromProjectConfig(XmlElement *pNode) {
 
 void PlugMode::plugMoved(MediaTrack *pOldTrack, int oldSlot,
                          MediaTrack *pNewTrack, int newSlot) {
-  GUID oldGUID = *CSurf_MCU::GUIDfromTrack(pOldTrack);
-  GUID newGUID = pNewTrack != NULL ? *CSurf_MCU::GUIDfromTrack(pNewTrack) : GUID_NOT_ACTIVE;
+  GUID *oldGuidPtr = CSurf_MCU::GUIDfromTrack(pOldTrack);
+  if (!oldGuidPtr)
+    return;
+  GUID oldGUID = *oldGuidPtr;
+  GUID *newGuidPtr = CSurf_MCU::GUIDfromTrack(pNewTrack);
+  GUID newGUID = newGuidPtr ? *newGuidPtr : GUID_NOT_ACTIVE;
 
   for (int i = 0; i < NUM_FAVORITES; i++) {
     if (m_favPlugins[i].get<0>() == oldGUID &&
@@ -1613,7 +1618,8 @@ void PlugMode::plugChanged() {
 // ---- active unit & display helpers ----
 
 void PlugMode::setActiveUnit(int unit) {
-  ASSERT(unit >= 0 && unit < m_pCCSManager->getMCU()->numUnits());
+  if (unit < 0 || unit >= m_pCCSManager->getMCU()->numUnits())
+    return;
   m_activeUnit = unit;
 }
 

@@ -7,9 +7,13 @@
 #include "HardwareUnit.h"
 
 MultiDisplay::MultiDisplay(DisplayHandler *pDH, int numRows)
-    : Display(pDH, numRows) {}
+  : Display(pDH, numRows) {}
 
-MultiDisplay::~MultiDisplay() {}
+MultiDisplay::~MultiDisplay() {
+  for (size_t i = 0; i < m_children.size(); i++)
+    delete m_children[i];
+  m_children.clear();
+}
 
 void MultiDisplay::addChild(Display *child) {
   if (child)

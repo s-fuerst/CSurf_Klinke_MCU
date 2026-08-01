@@ -31,7 +31,7 @@ public:
   MultiDisplay(DisplayHandler *pDH, int numRows);
   virtual ~MultiDisplay();
 
-  // child is NOT owned by the composite (it lives on its unit's handler)
+  // Children are owned by the composite; their handlers are owned by units.
   void addChild(Display *child);
   std::vector<Display *> &children() { return m_children; }
 

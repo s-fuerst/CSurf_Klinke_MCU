@@ -9,4 +9,4 @@
 # This file is rewritten (count++) on each configure - this is expected; commit
 # it as-is. Do NOT run `cmake ..` without building afterwards (it bumps the
 # counter without producing a binary). Displayed in Reaper as: v<version> build <count>.
-0.9.5.0 35
+0.9.5.0 40

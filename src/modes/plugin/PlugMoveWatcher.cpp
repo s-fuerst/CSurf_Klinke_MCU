@@ -17,7 +17,9 @@ PlugInstanceInfo::PlugInstanceInfo(MediaTrack *pMediaTrack, int iSlot) {
 }
 
 bool PlugInstanceInfo::existAndIsSame() {
-  return (m_plugGUID == GUID2String(TrackFX_GetFXGUID(m_pMediaTrack, m_slot)));
+  String currentGuid = GUID2String(TrackFX_GetFXGUID(m_pMediaTrack, m_slot));
+  return m_plugGUID.isNotEmpty() && currentGuid.isNotEmpty() &&
+         m_plugGUID == currentGuid;
 }
 
 PlugInstanceInfo::tMoveToResult PlugInstanceInfo::movedTo() {
@@ -42,7 +44,9 @@ PlugInstanceInfo::tMoveToResult PlugInstanceInfo::movedTo() {
 }
 
 bool PlugInstanceInfo::compareWith(MediaTrack *pMediaTrack, int iSlot) {
-  return (m_plugGUID == GUID2String(TrackFX_GetFXGUID(pMediaTrack, iSlot)));
+  String currentGuid = GUID2String(TrackFX_GetFXGUID(pMediaTrack, iSlot));
+  return m_plugGUID.isNotEmpty() && currentGuid.isNotEmpty() &&
+         m_plugGUID == currentGuid;
 }
 
 PlugMoveWatcher *PlugMoveWatcher::instance() {
@@ -63,6 +67,11 @@ PlugMoveWatcher::PlugMoveWatcher(void) : m_nextConnectionId(0) {
 PlugMoveWatcher::~PlugMoveWatcher(void) {
   Tracks::instance()->disconnectTrackRemoved(m_trackRemovedConnection);
 
+  for (tPlugInstances::iterator iter = m_plugInstanceInfos.begin();
+       iter != m_plugInstanceInfos.end(); ++iter)
+    delete iter->second;
+  m_plugInstanceInfos.clear();
+
   s_instance = NULL;
 }
 
@@ -70,6 +79,7 @@ void PlugMoveWatcher::trackRemoved(MediaTrack *pMT) {
   for (tPlugInstances::iterator iterPII = m_plugInstanceInfos.begin();
        iterPII != m_plugInstanceInfos.end();) {
     if ((*iterPII).first.get<0>() == pMT) {
+      delete (*iterPII).second;
       m_plugInstanceInfos.erase(iterPII);
       iterPII = m_plugInstanceInfos.begin();
     } else {
@@ -81,6 +91,8 @@ void PlugMoveWatcher::trackRemoved(MediaTrack *pMT) {
 }
 
 void PlugMoveWatcher::checkMovementForTrack(MediaTrack *pTrack) {
+  if (!pTrack)
+    return;
   std::vector<tPlug> toRemove;
   std::vector<tPlug> toAdd;
 	
@@ -100,8 +112,6 @@ void PlugMoveWatcher::checkMovementForTrack(MediaTrack *pTrack) {
 				}
 			}
 		} else { // plug is unknown
-			m_plugInstanceInfos[tPlug(pTrack, iSlot)] =
-				new PlugInstanceInfo(pTrack, iSlot);
 			toAdd.push_back(tPlug(pTrack, iSlot));
 		}
 	}
@@ -156,9 +166,12 @@ int PlugMoveWatcher::connectPlugMoveSignal(const tPlugMoveSignalSlot &slot) {
 }
 
 void PlugMoveWatcher::disconnectPlugMoveSignal(int connectionId) {
-  m_activePlugMoveConnections[connectionId].disconnect();
-  m_activePlugMoveConnections.erase(
-																		m_activePlugMoveConnections.find(connectionId));
+  std::map<int, connection>::iterator iter =
+      m_activePlugMoveConnections.find(connectionId);
+  if (iter == m_activePlugMoveConnections.end())
+    return;
+  iter->second.disconnect();
+  m_activePlugMoveConnections.erase(iter);
 }
 
 int PlugMoveWatcher::connectPlugMoveFinishedSignal(
@@ -169,7 +182,10 @@ int PlugMoveWatcher::connectPlugMoveFinishedSignal(
 }
 
 void PlugMoveWatcher::disconnectPlugMoveFinishedSignal(int connectionId) {
-  m_activePlugMoveConnections[connectionId].disconnect();
-  m_activePlugMoveConnections.erase(
-																		m_activePlugMoveConnections.find(connectionId));
+  std::map<int, connection>::iterator iter =
+      m_activePlugMoveConnections.find(connectionId);
+  if (iter == m_activePlugMoveConnections.end())
+    return;
+  iter->second.disconnect();
+  m_activePlugMoveConnections.erase(iter);
 }

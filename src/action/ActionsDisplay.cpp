@@ -9,9 +9,9 @@
 #include "ConfigPath.h"
 
 ActionsDisplay::ActionsDisplay(DisplayHandler* pDH) : Display(pDH, 4),
-m_pDisplayHandler(pDH),
-m_pOtherDisplay(NULL),
-m_shownModifier(0)
+						      m_pDisplayHandler(pDH),
+						      m_pOtherDisplay(NULL),
+						      m_shownModifier(0)
 {
   readConfigFile();
 }
@@ -92,8 +92,12 @@ bool ActionsDisplay::readConfigFile() {
     return false;
 
   forEachXmlChildElement (*pRootElement, pNode) {
+    if (pNode->getTagName() != GA_ACTION)
+      continue;
     int mod = pNode->getIntAttribute(GA_ATT_MOD);
     int nr = pNode->getIntAttribute(GA_ATT_NR);
+    if (mod < 0 || mod >= 16 || nr < 0 || nr >= 8)
+      continue;
     m_strLabel[mod][nr] = pNode->getStringAttribute(GA_ATT_LABEL);
   } 
 

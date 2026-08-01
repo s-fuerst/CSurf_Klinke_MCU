@@ -10,6 +10,7 @@
 #include "PlugModeComponent.h"
 #include "JuceHeader.h"
 #include "PlugMoveWatcher.h"
+#include <set>
 
 #define PMM_ATT_VERSION String("version")
 
@@ -47,7 +48,23 @@ PlugMapManager::~PlugMapManager(void) {
   if (m_autoSave && m_mapType == USER_MAP)
     rewriteMapFile();
 
-  safe_delete(m_pMap);
+  std::set<PlugMap *> mapsToDelete;
+  if (m_pMap)
+    mapsToDelete.insert(m_pMap);
+  for (tPlugMap::iterator iter = m_localMaps.begin();
+       iter != m_localMaps.end(); ++iter)
+    if (iter->second)
+      mapsToDelete.insert(iter->second);
+  for (tPlugMap::iterator iter = m_oldMaps.begin(); iter != m_oldMaps.end();
+       ++iter)
+    if (iter->second)
+      mapsToDelete.insert(iter->second);
+  for (std::set<PlugMap *>::iterator iter = mapsToDelete.begin();
+       iter != mapsToDelete.end(); ++iter)
+    delete *iter;
+  m_pMap = NULL;
+  m_localMaps.clear();
+  m_oldMaps.clear();
 }
 
 const File PlugMapManager::getUserMapsLocation() {
@@ -297,13 +314,25 @@ void PlugMapManager::projectChanged(XmlElement *pXmlElement,
     pXmlElement->addChildElement(pPlugModeNode);
     writeLocalMapsToProjectConfig(pPlugModeNode);
     break;
-  case ProjectConfig::FREE:
+  case ProjectConfig::FREE: {
+    if (m_mapType == LOCAL_MAP) {
+      m_pMap = new PlugMap();
+      m_mapType = MAP_NOT_EXIST;
+      m_mapName = String();
+    }
+    plugMoveCheckFinished();
+    std::set<PlugMap *> mapsToDelete;
     for (tPlugMap::iterator iterMaps = m_localMaps.begin();
          iterMaps != m_localMaps.end(); ++iterMaps) {
-      delete ((*iterMaps).second);
+      if (iterMaps->second)
+        mapsToDelete.insert(iterMaps->second);
     }
+    for (std::set<PlugMap *>::iterator iter = mapsToDelete.begin();
+         iter != mapsToDelete.end(); ++iter)
+      delete *iter;
     m_localMaps.clear();
     break;
+  }
   case ProjectConfig::READ:
     pPlugModeNode = pXmlElement->getChildByName(PLUGMAPMANAGER_NODE_ROOT);
     if (pPlugModeNode)
@@ -334,8 +363,15 @@ void PlugMapManager::readLocalMapsFromProjectConfig(XmlElement *pNode) {
           pChild->getStringAttribute(PLUGMAPMANAGER_NODE_ROOT_ATT_FAV_TRACK);
       int slot = pChild->getIntAttribute(PLUGMAPMANAGER_NODE_ROOT_ATT_FAV_SLOT);
       PlugMap *pPlugMap = new PlugMap();
-      pPlugMap->readFromXml(pChild);
-      m_localMaps[tPlugID(guidString, slot)] = pPlugMap;
+      if (!pPlugMap->readFromXml(pChild)) {
+        delete pPlugMap;
+        continue;
+      }
+      tPlugID plugID(guidString, slot);
+      tPlugMap::iterator existing = m_localMaps.find(plugID);
+      if (existing != m_localMaps.end())
+        delete existing->second;
+      m_localMaps[plugID] = pPlugMap;
     }
   }
 }
@@ -392,4 +428,20 @@ void PlugMapManager::movePlugMap(tPlugMap &plugMaps, tPlugID oldPlugID,
   plugMaps.erase(oldPlugID);
 }
 
-void PlugMapManager::plugMoveCheckFinished() { m_oldMaps.clear(); }
+void PlugMapManager::plugMoveCheckFinished() {
+  std::set<PlugMap *> liveMaps;
+  for (tPlugMap::iterator iter = m_localMaps.begin();
+       iter != m_localMaps.end(); ++iter)
+    if (iter->second)
+      liveMaps.insert(iter->second);
+
+  std::set<PlugMap *> mapsToDelete;
+  for (tPlugMap::iterator iter = m_oldMaps.begin(); iter != m_oldMaps.end();
+       ++iter)
+    if (iter->second && liveMaps.find(iter->second) == liveMaps.end())
+      mapsToDelete.insert(iter->second);
+  for (std::set<PlugMap *>::iterator iter = mapsToDelete.begin();
+       iter != mapsToDelete.end(); ++iter)
+    delete *iter;
+  m_oldMaps.clear();
+}

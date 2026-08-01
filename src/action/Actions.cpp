@@ -29,7 +29,7 @@ Actions::Action::Action(const char *description, const char *id, int buttonId,
   gaccel_register_t acreg = {{0, 0, 0}, description};
   memcpy(&m_acreg, &acreg, sizeof(gaccel_register_t));
   m_acreg.accel.cmd = m_registered_command =
-      g_rec->Register("command_id", (void *)id);
+    g_rec->Register("command_id", (void *)id);
   g_rec->Register("gaccel", &m_acreg);
   //}
   m_buttonIsPressed = false;
@@ -45,7 +45,7 @@ Actions *Actions::instance() {
 
 Actions::~Actions() {
   BOOST_FOREACH (char *pLit, m_literals)
-    delete (pLit);
+    delete[] pLit;
 
   BOOST_FOREACH (Action *pAction, m_actions)
     delete (pAction);
@@ -109,8 +109,8 @@ void Actions::addActions() {
   addKeyAction("Scrub", 0x65);
   add8ButtonActions("Fader touch", 0x68);
   addButtonAction("Master fader touch", 0x70);
-	addKeyAction("Reset all fader touch", 0x71);
-	add8KeyActions("Open FX Favorite %i", 0x72);
+  addKeyAction("Reset all fader touch", 0x71);
+  add8KeyActions("Open FX Favorite %i", 0x72);
 }
 
 bool Actions::commandCallback(int command, int flag) {
@@ -121,7 +121,7 @@ bool Actions::commandCallback(int command, int flag) {
       if (pAction->isButtonAction()) {
         pAction->setButtonPressed(!pAction->isButtonPressed());
         m_pMCU->GetButtonManager()->dispatchMidiEvent(
-            pAction->isButtonPressed() ? &evt_down : &evt_up);
+						      pAction->isButtonPressed() ? &evt_down : &evt_up);
       } else {
         m_pMCU->GetButtonManager()->dispatchMidiEvent(&evt_down);
         m_pMCU->GetButtonManager()->dispatchMidiEvent(&evt_up);
@@ -143,8 +143,8 @@ void Actions::addKeyAction(const char *description, int buttonId) {
   // the description and id literals must created on the heap
   char *_description = new char[200];
   char *_id = new char[100];
-  sprintf(_description, "Mackie Control Klinke: %s (key)", description);
-  sprintf(_id, "MCUKLINKE%ikey", buttonId);
+  snprintf(_description, 200, "Mackie Control Klinke: %s (key)", description);
+  snprintf(_id, 100, "MCUKLINKE%ikey", buttonId);
   m_literals.push_front(_description);
   m_literals.push_front(_id);
   m_actions.push_front(new Actions::Action(_description, _id, buttonId, false));
@@ -156,8 +156,8 @@ void Actions::addButtonAction(const char *description, int buttonId) {
   // the description and id literals must created on the heap
   char *_description = new char[200];
   char *_id = new char[100];
-  sprintf(_description, "Mackie Control Klinke: %s (button)", description);
-  sprintf(_id, "MCUKLINKE%ibutton", buttonId);
+  snprintf(_description, 200, "Mackie Control Klinke: %s (button)", description);
+  snprintf(_id, 100, "MCUKLINKE%ibutton", buttonId);
   m_literals.push_front(_description);
   m_literals.push_front(_id);
   m_actions.push_front(new Actions::Action(_description, _id, buttonId, true));
@@ -166,15 +166,17 @@ void Actions::addButtonAction(const char *description, int buttonId) {
 void Actions::add8KeyActions(const char *description, int buttonId) {
   for (int i = 0; i < 8; i++) {
     char *_description = new char[80];
-    sprintf(_description, description, i + 1);
+    snprintf(_description, 80, description, i + 1);
     addKeyAction(_description, buttonId + i);
+    delete[] _description;
   }
 }
 
 void Actions::add8ButtonActions(const char *description, int buttonId) {
   for (int i = 0; i < 8; i++) {
     char *_description = new char[80];
-    sprintf(_description, description, i + 1);
+    snprintf(_description, 80, description, i + 1);
     addButtonAction(_description, buttonId + i);
+    delete[] _description;
   }
 }

@@ -9,17 +9,9 @@
 #include "HardwareUnit.h"
 #include "McuAssert.h"
 #include "Display.h"
+#include "MidiEventBuffer.h"
 
-class MIDI_Message {
-public:
-  MIDI_Message() {
-    evt.frame_offset = 0;
-    evt.size = 0;
-    memset(data, 0, 512);
-  }
-  MIDI_event_t evt;
-  char data[512];
-};
+class MIDI_Message : public MidiEventBuffer<512> {};
 
 DisplayHandler::DisplayHandler(HardwareUnit *pUnit, EnumMCUType mcuType,
                                bool isProX) {
@@ -44,7 +36,8 @@ DisplayHandler::~DisplayHandler() { safe_delete(m_pHardwareState); }
 
 void DisplayHandler::sendDifferences(Display *pDisplay, int row,
                                      const char *text) {
-  if (pDisplay != m_pActualDisplay)
+  if (!pDisplay || !text || pDisplay != m_pActualDisplay || row < 0 ||
+      row >= 4)
     return;
 
   // m_pHardwareState mirrors what the physical LCD currently shows, but it
@@ -85,6 +78,8 @@ void DisplayHandler::sendDifferences(Display *pDisplay, int row,
 
 void DisplayHandler::sendToHardware(int row, int pos, char const *text,
                                     int len) {
+  if (!text || row < 0 || row >= 4 || pos < 0 || len <= 0)
+    return;
   // Displays keep their logical row order. Apply the per-unit preference only
   // while addressing the physical LCD, so it affects every display user
   // (modes, selectors, splash screen, and ProX panels) uniformly.
@@ -119,20 +114,20 @@ void DisplayHandler::sendToHardware(int row, int pos, char const *text,
   //  mm.evt.size=0;
 
 
-  mm.evt.midi_message[mm.evt.size++] = (hardwareRow > 1) ? 0x13 : 0x12; // 0x12
-  mm.evt.midi_message[mm.evt.size++] = pos;
+  mm.append((hardwareRow > 1) ? 0x13 : 0x12);
+  mm.append(static_cast<unsigned char>(pos));
 
   int cnt = 0;
   while (cnt < len) {
-    mm.evt.midi_message[mm.evt.size++] = *text++;
+    mm.append(static_cast<unsigned char>(*text++));
     cnt++;
   }
-  mm.evt.midi_message[mm.evt.size++] = 0xF7;
-  m_pUnit->sendMsg(&mm.evt, -1);
+  mm.append(0xF7);
+  m_pUnit->sendMsg(mm.event(), -1);
 }
 
 void DisplayHandler::switchTo(Display *pDisplay) {
-  if (m_pActualDisplay == pDisplay)
+  if (!pDisplay || m_pActualDisplay == pDisplay)
     return;
 
   m_pActualDisplay = pDisplay;
@@ -144,7 +139,8 @@ void DisplayHandler::switchTo(Display *pDisplay) {
 void DisplayHandler::enableMCUMeter(int channel, bool enable) // channel is 1 based
 {
   // widened from fixed <=9 to vector bounds
-  ASSERT(channel > 0 && channel < (int)m_metersEnabled.size());
+  if (channel <= 0 || channel >= (int)m_metersEnabled.size())
+    return;
 
   // This is Mackie's LCD-meter SysEx mode. Controllers without that feature
   // must not receive it; their software meter is rendered separately.
@@ -159,23 +155,23 @@ void DisplayHandler::enableMCUMeter(int channel, bool enable) // channel is 1 ba
 
   addHeader(&mm, 0);
 
-  mm.evt.midi_message[mm.evt.size++] = 0x20;
-  mm.evt.midi_message[mm.evt.size++] = 0x00 + channel - 1;
+  mm.append(0x20);
+  mm.append(static_cast<unsigned char>(channel - 1));
   //  mm.evt.midi_message[mm.evt.size++] = enable ? 0x07 : 0x01;
-  mm.evt.midi_message[mm.evt.size++] = enable ? 0x03 : 0x01;
-  mm.evt.midi_message[mm.evt.size++] = 0xF7;
+  mm.append(enable ? 0x03 : 0x01);
+  mm.append(0xF7);
   MCU_LOG("METER ch=%d enable=%d -> 0x20 sent", channel, (int)enable);
-  m_pUnit->sendMsg(&mm.evt, -1);
+  m_pUnit->sendMsg(mm.event(), -1);
 
   //  F0 00 00 66 14 21 01 F7       : Vertical Line Meter
   MIDI_Message mm2;
 
   addHeader(&mm2, 0);
 
-  mm2.evt.midi_message[mm2.evt.size++] = 0x21;
-  mm2.evt.midi_message[mm2.evt.size++] = 0x01;
-  mm2.evt.midi_message[mm2.evt.size++] = 0xF7;
-  m_pUnit->sendMsg(&mm2.evt, -1);
+  mm2.append(0x21);
+  mm2.append(0x01);
+  mm2.append(0xF7);
+  m_pUnit->sendMsg(mm2.event(), -1);
 
 }
 
@@ -189,21 +185,23 @@ void DisplayHandler::enableMCUMeter(bool enable) {
 
 void DisplayHandler::addHeader(MIDI_Message *pmm, int row) {
   //  F0 00 00 66 xx
-  pmm->evt.midi_message[pmm->evt.size++] = 0xF0;
-  pmm->evt.midi_message[pmm->evt.size++] = 0x00;
-  pmm->evt.midi_message[pmm->evt.size++] = 0x00;
+  if (!pmm)
+    return;
+  pmm->append(0xF0);
+  pmm->append(0x00);
+  pmm->append(0x00);
   switch (m_mcuType) {
   case MCU_EX:
-    pmm->evt.midi_message[pmm->evt.size++] = 0x66; //0x66
-    pmm->evt.midi_message[pmm->evt.size++] = 0x15;
+    pmm->append(0x66);
+    pmm->append(0x15);
     break;
   case MCU:
     if (row <= 1) {
-      pmm->evt.midi_message[pmm->evt.size++] = 0x66; //0x66
-      pmm->evt.midi_message[pmm->evt.size++] = 0x14; // 0x14
+      pmm->append(0x66);
+      pmm->append(0x14);
     } else {
-      pmm->evt.midi_message[pmm->evt.size++] = 0x67; //0x66
-      pmm->evt.midi_message[pmm->evt.size++] = 0x15; // 0x14
+      pmm->append(0x67);
+      pmm->append(0x15);
     }
     break;
   case PROX:

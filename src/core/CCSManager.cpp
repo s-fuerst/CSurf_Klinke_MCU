@@ -51,7 +51,8 @@ CCSManager::CCSManager(CSurf_MCU *pMCU) {
   for (int i = 0; i < nCh; i++) {
     // VPOT 0 (unused master slot) has no owning unit.
     // VPOTs 1..N*8 get per-unit ProX flag from their owning unit.
-    bool isProX = (i > 0) ? pMCU->unitForChannel(i)->isProX() : false;
+    HardwareUnit *unit = i > 0 ? pMCU->unitForChannel(i) : NULL;
+    bool isProX = unit && unit->isProX();
     m_pVPOTS[i].init(getMCU(), i, isProX);
     m_faderTouched[i] = false;
     m_vpotTouchedTill[i] = 0;
@@ -69,7 +70,7 @@ CCSManager::CCSManager(CSurf_MCU *pMCU) {
 }
 
 CCSManager::~CCSManager(void) {
-	m_pEditor->deleteWindow();
+  m_pEditor->deleteWindow();
 	
   safe_delete(m_pEditor); // editor must be delete before modes
   safe_delete(m_pCommandMode);
@@ -151,7 +152,7 @@ bool CCSManager::buttonVPOTassign(int button, bool pressed) {
       }
       break;
     case B_VPOT_PLUG:
-			pNewMode = m_pPlugMode;
+      pNewMode = m_pPlugMode;
       break;
     }
   } else if (m_selectorActive) {
@@ -190,7 +191,7 @@ bool CCSManager::canSwitchDisplay(CCSMode *pMode) {
   // global-message displays) can respect the same selector/option/NameValue
   // locks without duplicating the condition.
   return pMode == m_pActualMode && !m_selectorActive && !m_optionActive &&
-         !m_pMCU->IsButtonPressed(B_NAME_VALUE);
+    !m_pMCU->IsButtonPressed(B_NAME_VALUE);
 }
 
 void CCSManager::updateVPOTLeds() {
@@ -221,7 +222,8 @@ void CCSManager::updateVPOTLeds() {
 }
 
 bool CCSManager::buttonFaderBanks(int button, bool pressed) {
-  ASSERT(button >= B_BANK_DOWN && button <= B_CHANNEL_UP);
+  if (button < B_BANK_DOWN || button > B_CHANNEL_UP)
+    return false;
   m_switchBack = true;
   return m_pActualMode->buttonFaderBanks(button, pressed);
 }
@@ -242,75 +244,75 @@ bool CCSManager::buttonNameValue(bool pressed) {
 }
 
 bool CCSManager::buttonRec(int channel, bool pressed) {
+  if (channel < 1 || channel > m_pMCU->availableChannels()) return false;
   if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
-  ASSERT(channel >= 1 && channel <= m_pMCU->availableChannels());
   m_switchBack = true;
   return m_pActualMode->buttonRec(channel, pressed);
 }
 
 bool CCSManager::buttonRecDC(int channel, bool pressed) {
+  if (channel < 1 || channel > m_pMCU->availableChannels()) return false;
   if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
-  ASSERT(channel >= 1 && channel <= m_pMCU->availableChannels());
   m_switchBack = true;
   return m_pActualMode->buttonRecDC(channel, pressed);
 }
 
 bool CCSManager::buttonSelect(int channel, bool pressed) {
+  if (channel < 1 || channel > m_pMCU->availableChannels()) return false;
   if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
-  ASSERT(channel >= 1 && channel <= m_pMCU->availableChannels());
   m_switchBack = true;
   pressed ? m_iNumSelectButtonsPressed++ : m_iNumSelectButtonsPressed--;
   return m_pActualMode->buttonSelect(channel, pressed);
 }
 
 bool CCSManager::buttonSelectDC(int channel) {
+  if (channel < 1 || channel > m_pMCU->availableChannels()) return false;
   if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
-  ASSERT(channel >= 1 && channel <= m_pMCU->availableChannels());
   m_switchBack = true;
   return m_pActualMode->buttonSelectDC(channel);
 }
 
 bool CCSManager::buttonSelectLong(int channel) {
+  if (channel < 1 || channel > m_pMCU->availableChannels()) return false;
   if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
-  ASSERT(channel >= 1 && channel <= m_pMCU->availableChannels());
   m_switchBack = true;
   return m_pActualMode->buttonSelectLong(channel);
 }
 
 bool CCSManager::buttonMute(int channel, bool pressed) {
+  if (channel < 1 || channel > m_pMCU->availableChannels()) return false;
   if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
-  ASSERT(channel >= 1 && channel <= m_pMCU->availableChannels());
   m_switchBack = true;
   pressed ? m_iNumMuteButtonsPressed++ : m_iNumMuteButtonsPressed--;
   return m_pActualMode->buttonMute(channel, pressed);
 }
 
 bool CCSManager::buttonSolo(int channel, bool pressed) {
+  if (channel < 1 || channel > m_pMCU->availableChannels()) return false;
   if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
-  ASSERT(channel >= 1 && channel <= m_pMCU->availableChannels());
   m_switchBack = true;
   pressed ? m_iNumSoloButtonsPressed++ : m_iNumSoloButtonsPressed--;
   return m_pActualMode->buttonSolo(channel, pressed);
 }
 
 bool CCSManager::buttonSoloDC(int channel) {
+  if (channel < 1 || channel > m_pMCU->availableChannels()) return false;
   if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
-  ASSERT(channel >= 1 && channel <= m_pMCU->availableChannels());
   m_switchBack = true;
   return m_pActualMode->buttonSoloDC(channel);
 }
 
 bool CCSManager::fader(int channel, int value) {
+  if (channel < 0 || channel > m_pMCU->availableChannels()) return false;
   if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
-  ASSERT(channel >= 0 && channel <= m_pMCU->availableChannels());
   m_switchBack = true;
 
   return m_pActualMode->fader(channel, value);
 }
 
 bool CCSManager::faderTouched(int channel, bool touched) {
+  if (channel < 0 || channel > m_pMCU->availableChannels()) return false;
   if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
-  ASSERT(channel >= 0 && channel <= m_pMCU->availableChannels());
   m_switchBack = true;
 
   elementTouched(FADER, channel, touched);
@@ -318,8 +320,8 @@ bool CCSManager::faderTouched(int channel, bool touched) {
 }
 
 bool CCSManager::vpotMoved(int channel, int numSteps) {
+  if (channel < 1 || channel > m_pMCU->availableChannels()) return false;
   if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
-  ASSERT(channel >= 1 && channel <= m_pMCU->availableChannels());
   m_switchBack = true;
 
   m_vpotTouchedTill[channel] = m_lastTime + TOUCHED_MS;
@@ -339,8 +341,8 @@ bool CCSManager::vpotMoved(int channel, int numSteps) {
 }
 
 bool CCSManager::vpotPressed(int channel, bool pressed) {
+  if (channel < 1 || channel > m_pMCU->availableChannels()) return false;
   if (channel > 8 && !m_pActualMode->supportsExtendedChannels()) return false;
-  ASSERT(channel >= 1 && channel <= m_pMCU->availableChannels());
   m_switchBack = true;
 
   // always send touched, but at a end time if VPOT was released
@@ -458,59 +460,61 @@ void CCSManager::updateAssignmentDisplay() {
 void CCSManager::setFader(CCSMode* pCaller, int channel, int value) {
   CHECKMODEANDCHANNEL
 
-  // Route through CSurf_MCU to the owning HardwareUnit.
-  m_pMCU->sendStripFader(channel, value);
+    // Route through CSurf_MCU to the owning HardwareUnit.
+    m_pMCU->sendStripFader(channel, value);
 }
 
 void CCSManager::setRecLED(CCSMode *pCaller, int channel, int state) {
   CHECKMODEANDCHANNEL
-  // strip LED → owning unit via global channel.
-  // rec notes 0x00..0x07; local = (channel-1) % 8
-  int local = (channel - 1) % 8;
+    // strip LED → owning unit via global channel.
+    // rec notes 0x00..0x07; local = (channel-1) % 8
+    int local = (channel - 1) % 8;
   m_pMCU->setStripLED(channel, local, state);
 }
 
 void CCSManager::setSoloLED(CCSMode *pCaller, int channel, int state) {
   CHECKMODEANDCHANNEL
-  // solo notes 0x08..0x0f
-  int local = (channel - 1) % 8;
+    // solo notes 0x08..0x0f
+    int local = (channel - 1) % 8;
   m_pMCU->setStripLED(channel, 0x08 + local, state);
 }
 
 void CCSManager::setMuteLED(CCSMode *pCaller, int channel, int state) {
   CHECKMODEANDCHANNEL
-  // mute notes 0x10..0x17
-  int local = (channel - 1) % 8;
+    // mute notes 0x10..0x17
+    int local = (channel - 1) % 8;
   m_pMCU->setStripLED(channel, 0x10 + local, state);
 }
 
 void CCSManager::setSelectLED(CCSMode *pCaller, int channel, int state) {
   CHECKMODEANDCHANNEL
-  // select notes 0x18..0x1f
-  int local = (channel - 1) % 8;
+    // select notes 0x18..0x1f
+    int local = (channel - 1) % 8;
   m_pMCU->setStripLED(channel, 0x18 + local, state);
 }
 
 void CCSManager::setFlipLED(CCSMode *pCaller, int state) {
   CHECKMODE
 
-  if (m_stateFlip != state) {
-    m_pMCU->SetLED(B_FLIP, state ? LED_ON : LED_OFF);
-    m_stateFlip = state;
-  }
+    if (m_stateFlip != state) {
+      m_pMCU->SetLED(B_FLIP, state ? LED_ON : LED_OFF);
+      m_stateFlip = state;
+    }
 }
 
 void CCSManager::setGlobalViewLED(CCSMode *pCaller, int state) {
   CHECKMODE
 
-  if (m_stateGlobalView != state) {
-    m_pMCU->SetLED(B_GLOBAL_VIEW, state ? LED_ON : LED_OFF);
-    m_stateGlobalView = state;
-  }
+    if (m_stateGlobalView != state) {
+      m_pMCU->SetLED(B_GLOBAL_VIEW, state ? LED_ON : LED_OFF);
+      m_stateGlobalView = state;
+    }
 }
 
 void CCSManager::setAssignmentDisplay(CCSMode *pCaller, const char text[2]) {
   CHECKMODE
+    if (!text)
+      return;
 
   // Normalise to 2 chars (caller may pass shorter strings like "")
   char normalised[2] = {' ', ' '};

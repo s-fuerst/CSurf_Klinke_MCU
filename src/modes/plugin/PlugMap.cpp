@@ -171,6 +171,8 @@ bool PMPage::readFromXml(XmlElement *pPageNode) {
   m_nameShort = pPageNode->getStringAttribute(PMAP_ATT_SNAME);
   m_nameLong = pPageNode->getStringAttribute(PMAP_ATT_LNAME);
   m_referTo = pPageNode->getIntAttribute(PMAP_ATT_REFER_TO);
+  if (m_referTo != DOESNT_REFER && (m_referTo < 0 || m_referTo >= 8))
+    return false;
   m_offset = pPageNode->getIntAttribute(PMAP_ATT_OFFSET);
 
   XmlElement *pChild = pPageNode->getFirstChildElement();
@@ -244,10 +246,14 @@ bool PMBank::readFromXml(XmlElement *pBankNode) {
   m_nameShort = pBankNode->getStringAttribute(PMAP_ATT_SNAME);
   m_nameLong = pBankNode->getStringAttribute(PMAP_ATT_LNAME);
   m_referTo = pBankNode->getIntAttribute(PMAP_ATT_REFER_TO);
+  if (m_referTo != DOESNT_REFER && (m_referTo < 0 || m_referTo >= 8))
+    return false;
   m_offset = pBankNode->getIntAttribute(PMAP_ATT_OFFSET);
 
   forEachXmlChildElement(*pBankNode, pPage) {
     int id = pPage->getIntAttribute(PMAP_ATT_ID);
+    if (id < 0 || id >= 8)
+      return false;
     if (!m_pages[id].readFromXml(pPage)) {
       return false;
     }
@@ -293,13 +299,19 @@ void PlugMap::writeToXml(XmlElement *pElement) {
 }
 
 bool PlugMap::readFromXml(XmlElement *pRootElement) {
+  if (!pRootElement)
+    return false;
   forEachXmlChildElement(*pRootElement, pChild) {
     if (pChild->getTagName() == PMAP_NODE_MAPINFO) {
       m_creator = pChild->getStringAttribute(PMAP_ATT_CREATOR);
       m_info = pChild->getAllSubText();
 
     } else {
+      if (pChild->getTagName() != PMAP_NODE_BANK)
+        continue;
       int id = pChild->getIntAttribute(PMAP_ATT_ID);
+      if (id < 0 || id >= 8)
+        return false;
       if (!m_banks[id].readFromXml(pChild)) {
         return false;
       }

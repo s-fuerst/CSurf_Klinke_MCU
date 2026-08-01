@@ -27,36 +27,36 @@
 using boost::signals2::connection;
 
 static const GUID GUID_NOT_ACTIVE = {
-    0x00000000,
-    0x0000,
-    0x0000,
-    {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
+  0x00000000,
+  0x0000,
+  0x0000,
+  {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
 
 static GUID GUID_MASTER = {
-	  0x12345678,
-    0x8765,
-    0x4321,
-    {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
+  0x12345678,
+  0x8765,
+  0x4321,
+  {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
 
 #ifndef _WIN32
 inline bool operator==(const GUID &a, const GUID &b) { return memcmp(&a, &b, sizeof(GUID)) == 0; }
 inline bool operator!=(const GUID &a, const GUID &b) { return memcmp(&a, &b, sizeof(GUID)) != 0; }
 #endif
 
-#define safe_call(p, f)                                                        \
-  if (p != NULL) {                                                             \
-    p->f;                                                                      \
+#define safe_call(p, f)				\
+  if (p != NULL) {				\
+    p->f;					\
   }
 
-#define safe_delete(x)                                                         \
-  if (x != NULL) {                                                             \
-    delete (x);                                                                \
-    x = NULL;                                                                  \
+#define safe_delete(x)				\
+  if (x != NULL) {				\
+    delete (x);					\
+    x = NULL;					\
   }
-#define safe_delete_array(x)                                                   \
-  if (x != NULL) {                                                             \
-    delete[](x);                                                               \
-    x = NULL;                                                                  \
+#define safe_delete_array(x)			\
+  if (x != NULL) {				\
+    delete[](x);				\
+    x = NULL;					\
   }
 
 #define VK_OPTION 2
@@ -179,12 +179,18 @@ static unsigned char panToChar(double pan) {
 }
 
 static void GUID2String(GUID *guid, String &str) {
+  if (!guid) {
+    str = String();
+    return;
+  }
   char guidcstr[64];
   guidToString(guid, guidcstr);
   str = guidcstr;
 }
 
 static String GUID2String(GUID *guid) {
+  if (!guid)
+    return String();
   char guidcstr[64];
   guidToString(guid, guidcstr);
   return String(guidcstr);
@@ -195,7 +201,7 @@ static void String2GUID(String &str, GUID *guid) {
 }
 
 static String GetPlugName(MediaTrack *pMediaTrack, int slot) {
-  char paramName[80];
+  char paramName[80] = {};
   bool valid = TrackFX_GetFXName(pMediaTrack, slot, paramName, 79);
   if (!valid) {
     return String();
@@ -293,8 +299,8 @@ private:
   char m_mackie_lasttime[10];
   int m_mackie_lasttime_mode;
   static int
-      s_mackie_modifiers; // don't use this direcly, only via IsModifierPressed
-                          // etc.. (todo: create a Modifiers class)
+  s_mackie_modifiers; // don't use this direcly, only via IsModifierPressed
+  // etc.. (todo: create a Modifiers class)
   static int s_cfg_flags; // CONFIG_FLAG_FADER_TOUCH_MODE etc
 
   std::map<MediaTrack *, bool> m_fader_touchstate;
@@ -383,8 +389,8 @@ public:
   bool OnScroll(MIDI_event_t *evt);
   bool OnTouch(MIDI_event_t *evt);
   bool OnFunctionKey(MIDI_event_t *evt);
-	bool ResetAllFaderTouch(MIDI_event_t *evt);
-	bool OpenFXFavorite(MIDI_event_t *evt);
+  bool ResetAllFaderTouch(MIDI_event_t *evt);
+  bool OpenFXFavorite(MIDI_event_t *evt);
 
   void HandleFunctionKeyForRegionsOrLoops(int fkey, bool loop);
   bool OnGlobalViewKeys(MIDI_event_t *evt);
@@ -405,7 +411,7 @@ public:
   bool IsModifierPressed(int key);
   bool IsNoModifierPressed() {
     return !IsModifierPressed(VK_SHIFT) && !IsModifierPressed(VK_OPTION) &&
-           !IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_ALT);
+      !IsModifierPressed(VK_CONTROL) && !IsModifierPressed(VK_ALT);
   }
   void CallTransportForward();
   void CallTransportRewind();
@@ -562,10 +568,10 @@ public:
   double CalcMovement(double oldPos, int dir);
   int FindTrackNr(MediaTrack *tr);
   static MediaTrack *TrackFromGUID(const GUID &guid);
-	static GUID *GUIDfromTrack(MediaTrack *tr);
+  static GUID *GUIDfromTrack(MediaTrack *tr);
   bool SomethingSoloed();
   const char *GetTrackName(MediaTrack *tr);
-  char trackName[4];
+  char trackName[32];
   bool IsKeyboardPressed(int key);
   void UpdateMetronomLED();
   unsigned int GetActualFrameTime() { return m_frameupd_lastrun; }
@@ -590,7 +596,8 @@ public:
 
   SelectedTrack(MediaTrack *tr) {
     next = NULL;
-    guid = *GetTrackGUID(tr);
+    GUID *trackGuid = tr ? GetTrackGUID(tr) : NULL;
+    guid = trackGuid ? *trackGuid : GUID_NOT_ACTIVE;
   }
 
   MediaTrack *track() { return CSurf_MCU::TrackFromGUID(guid); }

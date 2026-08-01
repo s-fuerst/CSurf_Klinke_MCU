@@ -8,6 +8,7 @@
 #include "HardwareUnit.h"
 #include "DisplayHandler.h"
 #include "McuAssert.h"
+#include "MidiEventBuffer.h"
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -15,9 +16,9 @@
 
 HardwareUnit::HardwareUnit(int unitIndex, const UnitConfig &cfg,
                            CSurf_MCU *pMCU, int *errStats)
-    : m_unitIndex(unitIndex), m_cfg(cfg), m_deviceId(cfg.isMain ? 0x14 : 0x15),
-      m_midiout(NULL), m_midiin(NULL), m_display(NULL), m_pMCU(pMCU),
-      m_pListener(NULL), m_lastNowMod2(0), m_blinkSometimes(0) {
+  : m_unitIndex(unitIndex), m_cfg(cfg), m_deviceId(cfg.isMain ? 0x14 : 0x15),
+    m_midiout(NULL), m_midiin(NULL), m_display(NULL), m_pMCU(pMCU),
+    m_pListener(NULL), m_lastNowMod2(0), m_blinkSometimes(0) {
   for (int i = 0; i < 128; i++)
     m_led_state[i] = LED_OFF;
   for (int i = 0; i < 9; i++)
@@ -26,9 +27,9 @@ HardwareUnit::HardwareUnit(int unitIndex, const UnitConfig &cfg,
   // create midi hardware access (moved verbatim from CSurf_MCU ctor)
   m_midiin = cfg.midiInDev >= 0 ? CreateMIDIInput(cfg.midiInDev) : NULL;
   m_midiout = cfg.midiOutDev >= 0
-                  ? CreateThreadedMIDIOutput(
-                        CreateMIDIOutput(cfg.midiOutDev, false, NULL))
-                  : NULL;
+    ? CreateThreadedMIDIOutput(
+			       CreateMIDIOutput(cfg.midiOutDev, false, NULL))
+    : NULL;
 
   if (errStats) {
     if (cfg.midiInDev >= 0 && !m_midiin)
@@ -52,11 +53,13 @@ HardwareUnit::HardwareUnit(int unitIndex, const UnitConfig &cfg,
   // isProX is derived from DeviceModel (QConProX→true, Mackie→false);
   // mcuType is derived from isMain (→MCU) / !isMain (→MCU_EX).
   m_display = new DisplayHandler(
-      this, m_cfg.isMain ? DisplayHandler::MCU : DisplayHandler::MCU_EX,
-      m_cfg.model == QConProX);
+				 this, m_cfg.isMain ? DisplayHandler::MCU : DisplayHandler::MCU_EX,
+				 m_cfg.model == QConProX);
 }
 
 HardwareUnit::~HardwareUnit() {
+  delete m_display;
+  m_display = NULL;
   // delete the raw MIDI ports exactly as CSurf_MCU used to
   DELETE_ASYNC(m_midiout);
   DELETE_ASYNC(m_midiin);
@@ -68,6 +71,8 @@ void HardwareUnit::startInput() {
 }
 
 void HardwareUnit::sendStripFader(int local, int value) {
+  if (local < 0 || local >= 8)
+    return;
 #ifdef KLINKE
   if (!m_unitEnabled)
     return;
@@ -105,6 +110,8 @@ void HardwareUnit::sendMidi(unsigned char status, unsigned char d1,
 }
 
 void HardwareUnit::sendMsg(MIDI_event_t *msg, int frame_offset) {
+  if (!msg)
+    return;
 #ifdef KLINKE
   if (!m_unitEnabled)
     return;
@@ -114,6 +121,8 @@ void HardwareUnit::sendMsg(MIDI_event_t *msg, int frame_offset) {
 }
 
 void HardwareUnit::setLED(int button_nr, int led_state) {
+  if (button_nr < 0 || button_nr >= 128)
+    return;
 #ifdef KLINKE
   // Note: gate BEFORE the dedup cache update so a stale cache triggers a
   // full resend after the unit is re-enabled.
@@ -126,7 +135,7 @@ void HardwareUnit::setLED(int button_nr, int led_state) {
   // actually sent to LED_ON; the emulation loop overwrites it with
   // LED_ON/LED_OFF in the slow pattern.
   unsigned char sendState =
-      (led_state == LED_BLINK_BYPASSED) ? LED_ON : led_state;
+    (led_state == LED_BLINK_BYPASSED) ? LED_ON : led_state;
 
   // per-unit dedup (was CCSManager::m_stateRec/Solo/Mute/Select + CSurf_MCU::m_led_state)
   if (m_led_state[button_nr] != led_state) {
@@ -191,21 +200,16 @@ void HardwareUnit::reset() {
   // F0 00 00 66 <devId> 08 00 F7  : reset this MCU unit (per-device-id)
   if (!m_midiout)
     return;
-  struct {
-    MIDI_event_t evt;
-    char data[5];
-  } poo;
-  poo.evt.frame_offset = 0;
-  poo.evt.size = 8;
-  poo.evt.midi_message[0] = 0xF0;
-  poo.evt.midi_message[1] = 0x00;
-  poo.evt.midi_message[2] = 0x00;
-  poo.evt.midi_message[3] = 0x66;
-  poo.evt.midi_message[4] = m_deviceId;
-  poo.evt.midi_message[5] = 0x08;
-  poo.evt.midi_message[6] = 0x00;
-  poo.evt.midi_message[7] = 0xF7;
-  m_midiout->SendMsg(&poo.evt, -1);
+  MidiEventBuffer<8> message;
+  message.append(0xF0);
+  message.append(0x00);
+  message.append(0x00);
+  message.append(0x66);
+  message.append(m_deviceId);
+  message.append(0x08);
+  message.append(0x00);
+  message.append(0xF7);
+  m_midiout->SendMsg(message.event(), -1);
 }
 
 bool HardwareUnit::onMCUReset(MIDI_event_t *evt) {

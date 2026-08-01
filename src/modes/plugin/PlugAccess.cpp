@@ -16,6 +16,7 @@
 #include "PlugWindowManager.h"
 #include "std_helper.h"
 #include "Tracks.h"
+#include <memory>
 //#include "SnM/SnM_Actions.h"
 
 //#define TRACK_CHANGE_TRACK_UNKNOWN -1
@@ -53,6 +54,7 @@ PlugAccess::~PlugAccess(void) {
   m_pPlugWatcher->disconnectNameChange(m_nameChangedConnectionId);
   safe_delete(m_pPlugWatcher);
   safe_delete(m_pMapManager);
+  safe_delete(m_pWindowManager);
 }
 
 void PlugAccess::trackChanged(MediaTrack *pMediaTrack) {
@@ -184,7 +186,7 @@ String PlugAccess::getPlugName(bool shortName, MediaTrack *pMediaTrack,
     return String();
   }
 
-  char paramName[80];
+  char paramName[80] = {};
   bool valid = TrackFX_GetFXName(pMediaTrack, slot, paramName, 79);
   if (!valid) {
     return String();
@@ -202,7 +204,7 @@ String PlugAccess::getFullPlugName(MediaTrack *pMediaTrack, int slot) {
     return String();
   }
 
-  char paramName[80];
+  char paramName[80] = {};
   bool valid = TrackFX_GetFXName(pMediaTrack, slot, paramName, 79);
   if (!valid) {
     return String();
@@ -215,7 +217,7 @@ void PlugAccess::createDefaultMap() {
   int numParamsExist = getNumParams();
   int numParamsMapped = 0;
 
-  char paramName[80];
+  char paramName[80] = {};
 
   ElementDesc desc(this, PlugAccess::ElementDesc::FADER, 0);
   for (desc.m_bank = 0; desc.m_bank < 8; desc.m_bank++) {
@@ -290,7 +292,7 @@ int PlugAccess::getNumParams(bool includeReaper) {
 }
 
 PMParam *PlugAccess::getPMParam(ElementDesc *pElement) {
-  if (!plugExist()) {
+  if (!pElement || !pElement->isValid() || !plugExist()) {
     return NULL;
   }
 
@@ -328,8 +330,9 @@ PMParam *PlugAccess::getPMParam(ElementDesc *pElement) {
 }
 
 bool PlugAccess::resolveIndirection(ElementDesc *pDesc) {
-  ASSERT(pDesc->isValid());
-  ASSERT(pDesc->m_offset == 0);
+  if (!pDesc || !pDesc->isValid())
+    return false;
+  pDesc->m_offset = 0;
 
   PMBank *pBank = getMap()->getBank(pDesc->m_bank);
   if (pBank->doesRefer()) {
@@ -384,6 +387,8 @@ String PlugAccess::getParamNameLong(int bank, int page,
 }
 
 int PlugAccess::getParamID(ElementDesc *pElement) {
+  if (!pElement || !pElement->isValid() || !plugExist())
+    return NOT_ASSIGNED;
   if (pElement->m_type == ElementDesc::DRYWET) {
     return TrackFX_GetParamFromIdent(m_pPlugTrack, m_iSlot, ":wet");
   } else if (pElement->m_type == ElementDesc::BYPASS) {
@@ -500,7 +505,7 @@ String PlugAccess::getParamValueShort(int bank, int page,
         return String();
     }
 
-    char valueString[80];
+    char valueString[80] = {};
     bool valid = TrackFX_FormatParamValue(m_pPlugTrack, m_iSlot, id, val,
                                           valueString, 79);
     if (valid) {
@@ -529,7 +534,7 @@ String PlugAccess::getParamValueLong(int bank, int page,
       }
     }
 
-    char valueString[80];
+    char valueString[80] = {};
     bool valid = TrackFX_FormatParamValue(m_pPlugTrack, m_iSlot, id, val,
                                           valueString, 79);
     if (valid) {
@@ -564,7 +569,8 @@ int PlugAccess::convertR2MCU(int id, double value) {
 // ---- per-unit setters ----
 
 void PlugAccess::setSelectedBank(int bank, int unit) {
-  ASSERT(unit >= 0 && unit < MAX_SURFACE_UNITS);
+  if (unit < 0 || unit >= MAX_SURFACE_UNITS || bank < 0 || bank >= 8)
+    return;
   m_selectedBankPerUnit[unit] = bank;
   // Always update LEDs/faders — affects all units (N>1)
   m_pMode->updateSoloLEDs();
@@ -575,7 +581,9 @@ void PlugAccess::setSelectedBank(int bank, int unit) {
 }
 
 void PlugAccess::setSelectedPage(int bank, int page, int unit) {
-  ASSERT(unit >= 0 && unit < MAX_SURFACE_UNITS);
+  if (unit < 0 || unit >= MAX_SURFACE_UNITS || bank < 0 || bank >= 8 ||
+      page < 0 || page >= 8)
+    return;
   m_selectedPagePerUnit[unit][bank] = page;
   // Selecting a page makes the unit non-empty.
   m_unitEmpty[unit] = false;
@@ -587,6 +595,8 @@ void PlugAccess::setSelectedPage(int bank, int page, int unit) {
 }
 
 void PlugAccess::setSelectedPageInSelectedBank(int page, int unit) {
+  if (unit < 0 || unit >= MAX_SURFACE_UNITS)
+    return;
   setSelectedPage(m_selectedBankPerUnit[unit], page, unit);
 }
 
@@ -600,11 +610,16 @@ void PlugAccess::trackRemoved(MediaTrack *pMT) {
 
 // resolveBankReference uses the active unit's bank
 int PlugAccess::resolveBankReference() {
-  int activeBank = m_selectedBankPerUnit[m_pMode->getActiveUnit()];
+  int activeUnit = m_pMode->getActiveUnit();
+  if (activeUnit < 0 || activeUnit >= MAX_SURFACE_UNITS)
+    return 0;
+  int activeBank = m_selectedBankPerUnit[activeUnit];
   return resolveBankReference(activeBank);
 }
 
 int PlugAccess::resolveBankReference(int bank) {
+  if (bank < 0 || bank >= 8)
+    return 0;
   return getMap()->getBank(bank)->doesRefer()
              ? getMap()->getBank(bank)->referTo()
              : bank;
@@ -814,8 +829,8 @@ void PlugAccess::readSlotStatesFromProjectConfig(XmlElement *pNode) {
           if (pUnit->getTagName() == PLUGACCESS_NODE_UNIT) {
             int u = pUnit->getIntAttribute(PLUGACCESS_ATT_UNIT_INDEX);
             if (u >= 0 && u < MAX_SURFACE_UNITS) {
-              banksPerUnit[u] =
-                  pUnit->getIntAttribute(PLUGACCESS_ATT_UNIT_BANK);
+              int bank = pUnit->getIntAttribute(PLUGACCESS_ATT_UNIT_BANK);
+              banksPerUnit[u] = bank >= 0 && bank < 8 ? bank : 0;
               // v1 states have no empty attribute; the flag defaults to
               // false (unit shows its stored page). Duplicate pages in
               // legacy states are normalized by enforceUniquePages on
@@ -824,10 +839,12 @@ void PlugAccess::readSlotStatesFromProjectConfig(XmlElement *pNode) {
                   pUnit->getBoolAttribute(PLUGACCESS_ATT_UNIT_EMPTY, false);
               int page = 0;
               forEachXmlChildElement(*pUnit, pPage) {
-                if (page < 8)
+                if (page < 8) {
+                  int pageIndex = pPage->getIntAttribute(
+                      PLUGACCESS_ATT_SLOTSTATE_PAGE_INDEX);
                   pagesPerUnit[u][page++] =
-                      pPage->getIntAttribute(
-                          PLUGACCESS_ATT_SLOTSTATE_PAGE_INDEX);
+                      pageIndex >= 0 && pageIndex < 8 ? pageIndex : 0;
+                }
               }
               unitCount++;
             }
@@ -835,13 +852,17 @@ void PlugAccess::readSlotStatesFromProjectConfig(XmlElement *pNode) {
         }
       } else {
         // Legacy format: single bank + 8 pages → map to unit 0
-        banksPerUnit[0] =
-            pChild->getIntAttribute(PLUGACCESS_ATT_SLOTSTATE_BANK);
+        int bank = pChild->getIntAttribute(PLUGACCESS_ATT_SLOTSTATE_BANK);
+        banksPerUnit[0] = bank >= 0 && bank < 8 ? bank : 0;
         int page = 0;
         forEachXmlChildElement(*pChild, pPage) {
-          if (pPage->getTagName() == PLUGACCESS_NODE_SLOTSTATE_PAGE && page < 8)
+          if (pPage->getTagName() == PLUGACCESS_NODE_SLOTSTATE_PAGE &&
+              page < 8) {
+            int pageIndex = pPage->getIntAttribute(
+                PLUGACCESS_ATT_SLOTSTATE_PAGE_INDEX);
             pagesPerUnit[0][page++] =
-                pPage->getIntAttribute(PLUGACCESS_ATT_SLOTSTATE_PAGE_INDEX);
+                pageIndex >= 0 && pageIndex < 8 ? pageIndex : 0;
+          }
         }
         // Units 1..N−1: defaults from default page-spread logic
         // (handled by accessPlugin when restoredFromStored is false for those)
@@ -884,6 +905,11 @@ void PlugAccess::readSelectedPlugFromProjectConfig(
       MediaTrack *pMediaTrack = CSurf_MCU::TrackFromGUID(guid);
       int iSlot = pChild->getIntAttribute(PLUGACCESS_ATT_SELECTED_PLUG_SLOT);
 
+      if (!pMediaTrack || iSlot < 0 || iSlot >= TrackFX_GetCount(pMediaTrack)) {
+        accessPlugin(NULL, -1, false, changeTriggeredFromProjectChange);
+        return;
+      }
+
       accessPlugin(pMediaTrack, iSlot, false, changeTriggeredFromProjectChange);
       return;
     }
@@ -900,23 +926,24 @@ void PlugAccess::watchedNameParameterChanged(MediaTrack *pMediaTrack, int iSlot,
 }
 
 void PlugAccess::checkFloatWindows() {
-  FloatingWindowInfo *pFWI = NULL;
+  std::unique_ptr<FloatingWindowInfo> pFWI;
 
   if (isOptionSetTo(PMO_MCU_FOLLOW, PMOA_SAME_TRACK) &&
       m_pMode->isFollowTrack()) {
-    pFWI = checkAppearingFloats(m_pPlugTrack);
+    pFWI.reset(checkAppearingFloats(m_pPlugTrack));
   }
 
   if (isOptionSetTo(PMO_MCU_FOLLOW, PMOA_ALWAYS)) {
     for (TrackIterator ti; !ti.end(); ++ti) {
-      FloatingWindowInfo *pTrackFWI = checkAppearingFloats(*ti);
+      std::unique_ptr<FloatingWindowInfo> pTrackFWI(
+          checkAppearingFloats(*ti));
       if (pTrackFWI) {
-        pFWI = pTrackFWI;
+        pFWI = std::move(pTrackFWI);
       }
     }
     // trigger update when user opens floating plugin on master track
     if (!pFWI)
-      pFWI = checkAppearingFloats(GetMasterTrack(NULL));
+      pFWI.reset(checkAppearingFloats(GetMasterTrack(NULL)));
   }
 
   if (isOptionSetTo(PMO_LIMIT_FLOATING, PMOA_ONLY_CHAIN)) {
@@ -925,17 +952,21 @@ void PlugAccess::checkFloatWindows() {
       TrackFX_Show(pFWI->pMediaTrack, pFWI->iSlot, 1); // open chain
       tWindowStates::iterator iterWS = m_knownWndStates.find(
           boost::tuple<MediaTrack *, int>(pFWI->pMediaTrack, pFWI->iSlot));
-      (*iterWS).second = NULL;
+      if (iterWS != m_knownWndStates.end())
+        (*iterWS).second = NULL;
     } else if (!isOptionSetTo(PMO_MCU_FOLLOW, PMOA_ALWAYS)) {
       // we havn't searched for every track
       for (TrackIterator ti; !ti.end(); ++ti) {
-        FloatingWindowInfo *pFWI = checkAppearingFloats(*ti, false);
-        if (pFWI) {
-          TrackFX_Show(pFWI->pMediaTrack, pFWI->iSlot, 2); // close float
-          TrackFX_Show(pFWI->pMediaTrack, pFWI->iSlot, 1); // open chain
+        std::unique_ptr<FloatingWindowInfo> trackFWI(
+            checkAppearingFloats(*ti, false));
+        if (trackFWI) {
+          TrackFX_Show(trackFWI->pMediaTrack, trackFWI->iSlot, 2); // close float
+          TrackFX_Show(trackFWI->pMediaTrack, trackFWI->iSlot, 1); // open chain
           tWindowStates::iterator iterWS = m_knownWndStates.find(
-              boost::tuple<MediaTrack *, int>(pFWI->pMediaTrack, pFWI->iSlot));
-          (*iterWS).second = NULL;
+              boost::tuple<MediaTrack *, int>(trackFWI->pMediaTrack,
+                                               trackFWI->iSlot));
+          if (iterWS != m_knownWndStates.end())
+            (*iterWS).second = NULL;
         }
       }
     }

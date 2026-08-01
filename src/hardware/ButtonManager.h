@@ -32,7 +32,9 @@ public:
   // Used to isolate per-unit double-click and long-press state.
   bool dispatchMidiEvent(MIDI_event_t *evt, int unitIndex = 0);
 
-  bool isButtonPressed(int i) { return m_button_pressed[i]; }
+  bool isButtonPressed(int i) {
+    return i >= 0 && i < NUM_BUTTONS && m_button_pressed[i];
+  }
   int isLastButton(int button) { return button == m_button_last; }
 
   void frame(DWORD time);

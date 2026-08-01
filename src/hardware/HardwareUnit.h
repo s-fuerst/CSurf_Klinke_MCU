@@ -99,8 +99,13 @@ public:
   // --- outgoing, LOCAL indices (CSurf_MCU translates global->local first) ---
   void sendStripFader(int local, int value); // 0xE0 + local  (local 0..7)
   void setMasterFader(int value);            // 0xE8
-  int getFaderPos(int local) const { return m_faderPos[local]; }
-  void setFaderPos(int local, int value) { m_faderPos[local] = value; }
+  int getFaderPos(int local) const {
+    return local >= 0 && local < 9 ? m_faderPos[local] : 0;
+  }
+  void setFaderPos(int local, int value) {
+    if (local >= 0 && local < 9)
+      m_faderPos[local] = value;
+  }
   // raw send (used by everything that today called m_midiout->Send / SendMsg)
   void sendMidi(unsigned char status, unsigned char d1, unsigned char d2,
                 int frame_offset);

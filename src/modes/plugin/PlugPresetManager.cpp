@@ -21,6 +21,8 @@ PlugPresetManager::~PlugPresetManager(void) {
 void PlugPresetManager::storePreset(MediaTrack *pTrack, int slot, int presetNr,
                                     PlugAccess *pAccess) {
   String fxGUID = GUID2String(TrackFX_GetFXGUID(pTrack, slot));
+  if (fxGUID.isEmpty())
+    return;
 
   deletePreset(fxGUID, presetNr);
 
@@ -57,6 +59,8 @@ void PlugPresetManager::storePreset(MediaTrack *pTrack, int slot, int presetNr,
 bool PlugPresetManager::presetMatchState(MediaTrack *pTrack, int slot,
                                          int presetNr) {
   String fxGUID = GUID2String(TrackFX_GetFXGUID(pTrack, slot));
+  if (fxGUID.isEmpty())
+    return false;
 
   if (!hasPreset(fxGUID, presetNr))
     return false;
@@ -105,6 +109,8 @@ bool PlugPresetManager::hasPreset(String &fxGUID, int presetNr) {
 bool PlugPresetManager::recallPreset(MediaTrack *pTrack, int slot,
                                      int presetNr) {
   String fxGUID = GUID2String(TrackFX_GetFXGUID(pTrack, slot));
+  if (fxGUID.isEmpty())
+    return false;
   BOOST_FOREACH (tPresetWithPos preset, m_presetStorage) {
     if (preset.get<0>() == fxGUID && preset.get<1>() == presetNr) {
       tPreset p = preset.get<2>();
@@ -228,16 +234,22 @@ void PlugPresetManager::readPresetsFromProjectConfig(XmlElement *pNode) {
           String dataString =
               pData->getStringAttribute(PLUGPRESETMANAGER_ATT_PRESETDATA);
           MemoryBlock presetData;
-          presetData.fromBase64Encoding(dataString);
+          if (!presetData.fromBase64Encoding(dataString))
+            continue;
+          const size_t recordSize = sizeof(int) + sizeof(double);
+          if (presetData.getSize() == 0 ||
+              presetData.getSize() % recordSize != 0)
+            continue;
           MemoryInputStream in(presetData.getData(), presetData.getSize(),
                                false);
-          do {
-            int id;
-            double val;
-            in.read(&id, sizeof(int));
-            in.read(&val, sizeof(double));
+          while (in.getPosition() + recordSize <= presetData.getSize()) {
+            int id = 0;
+            double val = 0.0;
+            if (in.read(&id, sizeof(int)) != sizeof(int) ||
+                in.read(&val, sizeof(double)) != sizeof(double))
+              break;
             preset.push_back(tPlugValue(id, val));
-          } while (!in.isExhausted());
+          }
         }
       }
       m_presetStorage.push_back(tPresetWithPos(fxGUID, nr, preset));
@@ -253,15 +265,15 @@ void PlugPresetManager::deletePresetsWherePluginsAreRemoved() {
   for (TrackIterator ti; !ti.end(); ++ti) {
     int iNumFX = TrackFX_GetCount(*ti);
     for (int iFX = 0; iFX < iNumFX; iFX++) {
-      allFXGUIDs.push_back(GUID2String(TrackFX_GetFXGUID(*ti, iFX)));
+      String fxGUID = GUID2String(TrackFX_GetFXGUID(*ti, iFX));
+      if (fxGUID.isNotEmpty())
+        allFXGUIDs.push_back(fxGUID);
     }
   }
 
   // ... they search the presets that must be remove ...
   std::list<tPresetWithPos> presetToDelete;
   BOOST_FOREACH (tPresetWithPos &presetWP, m_presetStorage) {
-    XmlElement *pMapNode = new XmlElement(PLUGPRESETMANAGER_NODE_PRESET);
-
     if (std::find(allFXGUIDs.begin(), allFXGUIDs.end(), presetWP.get<0>()) ==
         allFXGUIDs.end()) {
       presetToDelete.push_back(presetWP);

@@ -182,7 +182,7 @@ void PlugModeParamComponent::updateParameterList() {
     return;
   int numParams = pPA->getNumParams();
   for (int i = 0; i < numParams; i++) {
-    char paramName[80];
+    char paramName[80] = {};
     bool valid = TrackFX_GetParamName(pPA->getPlugTrack(), pPA->getPlugSlot(),
                                       i, paramName, 79);
     if (valid && (strnlen(paramName, 80) > 0)) {
@@ -211,7 +211,7 @@ void PlugModeParamComponent::changeParamId(int paramId) {
     } else {
       PlugAccess *pPA = m_pMainComponent->getPlugAccess();
       if (pPA) {
-        char paramName[80];
+        char paramName[80] = {};
         bool valid =
             TrackFX_GetParamName(pPA->getPlugTrack(), pPA->getPlugSlot(),
                                  m_pParam->getParamID(), paramName, 79);

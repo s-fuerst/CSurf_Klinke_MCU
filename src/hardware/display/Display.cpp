@@ -35,7 +35,10 @@ Display::~Display() {
 
 void Display::changeText(int row, int pos, const char *text, int pad,
                          bool centered) {
-  ASSERT(row < m_numRows);
+  if (row < 0 || row >= m_numRows || !text || pos < 0 || pad < 0 ||
+      pos >= getRowLength(row))
+    return;
+  pad = std::min(pad, getRowLength(row) - pos);
 
   char *pCenteredText = new char[pad + 1];
   int textlen = std::min(pad, (int)strnlen(text, std::min(pad, getRowLength(row))));
@@ -64,6 +67,8 @@ void Display::changeText(int row, int pos, const char *text, int pad,
 void Display::activate() { resendAllRows(); }
 
 void Display::resendRow(int iRow) {
+  if (!m_pDisplayHandler || iRow < 0 || iRow >= m_numRows)
+    return;
   m_pDisplayHandler->sendDifferences(this, iRow, m_ppText[iRow]);
 }
 
@@ -83,6 +88,8 @@ void Display::changeTextFullLine(int row, const char *text, bool centered) {
 
 void Display::changeTextAutoPad(int row, int pos, const char *text,
                                 bool centered) {
+  if (!text || row < 0 || row >= m_numRows)
+    return;
   changeText(row, pos, text,
              static_cast<int>(strnlen(text, getRowLength(row))), centered);
 }
@@ -90,11 +97,15 @@ void Display::changeTextAutoPad(int row, int pos, const char *text,
 void Display::clearLine(int row) { changeTextFullLine(row, ""); }
 
 void Display::changeField(int row, int field, const char *text, bool centered) {
+  if (row < 0 || row >= m_numRows || !text)
+    return;
   if (row < 2) {
-    ASSERT(field > 0 && field < 9);
+    if (field <= 0 || field >= 9)
+      return;
     changeText(row, (field - 1) * 7, text, 6);
   } else {
-    ASSERT(field > 0 && field < 10);
+    if (field <= 0 || field >= 10)
+      return;
     changeText(row,
 	       (field - 1) * 6 + ((field > 4) ? 1 : 0),
 	       text,
@@ -103,6 +114,9 @@ void Display::changeField(int row, int field, const char *text, bool centered) {
 }
 
 void Display::forwardRowTo(int sourceRow, Display *pDisplay, int targetRow) {
+  if (sourceRow < 0 || sourceRow >= m_numRows || !pDisplay || targetRow < 0 ||
+      targetRow >= pDisplay->m_numRows)
+    return;
   m_ppForwardToDisplay[sourceRow] = pDisplay;
   m_pForwardToRow[sourceRow] = targetRow;
   m_ppForwardToDisplay[sourceRow]->changeTextFullLine(
@@ -110,6 +124,9 @@ void Display::forwardRowTo(int sourceRow, Display *pDisplay, int targetRow) {
 }
 
 void Display::writeToBuffer(int row, int pos, const char *text, int pad) {
+  if (row < 0 || row >= m_numRows || !text || pos < 0 || pad < 0 ||
+      pos >= getRowLength(row))
+    return;
   if (pad + pos > getRowLength(row))
     pad = getRowLength(row) - pos;
 
