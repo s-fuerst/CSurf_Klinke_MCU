@@ -68,6 +68,10 @@ void HardwareUnit::startInput() {
 }
 
 void HardwareUnit::sendStripFader(int local, int value) {
+#ifdef KLINKE
+  if (!m_unitEnabled)
+    return;
+#endif
   if (m_midiout && m_faderPos[local] != value) {
     m_faderPos[local] = value;
     m_midiout->Send(0xe0 + local, value & 0x7f, (value >> 7) & 0x7f, -1);
@@ -75,6 +79,10 @@ void HardwareUnit::sendStripFader(int local, int value) {
 }
 
 void HardwareUnit::setMasterFader(int value) {
+#ifdef KLINKE
+  if (!m_unitEnabled)
+    return;
+#endif
   // The master fader is a physical control only on main units.
   // Extenders have no master fader, so never send 0xE8 to them.
   if (!isMain())
@@ -88,16 +96,30 @@ void HardwareUnit::setMasterFader(int value) {
 
 void HardwareUnit::sendMidi(unsigned char status, unsigned char d1,
                             unsigned char d2, int frame_offset) {
+#ifdef KLINKE
+  if (!m_unitEnabled)
+    return;
+#endif
   if (m_midiout)
     m_midiout->Send(status, d1, d2, frame_offset);
 }
 
 void HardwareUnit::sendMsg(MIDI_event_t *msg, int frame_offset) {
+#ifdef KLINKE
+  if (!m_unitEnabled)
+    return;
+#endif
   if (m_midiout)
     m_midiout->SendMsg(msg, frame_offset);
 }
 
 void HardwareUnit::setLED(int button_nr, int led_state) {
+#ifdef KLINKE
+  // Note: gate BEFORE the dedup cache update so a stale cache triggers a
+  // full resend after the unit is re-enabled.
+  if (!m_unitEnabled)
+    return;
+#endif
   // ProX quirk: LED_BLINK_BYPASSED is not supported on some hardware.
   if (!isProX() && led_state == LED_BLINK_BYPASSED)
     led_state = LED_ON;

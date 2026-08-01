@@ -1241,8 +1241,21 @@ void CSurf_MCU::Run() {
       int l = 0;
       MIDI_eventlist *list = in->GetReadBuf();
       MIDI_event_t *evts;
-      while ((evts = list->EnumItems(&l)))
+      while ((evts = list->EnumItems(&l))) {
+#ifdef KLINKE
+        if (!m_surfaceEnabled) {
+          // inactive = units 2+ disabled: unit 1 is processed normally; the
+          // Platform M+ (unit 3) is only scanned for the hand-off combo.
+          const bool comboNote =
+              (int)ui == KLINKE_COMBO_UNIT_INDEX &&
+              (evts->midi_message[0] & 0xf0) == 0x90 &&
+              evts->midi_message[1] >= 0x2e && evts->midi_message[1] <= 0x31;
+          if ((int)ui != 0 && !comboNote)
+            continue;
+        }
+#endif
         OnMIDIEvent(evts);
+      }
     }
 
     if (m_button_states || m_mackie_arrow_states) {
@@ -1288,6 +1301,47 @@ void CSurf_MCU::Run() {
   for (int i = 0; i < 30 && juce::detail::dispatchNextMessageOnSystemQueue(true); ++i) {}
 #endif
 }
+
+#ifdef KLINKE
+void CSurf_MCU::setSurfaceEnabled(bool enabled) {
+  if (m_surfaceEnabled == enabled)
+    return;
+  m_surfaceEnabled = enabled;
+
+  // Behave exactly as if units 2+ (the iCON controllers) were disabled:
+  //   - unit 1 stays fully active (input + output)
+  //   - units 2+ are muted (no input, no output); only the Platform M+
+  //     (unit 3, KLINKE_COMBO_UNIT_INDEX) is monitored for the hand-off combo
+  //   - the channel count shrinks to unit 1's strips: numUnits()/availableChannels()
+  //     drop accordingly and Tracks::adjust() clamps the global offset and
+  //     rebuilds the track->strip mapping (this also limits the bank up/down
+  //     navigation on unit 1 to the reduced channel count)
+  for (size_t ui = 0; ui < m_units.size(); ui++)
+    m_units[ui]->setUnitEnabled(enabled || (int)ui == 0);
+
+  if (enabled) {
+    // The re-activated units were driven by Schaltmix in between. Clear ALL
+    // visual elements so nothing stays on the hardware: every button LED off
+    // (also resets the LED cache), LCD rows blanked, fader cache invalidated
+    // (so the pushed volumes/pan are re-sent). The per-frame refresh then
+    // repopulates displays/LEDs — sendDifferences always re-sends the whole
+    // row, so no Schaltmix characters can remain.
+    for (size_t ui = 1; ui < m_units.size(); ui++) {
+      m_units[ui]->forceAllLEDsOff();
+      m_units[ui]->invalidateFaderCache();
+      if (m_units[ui]->displayHandler()) {
+        char spaces[56];
+        memset(spaces, ' ', sizeof(spaces));
+        m_units[ui]->displayHandler()->sendToHardware(0, 0, spaces, 55);
+        m_units[ui]->displayHandler()->sendToHardware(1, 0, spaces, 55);
+      }
+    }
+  }
+
+  Tracks::instance()->adjust(availableChannels());
+  CSurf_ResetAllCachedVolPanStates();
+}
+#endif
 
 void CSurf_MCU::SendMidi(unsigned char status, unsigned char d1,
                          unsigned char d2, int frame_offset) {

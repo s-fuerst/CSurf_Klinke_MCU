@@ -1,0 +1,53 @@
+* [0/9] v0.9.5 Release
+** TODO Track-Mode: show value on fader touch with Emulate Level Meter active
+   The displays should show the current value (Volume or Pan depending on
+   flip mode) on fader touch, even when "Emulate Level Meter" is enabled
+   (in the lower row where the level meters are).
+** TODO VPOT motion: briefly show Pan/Volume value
+   Moving a VPOT should briefly display Pan (or Volume) for about 1 second.
+** TODO PlugMode: select buttons per unit should map to plugin ranges 1-8, 9-16, ...
+   The Select buttons on the different units currently always show the same
+   8 plugins. Unit 2 should show plugins 9-16, unit 3 17-24, and so on.
+   With Shift held, the step should be 8 * number of units instead of 8.
+** TODO PlugMode: disabled-plugin Select blink only works on unit 1
+   When a plugin is disabled, its Select button should blink very slowly
+   (brief off intervals, longer on). This works on unit 1 but not on unit 2.
+   Possibly related to "Emulate blinking LED", which must be enabled for
+   unit 2 and unit 3.
+** TODO Optimize DisplayHandler::sendDifferences()
+   Re-introduce diffing against m_pHardwareState (currently maintained in
+   sendToHardware() but never read): only send the changed runs, each still
+   chunked (CHUNK=4) to stay under the JACK/MIDI SysEx fragmentation
+   threshold. Today the whole row is always re-sent (14 SysEx per 55-char
+   row per update); a fader value change (a few chars) should cost a few
+   chars, not the whole row.
+   Context: the diff-based rework by Rothchild caused garbled/stale
+   displays on the QConPro X and was reverted (commit 35bf711); the
+   current whole-row chunked strategy is documented in
+   ai-docs/Linux-Port-Changes.md section 4.2. The original diff algorithm
+   lives on the master branch in DisplayHandler.cpp::sendDifferences().
+   Careful with: switchRows() row-swapping (diff must compare logical
+   rows while sendToHardware stores hardware rows), the 0x01 invalid-text
+   init, and the memset in switchTo().
+** TODO Installation via ReaPack
+** TODO Improved Documentation #5
+** TODO Pan-Mode VPot press should reset panorama to center.
+** TODO Leak-Detection
+Run a leak detection pass (valgrind / AddressSanitizer)
+before the first release to identify and fix any memory leaks. Bitbucket
+issue #27 reported a leak detector warning on Reaper close; the
+CCSModesEditor destructor crash (#50) may also be leak-related.
+* [0/1] v0.9.5.5 Release
+** TODO #1 Monitor and RecArm can only be changed for armed tracks :bug:
+* [0/2] v0.9.7 (ChannelStrip)
+** TODO ChannelStripMode                                           :feature:
+** TODO Support for Move Plugins :feature:
+* [0/1] v0.9.9 PerformanceMode
+** TODO PerformanceMode
+* [0/3] v1.0.0 Release
+** TODO #3 Try to improve record mode
+** TODO Jump to touched 
+** TODO VCV Rack zeigt sehr merkwuerdige Parameternamen an
+* [0/2] v1.1.0 Release
+** TODO #4 Secondary shift function for VPOTs in Plug-Mode :proposal:
+** TODO #2 VCA muting and solo ignored :bug:

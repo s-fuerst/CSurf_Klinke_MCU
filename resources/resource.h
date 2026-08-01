@@ -40,6 +40,9 @@
 #define IDC_METERS_ON_DISPLAY           1208
 #define IDC_SWITCH_ROWS                 1209
 
+// version label (shows the loaded build, incl. the KLINKE marker)
+#define IDC_VERSION_LABEL               1210
+
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED

@@ -90,23 +90,23 @@ void Display::changeTextAutoPad(int row, int pos, const char *text,
 void Display::clearLine(int row) { changeTextFullLine(row, ""); }
 
 void Display::changeField(int row, int field, const char *text, bool centered) {
-	if (row < 2) {
-		ASSERT(field > 0 && field < 9);
-		changeText(row, (field - 1) * 7, text, 6);
-	} else {
-		ASSERT(field > 0 && field < 10);
-		changeText(row,
-							 (field - 1) * 6 + ((field > 4) ? 1 : 0),
-							 text,
-							 5 + ((field > 8) ? 2 : 0));
-	}
+  if (row < 2) {
+    ASSERT(field > 0 && field < 9);
+    changeText(row, (field - 1) * 7, text, 6);
+  } else {
+    ASSERT(field > 0 && field < 10);
+    changeText(row,
+	       (field - 1) * 6 + ((field > 4) ? 1 : 0),
+	       text,
+	       5 + ((field > 8) ? 2 : 0));
+  }
 }
 
 void Display::forwardRowTo(int sourceRow, Display *pDisplay, int targetRow) {
   m_ppForwardToDisplay[sourceRow] = pDisplay;
   m_pForwardToRow[sourceRow] = targetRow;
   m_ppForwardToDisplay[sourceRow]->changeTextFullLine(
-      m_pForwardToRow[sourceRow], m_ppText[sourceRow]);
+						      m_pForwardToRow[sourceRow], m_ppText[sourceRow]);
 }
 
 void Display::writeToBuffer(int row, int pos, const char *text, int pad) {
@@ -141,13 +141,13 @@ void Display::showDB(int row, int id, double volume) {
 
 void Display::showPan(int row, int id, double pan) {
   char text[7];
-	int i = (int) (pan * 100);
-	char side = i < 0 ? 'L' : 'R';
+  int i = (int) (pan * 100);
+  char side = i < 0 ? 'L' : 'R';
   if (id > 0) {
-		if (i != 0)
-			sprintf(text, "%3d%%%c", abs(i), side);
-		else
-			sprintf(text, "center");
+    if (i != 0)
+      sprintf(text, "%3d%%%c", abs(i), side);
+    else
+      sprintf(text, "center");
     changeField(row, id, text);
   }
 }

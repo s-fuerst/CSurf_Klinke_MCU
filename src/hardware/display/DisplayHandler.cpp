@@ -85,11 +85,11 @@ void DisplayHandler::sendToHardware(int row, int pos, char const *text,
   if (!m_pActualDisplay)
     return;
 
-	if (hardwareRow > 1 && !m_isProX)
-		return;
+  if (hardwareRow > 1 && !m_isProX)
+    return;
 
-	pos += m_pActualDisplay->getRowLength(hardwareRow) * (hardwareRow % 2) +
-           (hardwareRow == 1); // + row because there is one unused byte at the end of each row
+  pos += m_pActualDisplay->getRowLength(hardwareRow) * (hardwareRow % 2) +
+    (hardwareRow == 1); // + row because there is one unused byte at the end of each row
 
   MIDI_Message mm;
   addHeader(&mm, hardwareRow);
@@ -100,7 +100,7 @@ void DisplayHandler::sendToHardware(int row, int pos, char const *text,
   //  mm.evt.size=0;
 
 
-	mm.evt.midi_message[mm.evt.size++] = (hardwareRow > 1) ? 0x13 : 0x12; // 0x12
+  mm.evt.midi_message[mm.evt.size++] = (hardwareRow > 1) ? 0x13 : 0x12; // 0x12
   mm.evt.midi_message[mm.evt.size++] = pos;
 
   int cnt = 0;
@@ -116,10 +116,10 @@ void DisplayHandler::switchTo(Display *pDisplay) {
   if (m_pActualDisplay == pDisplay)
     return;
 
-	m_pActualDisplay = pDisplay;
-	pDisplay->activate();
+  m_pActualDisplay = pDisplay;
+  pDisplay->activate();
 
-	memset(m_pHardwareState->getText()[1], 1, pDisplay->getRowLength(0));
+  memset(m_pHardwareState->getText()[1], 1, pDisplay->getRowLength(0));
 }
 
 void DisplayHandler::enableMCUMeter(int channel, bool enable) // channel is 1 based
@@ -142,7 +142,7 @@ void DisplayHandler::enableMCUMeter(int channel, bool enable) // channel is 1 ba
 
   mm.evt.midi_message[mm.evt.size++] = 0x20;
   mm.evt.midi_message[mm.evt.size++] = 0x00 + channel - 1;
-	//  mm.evt.midi_message[mm.evt.size++] = enable ? 0x07 : 0x01;
+  //  mm.evt.midi_message[mm.evt.size++] = enable ? 0x07 : 0x01;
   mm.evt.midi_message[mm.evt.size++] = enable ? 0x03 : 0x01;
   mm.evt.midi_message[mm.evt.size++] = 0xF7;
   MCU_LOG("METER ch=%d enable=%d -> 0x20 sent", channel, (int)enable);
@@ -175,17 +175,17 @@ void DisplayHandler::addHeader(MIDI_Message *pmm, int row) {
   pmm->evt.midi_message[pmm->evt.size++] = 0x00;
   switch (m_mcuType) {
   case MCU_EX:
-		pmm->evt.midi_message[pmm->evt.size++] = 0x66; //0x66
+    pmm->evt.midi_message[pmm->evt.size++] = 0x66; //0x66
     pmm->evt.midi_message[pmm->evt.size++] = 0x15;
     break;
-	case MCU:
-		if (row <= 1) {
-			pmm->evt.midi_message[pmm->evt.size++] = 0x66; //0x66
-			pmm->evt.midi_message[pmm->evt.size++] = 0x14; // 0x14
-		} else {
-			pmm->evt.midi_message[pmm->evt.size++] = 0x67; //0x66
-			pmm->evt.midi_message[pmm->evt.size++] = 0x15; // 0x14
-		}
+  case MCU:
+    if (row <= 1) {
+      pmm->evt.midi_message[pmm->evt.size++] = 0x66; //0x66
+      pmm->evt.midi_message[pmm->evt.size++] = 0x14; // 0x14
+    } else {
+      pmm->evt.midi_message[pmm->evt.size++] = 0x67; //0x66
+      pmm->evt.midi_message[pmm->evt.size++] = 0x15; // 0x14
+    }
     break;
   case PROX:
     break;

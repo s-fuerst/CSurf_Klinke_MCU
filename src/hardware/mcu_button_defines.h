@@ -111,6 +111,11 @@
 #define B_BANK_UP                                               0x2F 
 #define B_CHANNEL_DOWN                  0x30 
 #define B_CHANNEL_UP                            0x31 
+
+// 0-based unit index of the iCON Platform M+ — the only unit that has the
+// bank/channel buttons used for the KLINKE hand-off combo (see ButtonManager
+// and CSurf_MCU::setSurfaceEnabled).
+#define KLINKE_COMBO_UNIT_INDEX 2 
 #define B_FLIP                                                  0x32 
 #define B_GLOBAL_VIEW                           0x33 
 #define B_NAME_VALUE                            0x34 

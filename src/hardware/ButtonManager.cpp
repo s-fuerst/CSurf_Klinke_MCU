@@ -28,6 +28,11 @@ void ButtonManager::ensureUnitState() {
 }
 
 void ButtonManager::reset() {
+#ifdef KLINKE
+  m_comboChUpHeld = false;
+  m_comboBankHeld = false;
+  m_comboSession = false;
+#endif
   memset(&m_button_pressed, 0, 128);
   memset(&m_button_pressed_time, 0, 128 * sizeof(DWORD));
   for (int u = 0; u < (int)m_perUnitState.size(); u++) {
@@ -143,6 +148,39 @@ bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt, int unitIndex) {
   // Shared fallback for isButtonPressed() backward compat
   m_button_pressed[evt_code] = pressed;
   m_button_pressed_time[evt_code] = pressed ? now : 0;
+
+#ifdef KLINKE
+  // Hand-off combo (only the Platform M+ = KLINKE_COMBO_UNIT_INDEX has the
+  // bank/channel buttons): hold Channel up (0x31), press Bank down (0x2e) to
+  // hand control TO this extension, Bank up (0x2f) to hand it to Schaltmix.
+  if (unitIndex == KLINKE_COMBO_UNIT_INDEX) {
+    if (evt_code == 0x31) {
+      m_comboChUpHeld = pressed;
+      if (!pressed && !m_comboBankHeld)
+        m_comboSession = false;
+    } else if (evt_code == 0x2e || evt_code == 0x2f) {
+      const bool chUp = m_comboChUpHeld || m_comboSession ||
+                        (st.pressed_time[0x31] > 0 &&
+                         now - st.pressed_time[0x31] < 300);
+      if (chUp) {
+        if (pressed) {
+          m_comboSession = true;
+          m_comboBankHeld = true;
+          m_pMCU->setSurfaceEnabled(evt_code == 0x2e); // Bank down -> enabled
+        } else {
+          m_comboBankHeld = false;
+          if (!m_comboChUpHeld)
+            m_comboSession = false;
+        }
+        return true; // swallow: no banking while doing the combo
+      }
+    }
+  }
+  // inactive: Run() only forwards the combo notes from the M+; consume them
+  // here when they are not a valid combo (unit 1 is processed normally)
+  if (unitIndex == KLINKE_COMBO_UNIT_INDEX && !m_pMCU->isSurfaceEnabled())
+    return true;
+#endif
 
   // For these events we only want to track button press
   if (pressed) {
