@@ -67,7 +67,6 @@ static int currentUnitIndex(HWND hwndDlg) {
 // Per-unit checkbox ids and their UNIT_FLAG_* bits.
 struct UnitFlagCheck { int ctrlId; int flag; };
 static const UnitFlagCheck s_unitFlagChecks[] = {
-  { IDC_EMULATE_BLINKING,  UNIT_FLAG_EMULATE_BLINKING },
   { IDC_METERS_ON_DISPLAY, UNIT_FLAG_METERS_ON_DISPLAY },
   { IDC_SWITCH_ROWS,       UNIT_FLAG_SWITCH_ROWS },
 };
@@ -187,7 +186,6 @@ static const LayoutControl s_layoutControls[] = {
   { IDC_MIDI_OUTPUT_LABEL, LAYOUT_FIXED },
   { IDC_COMBO3,            LAYOUT_STRETCH_RIGHT },
   { IDC_UNIT_GROUP,        LAYOUT_STRETCH_RIGHT },
-  { IDC_EMULATE_BLINKING,  LAYOUT_FIXED },
   { IDC_METERS_ON_DISPLAY, LAYOUT_FIXED },
   { IDC_SWITCH_ROWS,       LAYOUT_FIXED },
   { IDC_GLOBAL_GROUP,      LAYOUT_STRETCH_RIGHT },
@@ -313,7 +311,7 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
     HWND proxChk = GetDlgItem(hwndDlg, IDC_PROX);
     if (proxChk) ShowWindow(proxChk, SW_HIDE);
 
-    // fake touch / blink emulation / display meters are per-unit and were
+    // display meters / switch rows are per-unit and were
     // already applied by loadUnitIntoDialog() above.
     if (cfg->flags & CONFIG_FLAG_SWAPZOOM)
       CheckDlgButton(hwndDlg, IDC_CHECK2, BST_CHECKED);

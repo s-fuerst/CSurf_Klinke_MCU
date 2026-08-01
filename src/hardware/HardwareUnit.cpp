@@ -132,9 +132,9 @@ void HardwareUnit::setLED(int button_nr, int led_state) {
 }
 
 void HardwareUnit::emulateBlinkingLEDs(DWORD now) {
-  // per-unit option: ProX always needs it, Mackie only when enabled.
-  if (!needsBlinkEmulation())
-    return;
+  // Always-on software blink emulation (the per-unit opt-in flag was
+  // removed). All units toggle on the same `now` grid, so every unit's
+  // blinking LEDs stay in sync.
 
   if (m_lastNowMod2 == (now >> 8) % 2)
     return;

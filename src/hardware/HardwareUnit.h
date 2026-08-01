@@ -27,7 +27,8 @@ enum DeviceModel { Mackie, QConProX };
 // Per-unit option bits (persisted in the KLINKE2 config string as the 4th
 // field of every unit entry).
 // Bit 0 (value 1) was UNIT_FLAG_FADER_TOUCH_FAKE — removed; do not reuse.
-#define UNIT_FLAG_EMULATE_BLINKING 2
+// Bit 1 (value 2) was UNIT_FLAG_EMULATE_BLINKING — removed; LED blink is
+// always software-emulated now (see emulateBlinkingLEDs). Do not reuse.
 #define UNIT_FLAG_METERS_ON_DISPLAY 4
 #define UNIT_FLAG_SWITCH_ROWS 8
 
@@ -84,10 +85,8 @@ public:
   void setUnitEnabled(bool enabled) { m_unitEnabled = enabled; }
   bool unitEnabled() const { return m_unitEnabled; }
 #endif
-  // ProX hardware always needs software blink emulation.
-  bool needsBlinkEmulation() const {
-    return isProX() || unitFlagSet(UNIT_FLAG_EMULATE_BLINKING);
-  }
+  // LED blink is always software-emulated: the per-unit
+  // UNIT_FLAG_EMULATE_BLINKING opt-in was removed (see HardwareUnit.h).
 
   midi_Output *midiOutput() { return m_midiout; }
   midi_Input *midiInput() { return m_midiin; }

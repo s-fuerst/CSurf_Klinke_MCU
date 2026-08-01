@@ -1050,8 +1050,7 @@ void CSurf_MCU::Run() {
 
     signalFrame(now);
 
-		if (anyUnitNeedsBlinkEmulation())
-			EmulateBlinkingLEDs(now);
+		EmulateBlinkingLEDs(now);
 
     Tracks::instance()->adjust(availableChannels());
 
@@ -1364,14 +1363,6 @@ void CSurf_MCU::EmulateBlinkingLEDs(DWORD now) {
   for (size_t i = 0; i < m_units.size(); i++)
     m_units[i]->emulateBlinkingLEDs(now);
 }
-
-bool CSurf_MCU::anyUnitNeedsBlinkEmulation() const {
-  for (size_t i = 0; i < m_units.size(); i++)
-    if (m_units[i]->needsBlinkEmulation())
-      return true;
-  return false;
-}
-
 
 void CSurf_MCU::SetTrackListChange() {
   //  ProjectConfig::instance()->checkReaProjectChange();

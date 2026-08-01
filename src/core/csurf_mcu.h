@@ -397,7 +397,6 @@ public:
   void Run();
   void SetLED(int button_nr, int led_state);
   void EmulateBlinkingLEDs(DWORD now);
-  bool anyUnitNeedsBlinkEmulation() const;
 
 
   void UpdateAutoModes();

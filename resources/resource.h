@@ -18,7 +18,6 @@
 #define IDC_TRACKFOLLOW                 1004
 #define IDC_OLDTRACKSELECTION           1005
 #define BTN_DONATE                      1008
-#define IDC_EMULATE_BLINKING            1009
 #define IDC_KEYBOARD_MODIFIER           1010
 #define BTN_OPEN_MANUAL                 1020
 #define IDC_PROX                        1012
@@ -34,7 +33,7 @@
 #define IDC_MIDI_INPUT_LABEL            1204
 #define IDC_MIDI_OUTPUT_LABEL           1205
 
-// per-unit options + grouping (blink emulation moved from global)
+// per-unit options + grouping
 #define IDC_UNIT_GROUP                  1206
 #define IDC_GLOBAL_GROUP                1207
 #define IDC_METERS_ON_DISPLAY           1208

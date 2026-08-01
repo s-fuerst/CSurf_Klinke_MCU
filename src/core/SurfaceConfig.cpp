@@ -187,22 +187,14 @@ static SurfaceConfig parseKlinke2(const std::vector<std::string> &tokens) {
     cfg.units[i] = unitConfigFromType(typeIdx, inDev, outDev, unitFlags);
   }
 
-  // Migration: older configs stored blink-emulation globally.
-  // Move it onto every configured unit, then drop the global bit.
-  // Fake fader touch (bit 1) was removed entirely — it is silently dropped.
-  if (cfg.flags & kLegacyBlinkConfigBit) {
-    int migrated = UNIT_FLAG_EMULATE_BLINKING;
-    for (int i = 0; i < MAX_SURFACE_UNITS; i++)
-      cfg.units[i].unitFlags |= migrated;
-    cfg.flags &= ~kLegacyBlinkConfigBit;
-  }
   // Strip removed UNIT_FLAG_FADER_TOUCH_FAKE (bit 0) from all unitFlags.
   for (int i = 0; i < MAX_SURFACE_UNITS; i++)
     cfg.units[i].unitFlags &= ~1;
 
-  // Earlier KLINKE2 versions persisted the legacy ProX compatibility bit.
-  // It has no meaning now that every unit carries its own device model.
-  cfg.flags &= ~kLegacyProXConfigBit;
+  // Earlier KLINKE2 versions persisted the legacy ProX compatibility bit
+  // and the global blink-emulation bit. Both have no meaning now: every
+  // unit carries its own device model, and LED blink is always emulated.
+  cfg.flags &= ~(kLegacyProXConfigBit | kLegacyBlinkConfigBit);
 
   return cfg;
 }
@@ -224,9 +216,8 @@ static SurfaceConfig parseLegacy(const std::vector<std::string> &tokens) {
   // Populate unit 1 from legacy params
   DeviceModel model = (parms[4] & kLegacyProXConfigBit) ? QConProX : Mackie;
   int unitFlags = 0;
-  // Fake fader touch (bit 1) was removed — silently dropped.
-  if (parms[4] & kLegacyBlinkConfigBit)
-    unitFlags |= UNIT_FLAG_EMULATE_BLINKING;
+  // Fake fader touch (bit 1) and blink emulation (bit 4) are removed
+  // features — silently dropped.
   cfg.units[0] = unitConfigFromType(
       model == QConProX ? UNIT_TYPE_PROX_MAIN : UNIT_TYPE_MACKIE_MAIN,
       parms[2], parms[3], unitFlags);

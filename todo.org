@@ -1,4 +1,4 @@
-* [4/12] v0.9.5 Release
+* [5/13] v0.9.5 Release
 ** DONE Track/Mixer mode (PanMode): show fader value on touch with meters-on-display
    While a fader is touched, keep the value it controls (Volume, or Pan in
    flip mode) visible on row 1, even when "meters on display"
@@ -44,12 +44,20 @@
 The Select buttons on the different units currently always show the same
 8 plugins. Unit 2 should show plugins 9-16, unit 3 17-24, and so on.
 With Shift held, the step should be 8 * number of units instead of 8.
-** TODO Always emulate blinking leds 
+** DONE Always emulate blinking leds 
 unit 2 and unit 3.
 ** TODO PlugMode: disabled-plugin Select blink only works on unit 1
 When a plugin is disabled, its Select button should blink very slowly
 (brief off intervals, longer on). This works on unit 1 but not on unit 2.
 Possibly related to "Emulate blinking LED", which must be enabled for
+** TODO PlugMode: Do not allow that different units show the same page.
+In the case that a plugin have more units then pages, leave the
+additional units empty.  But it must be still possible on this empty
+units to select a different bank/page.  In the case that the user try
+to select a page in this way, that is already shown on another unit,
+move the page to this unit and do not show it on the original unit
+anymore.
+
 ** TODO Pan-Mode VPot press should reset panorama to center.
 ** TODO Improved Documentation #5 (Dreieich)
 ** TODO Leak-Detection
