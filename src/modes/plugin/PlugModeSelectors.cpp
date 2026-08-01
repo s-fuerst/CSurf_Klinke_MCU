@@ -9,27 +9,29 @@
 
 void PlugSelector::activateSelector() {
   m_startWith = 0;
-  m_pDisplay->clearLine(0);
-  writeTrackPlugTopLine();
-  fillPlugNames();
-  m_pDisplayHandler->switchTo(m_pDisplay);
+  // Multi-unit plugin list: render the window on every unit's display and
+  // route each unit's handler to it. Field 1 of unit 0 is the scroll-back
+  // slot, field 8 of the last unit the scroll-forward slot; every other
+  // field across all units shows one plugin of the contiguous window.
+  renderAllUnits();
 }
 
-void PlugModeSelector::writeTrackPlugTopLine() {
+void PlugModeSelector::writeTrackPlugTopLine(Display *d) {
   if (m_pPlugMode->getPlugAccess()->plugExist()) {
-    m_pDisplay->changeText(0, 0, "Track ", 6);
-    m_pDisplay->changeText(0, 6,
-                           m_pPlugMode->getCCSManager()->getMCU()->GetTrackName(
-                               m_pPlugMode->getPlugAccess()->getPlugTrack()),
-                           17);
-    m_pDisplay->changeText(
+    d->changeText(0, 0, "Track ", 6);
+    d->changeText(0, 6,
+                  m_pPlugMode->getCCSManager()->getMCU()->GetTrackName(
+                      m_pPlugMode->getPlugAccess()->getPlugTrack()),
+                  17);
+    d->changeText(
         0, 28,
         String::formatted(String("FX%2d "),
                           m_pPlugMode->getPlugAccess()->getPlugSlot() + 1)
             .toRawUTF8(),
         10);
-    m_pDisplay->changeText(
-        0, 33, m_pPlugMode->getPlugAccess()->getPlugNameLong().toRawUTF8(), 17);
+    d->changeText(0, 33,
+                  m_pPlugMode->getPlugAccess()->getPlugNameLong().toRawUTF8(),
+                  17);
   }
 }
 
@@ -49,48 +51,84 @@ void PlugModeSelector::writePlugBankPageTopLine() {
   }
 }
 
-void PlugSelector::fillPlugNames() {
-  m_pDisplay->clearLine(1);
+void PlugSelector::renderAllUnits() {
+  int nUnits = m_pPlugMode->getCCSManager()->getMCU()->numUnits();
+  for (int u = 0; u < nUnits; u++) {
+    Display *d = m_pPlugMode->selectorDisplayForUnit(u);
+    if (!d)
+      continue;
+    d->clear();
+    writeTrackPlugTopLine(d);
+    fillPlugNames(d, u);
+    m_pPlugMode->selectorHandlerForUnit(u)->switchTo(d);
+  }
+}
 
-  if (m_startWith > 0)
-    m_pDisplay->changeField(1, 1, "  <<");
-  else
-    m_pDisplay->changeField(1, 1, "");
+void PlugSelector::refreshHeaderAllUnits() {
+  int nUnits = m_pPlugMode->getCCSManager()->getMCU()->numUnits();
+  for (int u = 0; u < nUnits; u++) {
+    Display *d = m_pPlugMode->selectorDisplayForUnit(u);
+    if (d)
+      writeTrackPlugTopLine(d);
+  }
+}
 
-  if (m_pPlugMode->getNumPlugsInSelectedTrack() > (m_startWith + 6))
-    m_pDisplay->changeField(1, 8, "  >>");
-  else
-    m_pDisplay->changeField(1, 8, "");
+void PlugSelector::fillPlugNames(Display *d, int unit) {
+  d->clearLine(1);
+  int nUnits = m_pPlugMode->getCCSManager()->getMCU()->numUnits();
+  int numPlugs = m_pPlugMode->getNumPlugsInSelectedTrack();
+  int window = nUnits * 8 - 2; // selectable plugin slots per page
 
-  for (int i = 0; i < 6; i++)
-    m_pDisplay->changeField(
-        1, i + 2, m_pPlugMode->getPlugNameShort(i + m_startWith).toRawUTF8());
+  for (int f = 0; f < 8; f++) {
+    int globalPos = unit * 8 + f; // 0 .. nUnits*8-1
+    if (globalPos == 0) {
+      // first field of unit 0: scroll-back indicator
+      d->changeField(1, f + 1, m_startWith > 0 ? "  <<" : "");
+    } else if (globalPos == nUnits * 8 - 1) {
+      // last field of the last unit: scroll-forward indicator
+      d->changeField(1, f + 1, numPlugs > m_startWith + window ? "  >>" : "");
+    } else {
+      int slot = m_startWith + (globalPos - 1);
+      d->changeField(1, f + 1,
+                     slot < numPlugs
+                         ? m_pPlugMode->getPlugNameShort(slot).toRawUTF8()
+                         : "");
+    }
+  }
 
-  if (m_pPlugMode->getNumPlugsInSelectedTrack() == 0)
-    m_pDisplay->changeTextFullLine(1, "No FX exist in selected track.", true);
+  if (numPlugs == 0)
+    d->changeTextFullLine(1, "No FX exist in selected track.", true);
 }
 
 bool PlugSelector::select(int index) {
+  int nUnits = m_pPlugMode->getCCSManager()->getMCU()->numUnits();
+  int window = nUnits * 8 - 2;
+  int lastPos = nUnits * 8 - 1;
+
   if (index == 0) {
+    // scroll back: first VPOT of unit 0
     if (m_startWith > 0) {
-      m_startWith -= 6;
-      fillPlugNames();
+      m_startWith -= window;
+      if (m_startWith < 0)
+        m_startWith = 0;
+      renderAllUnits();
     }
     return true;
-  } else if (index == 7 &&
-             m_pPlugMode->getNumPlugsInSelectedTrack() > (m_startWith + 6)) {
-    m_startWith += 6;
-    fillPlugNames();
+  } else if (index == lastPos &&
+             m_pPlugMode->getNumPlugsInSelectedTrack() > m_startWith + window) {
+    // scroll forward: last VPOT of the last unit
+    m_startWith += window;
+    renderAllUnits();
     return true;
   }
 
-  int selectedSlot = index - 1 + m_startWith;
-  if (selectedSlot < m_pPlugMode->getNumPlugsInSelectedTrack()) {
+  int slot = m_startWith + (index - 1);
+  if (slot < m_pPlugMode->getNumPlugsInSelectedTrack()) {
     m_pPlugMode->setLastTimePlugWasSelected(
         m_pPlugMode->getCCSManager()->getLastTime());
     m_pPlugMode->getPlugAccess()->accessPlugin(m_pPlugMode->selectedTrack(),
-                                               index - 1 + m_startWith);
-    writeTrackPlugTopLine();
+                                               slot);
+    refreshHeaderAllUnits();
   }
 
   return true;
@@ -149,35 +187,50 @@ void BankPagePlugSelector::updateDisplay() {
     m_pDisplay->resendRow(1);
     break;
   case PLUG:
-    if (m_pPlugMode->isFollowTrack()) {
-      writeTrackPlugTopLine();
-      int offset = m_pPlugMode->isModifierPressed(VK_SHIFT) ? 8 : 0;
-      for (int i = 0; i < 8; i++) {
+    renderPlugOverlay();
+    break;
+  }
+}
+
+void BankPagePlugSelector::renderPlugOverlay() {
+  PlugAccess *pPA = m_pPlugMode->getPlugAccess();
+  // read per-unit state. This also runs for units that are in NOTHING state
+  // but receive the broadcast overlay while Select is held on another unit.
+  m_pPlugMode->setActiveUnit(m_unit);
+
+  if (m_pPlugMode->isFollowTrack()) {
+    writeTrackPlugTopLine(m_pDisplay);
+    // mirror the per-unit Select-button mapping in updateSelectLEDs:
+    // unit N -> slots N*8..N*8+7, Shift advances the window by 8*nUnits.
+    int nUnits = m_pPlugMode->getCCSManager()->getMCU()->numUnits();
+    int offset = m_unit * 8 +
+                 (m_pPlugMode->isModifierPressed(VK_SHIFT) ? 8 * nUnits : 0);
+    for (int i = 0; i < 8; i++) {
+      m_pDisplay->changeField(
+          1, i + 1,
+          pPA->getPlugNameShort(m_pPlugMode->selectedTrack(), i + offset)
+              .toRawUTF8());
+    }
+  } else {
+    int nUnits = m_pPlugMode->getCCSManager()->getMCU()->numUnits();
+    int offset = m_unit * 8 +
+                 (m_pPlugMode->isModifierPressed(VK_SHIFT) ? 8 * nUnits : 0);
+    for (int i = 0; i < 8; i++) {
+      PlugMode::tFav fav = m_pPlugMode->getFavorite(i + offset);
+      if (fav.get<0>() != GUID_NOT_ACTIVE) {
+        m_pDisplay->changeField(
+            0, i + 1,
+            m_pPlugMode->getCCSManager()->getMCU()->GetTrackName(
+                CSurf_MCU::TrackFromGUID(fav.get<0>())));
         m_pDisplay->changeField(
             1, i + 1,
-            pPA->getPlugNameShort(m_pPlugMode->selectedTrack(), i + offset)
+            pPA->getPlugNameShort(CSurf_MCU::TrackFromGUID(fav.get<0>()),
+                                  fav.get<1>())
                 .toRawUTF8());
-      }
-    } else {
-      int offset = m_pPlugMode->isModifierPressed(VK_SHIFT) ? 8 : 0;
-      for (int i = 0; i < 8; i++) {
-        PlugMode::tFav fav = m_pPlugMode->getFavorite(i + offset);
-        if (fav.get<0>() != GUID_NOT_ACTIVE) {
-          m_pDisplay->changeField(
-              0, i + 1,
-              m_pPlugMode->getCCSManager()->getMCU()->GetTrackName(
-                  CSurf_MCU::TrackFromGUID(fav.get<0>())));
-          m_pDisplay->changeField(
-              1, i + 1,
-              pPA->getPlugNameShort(CSurf_MCU::TrackFromGUID(fav.get<0>()),
-                                    fav.get<1>())
-                  .toRawUTF8());
-        } else {
-          m_pDisplay->changeField(0, i + 1, "");
-          m_pDisplay->changeField(1, i + 1, "");
-        }
+      } else {
+        m_pDisplay->changeField(0, i + 1, "");
+        m_pDisplay->changeField(1, i + 1, "");
       }
     }
-    break;
   }
 }

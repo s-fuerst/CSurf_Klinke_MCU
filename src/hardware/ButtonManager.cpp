@@ -23,6 +23,8 @@ void ButtonManager::ensureUnitState() {
       memset(&m_perUnitState[u].doublepressed, 0, NUM_BUTTONS);
       memset(&m_perUnitState[u].hold_used, 0, NUM_BUTTONS);
       memset(&m_perUnitState[u].pressed_time, 0, NUM_BUTTONS * sizeof(DWORD));
+      m_perUnitState[u].last_code = -1;
+      m_perUnitState[u].last_time = 0;
     }
   }
 }
@@ -35,11 +37,15 @@ void ButtonManager::reset() {
 #endif
   memset(&m_button_pressed, 0, 128);
   memset(&m_button_pressed_time, 0, 128 * sizeof(DWORD));
+  m_button_last = -1; // init for isLastButton()
+  m_button_last_time = 0;
   for (int u = 0; u < (int)m_perUnitState.size(); u++) {
     memset(&m_perUnitState[u].pressed, 0, NUM_BUTTONS);
     memset(&m_perUnitState[u].doublepressed, 0, NUM_BUTTONS);
     memset(&m_perUnitState[u].hold_used, 0, NUM_BUTTONS);
     memset(&m_perUnitState[u].pressed_time, 0, NUM_BUTTONS * sizeof(DWORD));
+    m_perUnitState[u].last_code = -1;
+    m_perUnitState[u].last_time = 0;
   }
 }
 
@@ -185,9 +191,17 @@ bool ButtonManager::dispatchMidiEvent(MIDI_event_t *evt, int unitIndex) {
   // For these events we only want to track button press
   if (pressed) {
     st.hold_used[evt_code] = false;
-    // Check for double click
-    bool double_click = (int)evt_code == m_button_last &&
-                        now - m_button_last_time < DOUBLE_CLICK_INTERVAL;
+    // Double-click detection is per-unit: the same local note code on a
+    // DIFFERENT unit is a different button and must not count as a
+    // double-click. Otherwise the second press is swallowed by the
+    // double-click path (select has no func_dc) and the action is lost —
+    // e.g. selecting a plugin on unit 2 right after pressing unit 1's
+    // select (both send evt_code 0x18..0x1f) within DOUBLE_CLICK_INTERVAL.
+    bool double_click = (int)evt_code == st.last_code &&
+                        now - st.last_time < DOUBLE_CLICK_INTERVAL;
+    st.last_code = evt_code;
+    st.last_time = now;
+    // global fallback kept for isLastButton() backward compat
     m_button_last = evt_code;
     m_button_last_time = now;
     if (double_click)

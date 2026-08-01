@@ -21,7 +21,9 @@
 #include "PlugPresetManager.h"
 #include "Tracks.h"
 
-#define NUM_FAVORITES 16
+// 16 favourites per unit * up to 8 units, so the per-unit Select-button
+// ranges (and the Shift window) never run out of favourite slots.
+#define NUM_FAVORITES 128
 #define NUM_PRESETS 16
 #define TIMETOSWITCHPLUGINMS 2000
 
@@ -29,7 +31,7 @@ PlugMode::PlugMode(CCSManager *pManager)
     : CCSMode(pManager), m_iSingleFaderTouched(0), m_iSingleVPotTouched(0),
       m_pAccess(NULL), m_pPlugEditor(NULL), m_buttonNameValuePressed(false),
       m_followTrack(true), m_lastTimePlugWasSelected(0), m_activeUnit(0),
-      m_paramCacheValid(false) {
+      m_paramCacheValid(false), m_plugBroadcastActive(false) {
   lastFaderValues.assign(8 * 8 * 8, 0.0);
   lastVPotValues.assign(8 * 8 * 8, 0.0);
   m_pAccess = new PlugAccess(this);
@@ -594,6 +596,26 @@ void PlugMode::updateVPOTs() {
 
 void PlugMode::trackListChange() { updateEverything(); }
 
+bool PlugMode::anyPlugSelectorActive() const {
+  int nUnits = m_pCCSManager->getMCU()->numUnits();
+  for (int u = 0; u < nUnits; u++) {
+    BankPagePlugSelector *sel = m_pBankPagePlugSelectorPerUnit[u];
+    if (sel && sel->getWhatToSelect() == BankPagePlugSelector::PLUG)
+      return true;
+  }
+  return false;
+}
+
+Display *PlugMode::selectorDisplayForUnit(int u) {
+  BankPagePlugSelector *sel = m_pBankPagePlugSelectorPerUnit[u];
+  return sel ? sel->getSelectorDisplay() : NULL;
+}
+
+DisplayHandler *PlugMode::selectorHandlerForUnit(int u) {
+  BankPagePlugSelector *sel = m_pBankPagePlugSelectorPerUnit[u];
+  return sel ? sel->getDisplayHandler() : NULL;
+}
+
 void PlugMode::switchDisplay() {
   // per-unit switchDisplay.
   //
@@ -635,6 +657,21 @@ void PlugMode::switchDisplay() {
   if (globalMessage && md)
     clearNonAnchorChildren(pShared);
 
+  // Broadcast PLUG-select overlay: while Select is held on any unit, every
+  // unit shows its own plugin range (unit N -> slots N*8..). On the
+  // off->on transition clear the non-pressed (NOTHING-state) units once so
+  // the overlay starts clean; the per-frame renderPlugOverlay() keeps them
+  // filled afterwards.
+  bool anyPlugActive = anyPlugSelectorActive();
+  if (anyPlugActive && !m_plugBroadcastActive) {
+    for (int u = 0; u < m_pCCSManager->getMCU()->numUnits(); u++) {
+      BankPagePlugSelector *sel = m_pBankPagePlugSelectorPerUnit[u];
+      if (sel && sel->getWhatToSelect() == BankPagePlugSelector::NOTHING)
+        sel->clearDisplay();
+    }
+  }
+  m_plugBroadcastActive = anyPlugActive;
+
   // Switch each unit's handler once to its final target.
   int nUnits = m_pCCSManager->getMCU()->numUnits();
   for (int u = 0; u < nUnits; u++) {
@@ -644,6 +681,8 @@ void PlugMode::switchDisplay() {
     Display *target;
     if (sel->getWhatToSelect() != BankPagePlugSelector::NOTHING) {
       target = sel->getSelectorDisplay();
+    } else if (anyPlugActive) {
+      target = sel->getSelectorDisplay(); // broadcast PLUG overlay
     } else if (md && u < (int)md->children().size()) {
       target = md->children()[u];
     } else {
@@ -788,7 +827,7 @@ void PlugMode::updateTouchedDisplay() {
                        m_pAccess->getSelectedPageInSelectedBank()).toRawUTF8(),
           17, true);
       target->changeText(0, 38,
-          m_pAccess->getParamNameLong(PlugAccess::ElementDesc::VPOT, m_iSingleVPotTouched - 1).toRawUTF8(),
+          m_pAccess->getParamNameLong(PlugAccess::ElementDesc::VPOT, (m_iSingleVPotTouched - 1) % 8).toRawUTF8(),
           17, true);
       target->changeText(1, 0,
           m_pCCSManager->getMCU()->GetTrackName(m_pAccess->getPlugTrack()),
@@ -796,7 +835,7 @@ void PlugMode::updateTouchedDisplay() {
       target->changeText(1, 19,
           m_pAccess->getPlugNameLong().toRawUTF8(), 17, true);
       target->changeText(1, 38,
-          m_pAccess->getParamValueLong(PlugAccess::ElementDesc::VPOT, m_iSingleVPotTouched - 1).toRawUTF8(),
+          m_pAccess->getParamValueLong(PlugAccess::ElementDesc::VPOT, (m_iSingleVPotTouched - 1) % 8).toRawUTF8(),
           17, true);
     } else {
       for (int iChannel = 0; iChannel < 8; iChannel++) {
@@ -822,7 +861,7 @@ void PlugMode::updateTouchedDisplay() {
               .toRawUTF8(),
           17, true);
       target->changeText(2, 38,
-          m_pAccess->getParamNameLong(PlugAccess::ElementDesc::FADER, m_iSingleFaderTouched - 1).toRawUTF8(),
+          m_pAccess->getParamNameLong(PlugAccess::ElementDesc::FADER, (m_iSingleFaderTouched - 1) % 8).toRawUTF8(),
           17, true);
       target->changeText(3, 0,
           m_pCCSManager->getMCU()->GetTrackName(m_pAccess->getPlugTrack()),
@@ -830,7 +869,7 @@ void PlugMode::updateTouchedDisplay() {
       target->changeText(3, 19,
           m_pAccess->getPlugNameLong().toRawUTF8(), 17, true);
       target->changeText(3, 38,
-          m_pAccess->getParamValueLong(PlugAccess::ElementDesc::FADER, m_iSingleFaderTouched - 1).toRawUTF8(),
+          m_pAccess->getParamValueLong(PlugAccess::ElementDesc::FADER, (m_iSingleFaderTouched - 1) % 8).toRawUTF8(),
           17, true);
     } else {
       for (int iChannel = 0; iChannel < 8; iChannel++) {
@@ -859,6 +898,9 @@ void PlugMode::updateTouchedDisplay() {
                                     : PlugAccess::ElementDesc::VPOT;
     int iChannel = (m_iSingleFaderTouched > 0) ? m_iSingleFaderTouched
                                                : m_iSingleVPotTouched;
+    // extended-channel safe: the touched element may sit on any unit, the
+    // param lookups use the LOCAL channel (0-7) of the owning page
+    int iLocalChannel = (iChannel > 0) ? (iChannel - 1) % 8 : 0;
 
     target->changeText(0, 0,
         m_pAccess->getBankNameLong(m_pAccess->getSelectedBank()).toRawUTF8(),
@@ -870,7 +912,7 @@ void PlugMode::updateTouchedDisplay() {
             .toRawUTF8(),
         17, true);
     target->changeText(0, 38,
-        m_pAccess->getParamNameLong(element, iChannel - 1).toRawUTF8(),
+        m_pAccess->getParamNameLong(element, iLocalChannel).toRawUTF8(),
         17, true);
     target->changeText(1, 0,
         m_pCCSManager->getMCU()->GetTrackName(m_pAccess->getPlugTrack()),
@@ -878,7 +920,7 @@ void PlugMode::updateTouchedDisplay() {
     target->changeText(1, 19,
         m_pAccess->getPlugNameLong().toRawUTF8(), 17, true);
     target->changeText(1, 38,
-        m_pAccess->getParamValueLong(element, iChannel - 1).toRawUTF8(),
+        m_pAccess->getParamValueLong(element, iLocalChannel).toRawUTF8(),
         17, true);
   }
 }
@@ -925,9 +967,20 @@ String PlugMode::longPlugName(const char *pName) {
 
 void PlugMode::updateEverything() {
   switchDisplay();
-  // update all units' selector displays
-  for (int u = 0; u < m_pCCSManager->getMCU()->numUnits(); u++)
-    m_pBankPagePlugSelectorPerUnit[u]->updateDisplay();
+  // Update all units' selector displays. A unit with its own active overlay
+  // (BANK/PAGE/PLUG) renders that; a unit in NOTHING state still renders the
+  // PLUG map while Select is held on any unit (broadcast overlay).
+  bool anyPlugActive = anyPlugSelectorActive();
+  int nUnits = m_pCCSManager->getMCU()->numUnits();
+  for (int u = 0; u < nUnits; u++) {
+    BankPagePlugSelector *sel = m_pBankPagePlugSelectorPerUnit[u];
+    if (!sel)
+      continue;
+    if (sel->getWhatToSelect() != BankPagePlugSelector::NOTHING)
+      sel->updateDisplay();
+    else if (anyPlugActive)
+      sel->renderPlugOverlay();
+  }
   CCSMode::updateEverything();
 }
 
@@ -1074,17 +1127,22 @@ bool PlugMode::isSlotBypassed(MediaTrack *pPlugTrack, int iSlot) {
 }
 
 void PlugMode::updateSelectLEDs() {
-  // replicate LED state to all units
+  // Each unit maps its 8 Select buttons to a contiguous range of plugin
+  // slots: unit N -> slots N*8 .. N*8+7. With Shift the whole window
+  // advances by 8*nUnits, so together the units cover the next full page
+  // of slots (instead of every unit showing the same 8).
   int nUnits = m_pCCSManager->getMCU()->numUnits();
-  int start = isModifierPressed(VK_SHIFT) ? 8 : 0;
+  int shiftStep = isModifierPressed(VK_SHIFT) ? 8 * nUnits : 0;
   if (m_followTrack) {
     for (int unit = 0; unit < nUnits; unit++) {
+      int start = unit * 8 + shiftStep;
       for (int channel = 0; channel < 8; channel++) {
         int globalCh = unit * 8 + channel + 1;
-        if (channel + start == m_pAccess->getPlugSlot())
+        int slot = channel + start;
+        if (slot == m_pAccess->getPlugSlot())
           m_pCCSManager->setSelectLED(this, globalCh, LED_BLINK);
-        else if (channel + start < getNumPlugsInSelectedTrack()) {
-          if (isSlotBypassed(m_pAccess->getPlugTrack(), channel + start))
+        else if (slot < getNumPlugsInSelectedTrack()) {
+          if (isSlotBypassed(m_pAccess->getPlugTrack(), slot))
             m_pCCSManager->setSelectLED(this, globalCh, LED_BLINK_BYPASSED);
           else
             m_pCCSManager->setSelectLED(this, globalCh, LED_ON);
@@ -1095,17 +1153,20 @@ void PlugMode::updateSelectLEDs() {
     }
   } else {
     for (int unit = 0; unit < nUnits; unit++) {
+      int start = unit * 8 + shiftStep;
       for (int channel = 0; channel < 8; channel++) {
         int globalCh = unit * 8 + channel + 1;
+        int slot = channel + start;
         MediaTrack *pMT = NULL;
-        if (m_favPlugins[start + channel].get<0>() != GUID_NOT_ACTIVE) {
-          pMT = CSurf_MCU::TrackFromGUID(m_favPlugins[start + channel].get<0>());
-          int slot = m_favPlugins[start + channel].get<1>();
-          if (slot == m_pAccess->getPlugSlot() &&
+        if (m_favPlugins[slot].get<0>() != GUID_NOT_ACTIVE) {
+          pMT = CSurf_MCU::TrackFromGUID(m_favPlugins[slot].get<0>());
+          int favSlot = m_favPlugins[slot].get<1>();
+          if (favSlot == m_pAccess->getPlugSlot() &&
               pMT == m_pAccess->getPlugTrack() && pMT != NULL)
             m_pCCSManager->setSelectLED(this, globalCh, LED_BLINK);
           else if (pMT != NULL) {
-            if (isSlotBypassed(pMT, channel + start))
+            // check the favourite's actual FX slot, not the fav-array index
+            if (isSlotBypassed(pMT, favSlot))
               m_pCCSManager->setSelectLED(this, globalCh, LED_BLINK_BYPASSED);
             else
               m_pCCSManager->setSelectLED(this, globalCh, LED_ON);
@@ -1131,7 +1192,9 @@ bool PlugMode::buttonSelect(int channel, bool pressed) {
   if (!pressed)
     return true;
 
-  int slot = localCh + (isModifierPressed(VK_SHIFT) ? 8 : 0);
+  int nUnits = m_pCCSManager->getMCU()->numUnits();
+  int slot = localCh + unit * 8 +
+             (isModifierPressed(VK_SHIFT) ? 8 * nUnits : 0);
   if (m_followTrack) {
     if (slot < getNumPlugsInSelectedTrack()) {
       m_lastTimePlugWasSelected = m_pCCSManager->getLastTime();
@@ -1367,6 +1430,8 @@ void PlugMode::readFavsFromProjectConfig(XmlElement *pNode) {
   forEachXmlChildElement(*pNode, pChild) {
     if (pChild->getTagName() == PLUGMODE_NODE_FAV) {
       int index = pChild->getIntAttribute(PLUGMODE_ATT_FAV_INDEX);
+      if (index < 0 || index >= NUM_FAVORITES)
+        continue; // ignore out-of-range favourite index from project file
 
       String guidString = pChild->getStringAttribute(PLUGMODE_ATT_FAV_TRACK);
       GUID guid;

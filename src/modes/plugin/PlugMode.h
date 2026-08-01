@@ -132,6 +132,11 @@ public:
   int      anchorUnit();
   void     clearNonAnchorChildren(Display *d);
 
+  // Per-unit selector display/handler for the VPOT-ASSIGN PLUG selector
+  // (multi-unit plugin list). Returns NULL for unconfigured units.
+  Display *selectorDisplayForUnit(int u);
+  DisplayHandler *selectorHandlerForUnit(int u);
+
   // ---- transport lock-step + cascade ----
   // Cascade bank/page selection to units `unit..N-1`, spreading each unit's
   // page along the used-page sequence from `baseOffset`. Units 0..unit-1 are
@@ -149,6 +154,9 @@ public:
 	
 private:
   void switchDisplay();
+  // True while any unit's BankPagePlugSelector is in PLUG state (i.e. a
+  // Select button is held somewhere). Drives the all-units PLUG overlay.
+  bool anyPlugSelectorActive() const;
   void updateParamsDisplay();
   void updateValueDisplay();
   void updateTouchedDisplay();
@@ -171,6 +179,7 @@ private:
 	bool isSlotBypassed(MediaTrack *pPlugTrack, int iSlot);
 	
   bool m_followTrack;
+  bool m_plugBroadcastActive; // true while the PLUG overlay is broadcast to all units
 
   Display *m_pParamsDisplay;
   Display *m_pValueDisplay;

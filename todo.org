@@ -1,5 +1,5 @@
-* [1/10] v0.9.5 Release
-** TODO Track/Mixer mode (PanMode): show fader value on touch with meters-on-display
+* [4/12] v0.9.5 Release
+** DONE Track/Mixer mode (PanMode): show fader value on touch with meters-on-display
    While a fader is touched, keep the value it controls (Volume, or Pan in
    flip mode) visible on row 1, even when "meters on display"
    (UNIT_FLAG_METERS_ON_DISPLAY) is active and would otherwise cover it with
@@ -12,7 +12,7 @@
      (MultiTrackMode::suppressDisplayMeterForValue + MeterBridge); the value
      text is already written every frame by PanMode::updateDisplay.
    Mode assignment: Track/Mixer (PanMode). Fader-controlled value.
-** TODO Pan-Mode VPOT motion: briefly show the VPOT value
+** DONE Pan-Mode VPOT motion: briefly show the VPOT value
    For ~1 second after a VPOT is turned, row 1 shows the value the VPOT
    controls (Pan, or Volume in flip mode) instead of the fader-controlled
    value, then reverts.
@@ -26,15 +26,6 @@
      during the window).
    - Implemented via PanMode (VPOT_VALUE_SHOW_MS window, updateDisplay swap,
      suppressDisplayMeterForValue override).
-** TODO PlugMode: select buttons per unit should map to plugin ranges 1-8, 9-16, ...
-   The Select buttons on the different units currently always show the same
-   8 plugins. Unit 2 should show plugins 9-16, unit 3 17-24, and so on.
-   With Shift held, the step should be 8 * number of units instead of 8.
-** TODO PlugMode: disabled-plugin Select blink only works on unit 1
-   When a plugin is disabled, its Select button should blink very slowly
-   (brief off intervals, longer on). This works on unit 1 but not on unit 2.
-   Possibly related to "Emulate blinking LED", which must be enabled for
-   unit 2 and unit 3.
 ** DONE Optimize DisplayHandler::sendDifferences()
    Re-introduce diffing against m_pHardwareState: only send the changed
    runs, each still chunked (CHUNK=4) to stay under the JACK/MIDI SysEx
@@ -49,15 +40,26 @@
    after the Schaltmix-handoff blanking in csurf_mcu.cpp). The stale
    'whole-row' comment in csurf_mcu.cpp was rewritten; see ai-docs
    Linux-Port-Changes.md 4.2.
-** TODO Installation via ReaPack
-** TODO Improved Documentation #5
+** DONE PlugMode: select buttons per unit should map to plugin ranges 1-8, 9-16, ...
+The Select buttons on the different units currently always show the same
+8 plugins. Unit 2 should show plugins 9-16, unit 3 17-24, and so on.
+With Shift held, the step should be 8 * number of units instead of 8.
+** TODO Always emulate blinking leds 
+unit 2 and unit 3.
+** TODO PlugMode: disabled-plugin Select blink only works on unit 1
+When a plugin is disabled, its Select button should blink very slowly
+(brief off intervals, longer on). This works on unit 1 but not on unit 2.
+Possibly related to "Emulate blinking LED", which must be enabled for
 ** TODO Pan-Mode VPot press should reset panorama to center.
+** TODO Improved Documentation #5 (Dreieich)
 ** TODO Leak-Detection
+** TODO code check regarding null pointer tests etc.
+** TODO Test on original Mackie Control
+** TODO Installation via ReaPack
 Run a leak detection pass (valgrind / AddressSanitizer)
 before the first release to identify and fix any memory leaks. Bitbucket
 issue #27 reported a leak detector warning on Reaper close; the
 CCSModesEditor destructor crash (#50) may also be leak-related.
-** TODO Always emulate blinking leds 
 * [0/1] v0.9.5.5 Release
 ** TODO #1 Monitor and RecArm can only be changed for armed tracks :bug:
 * [0/2] v0.9.7 (ChannelStrip)

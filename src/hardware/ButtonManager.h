@@ -17,6 +17,8 @@ struct PerUnitButtonState {
   bool doublepressed[NUM_BUTTONS];
   bool hold_used[NUM_BUTTONS];
   DWORD pressed_time[NUM_BUTTONS];
+  int last_code;   // last pressed note code on this unit (double-click detection)
+  DWORD last_time; // time of that press
 };
 
 class ButtonManager {

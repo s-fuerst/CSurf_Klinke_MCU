@@ -18,7 +18,7 @@ public:
   bool select(int index) = 0;
 
 protected:
-  void writeTrackPlugTopLine();
+  void writeTrackPlugTopLine(Display *d);
   void writePlugBankPageTopLine();
 
   PlugMode *m_pPlugMode;
@@ -36,7 +36,11 @@ public:
 
 private:
   int m_startWith;
-  void fillPlugNames();
+  // multi-unit plugin list: render the window on every unit's display and
+  // route each unit's handler to it
+  void renderAllUnits();
+  void refreshHeaderAllUnits();
+  void fillPlugNames(Display *d, int unit);
 };
 
 class BankPagePlugSelector : public PlugModeSelector {
@@ -55,6 +59,10 @@ public:
   int  getUnit() const { return m_unit; }
 
   void updateDisplay();
+  // Render this unit's plugin range into the selector display, independent
+  // of m_selectWhat. Used by PlugMode to broadcast the PLUG overlay to every
+  // unit while Select is held on any unit (all displays show the plugin map).
+  void renderPlugOverlay();
   void clearDisplay() { m_pDisplay->clear(); }
 
 private:
