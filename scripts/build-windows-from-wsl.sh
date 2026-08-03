@@ -20,7 +20,9 @@
 #   scripts/build-windows-from-wsl.sh --debug     # Debug config (needs --clean first)
 #   scripts/build-windows-from-wsl.sh --release   # Release config (needs --clean after Debug)
 #   scripts/build-windows-from-wsl.sh --klinke    # Release config with KLINKE features
-#   scripts/build-windows-from-wsl.sh --no-deploy
+#   scripts/build-windows-from-wsl.sh --no-deploy  # build only; do not deploy
+#   scripts/build-windows-from-wsl.sh -j8          # use eight parallel build jobs
+#   scripts/build-windows-from-wsl.sh --help       # show this message
 #
 #   Switching release <-> debug requires --clean (Ninja is single-config).
 
@@ -45,9 +47,16 @@ while [ $# -gt 0 ]; do
     --release)     BUILD_TYPE=Release; RECONFIGURE=1 ;;
     --klinke)      KLINKE=1; RECONFIGURE=1 ;;
     --no-deploy)   DEPLOY=0 ;;
-    -j)            shift; JOBS="$1" ;;
+    -j)
+      if [ $# -lt 2 ]; then
+        echo "ERROR: -j requires a job count." >&2
+        exit 2
+      fi
+      shift
+      JOBS="$1"
+      ;;
     -j*)           JOBS="${1#-j}" ;;
-    -h|--help)     sed -n '2,35p' "$0"; exit 0 ;;
+    -h|--help)     sed -n '2,26p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1 (try --help)" >&2; exit 2 ;;
   esac
   shift

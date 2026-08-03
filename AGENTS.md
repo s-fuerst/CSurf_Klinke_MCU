@@ -151,6 +151,19 @@ on first run (the portable-CMake download is ~50 MB).
 
 ### Linux (CMake, baseline)
 
+The convenience script uses the same common build flags as the Windows-from-WSL
+script. It builds, deploys, and starts REAPER unless `--no-deploy` is given:
+
+```bash
+./scripts/build-and-run-linux-macos.sh              # incremental build + deploy + run
+./scripts/build-and-run-linux-macos.sh --release    # reconfigure + build Release + deploy + run
+./scripts/build-and-run-linux-macos.sh --debug      # reconfigure + build Debug + deploy + run
+./scripts/build-and-run-linux-macos.sh --clean      # wipe build/, then configure + build + deploy + run
+./scripts/build-and-run-linux-macos.sh --reconfigure # rerun CMake, then build + deploy + run
+./scripts/build-and-run-linux-macos.sh --no-deploy  # build only; do not deploy or start REAPER
+./scripts/build-and-run-linux-macos.sh -j8          # override parallelism (defaults to nproc)
+```
+
 ```bash
 # one-time: fetch the three pinned deps to the repo root
 ./scripts/fetch_deps.sh
@@ -166,8 +179,8 @@ cmake --build . -- -j"$(nproc)"
 
 Output: `build/reaper_csurf_mcu_klinke.so`. Deploy by copying it to
 `~/.config/REAPER/UserPlugins/` and adding **"Mackie Control Protocol
-(Klinke)"** in Reaper → Preferences → Control/OSC/web. Pass
-`-DMCU_DEBUG_LOG=OFF` to disable the debug log (on by default).
+(Klinke)"** in Reaper → Preferences → Control/OSC/web. Debug logging is
+compiled only in Debug configurations; Release builds do not include it.
 
 #### Portable Linux build (the distribution artifact)
 

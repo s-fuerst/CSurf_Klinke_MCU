@@ -7,26 +7,48 @@
 #   ./scripts/build-and-run-linux-macos.sh              # quick (incremental) build + deploy + run
 #   ./scripts/build-and-run-linux-macos.sh --release    # full configure + build (Release) + deploy + run
 #   ./scripts/build-and-run-linux-macos.sh --debug      # full configure + build (Debug) + deploy + run
+#   ./scripts/build-and-run-linux-macos.sh --clean      # wipe build dir, configure + build + deploy + run
+#   ./scripts/build-and-run-linux-macos.sh --reconfigure # rerun CMake, then build + deploy + run
+#   ./scripts/build-and-run-linux-macos.sh --no-deploy  # build only; do not deploy or start REAPER
+#   ./scripts/build-and-run-linux-macos.sh -j8          # use eight parallel build jobs
 #   ./scripts/build-and-run-linux-macos.sh --klinke     # full configure + build (Release) with KLINKE features
 #   ./scripts/build-and-run-linux-macos.sh --help       # show this message
 
-set -e
+set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="$SCRIPT_DIR/build"
 BUILD_TYPE="Release"
 QUICK=true
 KLINKE=0
+CLEAN=0
+DEPLOY=1
+JOBS_OVERRIDE=""
 
 # --- Options ----------------------------------------------------------------
 
-if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
-    sed -n '2,13p' "$0"
-    exit 0
-fi
-if [ "$1" = "--debug" ]; then       BUILD_TYPE="Debug";  QUICK=false;  shift; fi
-if [ "$1" = "--release" ]; then     BUILD_TYPE="Release"; QUICK=false;  shift; fi
-if [ "$1" = "--klinke" ]; then      KLINKE=1;            QUICK=false;  shift; fi
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --clean)       CLEAN=1; QUICK=false ;;
+        --reconfigure) QUICK=false ;;
+        --debug)       BUILD_TYPE="Debug"; QUICK=false ;;
+        --release)     BUILD_TYPE="Release"; QUICK=false ;;
+        --klinke)      KLINKE=1; QUICK=false ;;
+        --no-deploy)   DEPLOY=0 ;;
+        -j)
+            if [ $# -lt 2 ]; then
+                echo "ERROR: -j requires a job count." >&2
+                exit 2
+            fi
+            shift
+            JOBS_OVERRIDE="$1"
+            ;;
+        -j*)           JOBS_OVERRIDE="${1#-j}" ;;
+        -h|--help)     sed -n '2,16p' "$0"; exit 0 ;;
+        *)             echo "unknown argument: $1 (try --help)" >&2; exit 2 ;;
+    esac
+    shift
+done
 
 # --- Platform detection -----------------------------------------------------
 
@@ -56,10 +78,18 @@ case "$UNAME" in
         echo "Unsupported platform: $UNAME"; exit 1 ;;
 esac
 
+if [ -n "$JOBS_OVERRIDE" ]; then
+    JOBS="$JOBS_OVERRIDE"
+fi
+
 # --- Build ------------------------------------------------------------------
 
 echo ""
 echo "=== Building $BUILD_TYPE ($UNAME) ==="
+if [ "$CLEAN" = 1 ] && [ -d "$BUILD_DIR" ]; then
+    rm -rf "$BUILD_DIR"
+    echo "  Cleaned $BUILD_DIR/"
+fi
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
@@ -73,6 +103,12 @@ fi
 cmake --build . -- -j"$JOBS"
 
 # --- Deploy -----------------------------------------------------------------
+
+if [ "$DEPLOY" = 0 ]; then
+    echo ""
+    echo "=== Build complete (deployment and REAPER launch skipped) ==="
+    exit 0
+fi
 
 echo ""
 echo "=== Deploying $ARTIFACT → $PLUGIN_DIR ==="
