@@ -318,16 +318,23 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
     if (cfg->flags & CONFIG_FLAG_KEYBOARD_MODIFIER)
       CheckDlgButton(hwndDlg, IDC_KEYBOARD_MODIFIER, BST_CHECKED);
 
-    // Show the loaded build; the private KLINKE build appends a "k" so it
-    // is distinguishable from the public release in this dialog.
+    // Show the loaded build. Optional suffixes are appended to the version:
+    //   "k"  — private KLINKE build (distinguishable from the public release);
+    //          attached directly to the build count, e.g. "build 5k".
+    //   " d" — debug build (CMAKE_BUILD_TYPE == Debug); preceded by a space,
+    //          e.g. "build 5 d" (or "build 5k d" for a debug KLINKE build).
     HWND vLabel = GetDlgItem(hwndDlg, IDC_VERSION_LABEL);
     if (vLabel) {
       char vbuf[128];
+      const char *klinkeSuffix = "";
 #ifdef KLINKE
-      sprintf(vbuf, "Version: " MCU_VERSION_STRING "k");
-#else
-      sprintf(vbuf, "Version: " MCU_VERSION_STRING);
+      klinkeSuffix = " k";
 #endif
+      const char *debugSuffix = "";
+#ifdef MCU_DEBUG_BUILD
+      debugSuffix = " d";
+#endif
+      sprintf(vbuf, "Version: %s%s%s", MCU_VERSION_STRING, klinkeSuffix, debugSuffix);
       SetWindowText(vLabel, vbuf);
     }
 

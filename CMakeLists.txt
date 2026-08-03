@@ -184,6 +184,16 @@ if(MCU_KLINKE_BUILD)
     target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE KLINKE)
 endif()
 
+# Mark debug builds (CMAKE_BUILD_TYPE == Debug) so the surface-edit dialog can
+# append a " d" to the version label. NDEBUG is defined unconditionally above,
+# so the build type cannot be detected from the standard _DEBUG/NDEBUG macros —
+# it must come from CMake. (Single-config generators only: Make/Ninja, the
+# primary path on Linux, macOS, and WSL.)
+string(TOUPPER "${CMAKE_BUILD_TYPE}" _mcu_build_type_upper)
+if(_mcu_build_type_upper STREQUAL "DEBUG")
+    target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE MCU_DEBUG_BUILD)
+endif()
+
 # --- Source files — GLOB_RECURSE all .cpp under src/ with CONFIGURE_DEPENDS.
 # res_linux.cpp is excluded from the glob (added conditionally per platform).
 # Platform-specific sources are appended below per-branch.
