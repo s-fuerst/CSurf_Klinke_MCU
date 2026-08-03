@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# scripts/build-windows-fast.sh — fast incremental Windows build via /mnt/c
+# scripts/build-windows-from-wsl.sh — fast incremental Windows build via /mnt/c
 #
 # Unlike build-windows.sh (which builds in-place on WSL ext4 via the UNC
 # mount), this script mirrors the source tree onto native NTFS (/mnt/c) and
@@ -13,13 +13,14 @@
 # The WSL repo (where you edit and use git) is untouched.
 #
 # Usage:
-#   scripts/build-windows-fast.sh --setup     # one-time: rsync deps + source
-#   scripts/build-windows-fast.sh             # incremental: rsync source, build, deploy
-#   scripts/build-windows-fast.sh --clean     # wipe build dir, reconfigure + build
-#   scripts/build-windows-fast.sh --reconfigure  # re-run CMake configure, then build
-#   scripts/build-windows-fast.sh --debug     # Debug config (needs --clean first)
-#   scripts/build-windows-fast.sh --klinke    # Release config with KLINKE features
-#   scripts/build-windows-fast.sh --no-deploy
+#   scripts/build-windows-from-wsl.sh --setup     # one-time: rsync deps + source
+#   scripts/build-windows-from-wsl.sh             # incremental: rsync source, build, deploy
+#   scripts/build-windows-from-wsl.sh --clean     # wipe build dir, reconfigure + build
+#   scripts/build-windows-from-wsl.sh --reconfigure  # re-run CMake configure, then build
+#   scripts/build-windows-from-wsl.sh --debug     # Debug config (needs --clean first)
+#   scripts/build-windows-from-wsl.sh --release   # Release config (needs --clean after Debug)
+#   scripts/build-windows-from-wsl.sh --klinke    # Release config with KLINKE features
+#   scripts/build-windows-from-wsl.sh --no-deploy
 #
 #   Switching release <-> debug requires --clean (Ninja is single-config).
 
@@ -41,6 +42,7 @@ while [ $# -gt 0 ]; do
     --clean)       CLEAN=1 ;;
     --reconfigure) RECONFIGURE=1 ;;
     --debug)       BUILD_TYPE=Debug; RECONFIGURE=1 ;;
+    --release)     BUILD_TYPE=Release; RECONFIGURE=1 ;;
     --klinke)      KLINKE=1; RECONFIGURE=1 ;;
     --no-deploy)   DEPLOY=0 ;;
     -j)            shift; JOBS="$1" ;;
@@ -130,7 +132,7 @@ EOF
   sed -i 's/$/\r/' /tmp/_setup_robo.bat
   ( cd /mnt/c && cmd.exe /c "$(wslpath -w /tmp/_setup_robo.bat)" )
   rm -f /tmp/_setup_robo.bat
-  echo "Setup complete. You can now run: scripts/build-windows-fast.sh"
+  echo "Setup complete. You can now run: scripts/build-windows-from-wsl.sh"
   exit 0
 fi
 

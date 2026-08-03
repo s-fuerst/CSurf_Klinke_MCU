@@ -51,7 +51,7 @@ foreach(d juce_8 reaper-sdk boost_1_91_0)
 endforeach()
 
 # --- Options ------------------------------------------------------------------
-option(MCU_DEBUG_LOG "Write button/window debug log to <REAPER_RESOURCE>/mcu_klinke_debug.log" ON)
+option(MCU_DEBUG_LOG "Write button/window debug log in Debug builds to <REAPER_RESOURCE>/mcu_klinke_debug.log" ON)
 option(MCU_KLINKE_BUILD "Enable Klinke's personal developer features (KLINKE preprocessor flag)" OFF)
 
 # =============================================================================
@@ -177,7 +177,8 @@ if(NOT WIN32)
 endif()
 
 if(MCU_DEBUG_LOG)
-    target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE MCU_DEBUG_LOG)
+    target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE
+        $<$<CONFIG:Debug>:MCU_DEBUG_LOG>)
 endif()
 
 if(MCU_KLINKE_BUILD)

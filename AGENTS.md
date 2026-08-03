@@ -107,7 +107,7 @@ Key differences from Linux:
 #### Building from WSL (the Windows host, driven from the Linux shell)
 
 If you develop inside WSL on a Windows machine, you do not need to leave the
-WSL shell to produce the Windows `.dll`. `scripts/build-windows-fast.sh`
+WSL shell to produce the Windows `.dll`. `scripts/build-windows-from-wsl.sh`
 drives the native MSVC toolchain from WSL and copies the result into REAPER's
 `UserPlugins`. It mirrors the source tree onto native NTFS (`/mnt/c`) and
 builds there with the **Ninja** generator — on NTFS both Ninja's `stat()` and
@@ -117,14 +117,15 @@ MSVC's file tracker work correctly, giving Linux-like incremental speed
 
 ```bash
 ./scripts/fetch_deps.sh                        # one-time (see CRLF note below)
-scripts/build-windows-fast.sh --setup  # one-time: rsync deps + source to /mnt/c (~400 MB)
-scripts/build-windows-fast.sh          # incremental: rsync source, build, deploy
-scripts/build-windows-fast.sh --clean  # wipe build_win/, reconfigure + build
-scripts/build-windows-fast.sh --reconfigure  # re-run CMake (after CMakeLists.txt / source-list edits), then build
-scripts/build-windows-fast.sh --debug  # Debug config -> build_win/ (needs --clean first; Ninja is single-config)
-scripts/build-windows-fast.sh --klinke # Release config with the private KLINKE preprocessor flag (-DMCU_KLINKE_BUILD=ON)
-scripts/build-windows-fast.sh --no-deploy  # build only, do not copy to UserPlugins
-scripts/build-windows-fast.sh -j8       # override parallelism (defaults to nproc)
+scripts/build-windows-from-wsl.sh --setup  # one-time: rsync deps + source to /mnt/c (~400 MB)
+scripts/build-windows-from-wsl.sh          # incremental: rsync source, build, deploy
+scripts/build-windows-from-wsl.sh --clean  # wipe build_win/, reconfigure + build
+scripts/build-windows-from-wsl.sh --reconfigure  # re-run CMake (after CMakeLists.txt / source-list edits), then build
+scripts/build-windows-from-wsl.sh --debug  # Debug config -> build_win/ (needs --clean first; Ninja is single-config)
+scripts/build-windows-from-wsl.sh --release # Release config -> build_win/ (needs --clean after Debug; Ninja is single-config)
+scripts/build-windows-from-wsl.sh --klinke # Release config with the private KLINKE preprocessor flag (-DMCU_KLINKE_BUILD=ON)
+scripts/build-windows-from-wsl.sh --no-deploy  # build only, do not copy to UserPlugins
+scripts/build-windows-from-wsl.sh -j8       # override parallelism (defaults to nproc)
 ```
 
 Output: `build_win/reaper_csurf_mcu_klinke_x64.dll` (Ninja is single-config,
@@ -142,11 +143,11 @@ on first run (the portable-CMake download is ~50 MB).
 > **CRLF note**: the repo is checked out with `core.autocrlf=true`, so shell
 > scripts are CRLF and `bash` will refuse them with `bash\r: No such file or
 > directory`. If that happens, strip once: `sed -i 's/\r$//' scripts/fetch_deps.sh`.
-`scripts/build-windows-fast.sh` itself is committed LF.
+`scripts/build-windows-from-wsl.sh` itself is committed LF.
 >
 > The legacy in-place script `scripts/build-windows.sh` (built on WSL ext4 via
 > the UNC mount) was removed; its file-tracker/incremental behaviour was
-> unreliable. `build-windows-fast.sh` is the supported Windows-from-WSL path.
+> unreliable. `build-windows-from-wsl.sh` is the supported Windows-from-WSL path.
 
 ### Linux (CMake, baseline)
 
@@ -648,8 +649,8 @@ resources/              res.rc  resource.h  res.rc_mac_dlg  res.rc_mac_menu
 scripts/
 ├── fetch_deps.sh         one-time: clone/download JUCE + Boost + REAPER SDK
 ├── build-portable-linux.sh  podman/docker → dist/reaper_csurf_mcu_klinke.so
-├── build-windows-fast.sh  WSL MSVC build via /mnt/c Ninja mirror → %APPDATA%\REAPER\UserPlugins\
-├── build_and_run.sh      Linux: build + deploy + start REAPER
+├── build-windows-from-wsl.sh  WSL MSVC build via /mnt/c Ninja mirror → %APPDATA%\REAPER\UserPlugins\
+├── build-and-run-linux-macos.sh  Linux/macOS: build + deploy + start REAPER
 ├── debug_reaper.sh       launch REAPER with GDB attached
 └── start_reaper.sh       launch REAPER for testing
 docker/                 release-linux.Dockerfile (Debian 11 container build)
@@ -676,4 +677,3 @@ MIDI ports open (multiclient).
 The version label in the surface config dialog (`IDC_VERSION_LABEL`) appends a
 "k" to the version string in KLINKE builds so the private build is
 distinguishable from the public release.
-

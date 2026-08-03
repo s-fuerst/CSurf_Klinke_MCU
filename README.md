@@ -93,8 +93,8 @@ copy build\Release\reaper_csurf_mcu_klinke_x64.dll %APPDATA%\REAPER\UserPlugins\
 To build from WSL, use the fast mirror script:
 
 ```bash
-./scripts/build-windows-fast.sh --setup   # one-time
-./scripts/build-windows-fast.sh           # incremental build + deploy
+./scripts/build-windows-from-wsl.sh --setup   # one-time
+./scripts/build-windows-from-wsl.sh           # incremental build + deploy
 ```
 
 ### macOS

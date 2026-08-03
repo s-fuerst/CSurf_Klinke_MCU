@@ -1,14 +1,14 @@
 #!/bin/bash
-# build_and_run.sh — Build the extension, deploy it, launch Reaper
+# build-and-run-linux-macos.sh — Build the extension, deploy it, launch Reaper
 #
 # Works on Linux (GCC, X11, JACK) and macOS (Apple Clang, CoreAudio/MIDI).
 #
 # Usage:
-#   ./build_and_run.sh              # quick (incremental) build + deploy + run
-#   ./build_and_run.sh --release    # full configure + build (Release) + deploy + run
-#   ./build_and_run.sh --debug      # full configure + build (Debug) + deploy + run
-#   ./build_and_run.sh --klinke     # full configure + build (Release) with KLINKE features
-#   ./build_and_run.sh --help       # show this message
+#   ./scripts/build-and-run-linux-macos.sh              # quick (incremental) build + deploy + run
+#   ./scripts/build-and-run-linux-macos.sh --release    # full configure + build (Release) + deploy + run
+#   ./scripts/build-and-run-linux-macos.sh --debug      # full configure + build (Debug) + deploy + run
+#   ./scripts/build-and-run-linux-macos.sh --klinke     # full configure + build (Release) with KLINKE features
+#   ./scripts/build-and-run-linux-macos.sh --help       # show this message
 
 set -e
 
