@@ -153,10 +153,12 @@ fi
 
 # --- per-build source sync (quick, deps excluded) ----------------------------
 echo "=== rsync source (WSL -> NTFS) ==="
+# NOTE: do NOT --exclude VERSION.txt here. The committed file is the single
+# source of truth for version+count; if excluded, the mirror keeps a stale,
+# divergent counter (seen: WSL 0.9.5.0 build 48 vs Windows dialog build 23).
 rsync -a --delete \
   --exclude build/ --exclude build_win/ --exclude .git/ \
   --exclude juce_8/ --exclude boost_1_91_0/ --exclude reaper-sdk/ \
-  --exclude VERSION.txt \
   --exclude scripts/ \
   --exclude '*.log' --exclude '*.binlog' \
   --exclude '*.obj' --exclude '*.dll' --exclude '*.exe' --exclude '*.so' \
@@ -236,6 +238,15 @@ if [ ! -f "$DLL" ]; then
 fi
 echo
 echo "=== built: $DLL ($(du -h "$DLL" | cut -f1)) ==="
+
+# --- write back the build counter -------------------------------------------
+# CMake incremented the count in the MIRROR's VERSION.txt during configure.
+# Copy it back to the WSL repo (the ONLY file flowing back) so the committed
+# VERSION.txt stays in sync with the actually-built counter. Without this, the
+# next build's rsync would overwrite the incremented count with the stale WSL
+# value, so the counter would flip between N and N+1 instead of counting up.
+cp -f "$MIRROR/VERSION.txt" "$ROOT/VERSION.txt"
+echo "=== version counter synced back to $ROOT/VERSION.txt ==="
 
 # --- deploy ------------------------------------------------------------------
 if [ "$DEPLOY" = 1 ]; then

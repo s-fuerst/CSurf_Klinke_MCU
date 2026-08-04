@@ -52,7 +52,7 @@ TrackStatesTableComponent::TrackStatesTableComponent() {
   m_table->setColour(ListBox::outlineColourId, Colours::grey);
   m_table->setOutlineThickness(2);
 
-  m_table->getHeader().addColumn(String(), TS_COLUMN_ON_MCU, 15, 15, 15,
+  m_table->getHeader().addColumn(String("CS"), TS_COLUMN_ON_MCU, 32, 32, 32,
                                  TableHeaderComponent::notResizableOrSortable);
   m_table->getHeader().addColumn(String("Nr."), TS_COLUMN_TRACKNR, 40, 40, 40,
                                  TableHeaderComponent::notResizableOrSortable);
@@ -174,7 +174,7 @@ void TrackStatesTableComponent::paintCell(Graphics &g, int rowNumber,
                                           int columnId, int width, int height,
                                           bool rowIsSelected) {
   g.setColour(Colours::black);
-  g.setFont(Font(Font::getDefaultMonospacedFontName(), 13.0000f, Font::plain));
+  g.setFont(Font(FontOptions(Font::getDefaultMonospacedFontName(), 13.0000f, Font::plain)));
 
   MediaTrack *pMT = getRowMediaTrack(rowNumber);
   if (pMT) {
@@ -260,7 +260,7 @@ TableLabelTS::TableLabelTS(TrackStatesTableComponent &owner) : m_owner(owner) {
   addAndMakeVisible(m_label =
                         new Label(String("Parameter Value"), String()));
   m_label->setFont(
-      Font(Font::getDefaultMonospacedFontName(), 13.0000f, Font::plain));
+      Font(FontOptions(Font::getDefaultMonospacedFontName(), 13.0000f, Font::plain)));
   m_label->setJustificationType(Justification::centredLeft);
   m_label->setEditable(true, true, false);
   m_label->setColour(Label::backgroundColourId, Colours::white);
@@ -351,7 +351,7 @@ void AnchorColumnCustomComponent::setRowAndColumn(const int newRow,
 
   int anchorChannel =
       Tracks::instance()->getTrackStateForMediaTrack(pMT)->getAnchorChannel();
-  m_comboBox->setSelectedId(anchorChannel == 0 ? -1 : anchorChannel, true);
+  m_comboBox->setSelectedId(anchorChannel == 0 ? -1 : anchorChannel, sendNotificationSync);
 }
 
 void AnchorColumnCustomComponent::comboBoxChanged(
@@ -408,7 +408,7 @@ void QuickJumpCustomComponent::setRowAndColumn(const int newRow,
   int quickJump = Tracks::instance()
                       ->getTrackStateForMediaTrack(pMT)
                       ->getQuickJumpChannel();
-  m_comboBox->setSelectedId(quickJump == 0 ? -1 : quickJump, true);
+  m_comboBox->setSelectedId(quickJump == 0 ? -1 : quickJump, sendNotificationSync);
 }
 
 void QuickJumpCustomComponent::comboBoxChanged(
@@ -459,19 +459,19 @@ void ButtonColumnCustomComponent::setRowAndColumn(const int newRow,
 
   switch (m_columnId) {
   case TS_COLUMN_MCP:
-    m_toggleButton->setToggleState(MediaTrackInfo::isShownInMCP(pMT), false);
+    m_toggleButton->setToggleState(MediaTrackInfo::isShownInMCP(pMT), dontSendNotification);
     break;
   case TS_COLUMN_TCP:
-    m_toggleButton->setToggleState(MediaTrackInfo::isShownInTCP(pMT), false);
+    m_toggleButton->setToggleState(MediaTrackInfo::isShownInTCP(pMT), dontSendNotification);
     break;
   case TS_COLUMN_MCU:
     m_toggleButton->setToggleState(
-        Tracks::instance()->getTrackStateForMediaTrack(pMT)->isInSet(), false);
+        Tracks::instance()->getTrackStateForMediaTrack(pMT)->isInSet(), dontSendNotification);
     break;
   case TS_COLUMN_QUICK_ROOT:
     m_toggleButton->setToggleState(
         Tracks::instance()->getTrackStateForMediaTrack(pMT)->useAsRootInQuick(),
-        false);
+        dontSendNotification);
     m_toggleButton->setEnabled(Tracks::instance()
                                        ->getTrackStateForMediaTrack(pMT)
                                        ->getQuickJumpChannel() != 0 &&

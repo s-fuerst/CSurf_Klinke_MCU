@@ -45,7 +45,7 @@ CommandModeVPOTComponent::CommandModeVPOTComponent(CommandMode::Page *pPage,
       String("A short (max. 6 char long) description of the assigned action."));
   actionLabel->setExplicitFocusOrder(10);
   actionLabel->setFont(
-      Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
+      Font(FontOptions(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain)));
   actionLabel->setJustificationType(Justification::centredLeft);
   actionLabel->setEditable(true, true, false);
   actionLabel->setColour(Label::backgroundColourId, Colours::white);
@@ -94,7 +94,7 @@ CommandModeVPOTComponent::CommandModeVPOTComponent(CommandMode::Page *pPage,
   groupComponent->setText((shift ? String("Shift ") : String()) +
                           String::formatted(String("%d"), channel + 1));
   actionLabel->setText(m_pPage->getCommandName(shift, channel), dontSendNotification);
-  relativeButton->setToggleState(m_pPage->m_bRelative[shift][channel], false);
+  relativeButton->setToggleState(m_pPage->m_bRelative[shift][channel], dontSendNotification);
   normalSpeedSlider->setEnabled(m_pPage->m_bRelative[shift][channel]);
   normalSpeedSlider->setValue(m_pPage->m_iNormalSpeed[shift][channel], dontSendNotification);
   pressedSpeedSlider->setEnabled(m_pPage->m_bRelative[shift][channel]);

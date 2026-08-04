@@ -165,7 +165,7 @@ void SendReceiveModeBase::updateVPOTs() {
 
 void SendReceiveModeBase::trackName(MediaTrack *trackid, const char *pName) {
   if (trackid == selectedTrack()) {
-    writeTrackName(strlen(m_pSendOrReceiveText));
+    writeTrackName(static_cast<int>(strlen(m_pSendOrReceiveText)));
   }
 }
 
@@ -224,7 +224,7 @@ void SendReceiveModeBase::updateDisplay() {
     getSendInfos(&m_sendInfos, TRACK);
     std::vector<void *> tracks = m_sendInfos;
 
-    const int headerLength = strlen(m_pSendOrReceiveText);
+    const int headerLength = static_cast<int>(strlen(m_pSendOrReceiveText));
     const int nUnits = pMCU->numUnits();
     for (int unit = 0; unit < nUnits; unit++) {
       Display *display = m_pDisplay;
@@ -559,7 +559,7 @@ bool SendReceiveModeBase::somethingTouched(bool touched) {
 
 int SendReceiveModeBase::getNumSends() {
   getSendInfos(&m_sendInfos, TRACK);
-  return m_sendInfos.size();
+  return static_cast<int>(m_sendInfos.size());
 }
 
 bool SendReceiveModeBase::setAutoMode(AutoMode mode) {

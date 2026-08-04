@@ -73,13 +73,13 @@ PlugModeVPOTTableComponent::~PlugModeVPOTTableComponent(void) {
   deleteAllChildren();
 }
 
-int PlugModeVPOTTableComponent::getNumRows() { return m_pStepMap->size(); }
+int PlugModeVPOTTableComponent::getNumRows() { return static_cast<int>(m_pStepMap->size()); }
 
 void PlugModeVPOTTableComponent::paintCell(Graphics &g, int rowNumber,
                                            int columnId, int width, int height,
                                            bool rowIsSelected) {
   g.setColour(Colours::black);
-  g.setFont(Font(Font::getDefaultMonospacedFontName(), 13.0000f, Font::plain));
+  g.setFont(Font(FontOptions(Font::getDefaultMonospacedFontName(), 13.0000f, Font::plain)));
 
   if (m_pStepMap->empty())
     return;
@@ -97,7 +97,7 @@ TableLabel::TableLabel(PlugModeVPOTTableComponent &owner, PMVPot::tSteps *pMap)
   addAndMakeVisible(m_label =
                         new Label(String("Parameter Value"), String()));
   m_label->setFont(
-      Font(Font::getDefaultMonospacedFontName(), 13.0000f, Font::plain));
+      Font(FontOptions(Font::getDefaultMonospacedFontName(), 13.0000f, Font::plain)));
   m_label->setJustificationType(Justification::centredLeft);
   m_label->setEditable(true, true, false);
   m_label->setColour(Label::backgroundColourId, Colours::white);

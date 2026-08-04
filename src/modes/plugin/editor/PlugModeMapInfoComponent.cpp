@@ -53,7 +53,7 @@ PlugModeMapInfoComponent::PlugModeMapInfoComponent(PlugModeComponent *pMC,
 
   addAndMakeVisible(m_labelCreator =
                         new Label(String("Creator label"), String("Creator:\n")));
-  m_labelCreator->setFont(Font(15.0000f, Font::plain));
+  m_labelCreator->setFont(Font(FontOptions(15.0000f, Font::plain)));
   m_labelCreator->setJustificationType(Justification::centredLeft);
   m_labelCreator->setEditable(false, false, false);
   m_labelCreator->setColour(TextEditor::textColourId, Colours::black);
@@ -72,7 +72,7 @@ PlugModeMapInfoComponent::PlugModeMapInfoComponent(PlugModeComponent *pMC,
   m_textNotes->setText(String());
 
   addAndMakeVisible(m_labelNotes = new Label(String("Notes label"), String("Notes:\n")));
-  m_labelNotes->setFont(Font(15.0000f, Font::plain));
+  m_labelNotes->setFont(Font(FontOptions(15.0000f, Font::plain)));
   m_labelNotes->setJustificationType(Justification::centredLeft);
   m_labelNotes->setEditable(false, false, false);
   m_labelNotes->setColour(TextEditor::textColourId, Colours::black);

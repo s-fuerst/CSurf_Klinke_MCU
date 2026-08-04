@@ -222,13 +222,13 @@ void PlugPresetManager::writePresetsToProjectConfig(XmlElement *pNode) {
 }
 
 void PlugPresetManager::readPresetsFromProjectConfig(XmlElement *pNode) {
-  forEachXmlChildElement(*pNode, pChild) {
+  for (auto* pChild : pNode->getChildIterator()) {
     if (pChild->getTagName() == PLUGPRESETMANAGER_NODE_PRESET) {
       String fxGUID = pChild->getStringAttribute(PLUGPRESETMANAGER_ATT_FX);
       int nr = pChild->getIntAttribute(PLUGPRESETMANAGER_ATT_NR);
 
       tPreset preset;
-      forEachXmlChildElement(*pChild, pData) {
+      for (auto* pData : pChild->getChildIterator()) {
         assert(pData->getTagName() == PLUGPRESETMANAGER_NODE_PRESETDATA);
         if (pData->getTagName() == PLUGPRESETMANAGER_NODE_PRESETDATA) {
           String dataString =

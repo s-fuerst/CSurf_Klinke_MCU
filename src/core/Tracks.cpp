@@ -544,7 +544,9 @@ bool Tracks::tracksStatesChanged(bool checkProjectChange) {
     if (!pTS) { // when the project is changed, TrackStates are already read
                 // before we get trackStatesChanged is called.
       assert(pMT != NULL);
-      m_trackStates[GUID2String(GetTrackGUID(pMT))] = new TrackState(pMT);
+      TrackState *pNew = new TrackState(pMT);
+      m_trackStates[pNew->getGuidAsString()] = pNew;
+      m_tracksByPointer[pMT] = pNew;
     }
     signalTrackAdded(pMT);
   }
@@ -559,6 +561,8 @@ bool Tracks::tracksStatesChanged(bool checkProjectChange) {
     if (pTS) { // when the project is changed, project-change prepare has
                // deleted the TrackStates already
       String guid = pTS->getGuidAsString();
+      // drop the pointer-index entry while pMT is still a valid key, then free
+      m_tracksByPointer.erase(pMT);
       delete (m_trackStates[guid]);
       m_trackStates.erase(m_trackStates.find(guid));
     }
@@ -1042,25 +1046,32 @@ int Tracks::getNumberOfActiveAnchors(int maxChannel /* = -1 */) {
 }
 
 TrackState *Tracks::getTrackStateForMediaTrack(MediaTrack *pMediaTrack) {
-  // maybe the same track (same GUID) has got a new pointer (e.g. when a project
-  // is restored) so search via the GUID and update the MediaTrack* if this has
-  // chnaged
-  String strGUID = GUID2String(GetTrackGUID(pMediaTrack));
-  BOOST_FOREACH (tTrackStates::value_type &v, m_trackStates) {
-    if (v.second->getGuidAsString() == strGUID) {
-      if (v.second->getMediaTrack() != pMediaTrack && pMediaTrack != NULL) {
-        v.second->setMediaTrack(pMediaTrack);
-      }
-      return v.second;
-    }
-  }
+  if (pMediaTrack == NULL)
+    return NULL;
 
-  // in the case, that the media track is already deleted, GetTrackGUID doens't
-  // return the old GUID so search using hte pMediaTrack pointer directly
-  BOOST_FOREACH (tTrackStates::value_type &v, m_trackStates) {
-    if (v.second->getMediaTrack() == pMediaTrack) {
-      return v.second;
+  // O(1) normal path: the pointer index. This is the hot lookup used once per
+  // track inside TSGraph::buildGraph() and repeatedly in meter/display/editor
+  // updates, so it must stay constant-time.
+  tTracksByPointer::const_iterator it = m_tracksByPointer.find(pMediaTrack);
+  if (it != m_tracksByPointer.end())
+    return it->second;
+
+  // Fallback: REAPER may replace a MediaTrack* while preserving its GUID (e.g.
+  // project restore, undo). Look the GUID up directly in the GUID map (do not
+  // linearly scan it), refresh the stored pointer, and (re)build the
+  // pointer-index entry so subsequent lookups hit the O(1) path again.
+  String strGUID = GUID2String(GetTrackGUID(pMediaTrack));
+  tTrackStates::iterator itTS = m_trackStates.find(strGUID);
+  if (itTS != m_trackStates.end()) {
+    TrackState *pTS = itTS->second;
+    MediaTrack *pStored = pTS->getMediaTrack();
+    if (pStored != pMediaTrack) {
+      if (pStored != NULL)
+        m_tracksByPointer.erase(pStored);
+      pTS->setMediaTrack(pMediaTrack);
     }
+    m_tracksByPointer[pMediaTrack] = pTS;
+    return pTS;
   }
 
   return NULL;
@@ -1193,7 +1204,7 @@ void Tracks::projectChanged(XmlElement *pXmlElement,
     tracksStatesChanged(false);
     pStatesNode = pXmlElement->getChildByName(TRACKSTATE_NODE_ROOT);
     if (pStatesNode) {
-      forEachXmlChildElement(*pStatesNode, pChild) {
+      for (auto* pChild : pStatesNode->getChildIterator()) {
         if (pChild->getTagName() == TRACKSTATE_NODE_SINGLE_STATE) {
           TrackState *pTS = new TrackState();
           pTS->readTrackStatesFromProjectConfig(pChild);
@@ -1202,10 +1213,12 @@ void Tracks::projectChanged(XmlElement *pXmlElement,
 	      getTrackStateForMediaTrack(pTS->getMediaTrack());
             if (pOldTS) { // overwrite existing track state, so first delete old
                           // one
+              m_tracksByPointer.erase(pTS->getMediaTrack());
               delete (m_trackStates[pTS->getGuidAsString()]);
               m_trackStates.erase(m_trackStates.find(pTS->getGuidAsString()));
             }
             m_trackStates[pTS->getGuidAsString()] = pTS;
+            m_tracksByPointer[pTS->getMediaTrack()] = pTS;
           }
         }
       }

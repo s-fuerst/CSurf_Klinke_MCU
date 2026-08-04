@@ -43,7 +43,7 @@ PlugModeParamComponent::PlugModeParamComponent(PlugModeComponent *pMC,
   addAndMakeVisible(m_nameShort = new Label(String("Name Short"), String("FilCut")));
   m_nameShort->setTooltip(String("This short name of the selected parameter"));
   m_nameShort->setFont(
-      Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
+      Font(FontOptions(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain)));
   m_nameShort->setJustificationType(Justification::centredLeft);
   m_nameShort->setEditable(true, true, false);
   m_nameShort->setColour(Label::backgroundColourId, Colours::white);
@@ -66,7 +66,7 @@ PlugModeParamComponent::PlugModeParamComponent(PlugModeComponent *pMC,
                         new Label(String("Name Long"), String("12345678901234567")));
   m_nameLong->setTooltip(String("This long name of the selected parameter"));
   m_nameLong->setFont(
-      Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
+      Font(FontOptions(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain)));
   m_nameLong->setJustificationType(Justification::centredLeft);
   m_nameLong->setEditable(true, true, false);
   m_nameLong->setColour(Label::backgroundColourId, Colours::white);
@@ -202,7 +202,7 @@ void PlugModeParamComponent::changeParamId(int paramId) {
     return;
 
   m_pParam->setParamID(paramId);
-  m_parameter->setSelectedId(paramId + PARAM_COMP_ID_OFFSET, true);
+  m_parameter->setSelectedId(paramId + PARAM_COMP_ID_OFFSET, sendNotificationSync);
   if (m_pMainComponent->isUseParamName()) {
     if (paramId == NOT_ASSIGNED) {
       m_pParam->setNameShort(String());

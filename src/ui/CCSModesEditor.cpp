@@ -58,7 +58,7 @@ void CCSModesEditor::setMainComponent(Component **ppComponent, bool visible) {
                                        true, m_pManager);
   m_pWindow->setUsingNativeTitleBar(true);
 
-  m_pWindow->setContentComponent(*ppComponent, false, true);
+  m_pWindow->setContentOwned(*ppComponent, true);
   static KlinkeLookAndFeel klf;  // keep alive while any window uses it
   (*ppComponent)->setLookAndFeel (&klf);
   if (visible)

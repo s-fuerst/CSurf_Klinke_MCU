@@ -1458,7 +1458,7 @@ void PlugMode::writeLastCalledPresetsToProjectConfig(XmlElement *pNode) {
 }
 
 void PlugMode::readLastCalledPresetsFromProjectConfig(XmlElement *pNode) {
-  forEachXmlChildElement(*pNode, pChild) {
+  for (auto* pChild : pNode->getChildIterator()) {
     if (pChild->getTagName() == PLUGMODE_NODE_LAST_CALLED_PRESET) {
       String guidString =
           pChild->getStringAttribute(PLUGMODE_ATT_LAST_CALLED_PRESET_FXGUID);
@@ -1486,7 +1486,7 @@ void PlugMode::writeFavsToProjectConfig(XmlElement *pNode) {
 }
 
 void PlugMode::readFavsFromProjectConfig(XmlElement *pNode) {
-  forEachXmlChildElement(*pNode, pChild) {
+  for (auto* pChild : pNode->getChildIterator()) {
     if (pChild->getTagName() == PLUGMODE_NODE_FAV) {
       int index = pChild->getIntAttribute(PLUGMODE_ATT_FAV_INDEX);
       if (index < 0 || index >= NUM_FAVORITES)

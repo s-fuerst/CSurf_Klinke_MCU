@@ -159,7 +159,7 @@ void PlugMapManager::rewriteMapFile() {
   File writeFile = File(getUserMapsLocation().getFullPathName() + String("\\") +
                         m_mapName + String(".xml"));
 
-  pRootElement->writeToFile(writeFile, "", String("UTF-8"));
+  pRootElement->writeTo(writeFile);
 
   safe_delete(pRootElement);
 
@@ -357,7 +357,7 @@ void PlugMapManager::writeLocalMapsToProjectConfig(XmlElement *pNode) {
 }
 
 void PlugMapManager::readLocalMapsFromProjectConfig(XmlElement *pNode) {
-  forEachXmlChildElement(*pNode, pChild) {
+  for (auto* pChild : pNode->getChildIterator()) {
     if (pChild->getTagName() == PLUGMAPMANAGER_NODE_MAP) {
       String guidString =
           pChild->getStringAttribute(PLUGMAPMANAGER_NODE_ROOT_ATT_FAV_TRACK);

@@ -98,7 +98,7 @@ bool PMVPot::readFromXml(XmlElement *pElement) {
   if (!PMParam::readFromXml(pElement))
     return false;
 
-  forEachXmlChildElement(*pElement, pStep) {
+  for (auto* pStep : pElement->getChildIterator()) {
     double val = pStep->getDoubleAttribute(PMAP_ATT_STEPVALUE);
     String shortName = pStep->getStringAttribute(PMAP_ATT_SNAME);
     String longName = pStep->getStringAttribute(PMAP_ATT_LNAME);
@@ -250,7 +250,7 @@ bool PMBank::readFromXml(XmlElement *pBankNode) {
     return false;
   m_offset = pBankNode->getIntAttribute(PMAP_ATT_OFFSET);
 
-  forEachXmlChildElement(*pBankNode, pPage) {
+  for (auto* pPage : pBankNode->getChildIterator()) {
     int id = pPage->getIntAttribute(PMAP_ATT_ID);
     if (id < 0 || id >= 8)
       return false;
@@ -301,7 +301,7 @@ void PlugMap::writeToXml(XmlElement *pElement) {
 bool PlugMap::readFromXml(XmlElement *pRootElement) {
   if (!pRootElement)
     return false;
-  forEachXmlChildElement(*pRootElement, pChild) {
+  for (auto* pChild : pRootElement->getChildIterator()) {
     if (pChild->getTagName() == PMAP_NODE_MAPINFO) {
       m_creator = pChild->getStringAttribute(PMAP_ATT_CREATOR);
       m_info = pChild->getAllSubText();

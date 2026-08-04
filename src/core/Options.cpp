@@ -146,7 +146,7 @@ void Options::writeConfigFile() {
     writeOptionToXml(pRootElement, m_optionList[i]);
   }
 
-  pRootElement->writeToFile(getConfigFile(), "", String("UTF-8"));
+  pRootElement->writeTo(getConfigFile());
 
   safe_delete(pRootElement);
 }
@@ -173,7 +173,7 @@ bool Options::readConfigFile() {
     return false;
 
   unsigned int i = 0;
-  forEachXmlChildElement(*pRootElement, pOption) {
+  for (auto* pOption : pRootElement->getChildIterator()) {
     if (i < m_optionList.size()) {
       readOptionFromXml(pOption, m_optionList[i]);
     }

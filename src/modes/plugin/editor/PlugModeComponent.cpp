@@ -49,7 +49,7 @@ PlugModeComponent::PlugModeComponent(PlugAccess *pPA)
   addAndMakeVisible(m_mappingFile =
                         new Label(String("Mapping File"), String("no mapping file \n")));
   m_mappingFile->setTooltip(String("The used mapping file"));
-  m_mappingFile->setFont(Font(15.0000f, Font::plain));
+  m_mappingFile->setFont(Font(FontOptions(15.0000f, Font::plain)));
   m_mappingFile->setJustificationType(Justification::centredLeft);
   m_mappingFile->setEditable(false, false, false);
   m_mappingFile->setColour(TextEditor::textColourId, Colours::black);
@@ -114,7 +114,7 @@ PlugModeComponent::PlugModeComponent(PlugAccess *pPA)
   m_pPlugAccess = pPA;
   updateEverything();
   m_learnFader = true;
-  m_useParamName->setToggleState(true, false);
+  m_useParamName->setToggleState(true, dontSendNotification);
   //[/Constructor]
 }
 
@@ -199,7 +199,7 @@ void PlugModeComponent::buttonClicked(Button *buttonThatWasClicked) {
     DialogWindow *pDialog =
         new SaveDialogWindow("Save Map", Colours::white, true, true);
     pMM->rescanDirs();
-    pDialog->setContentComponent(new PlugMapSaveDialog(pMM), false, true);
+    pDialog->setContentOwned(new PlugMapSaveDialog(pMM), true);
     pDialog->setVisible(true);
     pDialog->setAlwaysOnTop(true);
     pDialog->runModalLoop();
@@ -265,10 +265,10 @@ void PlugModeComponent::updateEverything() {
 
   m_local->setToggleState(m_pPlugAccess->getMapManager()->getMapType() ==
                               PlugMapManager::LOCAL_MAP,
-                          false);
+                          dontSendNotification);
 
   m_autosave->setToggleState(m_pPlugAccess->getMapManager()->getAutoSave(),
-                             false);
+                             dontSendNotification);
 
   updateLearnStatus();
 }

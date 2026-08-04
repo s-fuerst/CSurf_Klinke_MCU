@@ -1,0 +1,4 @@
+# Force LF for the Windows-from-WSL build script.
+# It is executed by bash inside WSL, which requires LF line endings.
+# This overrides any global core.autocrlf setting for this file.
+scripts/build-windows-from-wsl.sh text eol=lf

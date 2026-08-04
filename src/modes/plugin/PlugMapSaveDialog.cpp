@@ -50,7 +50,7 @@ PlugMapSaveDialog::PlugMapSaveDialog(PlugMapManager *pPMM)
 
   addAndMakeVisible(m_labelExisting =
                         new Label(String("Existing"), String("Existing User-Maps:\n")));
-  m_labelExisting->setFont(Font(15.0000f, Font::plain));
+  m_labelExisting->setFont(Font(FontOptions(15.0000f, Font::plain)));
   m_labelExisting->setJustificationType(Justification::centredLeft);
   m_labelExisting->setEditable(false, false, false);
   m_labelExisting->setColour(TextEditor::textColourId, Colours::black);
@@ -73,7 +73,7 @@ PlugMapSaveDialog::PlugMapSaveDialog(PlugMapManager *pPMM)
 
   addAndMakeVisible(m_labelNameOfNewMap =
                         new Label(String("Existing"), String("Name of new Map:\n")));
-  m_labelNameOfNewMap->setFont(Font(15.0000f, Font::plain));
+  m_labelNameOfNewMap->setFont(Font(FontOptions(15.0000f, Font::plain)));
   m_labelNameOfNewMap->setJustificationType(Justification::centredLeft);
   m_labelNameOfNewMap->setEditable(false, false, false);
   m_labelNameOfNewMap->setColour(TextEditor::textColourId, Colours::black);
@@ -82,7 +82,7 @@ PlugMapSaveDialog::PlugMapSaveDialog(PlugMapManager *pPMM)
   addAndMakeVisible(m_mapName = new Label(String("Map Name"), String()));
   m_mapName->setTooltip(String("The name of the map that should be created."));
   m_mapName->setExplicitFocusOrder(1);
-  m_mapName->setFont(Font(15.0000f, Font::plain));
+  m_mapName->setFont(Font(FontOptions(15.0000f, Font::plain)));
   m_mapName->setJustificationType(Justification::centredLeft);
   m_mapName->setEditable(true, true, false);
   m_mapName->setColour(Label::outlineColourId, Colours::black);
@@ -98,7 +98,7 @@ PlugMapSaveDialog::PlugMapSaveDialog(PlugMapManager *pPMM)
   m_fileDialog->addListener(this);
 
   addAndMakeVisible(m_labelConflict = new Label(String("Conflict"), String()));
-  m_labelConflict->setFont(Font(15.0000f, Font::plain));
+  m_labelConflict->setFont(Font(FontOptions(15.0000f, Font::plain)));
   m_labelConflict->setJustificationType(Justification::centredLeft);
   m_labelConflict->setEditable(false, false, false);
   m_labelConflict->setColour(Label::textColourId, Colour(0xffbc0000));
@@ -107,7 +107,7 @@ PlugMapSaveDialog::PlugMapSaveDialog(PlugMapManager *pPMM)
 
   addAndMakeVisible(m_labelExisting2 =
                         new Label(String("Existing"), String("Factory Maps:\n")));
-  m_labelExisting2->setFont(Font(15.0000f, Font::plain));
+  m_labelExisting2->setFont(Font(FontOptions(15.0000f, Font::plain)));
   m_labelExisting2->setJustificationType(Justification::centredLeft);
   m_labelExisting2->setEditable(false, false, false);
   m_labelExisting2->setColour(TextEditor::textColourId, Colours::black);

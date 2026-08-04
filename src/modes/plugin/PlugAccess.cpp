@@ -27,10 +27,10 @@ PlugAccess::PlugAccess(PlugMode *pMode)
       m_pMapManager(NULL), m_plugName(String()),
       m_GUIDplugTrack(GUID_NOT_ACTIVE) {
   // init per-unit state to bank 0 / page 0 for all units
-  m_selectedBankPerUnit.assign(0);
+  m_selectedBankPerUnit.fill(0);
   for (int u = 0; u < MAX_SURFACE_UNITS; u++)
-    m_selectedPagePerUnit[u].assign(0);
-  m_unitEmpty.assign(false);
+    m_selectedPagePerUnit[u].fill(0);
+  m_unitEmpty.fill(false);
 
   m_pMapManager = new PlugMapManager(pMode);
   m_pWindowManager = new PlugWindowManager(pMode);
@@ -61,16 +61,16 @@ void PlugAccess::trackChanged(MediaTrack *pMediaTrack) {
   if (pMediaTrack == m_pPlugTrack)
     return;
 
-  m_track2Slot.erase((unsigned long)m_pPlugTrack);
+  m_track2Slot.erase(reinterpret_cast<std::uintptr_t>(m_pPlugTrack));
   m_track2Slot.insert(
-      std::pair<unsigned long, int>((unsigned long)m_pPlugTrack, m_iSlot));
+      std::pair<std::uintptr_t, int>(reinterpret_cast<std::uintptr_t>(m_pPlugTrack), m_iSlot));
 
   if (!pMediaTrack) {
     accessPlugin(NULL, -1);
     return;
   }
 
-  tTrack2Plug::iterator iterT2P = m_track2Slot.find((unsigned long)pMediaTrack);
+  tTrack2Plug::iterator iterT2P = m_track2Slot.find(reinterpret_cast<std::uintptr_t>(pMediaTrack));
   if (iterT2P != m_track2Slot.end()) {
     accessPlugin(pMediaTrack, (*iterT2P).second);
   } else {
@@ -113,10 +113,10 @@ void PlugAccess::accessPlugin(MediaTrack *pMediaTrack, int iSlot,
   m_iSlot = iSlot;
 
   // reset ALL units to bank 0 / page 0
-  m_selectedBankPerUnit.assign(0);
+  m_selectedBankPerUnit.fill(0);
   for (int u = 0; u < MAX_SURFACE_UNITS; u++)
-    m_selectedPagePerUnit[u].assign(0);
-  m_unitEmpty.assign(false);
+    m_selectedPagePerUnit[u].fill(0);
+  m_unitEmpty.fill(false);
 
   if (changeTriggeredFromProjectChange || !plugExist()) {
     m_pMapManager->deselectMap();
@@ -803,7 +803,7 @@ void PlugAccess::writeSlotStatesToProjectConfig(XmlElement *pNode) {
 }
 
 void PlugAccess::readSlotStatesFromProjectConfig(XmlElement *pNode) {
-  forEachXmlChildElement(*pNode, pChild) {
+  for (auto* pChild : pNode->getChildIterator()) {
     if (pChild->getTagName() == PLUGACCESS_NODE_SLOTSTATE) {
       tSlotLocation loc(
           pChild->getStringAttribute(PLUGACCESS_ATT_SLOTSTATE_TRACK),
@@ -815,17 +815,17 @@ void PlugAccess::readSlotStatesFromProjectConfig(XmlElement *pNode) {
       boost::array<int, MAX_SURFACE_UNITS> banksPerUnit;
       boost::array<boost::array<int, 8>, MAX_SURFACE_UNITS> pagesPerUnit;
       boost::array<bool, MAX_SURFACE_UNITS> emptyPerUnit;
-      banksPerUnit.assign(0);
+      banksPerUnit.fill(0);
       for (int u = 0; u < MAX_SURFACE_UNITS; u++)
-        pagesPerUnit[u].assign(0);
-      emptyPerUnit.assign(false);
+        pagesPerUnit[u].fill(0);
+      emptyPerUnit.fill(false);
 
       // try versioned UNIT_STATES block first
       XmlElement *pUnitStates =
           pChild->getChildByName(PLUGACCESS_NODE_UNIT_STATES);
       if (pUnitStates && pUnitStates->getIntAttribute(PLUGACCESS_ATT_VERSION) >= 1) {
         int unitCount = 0;
-        forEachXmlChildElement(*pUnitStates, pUnit) {
+        for (auto* pUnit : pUnitStates->getChildIterator()) {
           if (pUnit->getTagName() == PLUGACCESS_NODE_UNIT) {
             int u = pUnit->getIntAttribute(PLUGACCESS_ATT_UNIT_INDEX);
             if (u >= 0 && u < MAX_SURFACE_UNITS) {
@@ -838,7 +838,7 @@ void PlugAccess::readSlotStatesFromProjectConfig(XmlElement *pNode) {
               emptyPerUnit[u] =
                   pUnit->getBoolAttribute(PLUGACCESS_ATT_UNIT_EMPTY, false);
               int page = 0;
-              forEachXmlChildElement(*pUnit, pPage) {
+              for (auto* pPage : pUnit->getChildIterator()) {
                 if (page < 8) {
                   int pageIndex = pPage->getIntAttribute(
                       PLUGACCESS_ATT_SLOTSTATE_PAGE_INDEX);
@@ -855,7 +855,7 @@ void PlugAccess::readSlotStatesFromProjectConfig(XmlElement *pNode) {
         int bank = pChild->getIntAttribute(PLUGACCESS_ATT_SLOTSTATE_BANK);
         banksPerUnit[0] = bank >= 0 && bank < 8 ? bank : 0;
         int page = 0;
-        forEachXmlChildElement(*pChild, pPage) {
+        for (auto* pPage : pChild->getChildIterator()) {
           if (pPage->getTagName() == PLUGACCESS_NODE_SLOTSTATE_PAGE &&
               page < 8) {
             int pageIndex = pPage->getIntAttribute(
@@ -896,7 +896,7 @@ void PlugAccess::writeSelectedPlugToProjectConfig(XmlElement *pPlugAccessNode) {
 void PlugAccess::readSelectedPlugFromProjectConfig(
     XmlElement *pPlugAccessNode,
     bool changeTriggeredFromProjectChange) {
-  forEachXmlChildElement(*pPlugAccessNode, pChild) {
+  for (auto* pChild : pPlugAccessNode->getChildIterator()) {
     if (pChild->getTagName() == PLUGACCESS_NODE_SELECTED_PLUG) {
       String guidString =
           pChild->getStringAttribute(PLUGACCESS_ATT_SELECTED_PLUG_TRACK);

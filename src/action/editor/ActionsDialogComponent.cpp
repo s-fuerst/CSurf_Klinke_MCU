@@ -32,7 +32,7 @@ m_pActionDisplay (pAD)
   for (int i = 0; i < 8; i++) {
     addAndMakeVisible (m_labelAction[i] = new Label (String("Action"), String()));
     m_labelAction[i]->setExplicitFocusOrder (5 + i);
-    m_labelAction[i]->setFont (Font (Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
+    m_labelAction[i]->setFont (Font (FontOptions (Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain)));
     m_labelAction[i]->setJustificationType (Justification::centredLeft);
     m_labelAction[i]->setEditable (true, true, false);
     m_labelAction[i]->setColour (Label::backgroundColourId, Colours::white);

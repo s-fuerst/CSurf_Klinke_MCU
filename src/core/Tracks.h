@@ -9,6 +9,7 @@
 #include<set>
 #include<vector>
 #include<map>
+#include<unordered_map>
 #include<memory>
 #include <cassert>
 #include "JuceHeader.h"
@@ -296,6 +297,16 @@ private:
 	
   typedef std::map<String, TrackState *> tTrackStates;
   tTrackStates m_trackStates;
+
+  // O(1) secondary index: MediaTrack* -> TrackState*. Kept in lockstep with
+  // m_trackStates at every insert/erase so getTrackStateForMediaTrack() is
+  // constant-time. It used to linearly scan m_trackStates, which made every
+  // call O(n); since TSGraph::buildGraph() calls it once per track, the graph
+  // rebuild was O(n^2) and adding a single track got progressively slower as
+  // the project grew. The GUID map remains the source of truth for the rare
+  // project-restore case where REAPER changes the pointer but keeps the GUID.
+  typedef std::unordered_map<MediaTrack *, TrackState *> tTracksByPointer;
+  tTracksByPointer m_tracksByPointer;
 
   typedef ::std::vector<MediaTrack *> tTracks;
   tTracks m_channelTracks;

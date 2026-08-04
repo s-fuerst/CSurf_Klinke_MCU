@@ -146,7 +146,7 @@ void ProjectConfig::beginLoadProjectState(
 String ProjectConfig::createXmlDocString() {
   XmlElement *root = new XmlElement(String("PROJECT_CONFIG"));
   m_signalProjectChanged(root, WRITE);
-  String doc = root->createDocument("", false, false);
+  String doc = root->toString (XmlElement::TextFormat().withoutHeader());
   delete (root);
   return doc;
 }

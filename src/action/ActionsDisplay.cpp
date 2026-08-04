@@ -91,7 +91,7 @@ bool ActionsDisplay::readConfigFile() {
   if (!pRootElement) 
     return false;
 
-  forEachXmlChildElement (*pRootElement, pNode) {
+  for (auto* pNode : pRootElement->getChildIterator()) {
     if (pNode->getTagName() != GA_ACTION)
       continue;
     int mod = pNode->getIntAttribute(GA_ATT_MOD);
@@ -119,7 +119,7 @@ void ActionsDisplay::writeConfigFile() {
     }
   }
  
-  pRootElement->writeToFile(getConfigFile(), "", String("UTF-8"));
+  pRootElement->writeTo(getConfigFile());
 
   delete(pRootElement);
 }

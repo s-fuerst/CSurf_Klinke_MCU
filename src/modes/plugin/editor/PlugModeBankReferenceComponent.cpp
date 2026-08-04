@@ -45,7 +45,7 @@ PlugModeBankReferenceComponent::PlugModeBankReferenceComponent(
   addAndMakeVisible(m_nameShort = new Label(String("Name Short"), String("Bank x")));
   m_nameShort->setTooltip(String("This short name of the selected bank"));
   m_nameShort->setFont(
-      Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
+      Font(FontOptions(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain)));
   m_nameShort->setJustificationType(Justification::centredLeft);
   m_nameShort->setEditable(true, true, false);
   m_nameShort->setColour(Label::backgroundColourId, Colours::white);
@@ -58,7 +58,7 @@ PlugModeBankReferenceComponent::PlugModeBankReferenceComponent(
                         new Label(String("Name Long"), String("12345678901234567")));
   m_nameLong->setTooltip(String("This long name of the selected bank"));
   m_nameLong->setFont(
-      Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
+      Font(FontOptions(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain)));
   m_nameLong->setJustificationType(Justification::centredLeft);
   m_nameLong->setEditable(true, true, false);
   m_nameLong->setColour(Label::backgroundColourId, Colours::white);
@@ -96,7 +96,7 @@ PlugModeBankReferenceComponent::PlugModeBankReferenceComponent(
                          "ids of repeating parameter groups. The ReaEQ map "
                          "uses this feature, look at this as an example."));
   m_offset->setFont(
-      Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
+      Font(FontOptions(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain)));
   m_offset->setJustificationType(Justification::centred);
   m_offset->setEditable(true, true, false);
   m_offset->setColour(Label::backgroundColourId, Colours::white);
@@ -107,7 +107,7 @@ PlugModeBankReferenceComponent::PlugModeBankReferenceComponent(
 
   addAndMakeVisible(m_offsetLabel = new Label(String("Offset Label"), String("Offset:")));
   m_offsetLabel->setFont(
-      Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
+      Font(FontOptions(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain)));
   m_offsetLabel->setJustificationType(Justification::centredLeft);
   m_offsetLabel->setEditable(false, false, false);
   m_offsetLabel->setColour(TextEditor::textColourId, Colours::black);
@@ -218,14 +218,14 @@ void PlugModeBankReferenceComponent::updateEverything() {
 
   int referTo = m_pBank->referTo();
   if (m_pBank->doesRefer()) {
-    m_referenceTo->setSelectedItemIndex(m_pBank->referTo(), false);
+    m_referenceTo->setSelectedItemIndex(m_pBank->referTo(), dontSendNotification);
     m_offset->setVisible(true);
     m_offsetLabel->setVisible(true);
     m_pPlugModeBankComponent->setTabVisible(false);
     m_offset->setText(String::formatted(String("%d"), m_pBank->getParamIDOffset()),
                       dontSendNotification);
   } else {
-    m_referenceTo->setSelectedItemIndex(m_pBank->getId(), false);
+    m_referenceTo->setSelectedItemIndex(m_pBank->getId(), dontSendNotification);
     m_offset->setVisible(false);
     m_offsetLabel->setVisible(false);
     m_pPlugModeBankComponent->setTabVisible(true);

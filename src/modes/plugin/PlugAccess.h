@@ -5,6 +5,7 @@
 #pragma once
 
 #include <boost/array.hpp>
+#include <cstdint>
 #include "csurf_mcu.h"
 #include <boost/scoped_ptr.hpp>
 #include "JuceHeader.h"
@@ -376,7 +377,7 @@ private:
   tSlotStatesMap m_knownSlotStates;
   void writeSlotStatesToProjectConfig(XmlElement *pNode);
   void readSlotStatesFromProjectConfig(XmlElement *pNode);
-  typedef std::map<unsigned long, int> tTrack2Plug;
+  typedef std::map<std::uintptr_t, int> tTrack2Plug;
   tTrack2Plug m_track2Slot;
 
   typedef std::map<boost::tuple<MediaTrack *, int>, HWND> tWindowStates;

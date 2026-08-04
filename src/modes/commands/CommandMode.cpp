@@ -123,7 +123,7 @@ bool CommandMode::readConfigFile() {
   if (!pRootElement)
     return false;
 
-  forEachXmlChildElement(*pRootElement, pPage) {
+  for (auto* pPage : pRootElement->getChildIterator()) {
     int pageIndex = pPage->getIntAttribute(CM_ATT_INDEX);
     if (pageIndex < 0 || pageIndex >= 8) {
       safe_delete(pXmlFile);
@@ -149,7 +149,7 @@ void CommandMode::writeConfigFile() {
     m_pPage[iPage]->writeToXml(pRootElement);
   }
 
-  pRootElement->writeToFile(getConfigFile(), "", String("UTF-8"));
+  pRootElement->writeTo(getConfigFile());
 
   safe_delete(pRootElement);
 }

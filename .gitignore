@@ -23,7 +23,6 @@ Release_B/
 ipch/
 /reaper_csurf.sdf
 /compile_commands.json
-/.gitattributes
 /.vs/
 /.vscode/
 /.ccls-cache/

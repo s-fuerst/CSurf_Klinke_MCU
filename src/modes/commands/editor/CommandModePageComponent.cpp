@@ -40,7 +40,7 @@ CommandModePageComponent::CommandModePageComponent(
   pageNameLabel->setTooltip(String("The name of the selected page (you can select a "
                               "different page with the tabs above)."));
   pageNameLabel->setFont(
-      Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
+      Font(FontOptions(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain)));
   pageNameLabel->setJustificationType(Justification::centredLeft);
   pageNameLabel->setEditable(true, true, false);
   pageNameLabel->setColour(Label::backgroundColourId, Colours::white);
@@ -92,42 +92,42 @@ void CommandModePageComponent::paint(Graphics &g) {
   g.fillAll(Colours::white);
 
   g.setColour(Colours::black);
-  g.setFont(Font(15.0000f, Font::bold));
+  g.setFont(Font(FontOptions(15.0000f, Font::bold)));
   g.drawText(String("Action Name"), 14, 60, 130, 24,
              Justification::centredRight, true);
 
   g.setColour(Colours::black);
-  g.setFont(Font(15.0000f, Font::bold));
+  g.setFont(Font(FontOptions(15.0000f, Font::bold)));
   g.drawText(String("Relative Mode"), 14, 90, 130, 24, Justification::centredRight,
              true);
 
   g.setColour(Colours::black);
-  g.setFont(Font(15.0000f, Font::bold));
+  g.setFont(Font(FontOptions(15.0000f, Font::bold)));
   g.drawText(String("Normal Speed"), 14, 120, 130, 24, Justification::centredRight,
              true);
 
   g.setColour(Colours::black);
-  g.setFont(Font(15.0000f, Font::bold));
+  g.setFont(Font(FontOptions(15.0000f, Font::bold)));
   g.drawText(String("Pressed Speed"), 14, 150, 130, 24, Justification::centredRight,
              true);
 
   g.setColour(Colours::black);
-  g.setFont(Font(15.0000f, Font::bold));
+  g.setFont(Font(FontOptions(15.0000f, Font::bold)));
   g.drawText(String("Action Name"), 14, 210, 130, 24,
              Justification::centredRight, true);
 
   g.setColour(Colours::black);
-  g.setFont(Font(15.0000f, Font::bold));
+  g.setFont(Font(FontOptions(15.0000f, Font::bold)));
   g.drawText(String("Relative Mode"), 14, 240, 130, 24, Justification::centredRight,
              true);
 
   g.setColour(Colours::black);
-  g.setFont(Font(15.0000f, Font::bold));
+  g.setFont(Font(FontOptions(15.0000f, Font::bold)));
   g.drawText(String("Normal Speed"), 14, 270, 130, 24, Justification::centredRight,
              true);
 
   g.setColour(Colours::black);
-  g.setFont(Font(15.0000f, Font::bold));
+  g.setFont(Font(FontOptions(15.0000f, Font::bold)));
   g.drawText(String("Pressed Speed"), 14, 300, 130, 24, Justification::centredRight,
              true);
 

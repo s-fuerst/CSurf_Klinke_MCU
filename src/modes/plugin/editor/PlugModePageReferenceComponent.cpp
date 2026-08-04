@@ -47,7 +47,7 @@ PlugModePageReferenceComponent::PlugModePageReferenceComponent(
   addAndMakeVisible(m_nameShort = new Label(String("Name Short"), String("Page x")));
   m_nameShort->setTooltip(String("This short name of the selected page"));
   m_nameShort->setFont(
-      Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
+      Font(FontOptions(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain)));
   m_nameShort->setJustificationType(Justification::centredLeft);
   m_nameShort->setEditable(true, true, false);
   m_nameShort->setColour(Label::backgroundColourId, Colours::white);
@@ -60,7 +60,7 @@ PlugModePageReferenceComponent::PlugModePageReferenceComponent(
                         new Label(String("Name Long"), String("12345678901234567")));
   m_nameLong->setTooltip(String("This long name of the selected page"));
   m_nameLong->setFont(
-      Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
+      Font(FontOptions(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain)));
   m_nameLong->setJustificationType(Justification::centredLeft);
   m_nameLong->setEditable(true, true, false);
   m_nameLong->setColour(Label::backgroundColourId, Colours::white);
@@ -98,7 +98,7 @@ PlugModePageReferenceComponent::PlugModePageReferenceComponent(
                          "ids of repeating parameter groups. The ReaEQ map "
                          "uses this feature, look at this as an example."));
   m_offset->setFont(
-      Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
+      Font(FontOptions(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain)));
   m_offset->setJustificationType(Justification::centred);
   m_offset->setEditable(true, true, false);
   m_offset->setColour(Label::backgroundColourId, Colours::white);
@@ -109,7 +109,7 @@ PlugModePageReferenceComponent::PlugModePageReferenceComponent(
 
   addAndMakeVisible(m_offsetLabel = new Label(String("Offset Label"), String("Offset:")));
   m_offsetLabel->setFont(
-      Font(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain));
+      Font(FontOptions(Font::getDefaultMonospacedFontName(), 15.0000f, Font::plain)));
   m_offsetLabel->setJustificationType(Justification::centredLeft);
   m_offsetLabel->setEditable(false, false, false);
   m_offsetLabel->setColour(TextEditor::textColourId, Colours::black);
@@ -220,14 +220,14 @@ void PlugModePageReferenceComponent::updateEverything() {
 
   int referTo = m_pPage->referTo();
   if (m_pPage->doesRefer()) {
-    m_referenceTo->setSelectedItemIndex(m_pPage->referTo(), false);
+    m_referenceTo->setSelectedItemIndex(m_pPage->referTo(), dontSendNotification);
     m_offset->setVisible(true);
     m_offsetLabel->setVisible(true);
     m_pPlugModePageComponent->setTabVisible(false);
     m_offset->setText(String::formatted(String("%d"), m_pPage->getParamIDOffset()),
                       dontSendNotification);
   } else {
-    m_referenceTo->setSelectedItemIndex(m_pPage->getId(), false);
+    m_referenceTo->setSelectedItemIndex(m_pPage->getId(), dontSendNotification);
     m_offset->setVisible(false);
     m_offsetLabel->setVisible(false);
     m_pPlugModePageComponent->setTabVisible(true);
