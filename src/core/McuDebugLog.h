@@ -57,34 +57,3 @@ static inline void mcu_log_init() {
 #define MCU_LOG_INIT()  ((void)0)
 
 #endif  // MCU_DEBUG_LOG
-
-// --- Optional Run() phase timing probes ------------------------------------
-// Enabled together with MCU_DEBUG_LOG by the MCU_TIMING CMake switch. Emits
-// "[TIMING] <phase> <ms>" lines to the same debug log so the dominant phase
-// in CSurf_MCU::Run() can be found by grepping the log. Inert (zero cost)
-// when MCU_TIMING is not defined.
-#ifdef MCU_TIMING
-#include <chrono>
-namespace McuTiming {
-inline void logMs(const char *tag, double ms) {
-  mcu_log_write("[TIMING] %-22s %8.3f ms", tag, ms);
-}
-// RAII scope that measures wall time from construction to destruction and
-// logs it under the given tag. Usage: MCU_TIMING_SCOPE(adjust);
-struct Scope {
-  const char *name;
-  std::chrono::steady_clock::time_point t0;
-  Scope(const char *n) : name(n), t0(std::chrono::steady_clock::now()) {}
-  ~Scope() {
-    logMs(name, std::chrono::duration<double, std::milli>(
-                    std::chrono::steady_clock::now() - t0)
-                    .count());
-  }
-};
-}  // namespace McuTiming
-#define MCU_TIMING_SCOPE(name) McuTiming::Scope _mcu_tscope_##name(#name)
-#define MCU_TIMING_LOG(...) mcu_log_write(__VA_ARGS__)
-#else
-#define MCU_TIMING_SCOPE(name) ((void)0)
-#define MCU_TIMING_LOG(...) ((void)0)
-#endif  // MCU_TIMING

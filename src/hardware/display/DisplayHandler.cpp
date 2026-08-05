@@ -91,10 +91,7 @@ void DisplayHandler::sendToHardware(int row, int pos, char const *text,
     char tmp[56] = {};
     for (int k = 0; k < len && k < 55; k++)
       tmp[k] = (text[k] >= 0x20 && text[k] < 0x7f) ? text[k] : '.';
-#ifndef MCU_TIMING
     MCU_LOG("ROW%d snd pos=%d len=%d [%s]", row, pos, len, tmp);
-#endif  // suppress the per-write display log during profiling (fopen cost
-        // would otherwise dominate and skew the measurement)
   }
 
   m_pHardwareState->changeText(hardwareRow, pos, text, len);

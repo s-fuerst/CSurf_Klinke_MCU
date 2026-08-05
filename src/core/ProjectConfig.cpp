@@ -4,6 +4,7 @@
  */
 #include "ProjectConfig.h"
 #include "csurf.h"
+#include <cstring>
 
 #define CONFIG_ID "<MCU_KLINKE"
 #define CONFIG_ID_JUCE String("<MCU_KLINKE")
@@ -103,35 +104,64 @@ void ProjectConfig::saveExtensionConfig(
 					struct project_config_extension_t *reg) {
   bool commentign = false;
 
-  // '<' and '>' can't be used in the project files, so i replace them with |#{
-  // and }#| before writing into the file and convert this back after reading
-  // from it
-  String xmlDocString = createXmlDocString()
-    .replace(String("<"), String("|#{"))
-    .replace(String(">"), String("}#|"));
+  // '<' and '>' can't be used in the project files, so escape them as |#{ / }#|
+  // before writing, and convert back when reading. XmlElement::toString() emits
+  // CRLF line endings, so each physical line ends in "\r\n".
+  //
+  // Escape + line-split are done in ONE pass over a writable byte buffer we
+  // own. The previous version built a JUCE String and split it with
+  // indexOfChar/substring in a loop; both walk UTF-8 from index 0 on every
+  // call, so the split was O(n^2) and the profiler showed it dominating
+  // saveExtensionConfig (called by REAPER per undo checkpoint, i.e. per track
+  // add). Scanning raw UTF-8 bytes is safe here: '<', '>', '\r', '\n' are all
+  // ASCII and never occur inside a multibyte sequence, so byte positions are
+  // correct line boundaries and the emitted line bytes are preserved verbatim.
+  String rawXml = createXmlDocString();
+  const char *src = rawXml.toRawUTF8();
+  const size_t len = std::strlen(src);
+
+  juce::HeapBlock<char> buf(len * 3 + 1);
+  char *w = buf;
+  for (size_t i = 0; i < len; ++i) {
+    const char c = src[i];
+    if (c == '<') {
+      *w++ = '|'; *w++ = '#'; *w++ = '{';
+    } else if (c == '>') {
+      *w++ = '}'; *w++ = '#'; *w++ = '|';
+    } else {
+      *w++ = c;
+    }
+  }
+  *w = '\0';
+  const size_t wlen = (size_t) (w - buf);
 
   ctx->AddLine(CONFIG_ID);
-  // the fucking buffer overwrite in ctx->AddLine took me two days of debugging
-  // to avoid it, the xmlDocString must be diveded in single parts
-  int from = 0;
-  int to = 0;
-  do {
-    int to = xmlDocString.indexOfChar(from, '\n');
+  // Emit each CRLF-delimited line (stripping the "\r\n"), chunked at 4000 to
+  // dodge a ctx->AddLine buffer-overwrite with very long lines.
+  char *lineStart = buf;
+  for (size_t i = 0; i <= wlen; ++i) {
+    if (i == wlen || buf[i] == '\n') {
+      char *contentEnd = &buf[i];
+      if (contentEnd > lineStart && contentEnd[-1] == '\r')
+        --contentEnd;  // drop the '\r' of "\r\n"
 
-    if (to != -1) {
-      if (to - from > 4000) {
-        to = from + 4000;
-        ctx->AddLine("%s", xmlDocString.substring(from, to).toRawUTF8());
-      } else {
-        ctx->AddLine("%s", xmlDocString.substring(from, to - 1).toRawUTF8());
-        from = to + 1;
+      size_t n = (size_t) (contentEnd - lineStart);
+      size_t off = 0;
+      while (n - off > 4000) {
+        char saved = lineStart[off + 4000];
+        lineStart[off + 4000] = '\0';
+        ctx->AddLine("%s", lineStart + off);
+        lineStart[off + 4000] = saved;
+        off += 4000;
       }
-    } else {
-      ctx->AddLine("%s", xmlDocString.substring(from).toRawUTF8());
-      break;
-    }
-  } while (to != -1); // to < found
+      char saved = *contentEnd;
+      *contentEnd = '\0';
+      ctx->AddLine("%s", lineStart + off);
+      *contentEnd = saved;
 
+      lineStart = &buf[i] + 1;  // next line begins after the '\n'
+    }
+  }
   ctx->AddLine(">");
 }
 

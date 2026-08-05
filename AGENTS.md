@@ -37,283 +37,37 @@ through its **csurf** (control surface) API. Once loaded, it registers a
 control surface called *"Mackie Control Protocol (Klinke)"* that the user
 selects in Reaper's *Preferences → Control/OSC/web*.
 
-## 2. Project status (read this)
+The extension builds and runs on Windows, macOS, and Linux. It uses
+**JUCE 8** (module build) and header-only **Boost 1.91.0**. JUCE 1.52
+could not target modern macOS and Apple Silicon; Boost 1.39 does not
+compile reliably with modern libc++ and C++17.
 
-The cross-platform revival is complete: the extension builds and runs on
-Windows, macOS, and Linux. It uses **JUCE 8** (module build) and header-only
-**Boost 1.91.0**. JUCE 1.52 could not target modern macOS and Apple Silicon;
-Boost 1.39 does not compile reliably with modern libc++ and C++17.
 
-> The original build is **Windows + Visual Studio only**. A cross-platform
-> **CMake** build has been added (see §4) and is now the source of truth for
-> all three platforms. The old VS `.vcxproj` / `.sln` files are archived in
-> `archive/vs-legacy/`.
+## 2. How to build
 
-### Prerequisites for the CMake build (exact versions pinned)
+Full build instructions for all platforms — prerequisites, the convenience
+scripts, and the manual CMake alternatives — live in
+[`README.md`](README.md). Read that file before building. This section only
+records what the README does not:
 
-All three deps live at the **repo root**:
-
-1. **JUCE 8** (module build) → `juce_8/`
-   - Fetched by `./scripts/fetch_deps.sh`: `git clone --branch 8.0.14 https://github.com/juce-framework/JUCE juce_8`
-   - The CMake build uses `add_subdirectory(juce_8)` to link `juce::juce_gui_basics`.
-2. **Boost 1.91.0** (headers only) → `boost_1_91_0/`
-   - `https://archives.boost.io/release/1.91.0/source/boost_1_91_0.tar.bz2`
-   - Only headers are used (smart pointers, `signals2`). No compiled libs.
-3. **REAPER SDK** (WDL + SWELL + plugin headers) → `reaper-sdk/`
-   - From the same Stenzel fork: `cp -r original-klinke/reaper-sdk .`
-   - Alt: Cockos — `https://www.reaper.fm/sdk/plugin/plugin.php`
-4. **Linux system packages** (build host):
-   `sudo apt install build-essential cmake libfreetype-dev libx11-dev libxext-dev libcurl4-openssl-dev`
-
-> The CMake build expects all three deps at the repo root; no environment
-> variables are needed.
-
-## 4. How to build
-
-**Status:**
-- **Linux** — CMake build working (baseline).
-- **Windows** — CMake build working (MSVC, native Win32, res.rc, JUCE 8).
-- **macOS** — CMake build working (Clang, Cocoa/Metal, JUCE 8, SWELL).
-
-### Windows (CMake, MSVC)
-
-```powershell
-# one-time: fetch the three pinned deps to the repo root
-.\scripts\fetch_deps.sh   # Git Bash or WSL
-
-# Build host needs Visual Studio 2019 or later (MSVC toolset v142+)
-# and CMake 3.10+.
-
-# configure + build (from Developer Command Prompt or PowerShell with MSVC env)
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build . --config Release
-```
-
-Output: `build/Release/reaper_csurf_mcu_klinke_x64.dll`. Deploy by copying
-to `%APPDATA%\REAPER\UserPlugins\` and adding **"Mackie Control Protocol
-(Klinke)"** in Reaper → Preferences → Control/OSC/web. The Debug config
-yields `build/Debug/reaper_csurf_mcu_klinke_x64.dll`.
-
-Key differences from Linux:
-- **Native Win32 dialogs**: the surface-edit dialog is defined in `res.rc`
-  and compiled by the MSVC resource compiler. SWELL is not used on Windows;
-  `SWELL_PROVIDED_BY_APP` is not defined, and `swell-modstub-generic.cpp` /
-  `res_linux.cpp` are excluded.
-- **winmm.lib**: linked explicitly for `timeGetTime()` (used in
-  `csurf_mcu.cpp`, `Transport.cpp`, `ButtonManager.cpp`).
-- **Output name**: follows the .vcxproj convention — `reaper_csurf_mcu_klinke_x64.dll`.
-
-#### Building from WSL (the Windows host, driven from the Linux shell)
-
-If you develop inside WSL on a Windows machine, you do not need to leave the
-WSL shell to produce the Windows `.dll`. `scripts/build-windows-from-wsl.sh`
-drives the native MSVC toolchain from WSL and copies the result into REAPER's
-`UserPlugins`. It mirrors the source tree onto native NTFS (`/mnt/c`) and
-builds there with the **Ninja** generator — on NTFS both Ninja's `stat()` and
-MSVC's file tracker work correctly, giving Linux-like incremental speed
-(~10–15 s for a one-file change, ~1–2 s for a no-op build). The WSL repo
-(where you edit and use git) is left untouched.
-
-```bash
-./scripts/fetch_deps.sh                        # one-time (see CRLF note below)
-scripts/build-windows-from-wsl.sh --setup  # one-time: rsync deps + source to /mnt/c (~400 MB)
-scripts/build-windows-from-wsl.sh          # incremental: rsync source, build, deploy
-scripts/build-windows-from-wsl.sh --clean  # wipe build_win/, reconfigure + build
-scripts/build-windows-from-wsl.sh --reconfigure  # re-run CMake (after CMakeLists.txt / source-list edits), then build
-scripts/build-windows-from-wsl.sh --debug  # Debug config -> build_win/ (needs --clean first; Ninja is single-config)
-scripts/build-windows-from-wsl.sh --release # Release config -> build_win/ (needs --clean after Debug; Ninja is single-config)
-scripts/build-windows-from-wsl.sh --klinke # Release config with the private KLINKE preprocessor flag (-DMCU_KLINKE_BUILD=ON)
-scripts/build-windows-from-wsl.sh --no-deploy  # build only, do not copy to UserPlugins
-scripts/build-windows-from-wsl.sh -j8       # override parallelism (defaults to nproc)
-```
-
-Output: `build_win/reaper_csurf_mcu_klinke_x64.dll` (Ninja is single-config,
-so Release and Debug land directly in `build_win/`, not in a `Release/`/
-`Debug/` subfolder). The script auto-detects
-`%APPDATA%\REAPER\UserPlugins\` (under `/mnt/c/Users/*`) and copies the `.dll`
-there unless `--no-deploy` is given (set `MCU_USERPLUGINS=` to override the
-destination). Fully restart REAPER to load it.
-
-Requirements: Visual Studio 2019+ (Community or Build Tools) with the
-**MSVC v142/v143 x64** and **Windows 10/11 SDK** components, `vswhere.exe`
-(ships with the VS installer), `rsync`, `unzip`, `curl`, and internet access
-on first run (the portable-CMake download is ~50 MB).
-
-> **CRLF note**: the repo is checked out with `core.autocrlf=true`, so shell
-> scripts are CRLF and `bash` will refuse them with `bash\r: No such file or
-> directory`. If that happens, strip once: `sed -i 's/\r$//' scripts/fetch_deps.sh`.
-`scripts/build-windows-from-wsl.sh` itself is committed LF.
->
-> The legacy in-place script `scripts/build-windows.sh` (built on WSL ext4 via
-> the UNC mount) was removed; its file-tracker/incremental behaviour was
-> unreliable. `build-windows-from-wsl.sh` is the supported Windows-from-WSL path.
-
-### Linux (CMake, baseline)
-
-The convenience script uses the same common build flags as the Windows-from-WSL
-script. It builds, deploys, and starts REAPER unless `--no-deploy` is given:
-
-```bash
-./scripts/build-and-run-linux-macos.sh              # incremental build + deploy + run
-./scripts/build-and-run-linux-macos.sh --release    # reconfigure + build Release + deploy + run
-./scripts/build-and-run-linux-macos.sh --debug      # reconfigure + build Debug + deploy + run
-./scripts/build-and-run-linux-macos.sh --clean      # wipe build/, then configure + build + deploy + run
-./scripts/build-and-run-linux-macos.sh --reconfigure # rerun CMake, then build + deploy + run
-./scripts/build-and-run-linux-macos.sh --no-deploy  # build only; do not deploy or start REAPER
-./scripts/build-and-run-linux-macos.sh -j8          # override parallelism (defaults to nproc)
-```
-
-```bash
-# one-time: fetch the three pinned deps to the repo root
-./scripts/fetch_deps.sh
-
-# build-host packages (libcurl is new for JUCE 8)
-sudo apt install build-essential cmake libfreetype-dev libx11-dev libxext-dev libcurl4-openssl-dev
-
-# configure + build
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build . -- -j"$(nproc)"
-```
-
-Output: `build/reaper_csurf_mcu_klinke.so`. Deploy by copying it to
-`~/.config/REAPER/UserPlugins/` and adding **"Mackie Control Protocol
-(Klinke)"** in Reaper → Preferences → Control/OSC/web. Debug logging is
-compiled only in Debug configurations; Release builds do not include it.
-
-#### Portable Linux build (the distribution artifact)
-
-A `.so` built on a modern distro (e.g. Arch/CachyOS, glibc 2.43) embeds high
-GLIBC symbol versions and will **not** load on Ubuntu LTS / Debian stable /
-Fedora — glibc is forward-compatible only ("build on old, run on new"). The
-native build above is for **local development**; for a **download artifact**
-that runs on essentially every current desktop Linux, build inside a container
-instead:
-
-```bash
-./scripts/build-portable-linux.sh     # → dist/reaper_csurf_mcu_klinke.so
-```
-
-What it does (`docker/release-linux.Dockerfile`):
-- Builds on **Debian 11 (bullseye)** → pins GLIBC requirement at ≤ 2.31.
-- Statically links the C++ runtime (`-static-libstdc++ -static-libgcc`) →
-  `libstdc++.so` / `libgcc_s.so` are **not** runtime dependencies.
-- Installs a current CMake from cmake.org (JUCE 8 needs ≥ 3.22; Debian 11
-  ships 3.18).
-- `MCU_DEBUG_LOG=OFF` (a release artifact should not spam the log).
-- Multi-stage build with a `scratch` export stage that emits just the `.so`
-  into `dist/`.
-
-Uses rootless **podman** (preferred — no daemon, no sudo), falls back to
-**docker**. Result: an 11 MB `.so` whose direct dependencies are only
-`libcurl`, `libfontconfig`, `libfreetype`, `libpthread`, `libdl`, `libm`,
-`libc` — all of which ship on every desktop Linux running Reaper.
-
-**Coverage** (glibc ≥ 2.30): Ubuntu 20.04+, Debian 11+, Fedora 31+, Arch,
-openSUSE Leap 15.4+, RHEL/Rocky/Alma 9+. The one gap is **RHEL/Rocky/Alma 8**
-(glibc 2.28) — an aging server/workstation distro rarely used for Reaper.
-
-**X11 note:** JUCE loads X11 dynamically at runtime (`dlopen`), so `libX11`
-is *not* a hard link-time dependency. The native build happens to list it in
-`NEEDED` only because CachyOS' gcc does not default to `-Wl,--as-needed`;
-Debian's gcc does, so the container build drops the unused entry. Both
-builds are symbol-identical regarding X11 and behave the same at runtime.
-
-**Known container build quirks** (documented so they are not re-debugged):
-- JUCE builds its `juceaide` codegen helper by **re-invoking CMake as a
-  subprocess** whose passthrough args do **not** include `CMAKE_C[XX]_FLAGS`,
-  so forcing `-I/usr/include/freetype2` via the outer flags does **not**
-  reach juceaide.
-- juceaide compiles `juce_graphics.cpp`, which needs `<ft2build.h>` (a flat
-  header living under `/usr/include/freetype2/`) and `<fontconfig/fontconfig.h>`.
-  Fix: symlink `/usr/include/ft2build.h` and `/usr/include/freetype` into the
-  default include path, and install `libfontconfig1-dev`. (Standard
-  JUCE-on-Debian/Ubuntu Docker workaround.)
-
-#### Versioning (VERSION file + build counter)
-
-The version string baked into the surface (shown in Reaper's surface list as
-*Mackie Control Protocol (Klinke v… build …)*) comes from a **`VERSION`**
-file at the repo root, not from a hard-coded constant:
-
-```
-# Format: <version> <build-count>
-0.9.1.3 0
-```
-
-- **`<version>`** (e.g. `0.9.1.3`) is bumped **manually** for a release —
-  edit the `VERSION` file (e.g. → `0.9.2.0`). When you bump the version,
-  reset the build-count to `1` (or `0`).
-- **`<build-count>`** is **auto-incremented** on every `cmake` configure and
-  compiled into the binary as `… build N`. The number stored in the file is
-  the build number of the **last** build produced.
-
-At configure time CMake reads `VERSION`, bumps the count, rewrites `VERSION`,
-and generates `build/Version.h` (`#define MCU_VERSION_STRING "v0.9.1.3 build N"`),
-which `csurf_mcu.h` includes and uses in `CSurf_MCU::GetDescString()`.
-
-> **Do not run `cmake ..` without building afterwards** — it bumps the counter
-> without producing a binary. The build flow is always `cmake .. && cmake --build`.
-
-#### Deploying after a build (agent responsibility)
-
-There is **no auto-deploy step in CMake** (so CI, foreign machines, and the
-future Windows/macOS branches are not surprised). Instead, **the agent copies
-the freshly built artifact into the Reaper plugin directory after every
-successful build**. The agent knows the host platform (it ran the
-build), so on Linux it runs:
-
-```bash
-cp build/reaper_csurf_mcu_klinke.so ~/.config/REAPER/UserPlugins/
-```
-
-On macOS it would run:
-
-```bash
-cp build/reaper_csurf_mcu_klinke.dylib ~/Library/Application\ Support/REAPER/UserPlugins/
-```
-
-On Windows:
-
-```powershell
-copy build\Release\reaper_csurf_mcu_klinke_x64.dll %APPDATA%\REAPER\UserPlugins\
-```
-
-Reaper must be **fully restarted** (not just reloaded) to pick up the new
-`.so`/`.dll`/`.dylib`.
-
-The CMake build uses **SWELL** (WDL) for the surface-edit dialog on Linux
-(`res_linux.cpp` + `res.rc_mac_dlg`, generated from `res.rc` via
-`WDL/swell/swell_resgen.pl`).
-
-### macOS (CMake, Clang — working)
-
-```bash
-# one-time: fetch the three pinned deps to the repo root
-./scripts/fetch_deps.sh
-
-# Build host needs Xcode Command Line Tools (or full Xcode) and cmake.
-# No additional system packages needed — JUCE 8 links macOS frameworks
-# (Cocoa, IOKit, Metal, QuartzCore, etc.) automatically via module metadata.
-
-# configure + build
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build . -- -j"$(sysctl -n hw.ncpu)"
-```
-
-Output: `build/reaper_csurf_mcu_klinke.dylib`. Deploy by copying to
-`~/Library/Application Support/REAPER/UserPlugins/` and adding
-**"Mackie Control Protocol (Klinke)"** in Reaper → Preferences →
-Control/OSC/web. Minimum macOS version: 10.15 (Catalina) — JUCE 8 requires it.
-
-Key differences from Linux:
-- **SWELL**: uses the `SWELL_dllMain` export (not `dlopen`/`libSwell.so`).
-  REAPER calls `SWELL_dllMain` at plugin load time with a `_GetFunc` pointer.
-- **Dialog resources**: SWELL's default FLIPPED|NOAUTOSIZE autogen flags are
-  correct on macOS; no style/scaling overrides needed (unlike Linux).
-- **Frameworks**: all linked automatically by `juce::juce_gui_basics`.
+- **Platform implementation notes** (code-level facts, not build steps):
+  - **Windows** — the surface-edit dialog is native Win32, defined in
+    `res.rc` and compiled by the MSVC resource compiler. SWELL is not used
+    (`SWELL_PROVIDED_BY_APP` undefined; `swell-modstub-generic.cpp` and
+    `res_linux.cpp` are excluded). `winmm.lib` is linked explicitly for
+    `timeGetTime()` (used in `csurf_mcu.cpp`, `Transport.cpp`,
+    `ButtonManager.cpp`). Output name follows the .vcxproj convention:
+    `reaper_csurf_mcu_klinke_x64.dll`.
+  - **Linux** — the surface-edit dialog uses SWELL: `res_linux.cpp` plus
+    `res.rc_mac_dlg` (generated from `res.rc` via `WDL/swell/swell_resgen.pl`).
+  - **macOS** — SWELL uses the `SWELL_dllMain` export (not
+    `dlopen`/`libSwell.so`); REAPER calls it at plugin load time with a
+    `_GetFunc` pointer. The dialog autogen flags (FLIPPED|NOAUTOSIZE) are
+    correct by default on macOS; JUCE links all frameworks automatically.
+- **Agent build conventions** (see §7 "Patterns" for details): versioning via
+  VERSION.txt + build counter, agent-driven deploy after every build, the
+  `cmake .. && cmake --build` flow rule, logging via MCU_DEBUG_LOG, and the
+  portable-build container gotchas.
 
 ## 3. Tech stack & dependencies
 
@@ -323,8 +77,8 @@ Key differences from Linux:
 | **JUCE**                 | `JUCE_DIR`             | **8.0.14** (modules via `add_subdirectory`)          | GUI framework for all editor dialogs/components. Now licensed AGPLv3/JUCE dual. Modules: `juce_gui_basics` pulls `juce_core`/`juce_events`/`juce_graphics`/`juce_data_structures` transitively. |
 | **Boost**                | `BOOST`                | **1.91.0** (header-only)                             | Mainly `boost/signals2.hpp`. No compiled libs needed. Upgraded from 1.39 (which did not compile under modern libc++/C++17).                                                                                                                                       |
 
-The per-platform build instructions are in §4. No environment variables are
-required for the CMake build — it finds all three deps at the repo root.
+Per-platform build instructions are in README.md. No environment variables
+are required for the CMake build — it finds all three deps at the repo root.
 
 ### `KlinkeLookAndFeel.h` (JUCE 8 specific)
 - `KlinkeLookAndFeel.h` — minimal `LookAndFeel_V4` subclass that forces
@@ -332,7 +86,7 @@ required for the CMake build — it finds all three deps at the repo root.
   Applied per-window in `CCSModesEditor::setMainComponent()`.
   Global `LookAndFeel::setColour()` is avoided — it breaks dialog interactivity.
 
-## 5. Architecture & code map
+## 4. Architecture & code map
 
 ### Plugin lifecycle & event flow
 
@@ -384,8 +138,9 @@ reaper loads the .dll/.so/.dylib
   "no track" and the master track throughout the plug/track code.
 - **1-based channel arrays:** many `[9]` arrays are 1-based; index 0 is the
   master fader. `ASSERT` (in `src/core/McuAssert.h`) guards channel ranges.
-- **Version string** comes from the `VERSION.txt` file (repo root) — see §4. The
-  build counter auto-increments; bump the version part manually for a release.
+- **Version string** comes from the `VERSION.txt` file (repo root) — see §7
+  "Patterns". The build counter auto-increments; bump the version part manually
+  for a release.
   `csurf_mcu.h` uses `MCU_VERSION_STRING` (from generated `Version.h`) in
   `GetDescString()`.
 - **No auto-format style is enforced;** match the surrounding file's style
@@ -459,7 +214,7 @@ relevant files and confirm the blast radius → `read` for the exact text → `e
 change that touches more than one subsystem — the graph catches cross-subsystem
 callers that a single-file read misses.
 
-## 6. References
+## 5. References
 - **Reaper Extension / csurf SDK** — https://github.com/justinfrankel/reaper-sdk
   (most relevant: `reaper-sdk/reaper-plugins/reaper_csurf/`)
 - **Reaper** — https://www.reaper.fm/
@@ -468,7 +223,7 @@ callers that a single-file read misses.
   - DrivenByMoss — https://github.com/git-moss/DrivenByMoss
 - **JUCE 8** — https://github.com/juce-framework/JUCE (tag 8.0.14)
 
-## 7. Patterns
+## 6. Patterns
 
 - User can run sudo commands when requested — just tell them what to
   run and they'll execute it. No sudo password prompt needed from
@@ -477,9 +232,9 @@ callers that a single-file read misses.
   hard-coded. Format "<version> <build-count>". Bump version manually
   (reset count); count auto-increments per `cmake`
   configure. Generated build/Version.h → MCU_VERSION_STRING in
-  csurf_mcu.h GetDescString. AGENTS.md §4 documents it.
-- Deploy is the AGENT's job, not CMake's: after a successful Linux
-  build, `cp build/reaper_csurf_mcu_klinke.so
+  csurf_mcu.h GetDescString.
+- Deploy is the AGENT's or build scripts job, not CMake's: after a
+  successful Linux build, `cp build/reaper_csurf_mcu_klinke.so
   ~/.config/REAPER/UserPlugins/`. No CMake auto-deploy (keeps
   CI/Windows/macOS clean). Reaper needs full restart to reload.
 - Logging architecture: MCU_DEBUG_LOG = standalone CMake OPTION
@@ -496,6 +251,11 @@ callers that a single-file read misses.
   `cmake --build` (incremental) without `cmake ..` first produces a
   build without an incremented counter. Mnemonic: "configure =
   increments, build = links".
+- CRLF gotcha: the repo is checked out with core.autocrlf=true, so shell
+  scripts may be CRLF and bash will refuse them with "bash\r: No such file
+  or directory". If that happens, strip once: sed -i 's/\r$//'
+  scripts/fetch_deps.sh. scripts/build-windows-from-wsl.sh itself is
+  committed LF.
 - Commit messages always in English (user requirement).
 - No commits without explicit user instruction (user requirement).
 - Always write links out in full (https://...), not as Markdown
@@ -543,13 +303,6 @@ callers that a single-file read misses.
   libglu1-mesa-dev for JUCE pkg-config module deps. (6) Static
   libstdc++.a on Debian 11 is built with -fPIC, so -static-libstdc++
   works for a SHARED lib.
-- TOOL BUG: the `memd_write` tool with mode "append" OVERWRITES THE
-  ENTIRE FILE instead of appending to a section (observed 2026-07-21:
-  MEMD.md went 198→17 lines on a single append). Do NOT trust
-  memd_write for this project — use the `edit` tool to insert entries
-  at the right section anchors, or `bash` `cat >>` / `printf
-  >>`. Always `git checkout HEAD -- MEMD.md` to restore if a
-  memd_write call truncates it.
 - Debugging freezes / hangs: since ptrace requires root on this system
   (kernel.yama.ptrace_scope=1), the GDB backtrace command is `sudo gdb
   -p $(pidof reaper) -batch -ex "thread apply all bt"`. This MUST be
@@ -577,7 +330,7 @@ callers that a single-file read misses.
 
 
 
-## 8. Repo layout (quick map)
+## 7. Repo layout (quick map)
 
 ```
 # === Build-system files (repo root) ===
@@ -677,10 +430,9 @@ manual/                 LaTeX user manual (EN)
 ai-docs/                extender-support planning documents
 dist/                   portable-Linux .so artifact output
 build/  build_win/      local build outputs (gitignored)
-.prettierrc             (not currently enforced — see §5 conventions)
 ```
 
-## 10. MCU hand-off with the Schaltmix plugin (KLINKE-only feature)
+## 8. MCU hand-off with the Schaltmix plugin (KLINKE-only feature)
 
 The private `--klinke` build (`MCU_KLINKE_BUILD=ON` → `#ifdef KLINKE`) can share
 the iCON controllers (Platform M+ = unit 3 = `KLINKE_COMBO_UNIT_INDEX` 2,

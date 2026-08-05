@@ -181,10 +181,17 @@ if(MCU_DEBUG_LOG)
         $<$<CONFIG:Debug>:MCU_DEBUG_LOG>)
 endif()
 
-# TEMPORARY (measurement build): enable the Run() timing probes AND the log
-# writer in every config so [TIMING] lines appear in a Release build. Revert
-# this block after profiling (see ai-docs/large-project-performance-audit.md).
-target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE MCU_DEBUG_LOG MCU_TIMING)
+# Optional: build the Release DLL with debug symbols (a .pdb next to the DLL)
+# so the Visual Studio CPU profiler can resolve surface function names. OFF
+# by default — a normal Release build stays lean (~4 MB, no PDB). The
+# build-windows-from-wsl.sh --profiler switch toggles this and forces a
+# reconfigure automatically; rebuild without the flag to go lean again.
+# (See ai-docs/add-track-perf-investigation.md.)
+option(MCU_PROFILER "Build Release with debug symbols (PDB) for CPU profiling" OFF)
+if(WIN32 AND MCU_PROFILER)
+    target_compile_options(reaper_csurf_mcu_klinke PRIVATE $<$<CONFIG:Release>:/Zi>)
+    target_link_options(reaper_csurf_mcu_klinke PRIVATE $<$<CONFIG:Release>:/DEBUG>)
+endif()
 
 if(MCU_KLINKE_BUILD)
     target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE KLINKE)

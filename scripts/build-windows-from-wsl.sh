@@ -20,6 +20,7 @@
 #   scripts/build-windows-from-wsl.sh --debug     # Debug config (needs --clean first)
 #   scripts/build-windows-from-wsl.sh --release   # Release config (needs --clean after Debug)
 #   scripts/build-windows-from-wsl.sh --klinke    # Release config with KLINKE features
+#   scripts/build-windows-from-wsl.sh --profiler  # Release + debug symbols (PDB) for CPU profiling
 #   scripts/build-windows-from-wsl.sh --no-deploy  # build only; do not deploy
 #   scripts/build-windows-from-wsl.sh -j8          # use eight parallel build jobs
 #   scripts/build-windows-from-wsl.sh --help       # show this message
@@ -37,6 +38,7 @@ RECONFIGURE=0
 BUILD_TYPE=Release
 DEPLOY=1
 KLINKE=0
+PROFILER=0
 JOBS="$(nproc)"
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -46,6 +48,7 @@ while [ $# -gt 0 ]; do
     --debug)       BUILD_TYPE=Debug; RECONFIGURE=1 ;;
     --release)     BUILD_TYPE=Release; RECONFIGURE=1 ;;
     --klinke)      KLINKE=1; RECONFIGURE=1 ;;
+    --profiler)    PROFILER=1 ;;
     --no-deploy)   DEPLOY=0 ;;
     -j)
       if [ $# -lt 2 ]; then
@@ -176,6 +179,25 @@ if [ "$CLEAN" = 1 ] || [ "$RECONFIGURE" = 1 ] \
   NEED_CONFIGURE=1
 fi
 
+# --profiler: build the Release DLL with debug symbols (PDB) for CPU profiling.
+# Force a reconfigure when the requested state differs from what is cached, so
+# toggling --profiler on/off just works (lean Release <-> symbols Release).
+PROFILER_FLAG="OFF"
+if [ "$PROFILER" = 1 ]; then PROFILER_FLAG="ON"; fi
+if [ -f "$BUILD_DIR/CMakeCache.txt" ]; then
+  CACHED_PROFD="$(grep -E '^MCU_PROFILER:' "$BUILD_DIR/CMakeCache.txt" | head -1 | cut -d= -f2 | tr -d '\r')" || true
+else
+  CACHED_PROFD=""
+fi
+case "$CACHED_PROFD" in
+  [Tt][Rr][Uu][Ee]|[Oo][Nn]|1) CACHED_PROFD="ON" ;;
+  *) CACHED_PROFD="OFF" ;;  # empty/unset/False/off/0 -> OFF
+esac
+if [ "$CACHED_PROFD" != "$PROFILER_FLAG" ]; then
+  NEED_CONFIGURE=1
+  echo ">> MCU_PROFILER: cached=$CACHED_PROFD -> $PROFILER_FLAG (reconfiguring)"
+fi
+
 # --- generate the .bat (no pushd — source is on C:, native NTFS) -------------
 BAT="$(mktemp --suffix=.bat)"
 trap 'rm -f "$BAT"' EXIT
@@ -189,7 +211,7 @@ if errorlevel 1 ( echo ERROR: cd to $MIRROR_WIN failed & goto :fail )
 call "$VSVARS"
 if errorlevel 1 ( echo ERROR: vcvars64.bat failed & goto :fail )
 echo === CMake configure (Ninja, $BUILD_TYPE) ===
-"$CMAKE_WIN" -G Ninja -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_MAKE_PROGRAM="$NINJA_EXE" $( [ "$KLINKE" = 1 ] && echo "-DMCU_KLINKE_BUILD=ON" ) -S . -B build_win
+"$CMAKE_WIN" -G Ninja -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_MAKE_PROGRAM="$NINJA_EXE" $( [ "$KLINKE" = 1 ] && echo "-DMCU_KLINKE_BUILD=ON" ) -DMCU_PROFILER=$PROFILER_FLAG -S . -B build_win
 if errorlevel 1 ( echo ERROR: CMake configure failed & goto :fail )
 echo === Ninja build ===
 "$CMAKE_WIN" --build build_win --parallel $JOBS
@@ -256,6 +278,15 @@ if [ "$DEPLOY" = 1 ]; then
   fi
   if [ -n "$DEST" ] && [ -d "$DEST" ]; then
     cp -f "$DLL" "$DEST/"
+    # With --profiler the DLL is built with debug symbols; copy the matching
+    # PDB next to it so the VS CPU profiler can resolve surface function names.
+    if [ "$PROFILER" = 1 ]; then
+      PDB="$BUILD_DIR/reaper_csurf_mcu_klinke_x64.pdb"
+      if [ -f "$PDB" ]; then
+        cp -f "$PDB" "$DEST/"
+        echo "=== deployed PDB: $(wslpath -w "$DEST")\\reaper_csurf_mcu_klinke_x64.pdb ==="
+      fi
+    fi
     echo "=== deployed to: $(wslpath -w "$DEST")\\reaper_csurf_mcu_klinke_x64.dll ==="
     echo "Restart REAPER fully to load the new .dll."
   else

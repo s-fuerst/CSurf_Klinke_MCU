@@ -130,20 +130,51 @@ Candidates to check:
 
 ## Decisive next test (when we resume)
 
+**Primary approach: profile with the Visual Studio CPU sampler.** This is
+better than another variant build because it attributes the ~280 ms add stall
+across the *whole* process — REAPER-internal track-add work vs. dispatching
+the surface callbacks vs. our callback bodies — without guessing. The VS
+profiler shows module-level CPU (`reaper_csurf_mcu_klinke_x64.dll` vs
+`reaper.exe`) plus, with our PDB, our function names and call stacks.
+
+Two prep steps are required first (both confirmed against the tree):
+
+1. **Enable symbols in an optimized build.** `CMakeLists.txt:264` only sets
+   `/Zi` under `$<CONFIG:Debug>`, so the current Release DLL has no PDB (none
+   found under `build_win/`). Build `RelWithDebInfo`, or add `/Zi` (compile)
+   and `/DEBUG` (link) to the Release flags, so the PDB lands next to the DLL
+   and VS resolves our symbols.
+2. **Disable the `MCU_TIMING` probes for the profile run.** The instrumentation
+   committed in `77332d3` writes a log line per frame (`fopen`/`fclose`), which
+   shows up as noise in the profile (hot `mcu_log_write`/`fopen`). Flip the
+temporary CMake block off (or pass the option as OFF) for the profile build.
+
+Workflow: VS → Performance Profiler → CPU Usage, launch `reaper.exe` with the
+surface DLL loaded, reproduce (load the big project, add 2–3 tracks), stop.
+Look at module attribution and the hot path:
+
+- If `reaper.exe` dominates during the add and our `Set*` callbacks have high
+  *inclusive* but near-zero *exclusive* time → REAPER's broadcast dispatch is
+  the cost; our callback bodies are cheap (confirms the hypothesis).
+- If our DLL functions are genuinely hot → fix the hot callback/path.
+- If the hot path is REAPER-internal track/TCP work that runs only because a
+  surface is registered → little the surface can do directly (consider
+  `PreventUIRefresh` around batch surface updates, or declining unwanted `Set*`
+  notifications at registration time).
+
+## Fallback / complementary test (only if profiling is inconclusive)
+
 Build a "neuter-callbacks" variant: every `Set*` callback (`SetSurfaceVolume`,
 `SetSurfacePan`, `SetSurfaceSelected`, `SetSurfaceSolo`, `SetSurfaceMute`,
 `SetSurfaceRecArm`, `SetTrackListChange`) early-returns immediately, leaving
 `Run()` untouched. Re-measure the per-add gap.
 
-- **If the gap drops to near-zero** → the cost is REAPER dispatching the
-  callbacks (or the surface's callback bodies). Then investigate: (1) whether
-  `reaper_csurf_reg_t` / `csurf.h` offers a way to decline volume/pan/solo
-  notifications the surface doesn't need, and (2) whether the surface triggers
-  `TrackList_UpdateAllExternalSurfaces` itself (cascade).
-- **If the gap stays ≈280 ms** → it is REAPER-internal track-add work that runs
-  merely because a surface is registered to receive the sync; little the
-  surface can do directly (consider `PreventUIRefresh` around batch surface
-  updates, or reducing how often the surface pokes track state).
+- **Gap → ~0** → cost is REAPER dispatching the callbacks. Investigate whether
+  `reaper_csurf_reg_t` / `csurf.h` can decline volume/pan/solo notifications,
+  and whether the surface triggers `TrackList_UpdateAllExternalSurfaces` itself
+  (`clampCurrentGlobalOffset` path, `MultiTrackMode.cpp:57`, is prime suspect).
+- **Gap stays ≈280 ms** → REAPER-internal track-add work conditional on a
+  surface existing.
 
 ## Tree state right now
 
@@ -173,10 +204,14 @@ undefined).
 
 ## Next-session checklist
 
-1. Decide: revert instrumentation now, or keep for the neuter-callbacks test.
-2. Implement + deploy the neuter-callbacks build; reproduce; read the add gap.
-3. Check whether the surface calls `TrackList_UpdateAllExternalSurfaces` during
-   an add (the `clampCurrentGlobalOffset` path is the prime suspect) — can be
-   confirmed by logging those call sites under `MCU_TIMING`.
-4. Based on (2)/(3): either gate the surface's self-induced re-broadcast, or
-   investigate declining unwanted `Set*` notifications at registration time.
+1. **Profile with the VS CPU sampler** (see "Decisive next test"). First:
+   enable symbols in an optimized build and disable `MCU_TIMING`.
+2. Interpret the profile: module attribution + hot path (DLL vs `reaper.exe`,
+   inclusive vs exclusive time of our `Set*` callbacks).
+3. Only if profiling is inconclusive: run the neuter-callbacks variant test.
+4. Check whether the surface calls `TrackList_UpdateAllExternalSurfaces`
+   during an add (`clampCurrentGlobalOffset` path, `MultiTrackMode.cpp:57`) —
+   log those call sites under `MCU_TIMING` if the profile points there.
+5. Based on the evidence: gate the surface's self-induced re-broadcast, decline
+   unwanted `Set*` notifications at registration, or accept it is
+   REAPER-internal.

@@ -1030,15 +1030,8 @@ void CSurf_MCU::CloseNoReset() {
   m_midiin = NULL;
 }
 
-// Cheap per-callback counters (no I/O per call); logged once per gated frame
-// in the FRAME header so broadcast bursts are visible without the fopen/fclose
-// per-call skew that made the earlier [CB]-per-call timing unusable.
-static unsigned g_cb_vol = 0, g_cb_pan = 0, g_cb_sel = 0, g_cb_solo = 0,
-    g_cb_tlc = 0;
-
 void CSurf_MCU::Run() {
   DWORD now = timeGetTime();
-  MCU_TIMING_LOG("[TIMING] @run t=%lu", (unsigned long)now);
 
   Tracks *m_pTracks = Tracks::instance();
 
@@ -1048,37 +1041,22 @@ void CSurf_MCU::Run() {
 
     ProjectConfig::instance()->checkReaProjectChange();
 
-    MCU_TIMING_LOG("[TIMING] === FRAME t=%lu n=%d | cb vol=%u pan=%u sel=%u solo=%u tlc=%u ===", (unsigned long)now, CSurf_NumTracks(false), g_cb_vol, g_cb_pan, g_cb_sel, g_cb_solo, g_cb_tlc);
-    g_cb_vol = g_cb_pan = g_cb_sel = g_cb_solo = g_cb_tlc = 0;
-
     // tracksStatesChanged() is called every frame (not every 3rd) so a
     // deleted/changed track is flushed before any code can dereference a
     // stale MediaTrack*. The fast-exit in tracksStatesChanged() makes this
     // cheap (~0.001ms) when the track list is unchanged.
-    {
-      MCU_TIMING_SCOPE(tracksStatesChanged);
-      if (Tracks::instance()->tracksStatesChanged())
-        m_pCCSManager->trackListChange();
-    }
+    if (Tracks::instance()->tracksStatesChanged())
+      m_pCCSManager->trackListChange();
 
-    {
-      MCU_TIMING_SCOPE(PlugMoveWatcher);
-      PlugMoveWatcher::instance()->checkMovement();
-    }
+    PlugMoveWatcher::instance()->checkMovement();
 
     signalFrame(now);
 
     EmulateBlinkingLEDs(now);
 
-    {
-      MCU_TIMING_SCOPE(adjust);
-      Tracks::instance()->adjust(availableChannels());
-    }
+    Tracks::instance()->adjust(availableChannels());
 
-    {
-      MCU_TIMING_SCOPE(UpdateGlobalSoloLED);
-      UpdateGlobalSoloLED();
-    }
+    UpdateGlobalSoloLED();
     UpdateAutoModes();
     UpdateMetronomLED();
 
@@ -1237,19 +1215,13 @@ void CSurf_MCU::Run() {
 	}
       }
 
-      {
-        MCU_TIMING_SCOPE(frameUpdate);
-        m_pCCSManager->frameUpdate(now);
-      }
+      m_pCCSManager->frameUpdate(now);
 
       // resend all rows on every unit, not just unit 0
-      {
-        MCU_TIMING_SCOPE(displayResend);
-        for (size_t ui = 0; ui < m_units.size(); ui++) {
-          HardwareUnit *u = m_units[ui];
-          if (u && u->displayHandler() && u->displayHandler()->getDisplay())
-            u->displayHandler()->getDisplay()->resendAllRows();
-        }
+      for (size_t ui = 0; ui < m_units.size(); ui++) {
+        HardwareUnit *u = m_units[ui];
+        if (u && u->displayHandler() && u->displayHandler()->getDisplay())
+          u->displayHandler()->getDisplay()->resendAllRows();
       }
       m_pCCSManager->getDisplayHandler()->waitForMoreChanges(true);
     }
@@ -1395,7 +1367,6 @@ void CSurf_MCU::EmulateBlinkingLEDs(DWORD now) {
 }
 
 void CSurf_MCU::SetTrackListChange() {
-  ++g_cb_tlc;
   //  ProjectConfig::instance()->checkReaProjectChange();
   //  Tracks::instance()->tracksStatesChanged();
   //  m_pCCSManager->trackListChange();
@@ -1413,18 +1384,15 @@ void CSurf_MCU::SetSurfaceVolume(MediaTrack *trackid, double volume) {
   //    per bank where one per frame suffices. MultiTrackMode::frameUpdate()
   //    calls updateFaders() every frame and picks up the stored volume there.
   m_surface_volume[trackid] = volume;
-  ++g_cb_vol;
 }
 
 void CSurf_MCU::SetSurfacePan(MediaTrack *trackid, double pan) {
-  ++g_cb_pan;
   m_surface_pan[trackid] = pan;
 }
 
 void CSurf_MCU::SetSurfaceMute(MediaTrack *trackid, bool mute) {}
 
 void CSurf_MCU::SetSurfaceSelected(MediaTrack *trackid, bool selected) {
-  ++g_cb_sel;
   // updateSelection() applies the single trackid/selected change REAPER passes
   // directly to m_selectedTracks (O(log n)) instead of selectionChanged()'s
   // full O(n) rebuild. REAPER fires this callback once per track on operations
@@ -1435,7 +1403,6 @@ void CSurf_MCU::SetSurfaceSelected(MediaTrack *trackid, bool selected) {
 }
 
 void CSurf_MCU::SetSurfaceSolo(MediaTrack *trackid, bool solo) {
-  ++g_cb_solo;
   // UpdateGlobalSoloLED() is called once per frame in Run(); firing it here
   // too means it runs once per track callback. REAPER broadcasts SetSurfaceSolo
   // to all tracks on every bank operation, so this per-track call flooded the
