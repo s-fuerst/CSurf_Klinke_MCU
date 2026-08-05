@@ -62,8 +62,14 @@ All three deps live at the **repo root**:
 3. **REAPER SDK** (WDL + SWELL + plugin headers) → `reaper-sdk/`
    - From the same Stenzel fork: `cp -r original-klinke/reaper-sdk .`
    - Alt: Cockos — `https://www.reaper.fm/sdk/plugin/plugin.php`
-4. **Linux system packages** (build host):
-   `sudo apt install build-essential cmake libfreetype-dev libx11-dev libxext-dev libcurl4-openssl-dev`
+4. **Linux system packages** (build host) — includes the X11/GLU/fontconfig
+   dev headers `juce_gui_basics`/`juce_graphics` need at compile time (not
+   just the pkg-config libs Doxygen/CI docs sometimes list):
+   ```
+   sudo apt install build-essential cmake pkg-config libfreetype6-dev libfontconfig1-dev \
+       libx11-dev libxext-dev libxcursor-dev libxinerama-dev libxrandr-dev \
+       libxrender-dev libxcomposite-dev libglu1-mesa-dev mesa-common-dev libcurl4-openssl-dev
+   ```
 
 > The CMake build expects all three deps at the repo root; no environment
 > variables are needed.
@@ -113,7 +119,9 @@ drives the native MSVC toolchain from WSL and copies the result into REAPER's
 builds there with the **Ninja** generator — on NTFS both Ninja's `stat()` and
 MSVC's file tracker work correctly, giving Linux-like incremental speed
 (~10–15 s for a one-file change, ~1–2 s for a no-op build). The WSL repo
-(where you edit and use git) is left untouched.
+(where you edit and use git) is left untouched. If your WSL repo already
+lives under `/mnt/c` (a native NTFS path), the mirror is skipped
+automatically and the build happens in place — `--setup` becomes a no-op.
 
 ```bash
 ./scripts/fetch_deps.sh                        # one-time (see CRLF note below)
@@ -168,8 +176,10 @@ script. It builds, deploys, and starts REAPER unless `--no-deploy` is given:
 # one-time: fetch the three pinned deps to the repo root
 ./scripts/fetch_deps.sh
 
-# build-host packages (libcurl is new for JUCE 8)
-sudo apt install build-essential cmake libfreetype-dev libx11-dev libxext-dev libcurl4-openssl-dev
+# build-host packages (see §2 "Prerequisites" for why the full list is needed)
+sudo apt install build-essential cmake pkg-config libfreetype6-dev libfontconfig1-dev \
+    libx11-dev libxext-dev libxcursor-dev libxinerama-dev libxrandr-dev \
+    libxrender-dev libxcomposite-dev libglu1-mesa-dev mesa-common-dev libcurl4-openssl-dev
 
 # configure + build
 mkdir build && cd build

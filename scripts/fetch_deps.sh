@@ -11,8 +11,11 @@
 # Idempotent: any dependency already present is skipped. Delete its folder to
 # re-fetch, or run with --force to re-fetch everything.
 #
-# Requirements: git, curl, tar. On the build host also install (Debian/Ubuntu):
-#   sudo apt install build-essential cmake libfreetype-dev libx11-dev libxext-dev libcurl4-openssl-dev
+# Requirements: git, curl, tar. On the build host also install (Debian/Ubuntu),
+# for the native Linux .so build only (not needed for the Windows DLL):
+#   sudo apt install build-essential cmake pkg-config libfreetype6-dev libfontconfig1-dev \
+#       libx11-dev libxext-dev libxcursor-dev libxinerama-dev libxrandr-dev \
+#       libxrender-dev libxcomposite-dev libglu1-mesa-dev mesa-common-dev libcurl4-openssl-dev
 
 set -euo pipefail
 
@@ -102,6 +105,11 @@ fi
 # --- done --------------------------------------------------------------------
 section "done"
 
+IS_WSL=0
+if [ -n "${WSL_DISTRO_NAME:-}" ] || grep -qi microsoft /proc/version 2>/dev/null; then
+  IS_WSL=1
+fi
+
 case "$(uname -s)" in
   Darwin)
     cat <<'EOF_macOS'
@@ -128,16 +136,45 @@ case "$(uname -s)" in
 EOF_macOS
     ;;
   *)
-    cat <<'EOF_linux'
+    if [ "$IS_WSL" = 1 ]; then
+      cat <<'EOF_wsl'
+
+  All dependencies are in place. On WSL, you have two options:
+
+  1. Windows DLL (no extra packages needed) — build via the native MSVC
+     toolchain, driven from this WSL shell:
+
+       scripts/build-windows-from-wsl.sh --setup   # one-time
+       scripts/build-windows-from-wsl.sh           # build + deploy
+
+     See AGENTS.md "Building from WSL" for details.
+
+  2. Native Linux .so, for running REAPER inside WSLg — needs the packages
+     below first:
+
+       sudo apt install build-essential cmake pkg-config libfreetype6-dev libfontconfig1-dev \
+           libx11-dev libxext-dev libxcursor-dev libxinerama-dev libxrandr-dev \
+           libxrender-dev libxcomposite-dev libglu1-mesa-dev mesa-common-dev libcurl4-openssl-dev
+       mkdir build && cd build
+       cmake .. -DCMAKE_BUILD_TYPE=Release
+       cmake --build . -j"$(nproc)"
+
+     The plugin is output as build/reaper_csurf_mcu_klinke.so
+EOF_wsl
+    else
+      cat <<'EOF_linux'
 
   All dependencies are in place. Next, on the build host (Debian/Ubuntu):
 
-    sudo apt install build-essential cmake libfreetype-dev libx11-dev libxext-dev libcurl4-openssl-dev
+    sudo apt install build-essential cmake pkg-config libfreetype6-dev libfontconfig1-dev \
+        libx11-dev libxext-dev libxcursor-dev libxinerama-dev libxrandr-dev \
+        libxrender-dev libxcomposite-dev libglu1-mesa-dev mesa-common-dev libcurl4-openssl-dev
     mkdir build && cd build
     cmake .. -DCMAKE_BUILD_TYPE=Release
     cmake --build . -j"$(nproc)"
 
   The plugin is output as build/reaper_csurf_mcu_klinke.so
 EOF_linux
+    fi
     ;;
 esac
