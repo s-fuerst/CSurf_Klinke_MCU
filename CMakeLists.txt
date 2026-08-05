@@ -181,6 +181,11 @@ if(MCU_DEBUG_LOG)
         $<$<CONFIG:Debug>:MCU_DEBUG_LOG>)
 endif()
 
+# TEMPORARY (measurement build): enable the Run() timing probes AND the log
+# writer in every config so [TIMING] lines appear in a Release build. Revert
+# this block after profiling (see ai-docs/large-project-performance-audit.md).
+target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE MCU_DEBUG_LOG MCU_TIMING)
+
 if(MCU_KLINKE_BUILD)
     target_compile_definitions(reaper_csurf_mcu_klinke PRIVATE KLINKE)
 endif()
