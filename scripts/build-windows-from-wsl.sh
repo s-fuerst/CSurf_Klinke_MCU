@@ -12,6 +12,10 @@
 # drvfs).  Per-build rsync of source files only (~5 MB, a few seconds).
 # The WSL repo (where you edit and use git) is untouched.
 #
+# If the WSL repo itself already lives under /mnt/c (i.e. it IS a native NTFS
+# path), the mirror is skipped automatically and the build happens in place —
+# --setup becomes a no-op and every per-build rsync is skipped too.
+#
 # Usage:
 #   scripts/build-windows-from-wsl.sh --setup     # one-time: rsync deps + source
 #   scripts/build-windows-from-wsl.sh             # incremental: rsync source, build, deploy
@@ -62,8 +66,21 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-# --- sanity: rsync must be available -----------------------------------------
-command -v rsync >/dev/null 2>&1 || { echo "ERROR: rsync not found in PATH." >&2; exit 1; }
+# --- detect an in-place-buildable checkout -----------------------------------
+# If the WSL repo is already on native NTFS (/mnt/c/...), cl.exe/ninja.exe see
+# it directly with no translation overhead -- the mirror below exists only to
+# get an ext4 checkout (the common/recommended WSL layout, for git/editor
+# speed) onto NTFS, where MSVC's incremental file tracker and Ninja's stat()
+# work reliably. Skip it when it's not needed.
+IN_PLACE=0
+case "$ROOT" in
+  /mnt/c/*) IN_PLACE=1 ;;
+esac
+
+# --- sanity: rsync must be available (mirror path only) -----------------------
+if [ "$IN_PLACE" = 0 ]; then
+  command -v rsync >/dev/null 2>&1 || { echo "ERROR: rsync not found in PATH." >&2; exit 1; }
+fi
 
 # --- locate the MSVC environment via vswhere ---------------------------------
 VSWHERE="/mnt/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe"
@@ -119,22 +136,32 @@ done
 
 # --- paths -------------------------------------------------------------------
 MIRROR="/mnt/c/csurf_klinke_mcu"
-BUILD_DIR="$MIRROR/build_win"
-MIRROR_WIN=$(wslpath -w "$MIRROR")    # C:\\csurf_klinke_mcu (bat uses this)
-REPO_WIN=$(wslpath -w "$ROOT")          # \\\\wsl.localhost\\... (robocopy source)
-CMAKE_WIN=$(wslpath -w "$CMAKE_EXE")    # UNC -> .cache/.../cmake.exe
+REPO_WIN=$(wslpath -w "$ROOT")           # native NTFS path, or \\wsl.localhost\... UNC
+CMAKE_WIN=$(wslpath -w "$CMAKE_EXE")     # UNC -> .cache/.../cmake.exe
+if [ "$IN_PLACE" = 1 ]; then
+  BUILD_DIR="$ROOT/build_win"
+  TARGET_WIN="$REPO_WIN"
+else
+  BUILD_DIR="$MIRROR/build_win"
+  TARGET_WIN=$(wslpath -w "$MIRROR")     # C:\\csurf_klinke_mcu (bat uses this)
+fi
 
 # =============================================================================
 #  --setup: one-time sync of source + deps to native NTFS (via robocopy)
 #  Using robocopy from the Windows side avoids the drvfs small-file bottleneck.
+#  Not needed (and a no-op) when the checkout is already on /mnt/c.
 # =============================================================================
 if [ "$SETUP" = 1 ]; then
+  if [ "$IN_PLACE" = 1 ]; then
+    echo "note: repo is already on /mnt/c; --setup is a no-op (builds in place)." >&2
+    exit 0
+  fi
   mkdir -p "$MIRROR"
   echo "=== one-time setup: mirror source + deps to $MIRROR (robocopy, ~1 min) ==="
   cat > /tmp/_setup_robo.bat <<EOF
 @echo off
 pushd "$REPO_WIN"
-robocopy . "$MIRROR_WIN" /E /NFL /NDL /NJH /NJS /XD build build_win .git scripts
+robocopy . "$TARGET_WIN" /E /NFL /NDL /NJH /NJS /XD "$REPO_WIN\build" "$REPO_WIN\build_win" "$REPO_WIN\.git" "$REPO_WIN\scripts"
 popd
 exit /b 0
 EOF
@@ -145,22 +172,24 @@ EOF
   exit 0
 fi
 
-# --- guard: --setup must be run first ----------------------------------------
-if [ ! -d "$MIRROR/juce_8" ]; then
-  echo "ERROR: mirror not set up. Run: $0 --setup" >&2
-  exit 1
-fi
+if [ "$IN_PLACE" = 0 ]; then
+  # --- guard: --setup must be run first ---------------------------------------
+  if [ ! -d "$MIRROR/juce_8" ]; then
+    echo "ERROR: mirror not set up. Run: $0 --setup" >&2
+    exit 1
+  fi
 
-# --- per-build source sync (quick, deps excluded) ----------------------------
-echo "=== rsync source (WSL -> NTFS) ==="
-rsync -a --delete \
-  --exclude build/ --exclude build_win/ --exclude .git/ \
-  --exclude juce_8/ --exclude boost_1_91_0/ --exclude reaper-sdk/ \
-  --exclude VERSION.txt \
-  --exclude scripts/ \
-  --exclude '*.log' --exclude '*.binlog' \
-  --exclude '*.obj' --exclude '*.dll' --exclude '*.exe' --exclude '*.so' \
-  "$ROOT/" "$MIRROR/"
+  # --- per-build source sync (quick, deps excluded) ---------------------------
+  echo "=== rsync source (WSL -> NTFS) ==="
+  rsync -a --delete \
+    --exclude build/ --exclude build_win/ --exclude .git/ \
+    --exclude juce_8/ --exclude boost_1_91_0/ --exclude reaper-sdk/ \
+    --exclude VERSION.txt \
+    --exclude scripts/ \
+    --exclude '*.log' --exclude '*.binlog' \
+    --exclude '*.obj' --exclude '*.dll' --exclude '*.exe' --exclude '*.so' \
+    "$ROOT/" "$MIRROR/"
+fi
 
 # --- clean / reconfigure -----------------------------------------------------
 if [ "$CLEAN" = 1 ]; then
@@ -182,8 +211,8 @@ if [ "$NEED_CONFIGURE" = 1 ]; then
   cat > "$BAT" <<EOF
 @echo off
 setlocal
-cd /d "$MIRROR_WIN"
-if errorlevel 1 ( echo ERROR: cd to $MIRROR_WIN failed & goto :fail )
+cd /d "$TARGET_WIN"
+if errorlevel 1 ( echo ERROR: cd to $TARGET_WIN failed & goto :fail )
 call "$VSVARS"
 if errorlevel 1 ( echo ERROR: vcvars64.bat failed & goto :fail )
 echo === CMake configure (Ninja, $BUILD_TYPE) ===
@@ -203,8 +232,8 @@ else
   cat > "$BAT" <<EOF
 @echo off
 setlocal
-cd /d "$MIRROR_WIN"
-if errorlevel 1 ( echo ERROR: cd to $MIRROR_WIN failed & goto :fail )
+cd /d "$TARGET_WIN"
+if errorlevel 1 ( echo ERROR: cd to $TARGET_WIN failed & goto :fail )
 call "$VSVARS"
 if errorlevel 1 ( echo ERROR: vcvars64.bat failed & goto :fail )
 echo === Ninja build ===

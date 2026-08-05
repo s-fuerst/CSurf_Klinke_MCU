@@ -119,7 +119,9 @@ drives the native MSVC toolchain from WSL and copies the result into REAPER's
 builds there with the **Ninja** generator — on NTFS both Ninja's `stat()` and
 MSVC's file tracker work correctly, giving Linux-like incremental speed
 (~10–15 s for a one-file change, ~1–2 s for a no-op build). The WSL repo
-(where you edit and use git) is left untouched.
+(where you edit and use git) is left untouched. If your WSL repo already
+lives under `/mnt/c` (a native NTFS path), the mirror is skipped
+automatically and the build happens in place — `--setup` becomes a no-op.
 
 ```bash
 ./scripts/fetch_deps.sh                        # one-time (see CRLF note below)
