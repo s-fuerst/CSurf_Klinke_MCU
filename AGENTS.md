@@ -64,7 +64,7 @@ records what the README does not:
     `dlopen`/`libSwell.so`); REAPER calls it at plugin load time with a
     `_GetFunc` pointer. The dialog autogen flags (FLIPPED|NOAUTOSIZE) are
     correct by default on macOS; JUCE links all frameworks automatically.
-- **Agent build conventions** (see §7 "Patterns" for details): versioning via
+- **Agent build conventions** (see §6 "Patterns" for details): versioning via
   VERSION.txt + build counter, agent-driven deploy after every build, the
   `cmake .. && cmake --build` flow rule, logging via MCU_DEBUG_LOG, and the
   portable-build container gotchas.
@@ -72,7 +72,7 @@ records what the README does not:
 ## 3. Tech stack & dependencies
 
 | Dependency               | Env var                | Required version                                     | Notes                                                                                                                                                                                           |
-|--------------------------+------------------------+------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|--------------------------|------------------------|------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Reaper Extension SDK** | `REAPER_EXTENSION_SDK` | matches `reaper_plugin_functions.h` (pinned in repo) | Provides `csurf.h`, `reaper_plugin_functions.h`, `ptrlist.h`, `IReaperControlSurface`, `reaper_csurf_reg_t`, `REAPER_PLUGIN_ENTRYPOINT`.                                                        |
 | **JUCE**                 | `JUCE_DIR`             | **8.0.14** (modules via `add_subdirectory`)          | GUI framework for all editor dialogs/components. Now licensed AGPLv3/JUCE dual. Modules: `juce_gui_basics` pulls `juce_core`/`juce_events`/`juce_graphics`/`juce_data_structures` transitively. |
 | **Boost**                | `BOOST`                | **1.91.0** (header-only)                             | Mainly `boost/signals2.hpp`. No compiled libs needed. Upgraded from 1.39 (which did not compile under modern libc++/C++17).                                                                                                                                       |
@@ -90,7 +90,7 @@ are required for the CMake build — it finds all three deps at the repo root.
 
 ### Plugin lifecycle & event flow
 
-All sources live under `src/` in the tree described in §8.
+All sources live under `src/` in the tree described in §7.
 
 ```
 reaper loads the .dll/.so/.dylib
@@ -110,7 +110,7 @@ reaper loads the .dll/.so/.dylib
 |---|---|---|
 | **MultiTrackMode** | `MultiTrackMode.*`, `MultiTrack*.*`, `MeterBridge*` | Mixer channel strips: faders, VPOT params, select/mute/solo/rec, folders, meters. |
 | **PanMode** | `PanMode.*` | Pan control. |
-| **PerformanceMode** | `PerformanceMode.*` | **Unimplemented stub.** Constructed and freed by `CCSManager` but its `B_VPOT_INSTRUMENT` binding is **commented out** (`CCSManager::buttonVPOTassign`), so it is never reachable from hardware. Currently only renders the static text "Performance Mode" on the display; the header also contains abandoned wxWidgets threading scaffolding. Intended for a future real-time Reaper performance readout — see §6. |
+| **PerformanceMode** | `PerformanceMode.*` | **Unimplemented stub.** Constructed and freed by `CCSManager` but its `B_VPOT_INSTRUMENT` binding is **commented out** (`CCSManager::buttonVPOTassign`), so it is never reachable from hardware. Currently only renders the static text "Performance Mode" on the display; the header also contains abandoned wxWidgets threading scaffolding. Intended for a future real-time Reaper performance readout — see §5. |
 | **SendMode / ReceiveMode** | `SendReceiveModeBase.*`, `SendMode.*`, `ReceiveMode.*` | Routing/sends & receives per channel. |
 | **CommandMode** ("Action Mode") | `CommandMode.*`, `CommandMode*Component.*`, `Actions*` | Maps the 8 VPOTs (×6 CCs each, ×2 with Shift, ×8 banks) to Reaper actions. |
 | **PlugMode** ("FX Mode") | `PlugMode.*`, `PlugMode*Component.*`, `PlugAccess.*`, `PlugMap*`, `PlugPresetManager.*`, `PlugWindowManager.*`, `Plugin*Watcher.*` | The largest subsystem: maps plugin/FX parameters to faders & VPOTs, with banks/pages, parameter maps, presets, and an auto-opening FX window watcher. |
@@ -138,7 +138,7 @@ reaper loads the .dll/.so/.dylib
   "no track" and the master track throughout the plug/track code.
 - **1-based channel arrays:** many `[9]` arrays are 1-based; index 0 is the
   master fader. `ASSERT` (in `src/core/McuAssert.h`) guards channel ranges.
-- **Version string** comes from the `VERSION.txt` file (repo root) — see §7
+- **Version string** comes from the `VERSION.txt` file (repo root) — see §6
   "Patterns". The build counter auto-increments; bump the version part manually
   for a release.
   `csurf_mcu.h` uses `MCU_VERSION_STRING` (from generated `Version.h`) in
@@ -386,7 +386,7 @@ src/
 │   │   ├── MultiTrackSelector.{cpp,h}
 │   │   ├── MultiTrackMeterBridge.{cpp,h}
 │   │   ├── PanMode.{cpp,h}
-│   │   ├── PerformanceMode.{cpp,h}  (intentional stub — see §6)
+│   │   ├── PerformanceMode.{cpp,h}  (intentional stub — see §5)
 │   │   └── editor/
 │   │       ├── TrackStatesEditorComponent.{cpp,h}
 │   │       └── TrackStatesTableComponent.{cpp,h}
