@@ -111,6 +111,10 @@ public:
 
   // PlugMode specific methods
   PlugAccess *getPlugAccess() { return m_pAccess; }
+  // Routes a host CSURF_EXT_SETFXPARAM notification to the parameter watcher
+  // (Part C event-driven Learn feed). Owns the deep PlugAccess->PluginWatcher
+  // chain so CSurf_MCU::Extended() does not need those includes.
+  void onHostParamChanged(MediaTrack *pTrack, int fxidx, int paramidx);
   String getPlugNameShort(int iSlot);
   int getNumPlugsInSelectedTrack();
   bool isFollowTrack() { return m_followTrack; }

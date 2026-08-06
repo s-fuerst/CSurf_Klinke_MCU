@@ -401,6 +401,10 @@ public:
   void OnMIDIEvent(MIDI_event_t *evt);
   void CloseNoReset();
   void Run();
+  // REAPER notification entry point (reaper_plugin.h:619). Returns 0 if the
+  // call ID is unsupported. Currently handles only CSURF_EXT_SETFXPARAM
+  // (Part C: event-driven selected-plugin parameter feed); see Extended() .cpp.
+  int Extended(int call, void *parm1, void *parm2, void *parm3);
   void SetLED(int button_nr, int led_state);
   void EmulateBlinkingLEDs(DWORD now);
 

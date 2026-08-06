@@ -1030,6 +1030,31 @@ void CSurf_MCU::CloseNoReset() {
   m_midiin = NULL;
 }
 
+// REAPER notification entry point. See ai-docs/csurf-ext-event-driven-impl-plan-v2.md
+// (Part C). Only CSURF_EXT_SETFXPARAM is handled; all other CSURF_EXT_* IDs
+// return 0 (unsupported) and keep their polling fallbacks.
+int CSurf_MCU::Extended(int call, void *parm1, void *parm2, void *parm3) {
+  if (call == CSURF_EXT_SETFXPARAM) {
+    // SDK: parm1=(MediaTrack*)track, parm2=(int*)(fxidx<<16|paramidx),
+    //      parm3=(double*)normalized value. We intentionally do NOT read
+    // parm3: the watcher pipeline is raw end-to-end, so the normalized event
+    // value is discarded and the raw value is re-read inside PluginWatcher.
+    MediaTrack *tr = (MediaTrack *)parm1;
+    if (!tr || !parm2)
+      return 0;
+    unsigned raw = (unsigned)(*(int *)parm2);
+    unsigned fxidx = raw >> 16;
+    unsigned paramidx = raw & 0xFFFF;
+    if (fxidx >= 0x100) // rec-fx (0x1000000) / container top bits land here
+      return 1;         //   after the 16:16 shift; unsupported addressing, ignore
+    if (m_pCCSManager && m_pCCSManager->getPlugMode())
+      m_pCCSManager->getPlugMode()->onHostParamChanged(tr, (int)fxidx,
+                                                       (int)paramidx);
+    return 1;
+  }
+  return 0; // unsupported
+}
+
 void CSurf_MCU::Run() {
   DWORD now = timeGetTime();
 

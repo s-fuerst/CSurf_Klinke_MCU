@@ -9,7 +9,8 @@
 #include "PlugAccess.h"
 
 PluginWatcher::PluginWatcher(CSurf_MCU *pMCU)
-    : m_pMediaTrack(NULL), m_iSlot(-1), m_nextConnectionId(0) {
+    : m_pMediaTrack(NULL), m_iSlot(-1), m_nextConnectionId(0),
+      m_paramFeedFromEvents(true) {
   m_signalFrameConnection =
       pMCU->connect2FrameSignal(boost::bind(&PluginWatcher::frame, this, _1));
 }
@@ -42,8 +43,11 @@ void PluginWatcher::frame(DWORD time) {
     }
   }
 
-  // check params
-  if (m_activeParamConnections.size() > 0) {
+  // check params — POLL FALLBACK. Skipped when the event-driven feed is
+  // active (m_paramFeedFromEvents, Part C); onParamChangedFromHost() then
+  // drives signalParamChanged. The two paths are mutually exclusive to avoid
+  // duplicate delivery.
+  if (!m_paramFeedFromEvents && m_activeParamConnections.size() > 0) {
     int numParams = TrackFX_GetNumParams(m_pMediaTrack, m_iSlot);
 
     double minVal, maxVal;
@@ -60,6 +64,33 @@ void PluginWatcher::frame(DWORD time) {
       m_mapParamValues[iParam] = value;
     }
   }
+}
+
+void PluginWatcher::onParamChangedFromHost(MediaTrack *pTrack, int fxidx,
+                                           int paramidx) {
+  // Event-driven parameter feed (Part C). The CSURF_EXT_SETFXPARAM payload
+  // carries a NORMALIZED value, but this watcher emits RAW values (the signal
+  // value, getParamString() -> TrackFX_FormatParamValue, and the Learn
+  // step-map key are all raw). So the event is used only as a trigger and the
+  // raw value is re-read here. See csurf-ext-event-driven-impl-plan-v2.md C.2.
+  if (m_activeParamConnections.size() == 0)
+    return; // nothing connected, mirror frame()'s guard
+  if (pTrack != m_pMediaTrack || fxidx != m_iSlot)
+    return; // not the watched plugin
+  if (!plugExist())
+    return;
+  int numParams = TrackFX_GetNumParams(m_pMediaTrack, m_iSlot);
+  // Preserve the numParams-2 exclusion used by frame()'s poll loop
+  // (PluginWatcher.cpp frame()): the last two synthetic params are ignored.
+  if (paramidx < 0 || paramidx >= numParams - 2)
+    return;
+
+  double minVal, maxVal;
+  double value =
+      TrackFX_GetParam(m_pMediaTrack, m_iSlot, paramidx, &minVal, &maxVal);
+  m_mapParamValues[paramidx] = value; // keep cache coherent with the poll path
+  m_signalParamChanged(m_pMediaTrack, m_iSlot, paramidx, value,
+                       getParamString(m_pMediaTrack, m_iSlot, paramidx, value));
 }
 
 String PluginWatcher::getParamString(MediaTrack *pMediaTrack, int iSlot,

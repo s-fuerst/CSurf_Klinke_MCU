@@ -20,6 +20,15 @@ public:
 
   void setPlugin(MediaTrack *pMediaTrack, int iSlot);
   void frame(DWORD time);
+  // Event-driven parameter feed (Part C). REAPER delivers parameter changes
+  // through CSURF_EXT_SETFXPARAM with a NORMALIZED value, but this watcher's
+  // pipeline (signal value, getParamString -> TrackFX_FormatParamValue, and
+  // the Learn step-map key) is raw end-to-end. onParamChangedFromHost() uses
+  // the event only as a trigger and re-reads the raw value. While
+  // m_paramFeedFromEvents is true, frame() skips the per-parameter poll and
+  // this method drives signalParamChanged. Flip m_paramFeedFromEvents to
+  // false in the constructor to restore the poll fallback.
+  void onParamChangedFromHost(MediaTrack *pTrack, int fxidx, int paramidx);
 
   typedef boost::signals2::signal<void(MediaTrack *, int, int, double, String)>
       tParamSignal; // Parameters: MediaTrack, Slot, ParameterNummer, Value,
@@ -45,6 +54,7 @@ protected:
   bool plugExist();
   MediaTrack *m_pMediaTrack;
   int m_iSlot;
+  bool m_paramFeedFromEvents; // true: events drive signalParamChanged (Part C)
   connection m_signalFrameConnection;
 
   tParamSignal m_signalParamChanged;

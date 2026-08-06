@@ -7,6 +7,7 @@
 #include "PlugMode.h"
 #include "PlugModeComponent.h"
 #include "PlugAccess.h"
+#include "PluginWatcher.h"
 #include "PlugModeMeterBridge.h"
 #include "csurf.h"
 #include "csurf_mcu.h"
@@ -1577,6 +1578,15 @@ void PlugMode::followChanges() {
 int PlugMode::followChangeUnit() {
 	return m_pPlugMode2ndOptions->followChangeUnit(
 		m_pCCSManager->getMCU()->numUnits());
+}
+
+void PlugMode::onHostParamChanged(MediaTrack *pTrack, int fxidx,
+                                   int paramidx) {
+  // Thin forwarder so CSurf_MCU::Extended() can feed host parameter-change
+  // notifications to the watcher without reaching into PlugAccess/PluginWatcher
+  // directly (Part C event-driven Learn feed).
+  if (m_pAccess && m_pAccess->getPlugWatcher())
+    m_pAccess->getPlugWatcher()->onParamChangedFromHost(pTrack, fxidx, paramidx);
 }
 
 void PlugMode::invalidateParamCache() { m_paramCacheValid = false; }
