@@ -77,6 +77,12 @@ options are:
 ./scripts/build-and-run-linux-macos.sh --help     # show usage
 ```
 
+The plain invocation (no options) builds incrementally and skips the CMake
+configure step — unless `build/` does not exist yet or is unconfigured
+(e.g. a fresh checkout right after `fetch_deps.sh`), in which case it
+configures automatically. No manual `cmake ..` is required. Use
+`--reconfigure` or `--clean` to force a fresh configure.
+
 The scripts locate the repository root from their own path, so the current
 directory does not matter when the script is invoked with a path. For example,
 the commands above are intended for the repository root; from another directory

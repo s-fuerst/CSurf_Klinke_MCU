@@ -5,6 +5,7 @@
 #
 # Usage:
 #   ./scripts/build-and-run-linux-macos.sh              # quick (incremental) build + deploy + run
+#                                                         # auto-configures on first run (no build/ yet)
 #   ./scripts/build-and-run-linux-macos.sh --release    # full configure + build (Release) + deploy + run
 #   ./scripts/build-and-run-linux-macos.sh --debug      # full configure + build (Debug) + deploy + run
 #   ./scripts/build-and-run-linux-macos.sh --clean      # wipe build dir, configure + build + deploy + run
@@ -93,12 +94,34 @@ fi
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
-if [ "$QUICK" = true ]; then
-    echo "  (incremental — skipping cmake configure)"
-else
+# configure_cmake — the ONLY place that runs `cmake` configure. The quick
+# path calls it too when the build dir is not (or no longer) configured, so
+# the script works on a fresh checkout right after fetch_deps.sh — no manual
+# `cmake ..` required. Note: configure increments the VERSION.txt build
+# counter ("configure = increments, build = links").
+configure_cmake() {
     cmake "$SCRIPT_DIR" -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
         $( [ "$BUILD_TYPE" = "Debug" ] && echo "-DMCU_DEBUG_LOG=ON" || echo "-DMCU_DEBUG_LOG=OFF" ) \
         $( [ "$KLINKE" = 1 ] && echo "-DMCU_KLINKE_BUILD=ON" || echo "-DMCU_KLINKE_BUILD=OFF" )
+}
+
+NEED_CONFIGURE=0
+if [ "$QUICK" = false ]; then
+    NEED_CONFIGURE=1
+elif [ ! -f CMakeCache.txt ]; then
+    echo "  (no CMakeCache.txt — configuring before the first build)"
+    NEED_CONFIGURE=1
+else
+    CACHED_TYPE="$(grep -E '^CMAKE_BUILD_TYPE:' CMakeCache.txt | head -1 | cut -d= -f2)"
+    if [ "$CACHED_TYPE" != "$BUILD_TYPE" ]; then
+        echo "  (cached build type '$CACHED_TYPE' != requested '$BUILD_TYPE' — reconfiguring)"
+        NEED_CONFIGURE=1
+    fi
+fi
+if [ "$NEED_CONFIGURE" = 1 ]; then
+    configure_cmake
+else
+    echo "  (incremental — skipping cmake configure)"
 fi
 cmake --build . -- -j"$JOBS"
 
