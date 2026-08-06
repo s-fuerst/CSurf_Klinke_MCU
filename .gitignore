@@ -51,3 +51,5 @@ ipch/
 
 graphify-out/
 /.pi-subagents/
+/manual/mcu_klinke_manual.fdb_latexmk
+/manual/mcu_klinke_manual.fls

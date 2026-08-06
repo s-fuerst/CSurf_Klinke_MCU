@@ -451,6 +451,16 @@ void Tracks::updateSelection(MediaTrack *pMT, bool selected) {
   // total for a full-selection operation. REAPER already passes exactly what
   // changed via the trackid/selected params, so update the set directly in
   // O(log n) per call and only re-evaluate the single-selected track.
+  //
+  // m_selectedTracks models NORMAL tracks only: TrackIterator skips the
+  // master (index 0, csurf_mcu.h:217) and getSelectedSingleTrack(true)
+  // handles the master via a separate I_SELECTED probe. REAPER DOES notify
+  // master selection through SetSurfaceSelected, so without this guard a
+  // master-only selection would insert the master here (size==1 &&
+  // masterSelected==1), defeat both branches in getSelectedSingleTrack,
+  // and return NULL — surfacing as "You must select a single track".
+  if (pMT == GetMasterTrack(NULL))
+    return; // keep the normal-tracks-only invariant; master handled elsewhere
   if (selected)
     m_selectedTracks.insert(pMT);
   else
