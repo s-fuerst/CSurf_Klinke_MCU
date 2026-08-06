@@ -15,11 +15,17 @@ section~\ref{disclaimer}.
 
 \subsection{Limitations}
 \begin{itemize}
-\item \mcu runs on Windows, macOS\,(10.15 Catalina or newer) and
-  Linux. The source code is open and is based on the cross-platform
-  JUCE library.
+\item \mcu runs on Windows, macOS\,(11 Big Sur or newer) and Linux.
+  The macOS build currently supports Apple Silicon (arm64) only. The
+  source code is open and is based on the cross-platform JUCE library.
 
-\item The minimum supported \reaper version is 6.37. The latest version of the extension for older \reaper versions can be downloaded from \href{https://sync.luckycloud.de/f/591dfbe1cfb042ea8b11/?dl=1}{here}.
+\item The minimum supported \reaper version is 6.37.
+
+\item The Linux build is for 64-bit x86 systems and requires glibc 2.31 or
+  newer (for example Ubuntu 20.04+ or Debian 11+). A working X11 desktop,
+  FreeType, Fontconfig and libcurl installation is required for the REAPER
+  GUI and the extension. Wayland-only setups may need an X11 compatibility
+  session.
 \end{itemize}
 
 
@@ -40,13 +46,13 @@ if they don't), there are two alternatives:
 \subsection{Most important latest changes}
 \subsubsection{Version 0.9.5}
 \begin{compactitem}
+\item Cross-platform support: the extension now runs on Windows, macOS
+  and Linux.
 \item \hyperref[units]{Extender support}: up to eight MCU units (one
   main plus up to seven extenders, i.e.\ up to 64 channels) are
   combined into one logical surface.
-\item Cross-platform: in addition to Windows, the extension now also
-  runs on macOS and Linux.
-\item \hyperref[plugcascade]{FX-Mode page cascade}: with multiple
-  units, banks and pages can be spread across the units.
+\item A lot of performance improvements make the extension more responsive,
+  especially in larger projects.
 \end{compactitem}
 
 \subsubsection{Version 0.9}
@@ -83,7 +89,8 @@ updates.
 To communicate with other users you can use the Reaper Forum,
 e.g. via this thread
 \url{http://forum.cockos.com/showthread.php?t=171827}.
-And an issue tracker can be found at \url{https://bitbucket.org/Klinkenstecker/csurf_klinke_mcu/issues?status=new&status=open}.
+And an issue tracker can be found at
+\url{https://github.com/s-fuerst/CSurf_Klinke_MCU/issues}.
 
 \subsection{Donations}
 

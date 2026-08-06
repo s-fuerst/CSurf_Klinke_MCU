@@ -1,26 +1,38 @@
 \newpage
 \section{Installation}\label{installation} 
 
-The current version of the extension can be downloaded from
-\url{https://bitbucket.org/Klinkenstecker/csurf\_klinke\_mcu/downloads}.
+The current test builds of the extension can be downloaded from
+\url{https://sync.luckycloud.de/d/e201a08259444f428e41/}. The folder currently
+contains builds for all three supported platforms:
+\begin{itemize}
+\item Windows: choose the package containing the \texttt{.dll}; use this on
+  64-bit Windows.
+\item Linux: choose the package containing the \texttt{.so}; use this on
+  Linux x86\_64.
+\item macOS: choose the package containing the \texttt{.dylib}; use this on
+  Apple Silicon
+  Macs (arm64) running macOS 11 or newer. The macOS build does not support
+  Intel Macs.
+\end{itemize}
+During the testing phase, the downloads do not include the FX maps. A switch
+from the test-build downloads to ReaPack is planned; the FX maps will be
+included again with that distribution.
+
 To install the extension:
 \begin{enumerate}
 \item open the \reaper resources path, e.g. via
 \reaper by selecting the menu-entry: {\tt Options/ Show \reaper
   resource path in explorer/finder...}.
-\item In this path, there is a
-  folder with the name Locate the {\tt UserPlugin} folder within the \reaper resource path.
-\item Unpack the downloaded
-  zip archiv into the {\tt UserPlugin} directory.
+\item Locate the {\tt UserPlugins} folder within the \reaper resource path.
+\item Unpack the downloaded package into the {\tt UserPlugins} directory.
 \end{enumerate}
 
-  Afterwards the {\tt UserPlugin} folder
-should contains four new {\tt reaper\_csurf\_mcu\_klinke} dll-files,
-this manual and a new folder named {\tt MCU}. This {\tt MCU} folder
-contains default configuration files and FX maps. Do not modify
-these files. Your own configuration files and FX maps will be stored in the
-folder {\tt My Documents\textbackslash Reaper\textbackslash MCU}. This folder
-is created when you start the \mcu surface for the first time.\\
+Afterwards, the {\tt UserPlugins} folder contains the platform-specific
+{\tt reaper\_csurf\_mcu\_klinke} plugin file. The testing downloads do not
+contain the {\tt MCU} folder or factory FX maps. Your own configuration files
+and FX maps are stored in the folder {\tt My Documents\textbackslash Reaper\textbackslash MCU}
+on Windows and in {\tt ~/.config/REAPER/MCU} on Linux and macOS. These folders
+are created when you start the \mcu surface for the first time.\\ 
 
 \noindent
 To activate the extension you need to follow these steps:
@@ -29,9 +41,7 @@ To activate the extension you need to follow these steps:
 \item scroll down and select ``Control Surfaces'' 
 \item if the original ``Mackie Control Universal'' surface was added, remove it
 \item add the ``Mackie Control Protocol (Klinke)'' surface
-\item in the case that the controller is connected via USB: increase
-  the ``Control surface display update frequency'' in the Control
-  surfaces preferences of \reaper to 30 Hz.  
+
 \end{compactitem}
 
 %If you have extenders:
@@ -66,27 +76,33 @@ To activate the extension you need to follow these steps:
 \subsection{Control Surface Settings}\label{settings}
 
 The Control Surface Settings dialog configures the hardware units of
-the surface and a few global options.
+the surface and a few global options. Its current layout has a unit
+selector at the top, followed by settings for the selected unit and
+global settings for all units.
 
 \subsubsection{Units}\label{units}
 The extension combines up to eight MCU-protocol hardware units into
-one logical surface: one main unit plus up to seven extenders, i.e.\
-up to 64 channels controlled at the same time. Select the unit you
-want to edit (Unit~1\,--\,8) and configure it with:
+one logical surface, i.e.\ up to 64 channels controlled at the same time.
+Each unit can independently be configured as a main unit, an extender,
+or disabled. Select the unit you want to edit with the ``Unit'' selector
+at the top (Unit~1\,--\,8) and configure it with:
 \begin{itemize}
 \item \textbf{Type}: the hardware model and role of the unit ---
   \textsc{Mackie Main}, \textsc{Mackie Extender}, \textsc{QCon ProX},
-  \textsc{QCon ProX Extender} or \textsc{Disabled}. The two
-  \textsc{QCon ProX} types activate the additional hardware elements
-  of the Icon QCon Pro~X (second display, master meterbridge) for that
-  unit; see section~\ref{prox}.
+  \textsc{QCon ProX Extender} or \textsc{Disabled}. Unit~1 offers the
+  four hardware types but cannot be disabled. Units~2\,--\,8 also offer
+  \textsc{Disabled}. The two \textsc{QCon ProX} types activate the
+  additional hardware elements of the Icon QCon Pro~X (second display,
+  master meterbridge) for that unit; see section~\ref{prox}.
 \item \textbf{MIDI input} / \textbf{MIDI output}: the MIDI ports the
   unit is connected to.
+\item The unit-specific options ``Switch 1st and 2nd row'' and
+  ``Emulate level meters'' can be enabled for the selected unit.
 \end{itemize}
 The unit position (Unit~1\,--\,8) determines the channel-strip order
 from left to right: Unit~1 controls channels~1\,--\,8, Unit~2
-channels~9\,--\,16, and so on. Unit~1 can not be disabled, and the
-active units must be contiguous from Unit~1 (no gaps in between). A
+channels~9\,--\,16, and so on. Unit~1 cannot be disabled, and active
+units must be contiguous from Unit~1 (there must be no gaps). A
 ``main'' unit --- one with transport controls and the
 assignment/timecode displays --- may sit at any position; the
 transport LEDs and the timecode/assignment displays are sent to every
@@ -101,9 +117,6 @@ The following global options can be activated:
   selected, the keyboard modifier can be used instead. The left
   \alt key substitutes the \alt button, the right \alt key the
   \option button.
-\item Fake fader touch: The BCF2000 does not have fader touch sensitive
-  faders, so after a fader movement the extension simulates that the
-  fader being touched for an additional 2 seconds.
 \item Swap left/right arrow on zoom: By default the left arrow key
   zooms out of the arrangement and the right arrow button zooms in (assuming
   zooming is activated via the \zoom button). This can be swapped.
