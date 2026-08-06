@@ -31,6 +31,25 @@ endif()
 #  JUCE 8 uses the module build (add_subdirectory). Boost 1.91 is header-only.
 #  Resulting binary is AGPLv3 (JUCE 8 made all modules AGPLv3/JUCE dual).
 # ─────────────────────────────────────────────────────────────────────────────
+
+# --- macOS deployment target -------------------------------------------------
+# MUST be set BEFORE project(): CMake 4.x no longer applies a CACHE set() that
+# runs after project() — the cache entry silently stays empty and the linker
+# falls back to the HOST macOS version (e.g. minos 26.0 on macOS 26), which
+# would make the plugin unloadable on all older macOS.
+# FORCE is required: with a pre-existing EMPTY cache entry (build dirs created
+# before this fix, or by CMake 4.x's empty default), a plain CACHE set() is a
+# silent no-op. The guard below still lets an explicit
+# -DCMAKE_OSX_DEPLOYMENT_TARGET=... always win (non-empty value -> skipped).
+# 10.15 (Catalina) is the project's chosen minimum (JUCE 8 itself supports
+# deployment back to 10.11, see juce_8/README.md "Deployment Targets").
+if(CMAKE_HOST_APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    if(NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET OR CMAKE_OSX_DEPLOYMENT_TARGET STREQUAL "")
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING
+            "Minimum macOS version the plugin supports (10.15 = Catalina)" FORCE)
+    endif()
+endif()
+
 project(reaper_csurf_mcu_klinke C CXX)
 
 # --- Paths --------------------------------------------------------------------
@@ -291,9 +310,6 @@ elseif(APPLE)
     # macOS framework dependencies (Cocoa, IOKit, Metal, QuartzCore, etc.) are
     # linked automatically by juce::juce_gui_basics via JUCE module metadata —
     # nothing to list here.
-
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING
-        "Minimum macOS version the plugin supports (JUCE 8 requires 10.15+)")
 
     # SWELL on macOS: REAPER is itself a SWELL application. swell-modstub.mm
     # contains a global SwellAPPInitializer whose constructor runs at dylib

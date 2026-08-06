@@ -145,14 +145,14 @@ with a path.
 
 ### macOS: manual CMake alternative
 
+Minimum macOS version: **11.0 (Big Sur)**.
+
 ```bash
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DMCU_DEBUG_LOG=OFF
 cmake --build . -- -j$(sysctl -n hw.ncpu)
 cp reaper_csurf_mcu_klinke.dylib ~/Library/Application\ Support/REAPER/UserPlugins/
 ```
-
-> Minimum macOS version: 10.15 (Catalina) — required by JUCE 8.
 
 ## License
 

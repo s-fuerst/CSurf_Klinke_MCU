@@ -112,14 +112,15 @@ case "$(uname -s)" in
     xcode-select --install        # if not already done
     brew install cmake             # or install cmake manually
 
-    # 2. Build
-    mkdir build && cd build
-    cmake .. -DCMAKE_BUILD_TYPE=Release
-    cmake --build . -- -j"$(sysctl -n hw.ncpu)"
+    # 2. Build, deploy, and run REAPER (one command, no manual cmake needed):
+    ./scripts/build-and-run-linux-macos.sh --release
 
-    # 3. Deploy
-    mkdir -p ~/Library/Application\ Support/REAPER/UserPlugins/
-    cp build/reaper_csurf_mcu_klinke.dylib ~/Library/Application\ Support/REAPER/UserPlugins/
+    #    Manual alternative (see README.md):
+    #    mkdir build && cd build
+    #    cmake .. -DCMAKE_BUILD_TYPE=Release -DMCU_DEBUG_LOG=OFF
+    #    cmake --build . -- -j"$(sysctl -n hw.ncpu)"
+    #    mkdir -p ~/Library/Application\ Support/REAPER/UserPlugins/
+    #    cp build/reaper_csurf_mcu_klinke.dylib ~/Library/Application\ Support/REAPER/UserPlugins/
 
     Then restart REAPER and add "Mackie Control Protocol (Klinke)"
     in Preferences → Control/OSC/web.
@@ -127,17 +128,79 @@ case "$(uname -s)" in
   The plugin is output as build/reaper_csurf_mcu_klinke.dylib
 EOF_macOS
     ;;
-  *)
-    cat <<'EOF_linux'
+  MINGW*|MSYS*|CYGWIN*)
+    # Native Windows (Git Bash / MSYS2 / Cygwin). The WSL mirror script needs
+    # wslpath and /mnt/c, so it cannot run from here — point at WSL instead.
+    cat <<'EOF_windows'
+
+  All dependencies are in place. Next, on Windows:
+
+    # Build from WSL (recommended; needs WSL with rsync/unzip and Visual
+    # Studio 2019+ Build Tools with the MSVC x64 + Windows SDK components):
+    wsl
+    ./scripts/build-windows-from-wsl.sh --setup   # one-time mirror to C:\csurf_klinke_mcu
+    ./scripts/build-windows-from-wsl.sh           # incremental Release build + deploy
+
+    #    Native MSVC alternative (from a Developer Command Prompt), see README.md:
+    #    mkdir build && cd build
+    #    cmake .. -DCMAKE_BUILD_TYPE=Release -DMCU_DEBUG_LOG=OFF
+    #    cmake --build . --config Release
+    #    copy Release\reaper_csurf_mcu_klinke_x64.dll %APPDATA%\REAPER\UserPlugins\
+
+    Then restart REAPER and add "Mackie Control Protocol (Klinke)"
+    in Preferences → Control/OSC/web.
+EOF_windows
+    ;;
+  Linux)
+    # WSL1/2 reports "Linux" from uname -s. Detect via /proc/version, but
+    # skip when inside a container (Docker Desktop's WSL2 backend would match).
+    if ! [ -f /.dockerenv ] && grep -qi microsoft /proc/version 2>/dev/null; then
+      cat <<'EOF_wsl'
+
+  All dependencies are in place. Next, from WSL:
+
+    # Requires: rsync + unzip (sudo apt install rsync unzip) and Visual
+    # Studio 2019+ Build Tools (MSVC x64 + Windows SDK) on the Windows side.
+    # 1. One-time: mirror source + deps to native NTFS (C:\csurf_klinke_mcu)
+    ./scripts/build-windows-from-wsl.sh --setup
+
+    # 2. Build + deploy (incremental Release build into REAPER's UserPlugins)
+    ./scripts/build-windows-from-wsl.sh
+
+    #    Native MSVC alternative (from a Developer Command Prompt), see README.md:
+    #    mkdir build && cd build
+    #    cmake .. -DCMAKE_BUILD_TYPE=Release -DMCU_DEBUG_LOG=OFF
+    #    cmake --build . --config Release
+    #    copy Release\reaper_csurf_mcu_klinke_x64.dll %APPDATA%\REAPER\UserPlugins\
+
+    Then restart REAPER and add "Mackie Control Protocol (Klinke)"
+    in Preferences → Control/OSC/web.
+
+  The plugin is output as C:\csurf_klinke_mcu\build_win\reaper_csurf_mcu_klinke_x64.dll
+EOF_wsl
+    else
+      cat <<'EOF_linux'
 
   All dependencies are in place. Next, on the build host (Debian/Ubuntu):
 
     sudo apt install build-essential cmake libfreetype-dev libx11-dev libxext-dev libcurl4-openssl-dev
-    mkdir build && cd build
-    cmake .. -DCMAKE_BUILD_TYPE=Release
-    cmake --build . -j"$(nproc)"
+
+    ./scripts/build-and-run-linux-macos.sh  --release # build + deploy + start REAPER
+
+    #    Manual alternative (see README.md):
+    #    mkdir build && cd build
+    #    cmake .. -DCMAKE_BUILD_TYPE=Release -DMCU_DEBUG_LOG=OFF
+    #    cmake --build . -j"$(nproc)"
 
   The plugin is output as build/reaper_csurf_mcu_klinke.so
 EOF_linux
+    fi
+    ;;
+  *)
+    cat <<'EOF_other'
+
+  All dependencies are in place. See README.md for build instructions
+  for your platform.
+EOF_other
     ;;
 esac
