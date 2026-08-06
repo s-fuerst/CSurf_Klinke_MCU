@@ -46,16 +46,30 @@ FXs 9-16.
 \subsubsection{Favorites}\label{fav}
 
 By default, you can only control an FX of the selected track. If you
-select another track, the FX that was selected in this track will get
-the focus again. By pressing the \gv button, this connection between
-Tracks and controlled FX can be broken, the controlled FX will stay
-fixed untill a different FX is selected manually.
+select another track, the FX that was selected in this track gets the
+focus again. By pressing the \gv button (its LED lights up) this
+connection between tracks and the controlled FX is broken: the
+controlled FX stays fixed until a different FX is selected manually.
 
-In this \gv state it is possible to store and recall an FX as a
-favorite. To store the FX press \control \select, to recall it 
-\select only (so an FX that is not a favorite can only selected via the
-\vpots, see section above). With the \shift button you get eight
-additional slots, so you can store up to 16 favorites.
+In Favorites mode the \select buttons act as favorite slots instead of
+FX selectors. The LEDs show the slot state: the slot that holds the
+currently accessed FX blinks, a slot that holds another stored
+favorite is lit solid (blinking if that FX is bypassed), and an empty
+slot is dark. Favorites are stored in the \reaper project file.
+
+In Favorites mode the \select buttons behave as follows:
+
+\begin{compactitem}
+\item \select: Recall the favorite stored in this slot.
+\item \control: Store the currently accessed FX in this
+  slot 
+\item \option: Clear the favorite stored in this slot.
+\item \shift: Address slots 9-16, so you can store up to 16
+  favorites.
+\end{compactitem}
+
+An FX that is not (yet) a favorite can only be selected via the
+\vpots, see the section above.
 
 \subsubsection{FX Presets}\label{fxpresets}
 
@@ -123,7 +137,7 @@ avoid ambiguity you can not  save a map with a name that contains the
 name of an  existing user map or that is part of an existing user map.
 The ``save'' dialog will only allow you to save maps with
 unambiguous names, but it is best not to rename files in {\tt My
-Documents/MCU/PlugMaps/}.
+  Documents/MCU/PlugMaps/}.
 
 When an FX is inserted or selected, the corresponding map will be
 loaded automatically. The FX is matched to the maps using the FX name
@@ -164,12 +178,12 @@ stored in the \reaper project file and not a separate file in the
 The default behaviour for syncing the MCU with the \reaper GUI is as follows: 
 \begin{itemize}
 \item When you select a different FX in the FX chain of the track that is
-selected with the MCU or open a new floating window of a FX from the 
-selected track, the MCU also jumps to this FX.\footnote{With the exception 
-of when the favorite mode is active (= \gv LED is lit).}
+  selected with the MCU or open a new floating window of a FX from the 
+  selected track, the MCU also jumps to this FX.\footnote{With the exception 
+    of when the favorite mode is active (= \gv LED is lit).}
 \item When you select a different FX with the MCU and the \reaper FX chain
-window of the corresponding track is visible, the FX will also be selected in
-the FX chain window. This can be avoided by pressing \option while selecting the FX.
+  window of the corresponding track is visible, the FX will also be selected in
+  the FX chain window. This can be avoided by pressing \option while selecting the FX.
 \end{itemize}
 
 \noindent
@@ -179,7 +193,7 @@ Table~\ref{T:plugmode_options2} for details.
 \vspace{-1mm}
 \pikTable[14.505cm]{plugmode_options1}{Main Options in Plug-Mode
   (\option)}{}{}
-%\vspace{1mm}
+% \vspace{1mm}
 \pikTable[14.485cm]{plugmode_options2}{2nd Options in Plug-Mode (\shift \option)}{}{}
 
 
@@ -196,30 +210,33 @@ Table~\ref{T:plugmode_options2} for details.
   \vpot to the right as long as you wanted, and would get only the On
   state).
 \item \rec: Recall an \hyperref[fxpresets]{FX preset}
-\bemod
-        \begin{compactitem}
-          \item \shift\footnote{All of these \rec modifiers can be combined.}: Access FX
-          preset 9-16
-          \item \control: Store an FX preset
-          \item \option: Delete an FX preset
-          \item \alt: Recall a random FX preset, or in combination with \option: Delete
-          all presets of the FX
-          \item Double-click: Extend action to all FXs of the track
-        \end{compactitem}
+  \bemod
+  \begin{compactitem}
+  \item \shift\footnote{All of these \rec modifiers can be combined.}: Access FX
+    preset 9-16
+  \item \control: Store an FX preset
+  \item \option: Delete an FX preset
+  \item \alt: Recall a random FX preset, or in combination with \option: Delete
+    all presets of the FX
+  \item Double-click: Extend action to all FXs of the track
+  \end{compactitem}
 \item \solo: Select a Bank
-\bemod
+  \bemod
 \item \mute: Select a Page. 
-\bemod
-        \begin{compactitem}
-        \item \shift In all Banks the Pages at this position are selected 
-        \end{compactitem} 
+  \bemod
+  \begin{compactitem}
+  \item \shift In all Banks the Pages at this position are selected 
+  \end{compactitem} 
 \item \select: Select an FX of the actual track (if the \gv is off) or a
-Favorite (else). 
-\bemod
-        \begin{compactitem}
-        \item \control: If Favorites mode is active: store a Favorite.
-         \item \shift: Access FX or Favorite 9-16. 
-        \end{compactitem} 
+  Favorite (else). 
+  \bemod
+  \begin{compactitem}
+  \item \control: If Favorites mode is active: store the currently
+    accessed FX as a Favorite.
+  \item \option: If Favorites mode is active: clear the Favorite in
+    this slot.
+  \item \shift: Access FX or Favorite 9-16.
+  \end{compactitem} 
 \item \bankdu Select  previous/next Bank
 \item \channeldu Select  previous/next Page
 \item \gv: see \select
