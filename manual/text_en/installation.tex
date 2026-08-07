@@ -96,8 +96,27 @@ at the top (Unit~1\,--\,8) and configure it with:
   master meterbridge) for that unit; see section~\ref{prox}.
 \item \textbf{MIDI input} / \textbf{MIDI output}: the MIDI ports the
   unit is connected to.
-\item The unit-specific options ``Switch 1st and 2nd row'' and
-  ``Emulate level meters'' can be enabled for the selected unit.
+\item The unit-specific options can be enabled for the selected
+  unit:
+  \begin{itemize}
+  \item \textbf{Switch 1st and 2nd row}: swaps the two display rows
+    for this unit. The Mackie Control specification defines a fixed row
+    order, but some manufacturers deviate from it and render the two
+    display lines in the opposite order on certain devices. Enable this
+    option on such a unit so that the upper and lower text lines appear
+    in the intended position.
+  \item \textbf{Emulate level meters}: draws the channel level meters
+    on the display in addition to the hardware meter LEDs. While a
+    channel carries signal, its level is shown on row~1 as a bar made of
+    ``\texttt{|}'' characters that grows with the level; when there is
+    no signal the normal text of the active mode is shown instead (for
+    example the track name, the dB or pan value, or the action name), so
+    the display never goes blank. This option only affects the
+    Multi-Track and Pan modes; in Send/Receive mode the track names are
+    more important than the bars, and in FX mode the bars would
+    overwrite the parameter text, so the emulated meters have no effect
+    in those modes.
+  \end{itemize}
 \end{itemize}
 The unit position (Unit~1\,--\,8) determines the channel-strip order
 from left to right: Unit~1 controls channels~1\,--\,8, Unit~2

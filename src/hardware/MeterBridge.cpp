@@ -144,9 +144,15 @@ void MeterBridge::showMeterOnDisplay(CSurf_MCU *pMCU, int channel,
     return;
 
   // The LCD field is six characters wide. Meter values 1..12 become one to
-  // six bars; silence clears the field. This does not depend on Mackie's
-  // optional LCD-meter SysEx support.
+  // six bars. When there is no signal (meter == 0) we do NOT clear the
+  // field — instead we leave row 1 untouched so the normal mode text the
+  // mode wrote this frame (dB / pan value in MultiTrack/Pan/Send modes,
+  // action name in Action mode, etc.) stays visible. The bars only replace
+  // that text while actual signal is present. This does not depend on
+  // Mackie's optional LCD-meter SysEx support.
   int bars = std::min(6, std::max(0, (int)((meter + 1) / 2)));
+  if (bars == 0)
+    return;
   char text[7];
   memset(text, '|', bars);
   text[bars] = 0;

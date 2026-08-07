@@ -78,9 +78,11 @@ CCSModesEditor destructor crash (#50) may also be leak-related.
 ** DONE code check regarding null pointer tests etc.
 ** TODO Test on original Mackie Control
 ** TODO Installation via ReaPack
-* [0/1] v0.9.5.5 Release
+* [0/2] v0.9.5.5 Release
 ** TODO #1 Monitor and RecArm can only be changed for armed tracks :bug:
-* [0/2] v0.9.7 (ChannelStrip)
+** TODO use TrackFX_GetParameterStepSizes to improve automatical mapping,
+and parameter learn (fill table automatically)
+* [0/2] v0.9.7 ChannelStrip
 ** TODO ChannelStripMode                                           :feature:
 ** TODO Support for Move Plugins :feature:
 * [0/1] v0.9.9 PerformanceMode
@@ -90,6 +92,7 @@ CCSModesEditor destructor crash (#50) may also be leak-related.
 ** TODO #3 Try to improve record mode
 ** TODO Jump to touched 
 ** TODO VCV Rack zeigt sehr merkwuerdige Parameternamen an
-* [0/2] v1.1.0 Release
+* [0/3] v1.1.0 Release
 ** TODO #4 Secondary shift function for VPOTs in Plug-Mode :proposal:
 ** TODO #2 VCA muting and solo ignored :bug:
+** TODO Improved Send/Receive-Mode
