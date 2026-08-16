@@ -105,6 +105,8 @@ extern double (*TrackFX_GetParam)(MediaTrack *tr, int fx, int param, double *min
 extern bool (*TrackFX_SetParam)(MediaTrack *tr, int fx, int param, double val);
 extern bool (*TrackFX_GetParamName)(MediaTrack *tr, int fx, int param, char *buf, int buflen);
 extern bool (*TrackFX_FormatParamValue)(MediaTrack *tr, int fx, int param, double val, char *buf, int buflen);
+extern bool (*TrackFX_FormatParamValueNormalized)(MediaTrack *tr, int fx, int param, double value, char *buf, int buflen);
+extern bool (*TrackFX_GetParameterStepSizes)(MediaTrack *tr, int fx, int param, double *stepOut, double *smallstepOut, double *largestepOut, bool *istoggleOut);
 extern bool (*TrackFX_GetFXName)(MediaTrack *tr, int fx, char *buf, int buflen);
 extern GUID *(*GetTrackGUID)(MediaTrack *tr);
 

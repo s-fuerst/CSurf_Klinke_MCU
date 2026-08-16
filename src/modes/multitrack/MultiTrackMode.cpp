@@ -91,23 +91,25 @@ void MultiTrackMode::updateRecLEDs() {
         continue;
       }
       if (isModifierPressed(VK_SHIFT)) {
-        if (*pRecArm) {
-          int *pMonStatus = (int *)GetSetMediaTrackInfo(tr, "I_RECMON", NULL);
-          m_pCCSManager->setRecLED(this, channel,
-                                   pMonStatus && *pMonStatus ? LED_ON : LED_OFF);
-        }
+        // Monitor status is independent of the arm state.
+        int *pMonStatus = (int *)GetSetMediaTrackInfo(tr, "I_RECMON", NULL);
+        m_pCCSManager->setRecLED(this, channel,
+                                 pMonStatus && *pMonStatus ? LED_ON : LED_OFF);
       } else if (isModifierPressed(VK_OPTION)) {
-        if (*pRecArm) {
-          int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
-          m_pCCSManager->setRecLED(
-              this, channel, pRecMode && *pRecMode == 0 ? LED_ON : LED_OFF);
-        }
+        // Rec mode Input/None (I_RECMODE 0 = input, 2 = none) is
+        // independent of the arm state.
+        int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
+        m_pCCSManager->setRecLED(
+            this, channel, pRecMode && *pRecMode == 0 ? LED_ON : LED_OFF);
       } else if (isModifierPressed(VK_ALT)) {
-        if (*pRecArm) {
-          int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
-          m_pCCSManager->setRecLED(
-              this, channel, pRecMode && *pRecMode == 2 ? LED_OFF : LED_ON);
-        }
+        // Rec mode Output/None: LED on only for the output modes
+        // (1 = stereo out, 3, 4 = MIDI output, 5 = mono out, 6), off for
+        // input (0), none (2) and MIDI overdub/replace (7/8).
+        int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
+        bool isOutput =
+            pRecMode && *pRecMode > 0 && *pRecMode < 7 && *pRecMode != 2;
+        m_pCCSManager->setRecLED(this, channel,
+                                 isOutput ? LED_ON : LED_OFF);
       } else {
         m_pCCSManager->setRecLED(this, channel, *pRecArm ? LED_ON : LED_OFF);
       }
@@ -289,35 +291,31 @@ bool MultiTrackMode::buttonRec(int channel, bool pressed) {
   MediaTrack *tr = getMediaTrackForChannel(channel);
   if (tr) {
     if (isModifierPressed(VK_SHIFT)) {
-      int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
-      if (pRecArm && *pRecArm) {
-        int *pMonStatus = (int *)GetSetMediaTrackInfo(tr, "I_RECMON", NULL);
-        if (!pMonStatus)
-          return false;
-        int newMon = *pMonStatus ? 0 : 1;
-        GetSetMediaTrackInfo(tr, "I_RECMON", &newMon);
-        TrackList_AdjustWindows(false);
-      }
+      // Toggle input monitoring; independent of the arm state.
+      int *pMonStatus = (int *)GetSetMediaTrackInfo(tr, "I_RECMON", NULL);
+      if (!pMonStatus)
+        return false;
+      int newMon = *pMonStatus ? 0 : 1;
+      GetSetMediaTrackInfo(tr, "I_RECMON", &newMon);
+      TrackList_AdjustWindows(false);
     } else if (isModifierPressed(VK_OPTION)) {
-      int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
-      if (pRecArm && *pRecArm) {
-        int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
-        if (!pRecMode)
-          return false;
-        int newMode = (*pRecMode == 0) ? 2 : 0;
-        GetSetMediaTrackInfo(tr, "I_RECMODE", &newMode);
-        TrackList_AdjustWindows(false);
-      }
+      // Toggle rec mode between Input (0) and None (2); independent of
+      // the arm state.
+      int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
+      if (!pRecMode)
+        return false;
+      int newMode = (*pRecMode == 0) ? 2 : 0;
+      GetSetMediaTrackInfo(tr, "I_RECMODE", &newMode);
+      TrackList_AdjustWindows(false);
     } else if (isModifierPressed(VK_ALT)) {
-      int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);
-      if (pRecArm && *pRecArm) {
-        int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
-        if (!pRecMode)
-          return false;
-        int newMode = (*pRecMode == 1) ? 5 : (*pRecMode == 5) ? 2 : 1;
-        GetSetMediaTrackInfo(tr, "I_RECMODE", &newMode);
-        TrackList_AdjustWindows(false);
-      }
+      // Cycle rec mode through Stereo Out (1) -> Mono Out (5) -> None (2);
+      // independent of the arm state.
+      int *pRecMode = (int *)GetSetMediaTrackInfo(tr, "I_RECMODE", NULL);
+      if (!pRecMode)
+        return false;
+      int newMode = (*pRecMode == 1) ? 5 : (*pRecMode == 5) ? 2 : 1;
+      GetSetMediaTrackInfo(tr, "I_RECMODE", &newMode);
+      TrackList_AdjustWindows(false);
     } else {
       // Explicit toggle — CSurf_OnRecArmChange(-1) doesn't arm on Linux
       int *pRecArm = (int *)GetSetMediaTrackInfo(tr, "I_RECARM", NULL);

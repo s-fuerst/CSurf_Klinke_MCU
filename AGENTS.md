@@ -143,6 +143,21 @@ reaper loads the .dll/.so/.dylib
   for a release.
   `csurf_mcu.h` uses `MCU_VERSION_STRING` (from generated `Version.h`) in
   `GetDescString()`.
+- **Minimum REAPER version awareness.** Whenever you extend access to the
+  REAPER API - a new `GetFunc`-resolved function (`IMPAPI` in
+  `src/csurf_main.cpp`), a new csurf interface method, or any other API use -
+  check from which REAPER version that API is available (see the official
+  `justinfrankel/reaper-sdk` commit history, one commit per release, or the
+  REAPER changelogs). Newer APIs raise the hard load floor: every function
+  resolved in `src/csurf_main.cpp` is mandatory, and if `GetFunc` returns NULL
+  the extension refuses to load (`errcnt -> return 0`). The current floor is
+  **REAPER 6.37**, set by `TrackFX_GetParamFromIdent` (introduced in 6.37; used
+  in `src/modes/plugin/PlugAccess.cpp` for `:bypass`/`:wet`/`:delta`). If the
+  floor changes, update the corresponding section in the manual
+  (`manual/text_en/intro.tex`, currently "The minimum supported REAPER version
+  is 6.37."). If an API is only needed optionally, resolve it lazily with a
+  fallback instead of a hard `IMPAPI` entry, so older REAPERs still load.
+
 - **No auto-format style is enforced;** match the surrounding file's style
   (roughly 2-space indent, `m_` member prefix, `p` pointer-arg prefix).
 - **Config format:** `SurfaceConfig` (in `src/core/SurfaceConfig.h/cpp`)

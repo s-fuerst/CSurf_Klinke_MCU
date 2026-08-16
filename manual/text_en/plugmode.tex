@@ -22,9 +22,14 @@ Factory FX maps are not included in the current testing builds. A
 future ReaPack distribution is planned and will include the factory maps
 again. You can also create your own maps for the selected FX using the
 \mapeditor (see section~\ref{createmaps} for details). If no map exists
-for an FX, a mapping is created automatically. In this case all
-parameters are processed as continuous (so that the \vpots are unused
-for FXs without user-created maps).
+for an FX, a mapping is created automatically. In this case parameters
+that are detected as discrete (e.g.\ on/off switches or waveform
+selectors) are mapped to the \vpots, all other parameters to the
+\faders; parameters that lie next to each other in the parameter
+list of the FX share a channel strip (so e.g.\ an LFO waveform and
+the LFO rate that follows it are controlled by the \vpot and the
+\fader of one channel). If no discrete values can be detected for
+the FX, all parameters are mapped to the \faders as before.
 
 
 \subsubsection{Navigation}
@@ -122,6 +127,28 @@ create a map: \url{http://tinyurl.com/33btx7a}.
 
 \pikFigure[0.54][9.3cm][-2.3mm][0.2mm]{Screenshot_Plug_Mode}{Mapping
   editor (\alt \plug)}{}{}
+
+Parameters can be assigned to the strips of a page with the Learn
+function of the mapping editor: enable the ``Learn'' checkbox at the
+top of the editor, select the \fader or \vpot of the channel in the
+editor (the element that was clicked last is used, its parameter
+combo box is shown in red) and change the desired value in the FX
+user interface. The parameter that changes is assigned to the
+selected element. Alternatively you can pick the parameter directly
+from the combo box next to the element.
+
+If a parameter is assigned to a \vpot -- with the Learn option or by
+selecting it in the parameter list -- the value table of the \vpot
+is filled automatically. If the FX reports the discrete values of
+the parameter (e.g.\ for the waveform selector of an oscillator),
+these values and their names are used, otherwise they are detected
+with a heuristic. If no discrete values can be detected, the table
+stays empty and the values can be learned manually by setting the
+parameter to the missing value while Learn is enabled. The short and
+long names in the table can be edited afterwards; the automatically
+created short names use a heuristic that keeps them distinguishable
+on the display.
+
 When an FX is selected via the MCU or the name of the selected FX is
 changed in the Track FX dialog, a map is loaded if it's name is part
 of the FX name. E.g.  if the FX name is "VST: ReaEQ (Cockos)" and a
