@@ -14,14 +14,30 @@ class KlinkeLookAndFeel : public juce::LookAndFeel_V4
 {
 public:
     KlinkeLookAndFeel()
-        : LookAndFeel_V4 (LookAndFeel_V4::getLightColourScheme()) {}
+        : LookAndFeel_V4 (LookAndFeel_V4::getLightColourScheme())
+    {
+        // Keep text editors readable even when a component does not assign
+        // explicit colours. This also covers the temporary editor JUCE creates
+        // for editable Labels.
+        setColour (juce::TextEditor::textColourId, juce::Colours::black);
+        setColour (juce::TextEditor::backgroundColourId, juce::Colours::white);
+        setColour (juce::TextEditor::highlightedTextColourId, juce::Colours::white);
+        setColour (juce::TextEditor::highlightColourId, juce::Colour (0xff4f6f9f));
+        setColour (juce::Label::textColourId, juce::Colours::black);
+        setColour (juce::Label::textWhenEditingColourId, juce::Colours::black);
+        setColour (juce::Label::backgroundWhenEditingColourId, juce::Colours::white);
+    }
 
     void drawLabel (juce::Graphics& g, juce::Label& label) override
     {
-        // JUCE 8 V4 sometimes draws editable labels with the wrong text colour
-        // against white backgrounds. Force black text.
+        // Mapping names are editable Labels. Set the Label colour IDs,
+        // rather than TextEditor IDs, so this also affects the temporary
+        // editor JUCE creates while a name is being edited.
         if (label.isEditableOnSingleClick() || label.isEditable())
-            g.setColour (juce::Colours::black);
+        {
+            label.setColour (juce::Label::textColourId, juce::Colours::black);
+            label.setColour (juce::Label::textWhenEditingColourId, juce::Colours::black);
+        }
         LookAndFeel_V4::drawLabel (g, label);
     }
 
