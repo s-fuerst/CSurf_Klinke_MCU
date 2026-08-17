@@ -122,6 +122,12 @@ bool (*TrackFX_GetParamName)(MediaTrack *tr, int fx, int param, char *buf,
                              int buflen);
 bool (*TrackFX_FormatParamValue)(MediaTrack *tr, int fx, int param, double val,
                                  char *buf, int buflen);
+bool (*TrackFX_FormatParamValueNormalized)(MediaTrack *tr, int fx, int param,
+                                           double value, char *buf,
+                                           int buflen);
+bool (*TrackFX_GetParameterStepSizes)(MediaTrack *tr, int fx, int param,
+                                      double *stepOut, double *smallstepOut,
+                                      double *largestepOut, bool *istoggleOut);
 GUID *(*GetTrackGUID)(MediaTrack *tr);
 
 int *g_config_csurf_rate, *g_config_zoommode;
@@ -307,6 +313,8 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   IMPAPI(TrackFX_SetParam)
   IMPAPI(TrackFX_GetParamName)
   IMPAPI(TrackFX_FormatParamValue)
+  IMPAPI(TrackFX_FormatParamValueNormalized)
+  IMPAPI(TrackFX_GetParameterStepSizes)
   IMPAPI(TrackFX_GetFXName)
 
   IMPAPI(GetTrackGUID)

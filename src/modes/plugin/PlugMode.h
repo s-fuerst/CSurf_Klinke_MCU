@@ -23,6 +23,10 @@ class PlugMode : public CCSMode {
 public:
   PlugMode(CCSManager *pManager);
 
+  // Access to the owning surface (used e.g. by PlugAccess to query the
+  // configured hardware units for the short-name width heuristic).
+  CCSManager *getCCSManager() const { return m_pCCSManager; }
+
   // opt into extender (channel > 8) events
   bool supportsExtendedChannels() const override { return true; }
 
@@ -154,6 +158,15 @@ public:
 	// the unit whose attribute is selected for
 	// PMO2_FOLLOW_CHANGE, or -1 if OFF / out of range (>= numUnits()).
 	int followChangeUnit();
+
+	// Called by PlugAccess after the extension itself wrote a plugin
+	// parameter value (fader/VPOT/button on the MCU). Synchronizes the
+	// follow-change value cache so the write is not misread as an external
+	// (mouse) change that would yank the follow-change unit's bank/page
+	// (see followChanges()). `type` is a PlugAccess::ElementDesc::eType
+	// value; only FADER and VPOT touch the cache.
+	void onParamValueWrittenFromMCU(int bank, int page, int type, int channel,
+	                                double value);
 
 	
 private:

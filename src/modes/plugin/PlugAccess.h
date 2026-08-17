@@ -15,6 +15,8 @@
 #include <boost/tuple/tuple.hpp>
 #include <boost/tuple/tuple_comparison.hpp>
 #include <map>
+#include <set>
+#include <vector>
 
 #define RESOLVE_ERROR -594875
 #define MAX_FADER_VALUE 16368.0
@@ -303,11 +305,89 @@ public:
   static String shortNameFromCString(const char *pName);
   static String longNameFromCString(const char *pName);
 
+  // Fills pSteps with the discrete values of a parameter and returns the
+  // number of entries added (0 = the parameter was not detected as discrete
+  // or the FX provided no usable value names; the map stays empty in that
+  // case, and the parameter must not be treated as discrete). Used by the
+  // map editor (parameter assignment and Learn) and by the automatic
+  // default map creation. Tries two strategies in order:
+  // 1. The FX reports a step size: the exact value grid is used.
+  // 2. Heuristic over the displayed value names, with verification
+  //    (see fillStepsByValueNameScan).
+  static int fillDiscreteSteps(MediaTrack *pTrack, int slot, int paramId,
+                               PMVPot::tSteps *pSteps);
+
+  // Rewrites the short names of all assigned parameters of the current map
+  // so that they can be distinguished on the 6-character display (see
+  // disambiguateShortNames). Parameters whose short name was edited (it is
+  // no longer the plain truncation of the long name) keep their short name,
+  // and their name is reserved against the new abbreviations. Returns true
+  // if a short name was changed. Called after a parameter name was taken
+  // over from the FX (Learn or parameter selection) and at the end of the
+  // automatic map creation.
+  bool disambiguateShortNamesInMap();
+
   void projectChanged(XmlElement *pXmlElement, ProjectConfig::EAction action);
 
   void createDefaultMap();
 
 private:
+  // --- discrete parameter helpers (used by fillDiscreteSteps) ---
+
+  // Display name of a normalized (0..1) parameter value, or an empty string
+  // if the FX cannot format its parameter values.
+  static String formattedValueName(MediaTrack *pTrack, int slot, int paramId,
+                                   double normalizedValue);
+
+  // Number of discrete value segments of the parameter, or 0 if the
+  // parameter is continuous or the step size is unknown/unusable.
+  // A parameter counts as discrete if the FX reports a step size that
+  // divides the parameter range into 2..maxSegments segments (or reports
+  // the parameter as a toggle).
+  static int discreteStepSegments(MediaTrack *pTrack, int slot, int paramId,
+                                  int maxSegments = 100);
+
+  // Fills pSteps from the parameter's step-size grid, converted to raw
+  // parameter values. Only values with a display name from the FX are
+  // added. Returns the number of entries added.
+  static int fillStepsFromStepGrid(MediaTrack *pTrack, int slot, int paramId,
+                                   PMVPot::tSteps *pSteps);
+
+  // Heuristic fallback: if the FX displays value names and the names of the
+  // values 0.00 and 0.01 do not differ, the normalized range 0.00..1.00 is
+  // scanned in 0.01 steps for changing names. The collected values are
+  // distributed evenly over the parameter range (first value at the
+  // minimum, last at the maximum) and it is verified that the parameter
+  // really displays the collected names at these positions. On any
+  // mismatch nothing is added. Returns the number of entries added.
+  static int fillStepsByValueNameScan(MediaTrack *pTrack, int slot,
+                                      int paramId, PMVPot::tSteps *pSteps);
+
+  // Rewrites the short names of the steps in pSteps so that they are unique
+  // within the table (see disambiguateShortNames).
+  static void disambiguateStepShortNames(PMVPot::tSteps *pSteps);
+
+  // Computes unique short names for the given long names. width is the
+  // number of characters the names are built and compared with: 6 for
+  // V-Pots and for faders when no QCon Pro X unit is present, 5 for faders
+  // when a QCon Pro X is part of the surface (its fader display shows only
+  // five characters). Names whose plain truncation is unique (compared
+  // case-insensitively and ignoring trailing spaces) keep the truncation.
+  // For names whose truncation collides, the names are contracted word by
+  // word with the vowels removed ("Drive Level" -> "DrvLvl"); a name that
+  // ends with a number keeps that number complete ("Band Transient 12" ->
+  // "BndT12"). Returns a map from long name to short name; names that
+  // cannot be disambiguated keep the naive truncation.
+  static std::map<String, String>
+  disambiguateShortNames(const std::vector<String> &longNames, int width);
+
+  // Applies the disambiguated short names of one element group (faders or
+  // V-Pots) to the given parameters; manually edited short names are not
+  // rewritten but reserved. Returns true if a short name was changed.
+  static bool applyDisambiguatedShortNames(std::vector<PMParam *> &params,
+                                           std::vector<String> &longNames,
+                                           int width);
+
   //      PMParam* get corresponding parameter to element description, incl
   //      reference resolving. Can be NULL in the case that the resolving fails.
   PMParam *getPMParam(ElementDesc *element);

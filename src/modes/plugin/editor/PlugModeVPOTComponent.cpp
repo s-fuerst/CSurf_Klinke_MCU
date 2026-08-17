@@ -146,9 +146,43 @@ void PlugModeVPOTComponent::changeParamId(int paramId, double value,
   m_params->changeParamId(paramId);
   PMVPot::tSteps *pSteps = m_pVPot->getStepsMap();
 
-  (*pSteps)[value] = boost::tuple<String, String>(
+  PMVPot::tStepsValue name = boost::tuple<String, String>(
       PlugAccess::shortNameFromCString(paramName.toRawUTF8()),
       PlugAccess::longNameFromCString(paramName.toRawUTF8()));
+
+  if (!pSteps->empty()) {
+    // The table was filled before (automatically or manually): snap the
+    // learned value to the nearest existing entry instead of adding an
+    // off-grid key. A binary parameter for example reports its second
+    // value around 0.51, but the detected table entry for it is 1.0.
+    double nearestKey = pSteps->begin()->first;
+    double nearestDist = fabs(nearestKey - value);
+    double minGap = 0.0;
+    bool firstGap = true;
+    PMVPot::tSteps::iterator iterPrev = pSteps->begin();
+    PMVPot::tSteps::iterator iter = iterPrev;
+    for (++iter; iter != pSteps->end(); ++iter) {
+      const double gap = iter->first - iterPrev->first;
+      if (firstGap || gap < minGap) {
+        minGap = gap;
+        firstGap = false;
+      }
+      iterPrev = iter;
+      const double dist = fabs(iter->first - value);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearestKey = iter->first;
+      }
+    }
+    const bool snap = (pSteps->size() == 1) ? (nearestDist < 0.001)
+                                            : (nearestDist <= minGap / 2.0);
+    if (snap) {
+      (*pSteps)[nearestKey] = name; // refresh the name from the live value
+      value = nearestKey;
+    }
+  }
+
+  (*pSteps)[value] = name;
 
   int pos = findIndexFromKeyInMap(value, pSteps);
   m_tableComponent->setLastChangedRow(0);

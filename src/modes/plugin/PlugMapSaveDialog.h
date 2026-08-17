@@ -29,6 +29,7 @@
 //[Headers]     -- You can add your own extra header files here --
 #include "PlugMapManager.h"
 #include "JuceHeader.h"
+#include "../../ui/KlinkeLookAndFeel.h"
 
 #define SAVEMAP_OK 11
 #define SAVEMAP_CANCEL 12
@@ -39,9 +40,12 @@ public:
                    const bool escapeKeyTriggersCloseButton,
                    const bool addToDesktop)
       : DialogWindow(name, backgroundColour, escapeKeyTriggersCloseButton,
-                     addToDesktop){};
+                     addToDesktop) {
+    static KlinkeLookAndFeel klf;
+    setLookAndFeel(&klf);
+  }
 
-  ~SaveDialogWindow() {}
+  ~SaveDialogWindow() { setLookAndFeel(nullptr); }
 
   void closeButtonPressed() { setVisible(false); }
 };

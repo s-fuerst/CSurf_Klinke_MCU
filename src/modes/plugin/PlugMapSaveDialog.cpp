@@ -67,6 +67,10 @@ PlugMapSaveDialog::PlugMapSaveDialog(PlugMapManager *pPMM)
   m_mapList->setScrollbarsShown(true);
   m_mapList->setCaretVisible(false);
   m_mapList->setPopupMenuEnabled(false);
+  m_mapList->setColour(TextEditor::textColourId, Colours::black);
+  m_mapList->setColour(TextEditor::highlightedTextColourId, Colours::white);
+  m_mapList->setColour(TextEditor::highlightColourId, Colour(0xff4f6f9f));
+  m_mapList->setColour(TextEditor::backgroundColourId, Colours::white);
   m_mapList->setColour(TextEditor::outlineColourId, Colours::black);
   m_mapList->setColour(TextEditor::shadowColourId, Colour(0x0));
   m_mapList->setText(String());
@@ -124,6 +128,10 @@ PlugMapSaveDialog::PlugMapSaveDialog(PlugMapManager *pPMM)
   m_mapInstalled->setScrollbarsShown(true);
   m_mapInstalled->setCaretVisible(false);
   m_mapInstalled->setPopupMenuEnabled(false);
+  m_mapInstalled->setColour(TextEditor::textColourId, Colours::black);
+  m_mapInstalled->setColour(TextEditor::highlightedTextColourId, Colours::white);
+  m_mapInstalled->setColour(TextEditor::highlightColourId, Colour(0xff4f6f9f));
+  m_mapInstalled->setColour(TextEditor::backgroundColourId, Colours::white);
   m_mapInstalled->setColour(TextEditor::outlineColourId, Colours::black);
   m_mapInstalled->setColour(TextEditor::shadowColourId, Colour(0x0));
   m_mapInstalled->setText(String());

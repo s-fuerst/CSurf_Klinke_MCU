@@ -218,16 +218,48 @@ void PlugModeParamComponent::changeParamId(int paramId) {
         if (valid) {
           m_pParam->setNameShort(PlugAccess::shortNameFromCString(paramName));
           m_pParam->setNameLong(PlugAccess::longNameFromCString(paramName));
+          // Make the short names of the whole map unique: parameters that
+          // share a name prefix ("Drive Attack", "Drive Amount", ...) would
+          // otherwise all be truncated to the same 6 characters. Manually
+          // edited names are not touched.
+          pPA->disambiguateShortNamesInMap();
           updateEverything();
         }
       }
     }
   }
 
-  if (dynamic_cast<PMVPot *>(m_pParam)) {
-    dynamic_cast<PMVPot *>(m_pParam)->getStepsMap()->clear();
+  if (PMVPot *pVPot = dynamic_cast<PMVPot *>(m_pParam)) {
+    pVPot->getStepsMap()->clear();
+    // Auto-detect the discrete values whenever the parameter of a V-Pot
+    // changes, no matter whether it was selected in the parameter list or
+    // learned with the Learn option.
+    if (paramId != NOT_ASSIGNED)
+      fillDiscreteStepsFromFX(paramId);
     m_pMainComponent->updateEverything();
   }
+}
+
+// Fills the V-Pot value table with the discrete values of the newly
+// assigned parameter (step-size grid of the FX, or the verified heuristic
+// over the displayed value names). See PlugAccess::fillDiscreteSteps for
+// the shared implementation (also used by the automatic default map
+// creation). If the parameter is not detected as discrete, the table stays
+// empty and the values can be learned manually.
+void PlugModeParamComponent::fillDiscreteStepsFromFX(int paramId) {
+  PMVPot *pVPot = dynamic_cast<PMVPot *>(m_pParam);
+  if (pVPot == NULL)
+    return;
+
+  PlugAccess *pPA = m_pMainComponent->getPlugAccess();
+  if (pPA == NULL || pPA->getPlugTrack() == NULL)
+    return;
+
+  if (paramId < 0 || paramId >= pPA->getNumParams())
+    return;
+
+  PlugAccess::fillDiscreteSteps(pPA->getPlugTrack(), pPA->getPlugSlot(),
+                                paramId, pVPot->getStepsMap());
 }
 
 void PlugModeParamComponent::setLearn(bool learn) {
