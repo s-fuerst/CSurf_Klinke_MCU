@@ -290,6 +290,9 @@ private:
 
   void createChannelTrackVector();
   MediaTrack *findMediaTrackForChannel(int channel);
+  // like findMediaTrackForChannel(), but also resolves channels beyond
+  // m_numMCUChannels (needed for QuickJump targets outside the visible range)
+  MediaTrack *findMediaTrackForChannelUnlimited(int channel);
   std::set<MediaTrack *> m_selectedTracks;
 
 	bool oneChildrenIsSoloed(MediaTrack *pMT);
