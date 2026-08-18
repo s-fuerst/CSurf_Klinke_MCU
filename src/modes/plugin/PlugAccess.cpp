@@ -16,6 +16,7 @@
 #include "PlugWindowManager.h"
 #include "std_helper.h"
 #include "Tracks.h"
+#include "McuDebugLog.h"
 #include <algorithm>
 #include <memory>
 //#include "SnM/SnM_Actions.h"
@@ -258,10 +259,9 @@ int PlugAccess::discreteStepSegments(MediaTrack *pTrack, int slot,
     segments = (int)floor(segments + 0.5);
   }
 
-  // a toggle without a usable step size still has exactly two values
-  if (isToggle && segments < 2)
-    segments = 2;
-
+  // Toggles are not handled here: a toggle always has exactly two values
+  // and no usable step grid. fillStepsFromStepGrid treats the toggle flag
+  // separately, before it calls this function.
   if (segments < 2 || segments > maxSegments)
     return 0;
   return segments;
@@ -269,11 +269,18 @@ int PlugAccess::discreteStepSegments(MediaTrack *pTrack, int slot,
 
 int PlugAccess::fillStepsFromStepGrid(MediaTrack *pTrack, int slot,
                                       int paramId, PMVPot::tSteps *pSteps) {
-  if (pTrack == NULL || pSteps == NULL)
+  if (pTrack == NULL || pSteps == NULL ||
+      TrackFX_GetParameterStepSizes == NULL)
     return 0;
 
-  const int segments = discreteStepSegments(pTrack, slot, paramId);
-  if (segments < 2)
+  // Query the step information directly (discreteStepSegments uses the
+  // same call, but the toggle flag must be known here as well): a toggle
+  // has exactly two real values, the endpoints of the parameter range.
+  // Its reported step size must never be read as a grid, see below.
+  double step = 0.0, smallStep = 0.0, largeStep = 0.0;
+  bool isToggle = false;
+  if (!TrackFX_GetParameterStepSizes(pTrack, slot, paramId, &step, &smallStep,
+                                     &largeStep, &isToggle))
     return 0;
 
   double minVal = 0.0, maxVal = 1.0;
@@ -282,9 +289,41 @@ int PlugAccess::fillStepsFromStepGrid(MediaTrack *pTrack, int slot,
   if (range <= 0.0)
     return 0;
 
+  MCU_LOG("PM stepgrid: param %d step=%g small=%g large=%g toggle=%d "
+          "min=%g max=%g",
+          paramId, step, smallStep, largeStep, isToggle ? 1 : 0, minVal,
+          maxVal);
+
   // The step map is keyed by raw parameter values (see PlugMode vpotMoved
   // and getParamValueShort), so every grid position is converted first.
   int added = 0;
+
+  if (isToggle) {
+    // A toggle has exactly two values: the endpoints of the range.
+    // REAPER also reports step sizes for many toggles (e.g. 0.5
+    // normalized) or none at all; reading such a step as a grid would
+    // divide the range into segments and produce intermediate positions
+    // (0.0/0.5/1.0) that all display one of the two real names
+    // ("0.0: Off, 0.5: Off, 1.0: On"). Only the endpoints are used.
+    for (int i = 0; i <= 1; i++) {
+      const String name =
+          formattedValueName(pTrack, slot, paramId, (double)i);
+      if (name.isEmpty())
+        continue; // no real value name -> no entry
+      (*pSteps)[(i == 0) ? minVal : maxVal] = PMVPot::tStepsValue(
+          shortNameFromCString(name.toRawUTF8()),
+          longNameFromCString(name.toRawUTF8()));
+      added++;
+    }
+    return added;
+  }
+
+  const int segments = discreteStepSegments(pTrack, slot, paramId);
+  if (segments < 2)
+    return 0;
+  MCU_LOG("PM stepgrid: param %d uses step grid with %d segments", paramId,
+          segments);
+
   for (int i = 0; i <= segments; i++) {
     const double norm = (double)i / (double)segments;
     const String name = formattedValueName(pTrack, slot, paramId, norm);
@@ -331,6 +370,8 @@ int PlugAccess::fillStepsByValueNameScan(MediaTrack *pTrack, int slot,
   if (numValues < 2 || numValues > 100)
     return 0;
 
+  MCU_LOG("PM scan: param %d distinct value names=%d", paramId, numValues);
+
   // The scan finds the names at 0.01-quantized positions that do not
   // necessarily match the real values of the parameter: a binary parameter
   // for example reports its second name first at 0.51, not at 1.00.
@@ -363,6 +404,37 @@ int PlugAccess::fillStepsByValueNameScan(MediaTrack *pTrack, int slot,
   return numValues;
 }
 
+// A table with exactly three entries whose middle entry carries the
+// same display name as the first or the last entry describes a parameter
+// with only two real values: the generated grid contains an intermediate
+// position (typically 0.5 for an On/Off parameter) that the FX displays
+// with the name of one of its real values ("0.0: Off, 0.5: Off, 1.0: On").
+// Such a middle entry carries no information and would make the V-Pot
+// step through a state that does not exist, so it is dropped again.
+static void dropRedundantMiddleStep(int paramId, PMVPot::tSteps *pSteps) {
+  if (pSteps == NULL || pSteps->size() != 3)
+    return;
+
+  PMVPot::tSteps::iterator iterFirst = pSteps->begin();
+  PMVPot::tSteps::iterator iterMiddle = iterFirst;
+  ++iterMiddle;
+  PMVPot::tSteps::iterator iterLast = iterMiddle;
+  ++iterLast;
+
+  const double rawMiddle = iterMiddle->first;
+  const String nameFirst = iterFirst->second.get<1>();
+  const String nameMiddle = iterMiddle->second.get<1>();
+  const String nameLast = iterLast->second.get<1>();
+  if (nameMiddle != nameFirst && nameMiddle != nameLast)
+    return; // the middle entry shows a name of its own -> a real value
+
+  MCU_LOG("PM steps: param %d dropped redundant middle entry raw=%g "
+          "name='%s' (first='%s', last='%s')",
+          paramId, rawMiddle, nameMiddle.toRawUTF8(), nameFirst.toRawUTF8(),
+          nameLast.toRawUTF8());
+  pSteps->erase(iterMiddle);
+}
+
 int PlugAccess::fillDiscreteSteps(MediaTrack *pTrack, int slot, int paramId,
                                   PMVPot::tSteps *pSteps) {
   if (pTrack == NULL || pSteps == NULL)
@@ -375,9 +447,15 @@ int PlugAccess::fillDiscreteSteps(MediaTrack *pTrack, int slot, int paramId,
   if (added == 0)
     added = fillStepsByValueNameScan(pTrack, slot, paramId, pSteps);
 
-  if (added > 0)
+  if (added > 0) {
+    // A two-value parameter must not keep a redundant middle entry that
+    // displays the same name as one of its neighbours.
+    dropRedundantMiddleStep(paramId, pSteps);
     disambiguateStepShortNames(pSteps);
-  return added;
+  }
+  MCU_LOG("PM fillDiscreteSteps: param %d entries=%d", paramId,
+          (int)pSteps->size());
+  return (int)pSteps->size();
 }
 
 // Short names hold up to 6 characters. The QCon Pro X displays fader short

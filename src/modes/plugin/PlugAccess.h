@@ -311,9 +311,14 @@ public:
   // case, and the parameter must not be treated as discrete). Used by the
   // map editor (parameter assignment and Learn) and by the automatic
   // default map creation. Tries two strategies in order:
-  // 1. The FX reports a step size: the exact value grid is used.
+  // 1. The FX reports a step size: the exact value grid is used (a toggle
+  //    uses exactly its two endpoint values instead, never its grid).
   // 2. Heuristic over the displayed value names, with verification
   //    (see fillStepsByValueNameScan).
+  // After both strategies a generated three-entry table whose middle entry
+  // shows the same name as the first or the last entry is reduced to two
+  // entries: the middle position displays one of the two real values and
+  // is not a value of its own.
   static int fillDiscreteSteps(MediaTrack *pTrack, int slot, int paramId,
                                PMVPot::tSteps *pSteps);
 
@@ -342,14 +347,19 @@ private:
   // Number of discrete value segments of the parameter, or 0 if the
   // parameter is continuous or the step size is unknown/unusable.
   // A parameter counts as discrete if the FX reports a step size that
-  // divides the parameter range into 2..maxSegments segments (or reports
-  // the parameter as a toggle).
+  // divides the parameter range into 2..maxSegments segments. Toggles are
+  // handled separately by fillStepsFromStepGrid (a toggle always has
+  // exactly two values and no usable step grid), so this function ignores
+  // the toggle flag.
   static int discreteStepSegments(MediaTrack *pTrack, int slot, int paramId,
                                   int maxSegments = 100);
 
   // Fills pSteps from the parameter's step-size grid, converted to raw
   // parameter values. Only values with a display name from the FX are
-  // added. Returns the number of entries added.
+  // added. A toggle is filled with exactly its two endpoint values
+  // instead: the step size that REAPER reports for toggles as well would
+  // produce intermediate grid positions that display one of the two real
+  // names. Returns the number of entries added.
   static int fillStepsFromStepGrid(MediaTrack *pTrack, int slot, int paramId,
                                    PMVPot::tSteps *pSteps);
 
