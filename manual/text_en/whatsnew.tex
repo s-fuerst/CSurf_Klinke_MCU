@@ -1,78 +1,47 @@
-\section{What's new}
+\section{What's new}\label{whatsnew}
 
-v0.9.5:
-\begin{itemize}
-\item Cross-platform support: the extension now builds and runs on Windows,
-  macOS\,(11 Big Sur or newer, Apple Silicon only) and Linux.
-\item Extender support: up to eight MCU-protocol units are combined into one
-  logical control surface. 
+\subsection{Version 0.9.5}
+\begin{compactitem}
+\item Cross-platform support: the extension now builds and runs on
+  Windows, macOS\,(11 Big Sur or newer, Apple Silicon only) and Linux.
+\item \hyperref[units]{Extender support}: up to eight MCU-protocol units (one
+  main plus up to seven extenders, i.e.\ up to 64 channels) are combined
+  into one logical control surface. All channel-strip modes span the full
+  channel count.
 \item A lot of performance improvements make the extension more responsive,
   especially in larger projects.
+\item The configuration dialog now configures every hardware unit (device
+  type and MIDI ports); the former ``Icon QCon Pro X support'' checkbox has
+  been replaced by a per-unit device type.
 \item Improved plugin parameter mapping: discrete parameters (including
   their value names) are now detected automatically and mapped to the
   V-Pots.
 \item The former ``2nd controller (Mackie Control B)'' workaround has been
   removed in favour of the built-in extender support.
-\end{itemize}
+\end{compactitem}
 
-\noindent
-v0.8:
-\begin{itemize}
-\item Removed "Old track selection behavior" (it can't be consistent with new mixer modes)
-\end{itemize}
+\subsection{Version 0.9}
+\begin{compactitem}
+\item \hyperref[prox]{Icon QCon Pro X support}
+\item \hyperref[sendautomation]{Send/Receive automation}
+\item Meterbridge improvements
+\item New Plug-Mode Options (see Table 4)
+\end{compactitem}
 
-\noindent
-v0.6.4:
-\begin{itemize}
-\item New Option "BCF2000 mode", which unite different option that where added
-mainly for the Behringer BCF2000 
-\end{itemize}
+\subsection{Version 0.8}
+\begin{compactitem}
+\item \hyperref[buttonactions]{Button-emulating actions} (since v0.8.2)
+\item \reaper folders can now be reflected on the MCU using the \foldermode
+\item \anchors allows locking a \cs to a fixed track
+\item \hyperref[fxpresets]{FX presets} (store and recall FX settings) including
+  a Blind Test feature
+\item \hyperref[localmaps]{FX Local maps} (different maps for each FX
+  instance of the same FX)
+\item improved syncing of the MCU state with the \reaper GUI
+\item \hyperref[globalactions]{Global Actions} assignments can be named and
+  shown in MCU display
+\item \hyperref[quickjump]{Quick Jumps} added for faster navigation
+\item improved \hyperref[tracknames]{Track Name} handling
+\item FX favorites can be stored in \reaper project file
+\end{compactitem}
 
-\begin{itemize}
-\item Bugfix: Action Bank selection did sometimes also triggered an action
-\end{itemize}
-
-\noindent
-v0.6.3:
-\begin{itemize}
-\item Additional Option "Show always dB values" 
-\item Bugfix: Mute-LED not always updated
-\end{itemize}
-
-\noindent
-v0.6.2:
-\begin{itemize}
-\item Additional Options in Config Dialog 
-\item Click-LED shows status of Metronome
-\end{itemize}
-
-\noindent
-v0.6.1:
-\begin{itemize}
-\item 64 bit version
-\end{itemize}
-
-\noindent
-v0.6:
-\begin{itemize}
-\item Plug-Mode 
-\item Action-Mode 
-\end{itemize}
-
-\noindent
-v0.4:
-\begin{itemize}
-\item Send-Mode 
-\item When a fader is touched, the display shows the signal level of the channel (in Pan- and Action-Mode 
-only)
-\item The foot pedal inputs at the back of the MCU main unit do send MIDI-Events to \reaper, so MIDI-Learn can 
-be used to assign actions or FX parameters to the foot pedals
-\item Pressing a \vpot while rotating results to faster changes (before the parameter was set to a default 
-value when pressed, this is removed)
-\item When the master track is muted, the \solo-LED above the \recORD button blinks, when the \solo button is 
-pressed in this state, the master tracks get unmuted
-\item New configuration dialogs: The main unit has a new entry "Bank size", that's the number of channels 
-that are offset when the FADER BANKS buttons are pressed
-\item The master track gets unselected when you select a track from the MCU
-\item The MCU doesn't follow track selections in the \reaper UI 
-\end{itemize}

@@ -1,14 +1,11 @@
-
 \section{Introduction}
 
 Welcome to the manual for the \mcu Extension for \reaper. This
 extension enhances support for the Mackie Control Universal protocol.
 It was developed specifically for the Mackie Control Universal and the Icon QCon
 Pro X, but can also be used for other controllers that use the MCU
-protocol. tehsux0r has written a setup guide for the BCF2000 that can
-be found \href{http://forum.cockos.com/showthread.php?t=117909}{here}
-and nofish wrote a setup guide for the BCR2000 that can be found
-\href{http://forum.cockos.com/showthread.php?t=60110}{here}.
+protocol. Setup guides for the Behringer BCF2000 and BCR2000 are linked
+in section~\ref{hardware}.
 
 \mcu is released under the GPL 3 licence, for details check
 section~\ref{disclaimer}.
@@ -16,18 +13,10 @@ section~\ref{disclaimer}.
 \subsection{Limitations}
 \begin{itemize}
 \item \mcu runs on Windows, macOS\,(11 Big Sur or newer) and Linux.
-  The macOS build currently supports Apple Silicon (arm64) only. The
-  source code is open and is based on the cross-platform JUCE library.
+  The macOS build currently supports Apple Silicon (arm64) only. 
 
 \item The minimum supported \reaper version is 6.37.
-
-\item The Linux build is for 64-bit x86 systems and requires glibc 2.31 or
-  newer (for example Ubuntu 20.04+ or Debian 11+). A working X11 desktop,
-  FreeType, Fontconfig and libcurl installation is required for the REAPER
-  GUI and the extension. Wayland-only setups may need an X11 compatibility
-  session.
 \end{itemize}
-
 
 If these restrictions prevent you from using the extension (and even
 if they don't), there are two alternatives:
@@ -35,108 +24,8 @@ if they don't), there are two alternatives:
   4 Reaper} and
 \href{https://github.com/GeoffAWaddington/CSI_Install}{CSI Project for
   Reaper}.
-  
 
-% \subsection{Manual style}
-% 
-% Buttons are written in \textsc{Small Caps Shape}. Links (to URL-adresses or
-% also to different part of the manual) are marked in blue.
-% \todo{vervollstaendigen}
-
-\subsection{Most important latest changes}
-\subsubsection{Version 0.9.5}
-\begin{compactitem}
-\item Cross-platform support: the extension now runs on Windows, macOS
-  and Linux.
-\item \hyperref[units]{Extender support}: up to eight MCU units (one
-  main plus up to seven extenders, i.e.\ up to 64 channels) are
-  combined into one logical surface.
-\item A lot of performance improvements make the extension more responsive,
-  especially in larger projects.
-\end{compactitem}
-
-\subsubsection{Version 0.9}
-\begin{compactitem}
-\item \hyperref[prox]{Icon QCon Pro X support}
-\item \hyperref[sendautomation]{Send/Receive automation}
-\item Meterbridge improvements
-\item New Plug-Mode Options (see Table 4)
-\end{compactitem}
-
-\subsubsection{Version 0.8}
-\begin{compactitem}
-\item 2nd controller support (since v0.8.3; superseded by extender
-  support in v0.9.5)
-\item \hyperref[buttonactions]{Button-emulating actions} (since v0.8.2)
-\item \reaper folders can now be reflected on the MCU using the \foldermode
-\item \anchors allows locking a \cs to a fixed track
-\item \hyperref[fxpresets]{FX presets} (store and recall FX settings) including
-a Blind Test feature
-\item \hyperref[localmaps]{FX Local maps} (different maps for each FX
-instances of the same FX)
-\item improved syncing of the MCU state with the \reaper GUI
-\item \hyperref[globalactions]{Global Actions} assignments can be named and
-shown in MCU display
-\item \hyperref[quickjump]{Quick Jumps} added for faster navigation  
-\item improved \hyperref[tracknames]{Track Name} handling
-\item FX favorites can be stored in \reaper project file
-\end{compactitem}
-
-\subsection{Mailing List / ``Support''}
-You can subscribe at \url{https://www.freelists.org/list/mackie_csurf_klinke}
-to a mailing list that will be only used to send notifications about
-updates.
-To communicate with other users you can use the Reaper Forum,
-e.g. via this thread
-\url{http://forum.cockos.com/showthread.php?t=171827}.
-And an issue tracker can be found at
-\url{https://github.com/s-fuerst/CSurf_Klinke_MCU/issues}.
-
-\subsection{Donations}
-
-Writing the plugin was a lot of work (but also fun most of the time), writing this
-manual too (without the fun part). So acknowledgments in the form of donations are
-welcome and can be made via PayPal. To donate click
-\href{https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=LR54GZHGL6VHA}{here}
-or on the Donate button in the Control Surface
-Settings dialog. If your DAW does not have an internet connection, you can also
-send the donation via PayPal manually to klinkenstecker@gmx.de. But I am also
-delighted when I get positive feedback via email or the \reaper forum ;-)
-
-
-\subsection{Credits}
-I want to thank:
-\begin{compactitem}
-\item Icon Pro Audio for sending me a QCon Pro X
-\item Kathrin for proof-reading the v0.8.0 manual and being such a great
-  hiking companion
-\item Alex Hayes (plant-on) and Carlos Nunes for commiting bugfixes
-  and improving the code
-\item Justin for always improving the \reaper API when I need
-  additional features (and of course \reaper in general)
-\item Chris Doerman (cdoerman) for his Overlay (see
-  section~\ref{overlay}), FX maps (e.g. take a look at the hugh Pod
-  Farm map, it's an amazing piece of work) and his great help during
-  beta-testing
-\item Ryan (yagonnawantthatcowbell) and Curvespace for contributing so
-  many FX maps
-\item axelsk for the Oxford FX maps
-\item musicbynumbers for the
-  \href{http://forum.cockos.com/showpost.php?p=473466&postcount=127}{Behringer
-    BCF2000 setup-guide} and a lot of help on the BCF2000 mode
-\item tehsux0r for the even more extensive
-  \href{http://forum.cockos.com/showthread.php?t=117909}{Behringer
-    BCF2000 setup-guide}
-\item nofish for the Behringer
-  \href{http://forum.cockos.com/showthread.php?t=60110}{BCR2000
-    setup guide}
-\item Jason (Drumbum), Miquel (anticlick), Alison and JosMuysers for
-beta-testing
-\item Jules for the great JUCE library
-\item Angeles for all the love
-\end{compactitem}
-
-%%% Local Variables: 
+%%% Local Variables:
 %%% mode: latex
 %%% TeX-master: "../mcu_klinke_manual"
-%%% End: 
+%%% End:

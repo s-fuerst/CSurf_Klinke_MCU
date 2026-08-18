@@ -48,6 +48,88 @@ or, when pressed in combination with the \shift modifier, one of the
 FXs 9-16.
 
 
+
+\subsubsection{Map Creation}\label{createmaps}
+
+You can create your own maps can with the
+\hyperref[F:Screenshot_Plug_Mode]{Mapping editor} which can be opened
+via \alt \plug (see Figure~\ref{F:Screenshot_Plug_Mode}). 
+
+\pikFigure[0.54][9.3cm][-2.3mm][0.2mm]{Screenshot_Plug_Mode}{Mapping
+  editor (\alt \plug)}{}{}
+
+Parameters can be assigned to the strips of a page with the Learn
+function of the mapping editor: enable the ``Learn'' checkbox at the
+top of the editor, select the \fader or \vpot of the channel in the
+editor (the element that was clicked last is used, its parameter
+combo box is shown in red) and change the desired value in the FX
+user interface. The parameter that changes is assigned to the
+selected element. Alternatively you can pick the parameter directly
+from the combo box next to the element.
+
+If a parameter is assigned to a \vpot -- with the Learn option or by
+selecting it in the parameter list -- the value table of the \vpot
+is filled automatically. If the FX reports the discrete values of
+the parameter (e.g.\ for the waveform selector of an oscillator),
+these values and their names are used, otherwise they are detected
+with a heuristic. If no discrete values can be detected, the table
+stays empty and the values can be learned manually by setting the
+parameter to the missing value while Learn is enabled. The short and
+long names in the table can be edited afterwards; the automatically
+created short names use a heuristic that keeps them distinguishable
+on the display.
+
+When an FX is selected via the MCU or the name of the selected FX is
+changed in the Track FX dialog, a map is loaded if it's name is part
+of the FX name. E.g.  if the FX name is "VST: ReaEQ (Cockos)" and a
+map "ReaEQ" exists, this map will be loaded. First the user-created
+maps \footnote{Which are stored in the {\tt My
+    Documents/MCU/PlugMaps/} folder.} are matched, if no map is found
+there, the installed factory maps are searched through. So you can
+modify a factory map and store it with the same name, afterwards the
+modified version will always be loaded.
+
+A mapping can be stored using the ``save'' button at the top of the editor. To
+avoid ambiguity you can not  save a map with a name that contains the
+name of an  existing user map or that is part of an existing user map.
+The ``save'' dialog will only allow you to save maps with
+unambiguous names, but it is best not to rename files in {\tt My
+  Documents/MCU/PlugMaps/}.
+
+When an FX is inserted or selected, the corresponding map will be
+loaded automatically. The FX is matched to the maps using the FX name
+in the FX: Track window of \reaper. It is important to keep in mind
+that FX maps are not cached in the memory (except
+\hyperref[localmaps]{Local maps} which are explained in the next
+section). Factory maps are currently absent from the testing downloads;
+see section~\ref{installation} for the planned ReaPack distribution.
+So if you edit a map and then select a different FX, these changes are lost. When you start to work on a map, it is a good idea
+to save an empty map and activate the Autosave option in the Mapping
+editor (you must save the map first, so that the Autosave function
+knows a filename). When Autosave is enabled, the map will be saved
+automatically when you select a different FX.
+
+If a map is named as the FX, no further steps are needed after
+inserting the FX, but if you load a plug-in like Reaktor for which you
+need different maps depending on the instrument/effect you are loading
+in Reaktor, you must add the name of the map to the FX name. In that
+case you can save the plug-in/content setup as an FX chain to avoid
+this step.
+
+\subsubsection{Local Maps}\label{localmaps}
+
+Normally a saved change in a map will automatically be used for all FX instances
+with matching names. This can be a disadvantage if you want different maps for
+the same FX, e.g. if you use the IX/Mixer FX and want to rename the
+parameters so that they describe the signal, instead of using just
+the default ``Level x + y (dB)'' names. The solution is to create a Local map.
+
+You can do this via the \mapeditor. In the mapping area at the top is
+a checkbox called ``Local''. If this checkbox is selected, the map of
+this FX instance is independent of the map of other instances and
+stored in the \reaper project file and not a separate file in the
+\verb|PlugMaps| folder.
+
 \subsubsection{Favorites}\label{fav}
 
 By default, you can only control an FX of the selected track. If you
@@ -116,90 +198,6 @@ presets of all FXs will be deleted. To delete all presets of the FX
 also press the \alt button. Double-clicking the \rec button will
 extend this to all tracks, so that all FX presets in the track will be
 deleted.
-
-\subsubsection{Map Creation}\label{createmaps}
-
-You can create your own maps can with the
-\hyperref[F:Screenshot_Plug_Mode]{Mapping editor} which can be opened
-via \alt \plug (see Figure~\ref{F:Screenshot_Plug_Mode}). The editor has a lot of tooltips. However, an
-additional help might be the screencast I made as an example of how to
-create a map: \url{http://tinyurl.com/33btx7a}.
-
-\pikFigure[0.54][9.3cm][-2.3mm][0.2mm]{Screenshot_Plug_Mode}{Mapping
-  editor (\alt \plug)}{}{}
-
-Parameters can be assigned to the strips of a page with the Learn
-function of the mapping editor: enable the ``Learn'' checkbox at the
-top of the editor, select the \fader or \vpot of the channel in the
-editor (the element that was clicked last is used, its parameter
-combo box is shown in red) and change the desired value in the FX
-user interface. The parameter that changes is assigned to the
-selected element. Alternatively you can pick the parameter directly
-from the combo box next to the element.
-
-If a parameter is assigned to a \vpot -- with the Learn option or by
-selecting it in the parameter list -- the value table of the \vpot
-is filled automatically. If the FX reports the discrete values of
-the parameter (e.g.\ for the waveform selector of an oscillator),
-these values and their names are used, otherwise they are detected
-with a heuristic. If no discrete values can be detected, the table
-stays empty and the values can be learned manually by setting the
-parameter to the missing value while Learn is enabled. The short and
-long names in the table can be edited afterwards; the automatically
-created short names use a heuristic that keeps them distinguishable
-on the display.
-
-When an FX is selected via the MCU or the name of the selected FX is
-changed in the Track FX dialog, a map is loaded if it's name is part
-of the FX name. E.g.  if the FX name is "VST: ReaEQ (Cockos)" and a
-map "ReaEQ" exists, this map will be loaded. First the user-created
-maps \footnote{Which are stored in the {\tt My
-    Documents/MCU/PlugMaps/} folder.} are matched, if no map is found
-there, the installed factory maps are searched through. So you can
-modify a factory map and store it with the same name, afterwards the
-modified version will always be loaded.
-
-A mapping can be stored using the ``save'' button at the top of the editor. To
-avoid ambiguity you can not  save a map with a name that contains the
-name of an  existing user map or that is part of an existing user map.
-The ``save'' dialog will only allow you to save maps with
-unambiguous names, but it is best not to rename files in {\tt My
-  Documents/MCU/PlugMaps/}.
-
-When an FX is inserted or selected, the corresponding map will be
-loaded automatically. The FX is matched to the maps using the FX name
-in the FX: Track window of \reaper. It is important to keep in mind
-that FX maps are not cached in the memory (except
-\hyperref[localmaps]{Local maps} which are explained in the next
-section). Factory maps are currently absent from the testing downloads;
-see section~\ref{installation} for the planned ReaPack distribution.
-So if you edit a map and then select a different FX, these changes are lost. When you start to work on a map, it is a good idea
-to save an empty map and activate the Autosave option in the Mapping
-editor (you must save the map first, so that the Autosave function
-knows a filename). When Autosave is enabled, the map will be saved
-automatically when you select a different FX.
-
-If a map is named as the FX, no further steps are needed after
-inserting the FX, but if you load a plug-in like Reaktor for which you
-need different maps depending on the instrument/effect you are loading
-in Reaktor, you must add the name of the map to the FX name. In that
-case you can save the plug-in/content setup as an FX chain to avoid
-this step. An example is given in this screencast:
-\url{http://tinyurl.com/35kuglx}
-
-\subsubsection{Local Maps}\label{localmaps}
-
-Normally a saved change in a map will automatically be used for all FX instances
-with matching names. This can be a disadvantage if you want different maps for
-the same FX, e.g. if you use the IX/Mixer FX and want to rename the
-parameters so that they describe the signal, instead of using just
-the default ``Level x + y (dB)'' names. The solution is to create a Local map.
-
-You can do this via the \mapeditor. In the mapping area at the top is
-a checkbox called ``Local''. If this checkbox is selected, the map of
-this FX instance is independent of the map of other instances and
-stored in the \reaper project file and not a separate file in the
-\verb|PlugMaps| folder.
 
 \subsubsection{Sync with \reaper GUI}\label{plugsync}
 The default behaviour for syncing the MCU with the \reaper GUI is as follows: 
