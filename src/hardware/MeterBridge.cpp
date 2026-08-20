@@ -37,12 +37,12 @@ void MeterBridge::updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
                               double decay, int pin) {
   auto ts = Tracks::instance()->getTrackStateForMediaTrack(pMT);
   int v = 0x0;
+  double pp = -1000000.0; // peak in dB, kept for the display-meter gate below
   int x = iChannel - 1; // 0-based strip index
   // Check mute/solo state of the track. Muted and missing tracks render as
   // an empty software meter so a stale bar cannot remain on the display.
   if (ts && ts->getVUactive() && pMT) {
     v = 0xd; // 0xe turns on clip indicator, 0xf turns it off
-    double pp = 0.0;
     // get peak
     if (pin < 0)
       pp = VAL2DB((Track_GetPeakInfo(pMT, 0) + Track_GetPeakInfo(pMT, 1)) * 0.5);
@@ -73,8 +73,11 @@ void MeterBridge::updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
   // they would overwrite the parameter name/value text on the LCD.
   // Inside showMeterOnDisplay the per-unit metersOnDisplay() option is the
   // final gate, so even opted-in modes only paint on units with the option.
+  // The hardware LED meters keep their original -70 dB signal threshold,
+  // but the emulated LCD bars only appear for signals above -60 dB so that
+  // low-level noise no longer paints a one-bar flicker on the display.
   if (alsoOnDisplay())
-    showMeterOnDisplay(pMCU, iChannel, v);
+    showMeterOnDisplay(pMCU, iChannel, pp > -60.0 ? v : 0);
 }
 
 void MeterBridge::updateMasterLEDs(CSurf_MCU *pMCU, double decay) {
