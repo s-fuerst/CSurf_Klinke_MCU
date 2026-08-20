@@ -82,17 +82,23 @@ bool ProjectConfig::processExtensionLine(
       buildString += String(linebuf);
     }
 
-    // '<' and '>' can't be used in the project files, so i replace them with
-    // |#{ and }#| before writing into the file and convert this back here
-    XmlDocument *pTmpDoc =
-      new XmlDocument(buildString.replace(String("|#{"), String("<"))
-		      .replace(String("}#|"), String(">")));
-    auto docRoot = pTmpDoc->getDocumentElement();
-    XmlElement *pElement = docRoot.get();
-    if (pElement) {
-      m_signalProjectChanged(pElement, READ);
+    // Undo replays carry a snapshot taken BEFORE the current in-memory
+    // state (e.g. FX presets stored mid-session). Consume the block but
+    // do NOT emit READ: this keeps the extension state undo-transparent;
+    // only a real project load (isUndo == false) replaces the state.
+    if (!isUndo) {
+      // '<' and '>' can't be used in the project files, so i replace them with
+      // |#{ and }#| before writing into the file and convert this back here
+      XmlDocument *pTmpDoc =
+          new XmlDocument(buildString.replace(String("|#{"), String("<"))
+                              .replace(String("}#|"), String(">")));
+      auto docRoot = pTmpDoc->getDocumentElement();
+      XmlElement *pElement = docRoot.get();
+      if (pElement) {
+        m_signalProjectChanged(pElement, READ);
+      }
+      delete (pTmpDoc);
     }
-    delete (pTmpDoc);
     return true;
   }
 
@@ -102,6 +108,15 @@ bool ProjectConfig::processExtensionLine(
 void ProjectConfig::saveExtensionConfig(
 					ProjectStateContext *ctx, bool isUndo,
 					struct project_config_extension_t *reg) {
+  // Do not serialize into undo chunks: the extension state (FX presets,
+  // local plug-in maps, per-project options) is control-surface
+  // configuration, not project content, and undo replays would clobber
+  // the newer in-memory state. This also skips the serialization cost on
+  // every undo checkpoint (REAPER calls this per track add etc.). Only
+  // real project saves (isUndo == false) embed the state into the file.
+  if (isUndo)
+    return;
+
   bool commentign = false;
 
   // '<' and '>' can't be used in the project files, so escape them as |#{ / }#|
@@ -167,6 +182,12 @@ void ProjectConfig::saveExtensionConfig(
 
 void ProjectConfig::beginLoadProjectState(
 					  bool isUndo, struct project_config_extension_t *reg) {
+  // REAPER calls this on project load AND on undo/redo. Undo replays must
+  // not clear the in-memory state (see saveExtensionConfig) — otherwise
+  // mid-session stored presets/maps vanish on the first Ctrl+Z.
+  if (isUndo)
+    return;
+
   checkReaProjectChange();
   m_pLastMaster = GetMasterTrack(NULL);
   bool commentign = false;
