@@ -53,8 +53,15 @@ public:
     }
 
     bool isValid() {
-      return (m_bank >= 0 && m_bank < 8 && m_page >= 0 && m_page < 8 &&
-              m_type != UNKNOWN && m_channel >= 0 && m_channel < 8);
+      if (m_type == UNKNOWN || m_channel < 0 || m_channel >= 8)
+        return false;
+      // Bank/page only apply to mapped elements (FADER/VPOT). The REAPER
+      // pseudo-params (DRYWET/BYPASS/DELTA) resolve via param idents, so
+      // they must stay addressable even when the active unit is empty
+      // (getSelectedPageInSelectedBank() returns -1 in that case).
+      if (m_type == FADER || m_type == VPOT)
+        return (m_bank >= 0 && m_bank < 8 && m_page >= 0 && m_page < 8);
+      return true;
     }
 
   public:

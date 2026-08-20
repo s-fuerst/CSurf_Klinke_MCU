@@ -959,6 +959,13 @@ PMParam *PlugAccess::getPMParam(ElementDesc *pElement) {
 bool PlugAccess::resolveIndirection(ElementDesc *pDesc) {
   if (!pDesc || !pDesc->isValid())
     return false;
+  // Only mapped elements (FADER/VPOT) live in the bank/page tables. The
+  // REAPER pseudo-params (DRYWET/BYPASS/DELTA) are ident-based and carry
+  // no valid page (the active unit may be empty, page == -1) — bail out
+  // before any bank/page table access.
+  if (pDesc->m_type != ElementDesc::FADER &&
+      pDesc->m_type != ElementDesc::VPOT)
+    return false;
   pDesc->m_offset = 0;
 
   PMBank *pBank = getMap()->getBank(pDesc->m_bank);
