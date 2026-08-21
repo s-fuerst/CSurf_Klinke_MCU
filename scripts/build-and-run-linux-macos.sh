@@ -97,8 +97,7 @@ cd "$BUILD_DIR"
 # configure_cmake — the ONLY place that runs `cmake` configure. The quick
 # path calls it too when the build dir is not (or no longer) configured, so
 # the script works on a fresh checkout right after fetch_deps.sh — no manual
-# `cmake ..` required. Note: configure increments the VERSION.txt build
-# counter ("configure = increments, build = links").
+# `cmake ..` required.
 configure_cmake() {
     cmake "$SCRIPT_DIR" -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
         $( [ "$BUILD_TYPE" = "Debug" ] && echo "-DMCU_DEBUG_LOG=ON" || echo "-DMCU_DEBUG_LOG=OFF" ) \

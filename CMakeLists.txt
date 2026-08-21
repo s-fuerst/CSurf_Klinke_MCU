@@ -78,14 +78,12 @@ option(MCU_KLINKE_BUILD "Enable Klinke's personal developer features (KLINKE pre
 #
 #  • version       (e.g. 0.9.1.3): bumped MANUALLY for a release; when bumped,
 #                  reset build-count to 1.
-#  • build-count : auto-incremented on every `cmake` configure and compiled
-#                  into the binary as "... build N". The number stored in the
-#                  file is the build number of the LAST build produced.
+#  • build-count : edited MANUALLY only. The number stored in the file is used
+#                  verbatim and compiled into the binary as "... build N".
 #
-#  The file is rewritten (count++) on each configure — commit it as-is. The
-#  generated header ${CMAKE_BINARY_DIR}/Version.h is included by csurf_mcu.h.
-#  Increment happens at CONFIGURE time (the build flow always runs `cmake ..`
-#  before `cmake --build`, so the count tracks one build cycle at a time).
+#  CMake never rewrites VERSION.txt — it only reads it and generates the header
+#  ${CMAKE_BINARY_DIR}/Version.h (included by csurf_mcu.h). To change the
+#  version or build number, edit VERSION.txt by hand before configuring.
 #
 #  NOTE: the file is named VERSION.txt (not VERSION) to avoid colliding with
 #  libc++'s <version> header on macOS's case-insensitive APFS filesystem,
@@ -106,22 +104,10 @@ if(MCU_VERSION STREQUAL "")
     set(MCU_VERSION "0.9.1.3")
     set(_vc "0")
 endif()
-# increment-first model: count stored in the file = last build produced
-math(EXPR MCU_BUILD_COUNT "${_vc} + 1")
+# manual-only model: the count stored in the file is used verbatim; CMake never
+# writes it back.
+set(MCU_BUILD_COUNT "${_vc}")
 set(MCU_VERSION_DISPLAY "v${MCU_VERSION} build ${MCU_BUILD_COUNT}")
-file(WRITE "${MCU_VERSION_FILE}"
-    "# Format: <version> <build-count>\n"
-    "#\n"
-    "# version       bump MANUALLY for a release (e.g. 0.9.1.3 -> 0.9.2.0).\n"
-    "#               When you bump the version, reset build-count to 1.\n"
-    "# build-count   auto-incremented on every `cmake` configure and compiled into\n"
-    "#               the binary as \"... build N\". The number stored here is the\n"
-    "#               build number of the LAST build produced.\n"
-    "#\n"
-    "# This file is rewritten (count++) on each configure - this is expected; commit\n"
-    "# it as-is. Do NOT run `cmake ..` without building afterwards (it bumps the\n"
-    "# counter without producing a binary). Displayed in Reaper as: v<version> build <count>.\n"
-    "${MCU_VERSION} ${MCU_BUILD_COUNT}\n")
 message(STATUS "MCU version: ${MCU_VERSION_DISPLAY}")
 # generate the header consumed by csurf_mcu.h
 configure_file("${CMAKE_SOURCE_DIR}/Version.h.in" "${CMAKE_BINARY_DIR}/Version.h" @ONLY)

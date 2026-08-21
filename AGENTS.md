@@ -139,8 +139,8 @@ reaper loads the .dll/.so/.dylib
 - **1-based channel arrays:** many `[9]` arrays are 1-based; index 0 is the
   master fader. `ASSERT` (in `src/core/McuAssert.h`) guards channel ranges.
 - **Version string** comes from the `VERSION.txt` file (repo root) — see §6
-  "Patterns". The build counter auto-increments; bump the version part manually
-  for a release.
+  "Patterns". Both the version and the build counter are manual-only; edit
+  `VERSION.txt` by hand (CMake never rewrites it).
   `csurf_mcu.h` uses `MCU_VERSION_STRING` (from generated `Version.h`) in
   `GetDescString()`.
 - **No auto-format style is enforced;** match the surrounding file's style
@@ -229,9 +229,10 @@ callers that a single-file read misses.
   run and they'll execute it. No sudo password prompt needed from
   agent side.
 - Version source = VERSION.txt file (repo root), NOT
-  hard-coded. Format "<version> <build-count>". Bump version manually
-  (reset count); count auto-increments per `cmake`
-  configure. Generated build/Version.h → MCU_VERSION_STRING in
+  hard-coded. Format "<version> <build-count>". Both fields are
+  manual-only: edit VERSION.txt by hand (bump the version, and reset
+  build-count to 1 on a release). CMake only READS the file and never
+  rewrites it. Generated build/Version.h → MCU_VERSION_STRING in
   csurf_mcu.h GetDescString.
 - Deploy is the AGENT's or build scripts job, not CMake's: after a
   successful Linux build, `cp build/reaper_csurf_mcu_klinke.so
@@ -249,13 +250,13 @@ callers that a single-file read misses.
   call sites in 6 files; most verbose: sendToHardware logs every text
   write (ROW0/ROW1 snd). Release goal: default OFF, ON only for debug
   builds.
-- Build-flow rule (always run both steps, otherwise no build-count
-  increment): `cd build && cmake .. -DCMAKE_BUILD_TYPE=Release &&
-  cmake --build . -- -j$(nproc)`. The increment happens ONLY in the
-  configure step (`cmake ..`), NOT in the build step. Running only
-  `cmake --build` (incremental) without `cmake ..` first produces a
-  build without an incremented counter. Mnemonic: "configure =
-  increments, build = links".
+- Build-flow rule (always run both steps): `cd build && cmake ..
+  -DCMAKE_BUILD_TYPE=Release && cmake --build . -- -j$(nproc)`. Running
+  only `cmake --build` (incremental) without `cmake ..` first works for
+  a no-op rebuild, but a fresh clone needs the configure step once, and
+  editing VERSION.txt requires a reconfigure (`cmake ..`) so Version.h
+  is regenerated. VERSION.txt is NEVER touched by either step
+  (manual-only). Mnemonic: "configure = generate, build = compile".
 - CRLF gotcha: the repo is checked out with core.autocrlf=true, so shell
   scripts may be CRLF and bash will refuse them with "bash\r: No such file
   or directory". If that happens, strip once: sed -i 's/\r$//'
