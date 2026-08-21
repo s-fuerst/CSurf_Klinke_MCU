@@ -125,6 +125,13 @@ else
 fi
 cmake --build . -- -j"$JOBS"
 
+# --- Archive a copy in dist/ -------------------------------------------------
+# Same convention as scripts/build-portable-linux.sh: always keep a copy of the
+# freshly built binary in dist/ (Linux .so, macOS .dylib).
+mkdir -p "$SCRIPT_DIR/dist"
+cp -f "$BUILD_DIR/$ARTIFACT" "$SCRIPT_DIR/dist/$ARTIFACT"
+echo "=== copied $ARTIFACT → $SCRIPT_DIR/dist/ ==="
+
 # --- Deploy -----------------------------------------------------------------
 
 if [ "$DEPLOY" = 0 ]; then

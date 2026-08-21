@@ -261,6 +261,13 @@ fi
 echo
 echo "=== built: $DLL ($(du -h "$DLL" | cut -f1)) ==="
 
+# --- archive a copy in dist/ -------------------------------------------------
+# Same convention as scripts/build-portable-linux.sh: always keep a copy of the
+# freshly built Windows DLL in the WSL repo's dist/.
+mkdir -p "$ROOT/dist"
+cp -f "$DLL" "$ROOT/dist/$(basename "$DLL")"
+echo "=== copied $(basename "$DLL") → $ROOT/dist/ ==="
+
 # --- write back the build counter -------------------------------------------
 # CMake incremented the count in the MIRROR's VERSION.txt during configure.
 # Copy it back to the WSL repo (the ONLY file flowing back) so the committed

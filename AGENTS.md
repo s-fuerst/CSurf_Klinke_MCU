@@ -237,6 +237,11 @@ callers that a single-file read misses.
   successful Linux build, `cp build/reaper_csurf_mcu_klinke.so
   ~/.config/REAPER/UserPlugins/`. No CMake auto-deploy (keeps
   CI/Windows/macOS clean). Reaper needs full restart to reload.
+- Every build script archives a copy of the freshly built binary in
+  `dist/` (gitignored): build-portable-linux.sh → portable .so,
+  build-and-run-linux-macos.sh → native Linux .so / macOS .dylib,
+  build-windows-from-wsl.sh → Windows .dll. The copy is made right
+  after the build (also with --no-deploy).
 - Logging architecture: MCU_DEBUG_LOG = standalone CMake OPTION
   (default ON), NOT tied to CMAKE_BUILD_TYPE → currently EVERY build
   logs, including Release. When OFF, MCU_LOG(...) compiles to
@@ -428,7 +433,7 @@ archive/juce-1.52-patches/  old JUCE 1.52 build files
 # === Other ===
 manual/                 LaTeX user manual (EN)
 ai-docs/                extender-support planning documents
-dist/                   portable-Linux .so artifact output
+dist/                   build artifact output (copy of every freshly built binary)
 build/  build_win/      local build outputs (gitignored)
 ```
 
