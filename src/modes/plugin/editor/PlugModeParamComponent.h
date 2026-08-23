@@ -71,6 +71,7 @@ public:
       //section.
       void
       updateParameterList();
+      void fillDiscreteStepsFromFX(int paramId);
 
   PMParam *m_pParam;
 

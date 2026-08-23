@@ -209,11 +209,17 @@ void PlugMode::handlePresetChange(int presetNr, int slot, int randomPresetNr) {
     m_pPresetManager->recallPreset(m_pAccess->getPlugTrack(), slot,
                                    randomPresetNr);
     m_lastCalledPreset[fxGUID] = randomPresetNr;
+    // Preset recall is an extension-originated change: refill the
+    // follow-change cache so the recalled values are not mistaken for
+    // external (mouse) changes that would yank the follow unit's page.
+    invalidateParamCache();
     return;
   }
 
   m_pPresetManager->recallPreset(m_pAccess->getPlugTrack(), slot, presetNr);
   m_lastCalledPreset[fxGUID] = presetNr;
+  // see comment above: keep follow-change from reacting to recalled values
+  invalidateParamCache();
 }
 
 // select the preset id for the fx in the given slot
@@ -1590,6 +1596,19 @@ void PlugMode::onHostParamChanged(MediaTrack *pTrack, int fxidx,
 }
 
 void PlugMode::invalidateParamCache() { m_paramCacheValid = false; }
+
+void PlugMode::onParamValueWrittenFromMCU(int bank, int page, int type,
+                                          int channel, double value) {
+  if (bank < 0 || bank >= 8 || page < 0 || page >= 8 || channel < 0 ||
+      channel >= 8)
+    return;
+
+  int idx = paramCacheIndex(bank, page, channel);
+  if (type == PlugAccess::ElementDesc::FADER)
+    lastFaderValues[idx] = value;
+  else if (type == PlugAccess::ElementDesc::VPOT)
+    lastVPotValues[idx] = value;
+}
 
 void PlugMode::refillParamCache() {
 	for (int bank = 0; bank < 8; bank++) {

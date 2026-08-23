@@ -677,6 +677,16 @@ MediaTrack *Tracks::findMediaTrackForChannel(int channel) {
   if (channel < 1 || channel > m_numMCUChannels)
     return NULL;
 
+  return findMediaTrackForChannelUnlimited(channel);
+}
+
+// Same lookup as findMediaTrackForChannel(), but without the
+// m_numMCUChannels cap. Used by moveTrackToLeftMostChannel() to locate
+// QuickJump targets that sit beyond the currently visible channel range.
+MediaTrack *Tracks::findMediaTrackForChannelUnlimited(int channel) {
+  if (channel < 1)
+    return NULL;
+
   // find anchor and count anchors with lower channel
   int numAnchorsWithLowerChannel = 0;
   if (Tracks::instance()->getOptions()->isOptionSetTo(MTO_DISABLE_ANCHORS,
@@ -1282,11 +1292,12 @@ bool Tracks::moveTrackToLeftMostChannel(MediaTrack *pMT) {
   MediaTrack *pMTForChannel;
   Tracks::instance()->setGlobalOffset(0);
   do {
-    pMTForChannel = findMediaTrackForChannel(++childWithTrack);
+    pMTForChannel = findMediaTrackForChannelUnlimited(++childWithTrack);
     if (pMTForChannel == pMT) {
       int numAnchors = 0;
       for (int j = 1; j < childWithTrack && j <= m_numMCUChannels; j++) {
-        MediaTrack *pAnchorMT = findMediaTrackForChannel(j);
+        MediaTrack *pAnchorMT =
+            findMediaTrackForChannelUnlimited(j);
         TrackState *pAnchorTS = getTrackStateForMediaTrack(pAnchorMT);
         if (pAnchorTS && pAnchorTS->getAnchorChannel() > 0 &&
             pAnchorTS->getAnchorChannel() <= m_numMCUChannels &&

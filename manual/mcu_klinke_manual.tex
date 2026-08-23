@@ -1,18 +1,18 @@
 \documentclass[a4paper, 11 pt, svgnames]{article}
-  
-% 
-%define language 
-\input{lang_en} 
+
+%
+%define language
+\input{lang_en}
 
 \input{packages}
 
 \input{commands}
-\input{shortcuts}   
+\input{shortcuts}
 %define style
 \input{style_singleside}
 
 
-\begin{document} 
+\begin{document}
 \withoutSource
 \headerTitlepage
 \pikText{titlepage}
@@ -22,26 +22,27 @@
 \input{listof}
 \headerBlue
 \pikText{intro}
+\pikText{support}
 \pikText{installation}
-\pikText{qcon}
-\pikText{overview}
+\pikText{hardware}
 \clearpage
+\pikText{overview}
+\pikText{csmodes}
 \pikText{transport}
 \pikText{region}
 \pikText{globalactions}
 \pikText{buttonactions}
-\pikText{csmodes}
 \pikText{misc}
 
-%\pikText{other}
-\pikText{overlay} 
-\pikText{experts} 
-%\pikText{whatsnew}
+\clearpage
+\appendix
+\pikText{whatsnew}
 \pikText{known_issues}
+\pikText{credits}
 \pikText{disclaimer}
 
-\twocolumnend 
-\end{document}         
+\twocolumnend
+\end{document}
 
 %%% Local Variables:
 %%% mode: lualatex
