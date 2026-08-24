@@ -1,4 +1,4 @@
-* [10/14] v0.9.5 Release
+* [10/15] v0.9.5 Release
 ** DONE Track/Mixer mode (PanMode): show fader value on touch with meters-on-display
    While a fader is touched, keep the value it controls (Volume, or Pan in
    flip mode) visible on row 1, even when "meters on display"
@@ -70,13 +70,14 @@ off. Persisted as UNIT_STATES v2 (per-unit "empty" attribute); legacy
 states are normalized on restore.
 ** TODO Merge PR#1
 ** DONE Test Plug-Favorites with extenders 
-** TODO Improved Documentation #5 (Dreieich)
+** TODO Improved Documentation #5 
 ** DONE Leak-Detection
 Run a leak detection pass (valgrind / AddressSanitizer)
 before the first release to identify and fix any memory leaks. Bitbucket
 issue #27 reported a leak detector warning on Reaper close; the
 CCSModesEditor destructor crash (#50) may also be leak-related.
 ** DONE code check regarding null pointer tests etc.
+** TODO Update Link to manual
 ** TODO Test on original Mackie Control
 ** TODO Installation via ReaPack
 * [2/2] v0.9.5.5 Release
