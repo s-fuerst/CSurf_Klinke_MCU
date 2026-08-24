@@ -162,7 +162,9 @@ void CommandMode::activate() {
     md->switchToAll();
   else
     m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
-  m_pCCSManager->getMCU()->enableMCUMeters(false);
+  // Action Mode always shows the native LCD level meters (Mackie's LCD-meter
+  // SysEx mode), independent of the "Emulate level meters" option.
+  m_pCCSManager->getMCU()->enableMCUMeters(true);
 }
 
 // P1: persist config when leaving the mode (covers the mode-switch path and,

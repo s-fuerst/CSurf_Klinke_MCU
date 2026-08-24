@@ -390,8 +390,7 @@ static WDL_DLGRET dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
       break;
     case BTN_OPEN_MANUAL:
       ShellExecute(NULL, "open",
-                   "https://bitbucket.org/"
-                   "Klinkenstecker/csurf_klinke_mcu/downloads/mcu_klinke_manual.pdf",
+                   "https://sync.luckycloud.de/f/8e8633d394b447b981ef/?dl=1",
                    NULL, NULL, SW_SHOWDEFAULT);
       break;
     }

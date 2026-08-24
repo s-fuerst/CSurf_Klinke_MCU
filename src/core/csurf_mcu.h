@@ -481,7 +481,8 @@ public:
                    int frameOffset);
   void sendStripFaderToUnit(int globalChannel, int value); // wraps unit->sendStripFader
   void sendStripMeter(int globalChannel, short meter);     // 0xD0, owning unit
-  void enableMCUMeters(bool enable); // per-unit LCD meter mode, when configured
+  void enableMCUMeters(bool enable); // per-unit LCD meter mode, as requested
+                                     // by the active mode
   // Same as enableMCUMeters, but skips QCon ProX units when excludeProX is
   // set (ProX has its own hardware meters and must keep the LCD-meter SysEx
   // mode). Used by Plug Mode, which must not drive Mackie LCD meters.

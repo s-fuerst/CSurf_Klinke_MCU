@@ -899,10 +899,15 @@ CSurf_MCU::CSurf_MCU(const SurfaceConfig &cfg, int *errStats)
   // NOTE: MIDI open + JACK usleep workaround + errStats now live in the
   // HardwareUnit ctor above.
 
-  // per-unit reset, then invalidate caches so subsequent sends
-  // are not deduped away (caches are stale after hardware reset).
+  // Invalidate per-unit caches so subsequent sends are not deduped away
+  // against stale state left over from a previous session.
+  //
+  // NOTE: no reset SysEx here. The original Mackie Control responds to it
+  // with a full fader calibration (faders driven to the end stops), which
+  // takes several seconds at every plugin load / config change. The MCU
+  // protocol does not require a host-side reset for the handshake; LED and
+  // display state is refreshed explicitly below (forceAllLEDsOff + splash).
   for (size_t ui = 0; ui < m_units.size(); ui++) {
-    m_units[ui]->reset();
     m_units[ui]->invalidateFaderCache();
     m_units[ui]->invalidateLEDCache();
   }

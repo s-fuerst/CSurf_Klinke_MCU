@@ -142,11 +142,11 @@ void DisplayHandler::enableMCUMeter(int channel, bool enable) // channel is 1 ba
   if (channel <= 0 || channel >= (int)m_metersEnabled.size())
     return;
 
-  // This is Mackie's LCD-meter SysEx mode. Controllers without that feature
-  // must not receive it; their software meter is rendered separately.
-  if (enable && !m_pUnit->metersOnDisplay())
-    enable = false;
-
+  // Mackie's native LCD-meter SysEx mode. The active mode decides
+  // unconditionally whether it wants the meters (Pan/Action/Send modes
+  // always enable them); the "Emulate level meters on the display" option
+  // only gates the software-drawn bars (see MeterBridge::showMeterOnDisplay).
+  // Controllers without this feature simply ignore the SysEx.
   if (enable == m_metersEnabled[channel])
     return;
   m_metersEnabled[channel] = enable;
@@ -180,7 +180,30 @@ void DisplayHandler::enableMCUMeter(bool enable) {
   for (int i = 1; i < (int)m_metersEnabled.size(); i++) {
     enableMCUMeter(i, enable);
   }
-  safe_call(m_pActualDisplay, resendRow(1));
+
+  if (enable) {
+    // The hardware now draws the meter columns itself; refresh row 1 as before.
+    safe_call(m_pActualDisplay, resendRow(1));
+    return;
+  }
+
+  // While the LCD-meter mode was active the hardware overwrote the right
+  // characters of BOTH rows with meter bars without us noticing, so
+  // m_pHardwareState no longer mirrors the physical LCD. Mark both rows
+  // stale before resending — otherwise the dedup in sendDifferences() would
+  // skip exactly the positions where leftover bar characters remain
+  // (e.g. switching from a loud Pan/Send mode into Plug Mode). Use the same
+  // logical->hardware row mapping as sendDifferences().
+  if (m_pActualDisplay) {
+    for (int row = 0; row < 2; row++) {
+      int hardwareRow = row;
+      if (m_pUnit->switchRows() && hardwareRow < 2)
+        hardwareRow = 1 - hardwareRow;
+      memset(m_pHardwareState->getText()[hardwareRow], 1,
+             m_pActualDisplay->getRowLength(row));
+    }
+    m_pActualDisplay->resendAllRows();
+  }
 }
 
 void DisplayHandler::addHeader(MIDI_Message *pmm, int row) {
