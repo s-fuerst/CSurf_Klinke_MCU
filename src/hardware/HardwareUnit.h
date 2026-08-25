@@ -91,7 +91,7 @@ public:
   midi_Output *midiOutput() { return m_midiout; }
   midi_Input *midiInput() { return m_midiin; }
   DisplayHandler *displayHandler() { return m_display; }
-  void startInput(); // begin reading m_midiin (called after the splash/reset)
+  void startInput(); // begin reading m_midiin (called after the splash)
 
   void setListener(HardwareEventListener *l) { m_pListener = l; }
   CSurf_MCU *surface() const { return m_pMCU; } // for DisplayHandler::getUnit()->surface()

@@ -139,8 +139,8 @@ reaper loads the .dll/.so/.dylib
 - **1-based channel arrays:** many `[9]` arrays are 1-based; index 0 is the
   master fader. `ASSERT` (in `src/core/McuAssert.h`) guards channel ranges.
 - **Version string** comes from the `VERSION.txt` file (repo root) — see §6
-  "Patterns". The build counter auto-increments; bump the version part manually
-  for a release.
+  "Patterns". Both the version and the build counter are manual-only; edit
+  `VERSION.txt` by hand (CMake never rewrites it).
   `csurf_mcu.h` uses `MCU_VERSION_STRING` (from generated `Version.h`) in
   `GetDescString()`.
 - **Minimum REAPER version awareness.** Whenever you extend access to the
@@ -244,14 +244,20 @@ callers that a single-file read misses.
   run and they'll execute it. No sudo password prompt needed from
   agent side.
 - Version source = VERSION.txt file (repo root), NOT
-  hard-coded. Format "<version> <build-count>". Bump version manually
-  (reset count); count auto-increments per `cmake`
-  configure. Generated build/Version.h → MCU_VERSION_STRING in
+  hard-coded. Format "<version> <build-count>". Both fields are
+  manual-only: edit VERSION.txt by hand (bump the version, and reset
+  build-count to 1 on a release). CMake only READS the file and never
+  rewrites it. Generated build/Version.h → MCU_VERSION_STRING in
   csurf_mcu.h GetDescString.
 - Deploy is the AGENT's or build scripts job, not CMake's: after a
   successful Linux build, `cp build/reaper_csurf_mcu_klinke.so
   ~/.config/REAPER/UserPlugins/`. No CMake auto-deploy (keeps
   CI/Windows/macOS clean). Reaper needs full restart to reload.
+- Every build script archives a copy of the freshly built binary in
+  `dist/` (gitignored): build-portable-linux.sh → portable .so,
+  build-and-run-linux-macos.sh → native Linux .so / macOS .dylib,
+  build-windows-from-wsl.sh → Windows .dll. The copy is made right
+  after the build (also with --no-deploy).
 - Logging architecture: MCU_DEBUG_LOG = standalone CMake OPTION
   (default ON), NOT tied to CMAKE_BUILD_TYPE → currently EVERY build
   logs, including Release. When OFF, MCU_LOG(...) compiles to
@@ -259,13 +265,13 @@ callers that a single-file read misses.
   call sites in 6 files; most verbose: sendToHardware logs every text
   write (ROW0/ROW1 snd). Release goal: default OFF, ON only for debug
   builds.
-- Build-flow rule (always run both steps, otherwise no build-count
-  increment): `cd build && cmake .. -DCMAKE_BUILD_TYPE=Release &&
-  cmake --build . -- -j$(nproc)`. The increment happens ONLY in the
-  configure step (`cmake ..`), NOT in the build step. Running only
-  `cmake --build` (incremental) without `cmake ..` first produces a
-  build without an incremented counter. Mnemonic: "configure =
-  increments, build = links".
+- Build-flow rule (always run both steps): `cd build && cmake ..
+  -DCMAKE_BUILD_TYPE=Release && cmake --build . -- -j$(nproc)`. Running
+  only `cmake --build` (incremental) without `cmake ..` first works for
+  a no-op rebuild, but a fresh clone needs the configure step once, and
+  editing VERSION.txt requires a reconfigure (`cmake ..`) so Version.h
+  is regenerated. VERSION.txt is NEVER touched by either step
+  (manual-only). Mnemonic: "configure = generate, build = compile".
 - CRLF gotcha: the repo is checked out with core.autocrlf=true, so shell
   scripts may be CRLF and bash will refuse them with "bash\r: No such file
   or directory". If that happens, strip once: sed -i 's/\r$//'
@@ -443,7 +449,7 @@ archive/juce-1.52-patches/  old JUCE 1.52 build files
 # === Other ===
 manual/                 LaTeX user manual (EN)
 ai-docs/                extender-support planning documents
-dist/                   portable-Linux .so artifact output
+dist/                   build artifact output (copy of every freshly built binary)
 build/  build_win/      local build outputs (gitignored)
 ```
 
@@ -457,3 +463,50 @@ MIDI ports open (multiclient).
 The version label in the surface config dialog (`IDC_VERSION_LABEL`) appends a
 "k" to the version string in KLINKE builds so the private build is
 distinguishable from the public release.
+
+## 9. Most important: Ask instead of assuming stuff.
+
+Yes, this rule already opens this file. It is repeated here at the end because
+it is the single most important rule in this document, and it cannot be
+emphasized enough:
+
+**Do not guess. Do not assume. Ask.**
+
+The maintainer would rather answer ten quick questions than repair one wrong
+assumption that silently derailed an hour of work. This project is large,
+cross-platform, and full of subtle conventions and gotchas (see throughout
+this file). The odds that an unasked guess is correct are low, and the cost of
+a wrong guess is high.
+
+Ask whenever any of the following is true:
+
+- **The intent is ambiguous.** A request that can be read two ways is not an
+excuse to pick the one that seems nicer — ask which is meant.
+- **The requirements are underspecified.** Missing details (platform, mode,
+REAPER version, hardware, scope) are not an invitation to invent defaults.
+Ask for them.
+- **The change touches more than one subsystem.** Cross-cutting changes have
+a blast radius; confirm the scope before touching the first file.
+- **A design decision is involved.** Choosing an approach, a data structure,
+a naming scheme, or an API is the maintainer's call unless explicitly
+delegated. Propose options, do not decide unilaterally.
+- **The step is hard to undo.** Build configuration, version bumps,
+destructive operations, user-visible strings, and anything commit-worthy
+deserve a confirmation first.
+- **You are stuck.** Stopping to ask is not failure; burning hours on a wrong
+path is.
+
+What "asking" means in practice:
+
+- **Ask early** — before writing code, not after. A question costs seconds at
+the start and hours if it is asked once the wrong code already exists.
+- **Ask precisely** — state what you understood, what is unclear, and the
+concrete options you see. A well-formed question is easy to answer.
+- **Ask even when you are "pretty sure"** — in this codebase, "pretty sure"
+is not a sufficient basis for a guess.
+- **Never fill gaps silently.** If you decided something you were not told,
+that is a process failure even when the outcome happens to be right.
+
+There is no penalty for asking too often. The penalty is for assuming and
+being wrong — and the maintainer has paid that penalty often enough to write
+this section twice.

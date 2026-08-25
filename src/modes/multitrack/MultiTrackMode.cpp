@@ -78,6 +78,11 @@ void MultiTrackMode::activate() {
     md->switchToAll();
   else
     m_pCCSManager->getDisplayHandler()->switchTo(m_pDisplay);
+  // MultiTrack Mode does not use the native LCD level meters (the optional
+  // software bars on row 1 are rendered separately). Explicitly disable them
+  // here so switching back from Pan/Action/Send mode does not leave Mackie's
+  // LCD-meter SysEx mode on. PanMode::activate() re-enables them afterwards.
+  m_pCCSManager->getMCU()->enableMCUMeters(false);
 }
 
 void MultiTrackMode::updateRecLEDs() {

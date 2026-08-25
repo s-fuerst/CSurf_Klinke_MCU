@@ -93,8 +93,12 @@ WORKDIR /repo
 # Fetch the pinned deps first (cached layer; only re-runs when fetch_deps.sh
 # changes). .dockerignore keeps host deps/build artifacts OUT of the context,
 # so the image always fetches from upstream -- reproducible.
-COPY fetch_deps.sh ./
-RUN ./fetch_deps.sh
+# NOTE: fetch_deps.sh resolves the repo root as the PARENT of its own directory
+# (dirname $0/..), so it must be copied into ./scripts/ to make that resolve to
+# /repo. Copying it to the WORKDIR root would fetch the deps into the container
+# filesystem root (/) and cmake would not find them under /repo.
+COPY ./scripts/fetch_deps.sh ./scripts/
+RUN ./scripts/fetch_deps.sh
 
 # Now the rest of the source (layer invalidates on source changes only).
 COPY . .

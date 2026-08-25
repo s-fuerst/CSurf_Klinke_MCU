@@ -261,14 +261,20 @@ fi
 echo
 echo "=== built: $DLL ($(du -h "$DLL" | cut -f1)) ==="
 
-# --- write back the build counter -------------------------------------------
-# CMake incremented the count in the MIRROR's VERSION.txt during configure.
-# Copy it back to the WSL repo (the ONLY file flowing back) so the committed
-# VERSION.txt stays in sync with the actually-built counter. Without this, the
-# next build's rsync would overwrite the incremented count with the stale WSL
-# value, so the counter would flip between N and N+1 instead of counting up.
+# --- archive a copy in dist/ -------------------------------------------------
+# Same convention as scripts/build-portable-linux.sh: always keep a copy of the
+# freshly built Windows DLL in the WSL repo's dist/.
+mkdir -p "$ROOT/dist"
+cp -f "$DLL" "$ROOT/dist/$(basename "$DLL")"
+echo "=== copied $(basename "$DLL") → $ROOT/dist/ ==="
+
+# --- write back VERSION.txt (no-op safeguard) ------------------------------
+# VERSION.txt is now manual-only: CMake never rewrites it, so the mirror's copy
+# (rsynced over on every build) always matches the WSL repo's. This copy is
+# therefore a harmless no-op that guards against any future re-introduction of
+# an automatic counter.
 cp -f "$MIRROR/VERSION.txt" "$ROOT/VERSION.txt"
-echo "=== version counter synced back to $ROOT/VERSION.txt ==="
+echo "=== VERSION.txt synced back to $ROOT/VERSION.txt (no-op safeguard) ==="
 
 # --- deploy ------------------------------------------------------------------
 if [ "$DEPLOY" = 1 ]; then
