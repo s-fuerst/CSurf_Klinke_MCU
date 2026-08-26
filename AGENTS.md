@@ -265,13 +265,6 @@ callers that a single-file read misses.
   call sites in 6 files; most verbose: sendToHardware logs every text
   write (ROW0/ROW1 snd). Release goal: default OFF, ON only for debug
   builds.
-- Build-flow rule (always run both steps): `cd build && cmake ..
-  -DCMAKE_BUILD_TYPE=Release && cmake --build . -- -j$(nproc)`. Running
-  only `cmake --build` (incremental) without `cmake ..` first works for
-  a no-op rebuild, but a fresh clone needs the configure step once, and
-  editing VERSION.txt requires a reconfigure (`cmake ..`) so Version.h
-  is regenerated. VERSION.txt is NEVER touched by either step
-  (manual-only). Mnemonic: "configure = generate, build = compile".
 - CRLF gotcha: the repo is checked out with core.autocrlf=true, so shell
   scripts may be CRLF and bash will refuse them with "bash\r: No such file
   or directory". If that happens, strip once: sed -i 's/\r$//'
@@ -281,12 +274,6 @@ callers that a single-file read misses.
 - No commits without explicit user instruction (user requirement).
 - Always write links out in full (https://...), not as Markdown
   hyperlinks [text](URL) — the user cannot click Markdown links.
-- HIGH-PRIORITY LANGUAGE RULE: the dialog with the user may be in
-  German, but EVERYTHING written into a file (source, comments,
-  strings, logs, commit messages, docs, AGENTS.md, manual, MEMD.md,
-  generated code, configs, scripts) MUST be in English. Never write
-  German text into a file, not even comments. Anchored at the very top
-  of AGENTS.md as "⚠️ Language rule (HIGH PRIORITY)".
 - macOS case-insensitivity hazard: project files at repo root (on the
   -I path) collide case-insensitively with system headers on
   APFS. Found: VERSION→<version> (libc++), Assert.h→<assert.h>. The
@@ -349,111 +336,7 @@ callers that a single-file read misses.
   /tmp/reaper_asan.log`. Buffer overflows are detected during init —
   no user interaction needed.
 
-
-
-## 7. Repo layout (quick map)
-
-```
-# === Build-system files (repo root) ===
-CMakeLists.txt Version.h.in VERSION.txt  build config + version counter
-AGENTS.md gplv3.txt readme.txt notes.org  docs, license, dev notes
-
-# === External dependencies (fetched by scripts/fetch_deps.sh) ===
-juce_8/                 JUCE 8.0.14 (modules, add_subdirectory)
-boost_1_91_0/           Boost 1.91.0 (headers only)
-reaper-sdk/             REAPER SDK + WDL/SWELL
-
-# === Project source tree ===
-src/
-├── csurf_main.cpp      REAPER_PLUGIN_ENTRYPOINT
-├── JuceHeader.h        JUCE module umbrella include
-├── res_linux.cpp       Linux SWELL dialog resources
-├── core/               plugin core + config + state
-│   ├── csurf_mcu.{cpp,h}    CSurf_MCU — main IReaperControlSurface impl
-│   ├── SurfaceConfig.{h,cpp}  multi-unit config model + KLINKE2 parser/serializer
-│   ├── SurfaceConfigDialog.cpp  config dialog: dlgProc, layout, createFunc, configFunc, reaper_csurf_reg
-│   ├── CCSManager.{cpp,h}   mode dispatcher, LED/touch state
-│   ├── CCSMode.{cpp,h}      mode base class (CCSMode)
-│   ├── Tracks.{cpp,h}       track state (selection, mute/solo, level)
-│   ├── Transport.{cpp,h}    play/stop/record/rewind/FFWD, markers, loop
-│   ├── Options.{cpp,h}      global options persistence
-│   ├── ProjectConfig.{cpp,h} per-project config (saved in .rpp)
-│   ├── Region.{cpp,h}       loop/time selection → Reaper regions
-│   ├── UndoEnd.{cpp,h}      undo-end sentinel
-│   ├── McuAssert.h          ASSERT/ASSERT_M/DBOUT macros
-│   ├── McuDebugLog.h        MCU_LOG(…) debug logging (compile-time ON/OFF)
-│   └── std_helper.h         erase_if, findByPtr template helpers
-├── hardware/           low-level MCU I/O
-│   ├── ButtonManager.{cpp,h}  incoming MIDI → button events
-│   ├── VPOT_LED.{cpp,h}       V-Pot LED ring state/model
-│   ├── mcu_button_defines.h   MIDI CC ↔ MCU button/VPOT mapping table
-│   ├── MeterBridge.{cpp,h}    abstract meter-bridge base class
-│   └── display/
-│       ├── Display.{cpp,h}        per-unit LCD rendering
-│       ├── DisplayHandler.{cpp,h} display routing & update logic
-│       └── Selector.{cpp,h}       parameter selector ring
-├── ui/                 JUCE on-screen editors (shared)
-│   ├── CCSModesEditor.{cpp,h}    surface-edit master dialog
-│   ├── KlinkeLookAndFeel.h       JUCE 8 colour overrides
-│   └── TabbedComponentWithCallback.{cpp,h}
-├── action/             Action Mode (VPOTs → Reaper actions)
-│   ├── Actions.{cpp,h}
-│   ├── ActionsDisplay.{cpp,h}
-│   └── editor/
-│       └── ActionsDialogComponent.{cpp,h}
-├── modes/              MCU feature modes
-│   ├── multitrack/     mixer: faders, VPOT params, select/mute/solo/rec
-│   │   ├── MultiTrackMode.{cpp,h}  MultiTrackOptions*.{cpp,h}
-│   │   ├── MultiTrackSelector.{cpp,h}
-│   │   ├── MultiTrackMeterBridge.{cpp,h}
-│   │   ├── PanMode.{cpp,h}
-│   │   ├── PerformanceMode.{cpp,h}  (intentional stub — see §5)
-│   │   └── editor/
-│   │       ├── TrackStatesEditorComponent.{cpp,h}
-│   │       └── TrackStatesTableComponent.{cpp,h}
-│   ├── commands/       Command (Action) Mode — 8 VPOTs × 6 CCs × 2 (Shift) × 8 banks
-│   │   ├── CommandMode.{cpp,h}
-│   │   └── editor/
-│   │       ├── CommandModeMainComponent.{cpp,h}
-│   │       ├── CommandModePageComponent.{cpp,h}
-│   │       └── CommandModeVPOTComponent.{cpp,h}
-│   ├── plugin/         FX Mode — plugin parameter control
-│   │   ├── PlugMode.{cpp,h}  PlugAccess.{cpp,h}  PlugMap*.{cpp,h}
-│   │   ├── PlugPresetManager.{cpp,h}  PlugWindowManager.{cpp,h}
-│   │   ├── PluginWatcher.{cpp,h}  PlugMoveWatcher.{cpp,h}
-│   │   ├── PlugModeMeterBridge.{cpp,h}  PlugModeSelectors.{cpp,h}
-│   │   └── editor/
-│   │       └── PlugMode*Component.{cpp,h}  (14 editor files)
-│   └── sends/          Send/Receive Mode
-│       ├── SendReceiveModeBase.{cpp,h}  SendMode.{cpp,h}  ReceiveMode.{cpp,h}
-│       └── SendReceiveMeterBridge.{cpp,h}
-
-# === Vendored / static resources (not source, on include path) ===
-vendor/                 csurf.h
-resources/              res.rc  resource.h  res.rc_mac_dlg  res.rc_mac_menu
-
-# === Build infrastructure ===
-scripts/
-├── fetch_deps.sh         one-time: clone/download JUCE + Boost + REAPER SDK
-├── build-portable-linux.sh  podman/docker → dist/reaper_csurf_mcu_klinke.so
-├── build-windows-from-wsl.sh  WSL MSVC build via /mnt/c Ninja mirror → %APPDATA%\REAPER\UserPlugins\
-├── build-and-run-linux-macos.sh  Linux/macOS: build + deploy + start REAPER
-├── debug_reaper.sh       launch REAPER with GDB attached
-└── start_reaper.sh       launch REAPER for testing
-docker/                 release-linux.Dockerfile (Debian 11 container build)
-
-# === Archives (historical, not built) ===
-archive/vs-legacy/      dead .vcxproj/.sln/.dsp (replaced by CMake)
-archive/juce-1.52-patches/  old JUCE 1.52 build files
-
-# === Other ===
-manual/                 LaTeX user manual (EN)
-ai-docs/                extender-support planning documents
-dist/                   build artifact output (copy of every freshly built binary)
-build/  build_win/      local build outputs (gitignored)
-```
-
-## 8. MCU hand-off with the Schaltmix plugin (KLINKE-only feature)
+## 7. MCU hand-off with the Schaltmix plugin (KLINKE-only feature)
 
 The private `--klinke` build (`MCU_KLINKE_BUILD=ON` → `#ifdef KLINKE`) can share
 the iCON controllers (Platform M+ = unit 3 = `KLINKE_COMBO_UNIT_INDEX` 2,
@@ -464,7 +347,7 @@ The version label in the surface config dialog (`IDC_VERSION_LABEL`) appends a
 "k" to the version string in KLINKE builds so the private build is
 distinguishable from the public release.
 
-## 9. Most important: Ask instead of assuming stuff.
+## 8. Most important: Ask instead of assuming stuff.
 
 Yes, this rule already opens this file. It is repeated here at the end because
 it is the single most important rule in this document, and it cannot be
