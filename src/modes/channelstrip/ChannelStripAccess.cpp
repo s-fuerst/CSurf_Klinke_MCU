@@ -22,6 +22,19 @@ using boost::placeholders::_4;
 namespace {
 // Clamp a normalized 0..1 value.
 inline double clampN(double v) { return v < 0.0 ? 0.0 : (v > 1.0 ? 1.0 : v); }
+
+// The EnumInstalledFX list is static within a REAPER session; cache it so
+// per-channel findSlotByIdent() calls (display updates) do not re-enumerate
+// the whole plugin list every time.
+const std::vector<ChannelStripAccess::InstalledFX> &installedFXCache() {
+  static std::vector<ChannelStripAccess::InstalledFX> list;
+  static bool loaded = false;
+  if (!loaded) {
+    ChannelStripAccess::getInstalledFX(list);
+    loaded = true;
+  }
+  return list;
+}
 } // namespace
 
 ChannelStripAccess::ChannelStripAccess(ChannelStripMode *pMode)
@@ -52,6 +65,15 @@ void ChannelStripAccess::getInstalledFX(std::vector<InstalledFX> &out) {
     fx.ident = String(ident);
     out.push_back(fx);
   }
+}
+
+String ChannelStripAccess::installedNameForIdent(const String &ident) {
+  if (ident.isEmpty())
+    return String();
+  for (const auto &fx : installedFXCache())
+    if (fx.ident == ident)
+      return fx.name;
+  return String();
 }
 
 String ChannelStripAccess::normalizeName(const String &nameOrIdent) {
@@ -99,16 +121,22 @@ int ChannelStripAccess::findSlotByIdent(MediaTrack *tr,
   // Fallback: match by name suffix (strips the TYPE: prefix). This cannot
   // distinguish e.g. VST2:ReaEQ from VST3:ReaEQ — returns the first match.
   String want = normalizeName(fxIdent);
-  if (want.isEmpty())
+  // For VST/VST3/CLAP the stored ident is a FILE PATH (EnumInstalledFX
+  // convention), which can never equal an on-track FX name. Also accept the
+  // installed display name that belongs to that path (e.g. path
+  // "/.../reaeq.vst.so" -> "ReaEQ (Cockos)").
+  String wantInstalled = normalizeName(installedNameForIdent(fxIdent));
+  if (want.isEmpty() && wantInstalled.isEmpty())
     return -1;
   int n = TrackFX_GetCount(tr);
   char buf[256];
   for (int slot = 0; slot < n; slot++) {
     if (TrackFX_GetFXName(tr, slot, buf, 255)) {
       String norm = normalizeName(String(buf));
-      MCU_LOG("CSA  pass2 slot=%d fxname=[%s] norm=[%s] want=[%s]", slot, buf,
-              norm.toRawUTF8(), want.toRawUTF8());
-      if (norm == want)
+      MCU_LOG("CSA  pass2 slot=%d fxname=[%s] norm=[%s] want=[%s] wantInstalled=[%s]",
+              slot, buf, norm.toRawUTF8(), want.toRawUTF8(),
+              wantInstalled.toRawUTF8());
+      if (norm == want || (!wantInstalled.isEmpty() && norm == wantInstalled))
         return slot;
     }
   }

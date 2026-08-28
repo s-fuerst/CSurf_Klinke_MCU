@@ -29,17 +29,22 @@
  * another assign button is pressed (same behaviour as Plug/Pan/Action).
  *
  * Per-unit behaviour is fully DERIVED (not switched) from three facts:
- *   (selected track present?) × (unit has strip?) × (selection mode?)
+ *   (selected track present?) × (unit has strip AND its plugin is present?)
+ *   × (selection mode?)
  * Selection mode is true while B_VPOT_TRACK is held down (re-pick). A unit
- * with no assigned strip is always in pick mode regardless of selection mode.
+ * with no assigned strip — or with an assigned strip whose plugin is MISSING
+ * on the selected track (e.g. the user removed the FX) — is always in pick
+ * mode regardless of selection mode.
  *
  * States (see plan §4):
- *   no selected track   -> VPOTs OFF, row 1 = "You must select a single track."
- *   unit has no strip   -> row 1 shows strip names; VPOT press picks a strip
- *                          (and auto-adds the plugin if missing)
- *   unit has strip, !sel-> row 1 shows param name (idle) / value (1 s after turn);
- *                          VPOT turn nudges, VPOT press toggles 0/1
- *   unit has strip, sel -> row 1 shows strip names; VPOT press re-picks
+ *   no selected track      -> VPOTs OFF, row 1 = "You must select a single track."
+ *   unit has no strip      -> row 1 shows strip names (leading "+" = plugin
+ *   OR its plugin is       -> missing on the track); VPOT press picks a strip
+ *   missing on the track   -> (and auto-adds the plugin if missing)
+ *   unit has strip, plugin present, !sel
+ *                          -> row 1 shows param name (idle) / value (1 s after turn);
+ *                             VPOT turn nudges, VPOT press toggles 0/1
+ *   unit has strip, sel    -> row 1 shows strip names; VPOT press re-picks
  */
 #pragma once
 

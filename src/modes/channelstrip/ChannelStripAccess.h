@@ -32,7 +32,9 @@ class ChannelStripAccess {
 public:
   struct InstalledFX {
     String name;  // display name, e.g. "ReaEQ (Cockos)"
-    String ident; // AddByName key, e.g. "VST3:ReaEQ (Cockos)"
+    // AddByName key: "JS:reafx/..." for JS, but a FILE PATH for
+    // VST/VST3/CLAP (e.g. "/path/reaeq.vst.so").
+    String ident;
   };
 
   ChannelStripAccess(ChannelStripMode *pMode);
@@ -44,6 +46,10 @@ public:
   // --- resolution (all return a 0-based slot index, or -1 if not found) ---
   static int findSlotByGUID(MediaTrack *tr, const String &guid);
   static int findSlotByIdent(MediaTrack *tr, const String &fxIdent);
+  // Display name of the installed FX whose EnumInstalledFX ident equals the
+  // given ident ("" if not found). Used to match file-path idents (VST/VST3)
+  // against on-track FX display names.
+  static String installedNameForIdent(const String &ident);
 
   // Resolve a strip against the given track using the slot cache. Returns the
   // 0-based slot or -1 if the plugin is not on the track (dangling / "+").
