@@ -191,6 +191,9 @@ HWND (*TrackFX_GetFloatingWindow)(MediaTrack *tr, int index);
 // showflag=0 for hidechain, =1 for show chain(index valid), =2 for hide
 // floating window(index valid), =3 for show floating window (index valid)
 void (*TrackFX_Show)(MediaTrack *tr, int index, int showFlag);
+// copy (is_move=false) or move (is_move=true) an FX within/across a chain
+void (*TrackFX_CopyToTrack)(MediaTrack *src_track, int src_fx,
+                            MediaTrack *dest_track, int dest_fx, bool is_move);
 
 GUID *(*TrackFX_GetFXGUID)(MediaTrack *tr, int fx);
 
@@ -364,6 +367,8 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   // showflag=0 for hidechain, =1 for show chain(index valid), =2 for hide
   // floating window(index valid), =3 for show floating window (index valid)
   IMPAPI(TrackFX_Show)
+  // available since REAPER 4.0, well below the 6.37 load floor
+  IMPAPI(TrackFX_CopyToTrack)
 
   IMPAPI(TrackFX_GetFXGUID)
 

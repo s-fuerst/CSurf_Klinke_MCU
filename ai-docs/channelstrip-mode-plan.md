@@ -266,12 +266,33 @@ src/modes/channelstrip/
   The stale entries are ~170 bytes per deleted track, bounded per project
   session (cleared on project READ/FREE) — not worth the extra hook.
 
-### G — ALT shortcuts
+### G — ALT shortcuts — DONE for ChannelStripMode (2026-08-28)
 
-- ALT+VPOT-7 / ALT+VPOT-8: move FX up/down (`TrackFX_CopyToTrack`, `is_move=true`).
-- ALT+VPOT-1: open floating FX window (PlugMode window-count rules duplicated).
-- ALT+Name/Values: show command labels in the display.
-- ALT+VPOT-7/8 also in PlugMode (per `notes.org`).
+- ALT+VPOT-7 / ALT+VPOT-8: move the unit's strip FX up/down
+  (`TrackFX_CopyToTrack`, `is_move=true`); no-op at chain edges; invalidates
+  the track's slot cache afterwards.
+- ALT+VPOT-1: open the floating FX window; ALT+VPOT-2: open the FX chain.
+  The PlugMode window settings are deliberately IGNORED (maintainer decision,
+  2026-08-28) — the commands always do exactly this, no option plumbing.
+- ALT held (any button, NOT Name/Values specifically): the ALT-command
+  legend appears in the per-VPOT row-1 fields (maintainer decision — plain
+  ALT, no Name/Values button). Revised after the first user test: NOT a
+  full-line legend — the labels sit directly in the VPOT fields
+  (`changeField`, 6 chars) and ONLY on units whose strip is ACTIVE (assigned
+  + plugin present, checked per unit — only then is the target FX known):
+  VPOT-1 "Float", VPOT-2 "Chain", VPOT-7 "FXup", VPOT-8 "FXdown"; all other
+  fields (and all fields of inactive units) stay empty. The commands
+  themselves are likewise only active on units with an active strip.
+- Deferred (maintainer decision): ALT+VPOT-7/8 in PlugMode (per `notes.org`) —
+  not implemented in this pass.
+- Implementation: `ChannelStripMode::vpotPressed` intercepts ALT at vpot
+  0/1/6/7 (= hardware VPOT 1/2/7/8 — **vpot is 0-based**; first test failed
+  due to an off-by-one, see §8), unshifted range only, other VPOTs fall
+  through to normal behaviour; `openFxWindow(tr, slot, floating)` / `moveFx()`
+  helpers; per-unit legend in `updateChannel()`; `m_lastAltState` refresh in
+  `frameUpdate()`. `TrackFX_CopyToTrack` added to the mandatory `IMPAPI` list
+  (csurf_main.cpp, since REAPER 4.0 — below the 6.37 floor) and to
+  `vendor/csurf.h`.
 
 ## 7. Open items / notes
 
@@ -384,6 +405,47 @@ src/modes/channelstrip/
   plugin cell now ALWAYS regenerates the shortName from the new plugin
   name (previously only auto-filled when empty). A user-customised
   abbrev is overwritten when the plugin itself changes.
+- **Step G — ALT commands implemented (2026-08-28), PENDING USER TEST:**
+  - ALT+VPOT-1: floating FX window of the unit's strip FX on the selected
+    track (mirrors `PlugWindowManager::openFloating`, reads PlugMode's
+    current option settings; `m_lastFloat` for the "only 1 MCU" rule).
+  - ALT+VPOT-7/8: move the strip FX up/down in the chain
+    (`TrackFX_CopyToTrack` is_move, new `IMPAPI` entry + `vendor/csurf.h`
+    extern), no-op at chain edges, `invalidateTrack()` afterwards.
+  - ALT held: row 1 shows the legend "1: FX window  7: FX up  8: FX down"
+    (refreshed via `m_lastAltState` in `frameUpdate()`, same pattern as Shift).
+  - Built + deployed (Linux .so to UserPlugins + dist/). REAPER restart needed.
+- **Step G first user test (2026-08-28) → OFF-BY-ONE FOUND + FIXED:** the
+  ALT branch checked `vpot == 1/7/8` but `vpot` is 0-BASED (hardware VPOT N
+  = vpot N-1). So hardware ALT+VPOT-1 (vpot 0) was never intercepted (no FX
+  window at all), and hardware ALT+VPOT-8 (vpot 7) hit the `vpot == 7`
+  ("move up") branch — the observed "plugin moved the wrong way".
+  Fix: commands now at vpot 0 (open window) / 6 (up) / 7 (down). Also:
+  legend moved from the full line into the per-VPOT fields ("OpnWin",
+  "FXup", "FXdown", 6 chars via `changeField`), shown ONLY on units whose
+  strip is active (assigned + plugin present, per-unit `fxSlot >= 0`).
+  Diagnostic `CSM ALT cmd` / `CSM openFxWindow` / `CSM moveFx` log lines
+  added (Debug builds). Rebuilt (Debug, logging on) + deployed.
+  **User re-test needed:** does ALT+VPOT-1 open the window now, and do
+  7/8 move in the expected direction? (The `CSM` log lines in
+  `~/.config/REAPER/mcu_klinke_debug.log` show unit/vpot/fxSlot for the
+  next round.)
+- **Step G change (2026-08-28): PlugMode window settings ignored.**
+  Maintainer decision: ALT+VPOT-1 TOGGLES the floating window (`TrackFX_Show`
+  3 open / 2 close, checked via `TrackFX_GetFloatingWindow`) and NEW
+  ALT+VPOT-2 TOGGLES the chain (1 open / 0 close, checked via
+  `TrackFX_GetChainVisible != -1`) — no PlugMode option plumbing (the
+  `m_lastFloat` "only 1 MCU" tracking and the PlugMode option reads were
+  removed). Legend texts: "Float" / "Chain" / "FXup" / "FXdown". Rebuilt
+  (Debug, logging) + deployed.
+- **Stale "Goodbye" on row 0 at startup — fixed (2026-08-28):**
+  `MultiTrackMode::updateDisplay` wrote only the 6-char channel fields, so
+  the 7th (separator) column of each 7-column field was never touched — the
+  "Goodbye" line written at shutdown (centered, columns 24-30) bled through
+  its separator-column letters on the next start. Fix: clear the ENTIRE row
+  0 via `changeTextFullLine(0, "")` at the start of `updateDisplay` (display
+  line buffer → no extra SysEx while unchanged). Same pattern ChannelStrip
+  mode already used for row 1. Rebuilt + deployed.
 
 ### Next concrete steps when resuming
 
