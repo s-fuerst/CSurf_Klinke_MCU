@@ -166,13 +166,19 @@ bool ChannelStripMode::vpotPressed(int channel, bool pressed) {
   int unit = (channel - 1) / 8;
   int vpot = slotFor(localCh); // 0..7 normal, 8..15 with Shift
   int stripIdx = getAssignedStripIndex(tr, unit);
-  MCU_LOG("CSM vpotPressed ch=%d unit=%d vpot=%d stripIdx=%d selMode=%d",
-          channel, unit, vpot, stripIdx, (int)m_selectionMode);
+  // A strip whose plugin is missing on the selected track behaves like
+  // "no strip": the unit shows the picker and a press (re)picks a strip.
+  int fxSlot = (stripIdx >= 0)
+      ? m_pAccess->resolveSlot(tr, stripIdx, m_strips[stripIdx])
+      : -1;
+  MCU_LOG("CSM vpotPressed ch=%d unit=%d vpot=%d stripIdx=%d selMode=%d fxSlot=%d",
+          channel, unit, vpot, stripIdx, (int)m_selectionMode, fxSlot);
 
   // Pick / re-pick: a unit without a strip, OR any unit while selection mode
-  // (TRACK held) is on. VPOT position selects which of the 16 global strips
-  // to assign to this unit for the selected track.
-  if (stripIdx < 0 || m_selectionMode) {
+  // (TRACK held) is on, OR the assigned strip's plugin is missing. VPOT
+  // position selects which of the 16 global strips to assign to this unit
+  // for the selected track.
+  if (stripIdx < 0 || m_selectionMode || fxSlot < 0) {
     if (vpot >= kNumStrips)
       return false;
     ChannelStripMap *candidate = &m_strips[vpot];
@@ -194,14 +200,6 @@ bool ChannelStripMode::vpotPressed(int channel, bool pressed) {
   if (param < 0)
     return false;
 
-  int fxSlot = m_pAccess->resolveSlot(tr, stripIdx, *strip);
-  if (fxSlot < 0) {
-    // State "+": plugin missing — press adds it.
-    m_pAccess->addPlugin(tr, stripIdx, *strip);
-    updateEverything();
-    return true;
-  }
-
   ChannelStripAccess::toggleParam(tr, fxSlot, param);
   m_lastVPOTChangeTime[channel - 1] = Time::getCurrentTime();
   updateEverything();
@@ -215,6 +213,14 @@ void ChannelStripMode::updateDisplay() {
   // with our parameter names/values (or the strip-name selection list).
   MultiTrackMode::updateDisplay();
   m_pCCSManager->switchToDisplay(this, m_pDisplay);
+
+  // Row 1 is fully ours. Clear the ENTIRE line (all units) first. This
+  // must be a full-line clear, NOT a per-field one: row-1 fields are 7
+  // columns wide ((field-1)*7) but changeField only writes pad=6 columns,
+  // so the 7th (separator) column of every field is never touched by
+  // field writes. The centered "select a single track" hint covers those
+  // separator columns, and only a full-line clear removes those leftovers.
+  m_pDisplay->changeTextFullLine(1, "");
 
   MediaTrack *tr = getSelectedTrack();
   int nStrips = Tracks::instance()->getNumberOfChannelStrips();
@@ -280,16 +286,26 @@ void ChannelStripMode::updateChannel(int globalChannel) {
   int unit = (globalChannel - 1) / 8;
   int vpot = slotFor(localCh);
   int stripIdx = getAssignedStripIndex(tr, unit);
+  ChannelStripMap *strip = (stripIdx >= 0) ? &m_strips[stripIdx] : NULL;
+  int fxSlot = (strip && strip->isAssigned())
+      ? m_pAccess->resolveSlot(tr, stripIdx, *strip)
+      : -1;
   String text;
 
-  // Pick / re-pick: show the 16 global strip names so the user can choose.
-  if (stripIdx < 0 || m_selectionMode) {
+  // Pick / re-pick: no strip assigned, selection mode (TRACK held), or the
+  // assigned strip's plugin is missing on the selected track. Show the 16
+  // global strip names so the user can choose; a leading "+" marks strips
+  // whose plugin is not present on the track yet (it will be auto-added
+  // when the strip is picked).
+  if (stripIdx < 0 || m_selectionMode || fxSlot < 0) {
     if (vpot < kNumStrips) {
       ChannelStripMap *candidate = &m_strips[vpot];
       if (candidate->isAssigned()) {
         text = candidate->getShortName();
         if (text.isEmpty())
           text = candidate->getFxIdent();
+        if (m_pAccess->resolveSlot(tr, vpot, *candidate) < 0)
+          text = "+" + text;
       }
     }
     m_pDisplay->changeField(1, globalChannel, text.toRawUTF8());
@@ -297,27 +313,11 @@ void ChannelStripMode::updateChannel(int globalChannel) {
   }
 
   // Active state for this unit's strip.
-  ChannelStripMap *strip = &m_strips[stripIdx];
-  if (!strip->isAssigned()) {
-    m_pDisplay->changeField(1, globalChannel, "");
-    return;
-  }
-
   int param = strip->getParamForVPOT(vpot);
   if (param < 0) {
     // No parameter bound to this VPOT position: show nothing (not the
     // plugin name).
     m_pDisplay->changeField(1, globalChannel, "");
-    return;
-  }
-
-  int fxSlot = m_pAccess->resolveSlot(tr, stripIdx, *strip);
-  if (fxSlot < 0) {
-    // State "+": plugin missing on the selected track.
-    String name = strip->getVPOTName(vpot);
-    if (name.isEmpty()) name = strip->getShortName();
-    text = name + " +";
-    m_pDisplay->changeField(1, globalChannel, text.toRawUTF8());
     return;
   }
 

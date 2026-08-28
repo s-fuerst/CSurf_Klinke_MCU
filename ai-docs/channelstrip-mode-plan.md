@@ -175,14 +175,17 @@ and `readFromXml(pStrip)` (header attrs + VPOT children).
 ## 4. Runtime states (per unit, derived — not switched)
 
 The display/VPOT behaviour of a unit is fully derived from three facts:
-(selected track present?) × (unit has strip?) × (selection mode = TRACK held?).
+(selected track present?) × (unit has strip AND its plugin is present on the
+selected track?) × (selection mode = TRACK held?). A unit whose assigned
+strip's plugin is missing behaves like a unit without a strip (picker).
 
 | selected track? | unit has strip? | TRACK held? | Row 1 shows | VPOT turn | VPOT press |
 |---|---|---|---|---|---|
 | no  | –   | –   | "You must select a single track." | –    | –           |
-| yes | no  | any | strip names (1–8 / Shift 9–16)    | –    | pick strip for this unit (+auto-add) |
-| yes | yes | no  | param name (idle) / value (1 s after turn) | nudge | toggle 0/1 |
-| yes | yes | yes | strip names                       | –    | re-pick strip for this unit |
+| yes | no  | any | strip names (1–8 / Shift 9–16); a leading `+` (no space) marks strips whose plugin is missing on the selected track | –    | pick strip for this unit (+auto-add) |
+| yes | yes (plugin present) | no  | param name (idle) / value (1 s after turn) | nudge | toggle 0/1 |
+| yes | yes (plugin present) | yes | strip names                       | –    | re-pick strip for this unit |
+| yes | yes, but plugin MISSING on the selected track | any | like "no strip": picker, `+` marks | –    | (re)pick strip for this unit (+auto-add) |
 
 Selection mode is a single bool `m_selectionMode` set by CCSManager on
 B_VPOT_TRACK press/release. It only affects units that already have a strip;
@@ -336,24 +339,23 @@ src/modes/channelstrip/
 
 ### Open bugs (NOT yet fixed — resume here)
 
-- **Bug A — regression / "logic stuck at selection, plugin re-added":** after
-  assigning a strip (parameter names appear on the display), pressing a VPOT
-  re-adds the plugin instead of toggling the parameter. Symptom says the press
-  goes through the pick/"+" path (`resolveSlot` returns −1) even though the
-  display's `resolveSlot` finds the plugin (shows param names). Contradiction
-  not yet explained by code reading. **Diagnostic logging is in place — the
-  user must restart REAPER with the current build and reproduce** (assign a
-  strip, then press a VPOT that re-adds), then the agent reads
-  `~/.config/REAPER/mcu_klinke_debug.log` and looks at the `CSM vpotPressed`
-  (branch + `stripIdx`/`selMode`) and `CSA resolveSlot`/`CSA findSlotByIdent`
-  (pass1/pass2 strings) lines to find the exact cause. Likely a format mismatch
-  between `EnumInstalledFX` ident and `TrackFX_GetNamedConfigParm("fx_ident")`
-  / `TrackFX_GetFXName`, OR `m_selectionMode` stuck true.
-- **Bug B — duplicate plugin add:** plugins are still added to the track even
-  when an instance already exists. Same root cause as Bug A: `findSlotByIdent`
-  fails to match the existing instance, so `addPlugin` falls through to
-  `TrackFX_AddByName` and inserts a second copy. Fix is the same fix as Bug A
-  (make `findSlotByIdent` match reliably).
+- **Bug A/B — ROOT CAUSE FOUND (2026-08-28, from `mcu_klinke_debug.log`),
+  fix implemented, PENDING USER RE-TEST.** `findSlotByIdent` could never match
+  VST/VST3/CLAP instances: the ident stored in the strip (from
+  `EnumInstalledFX`) is a **file path** (e.g.
+  `/home/.../reaeq.vst.so`), but pass 1 compares against
+  `TrackFX_GetNamedConfigParm("fx_ident")` which returns the **config ident**
+  (`VST: ReaEQ (Cockos)`), and pass 2 compares against the FX display name
+  (`ReaEQ (Cockos)`). Both comparisons fail for path idents. Right after
+  `addPlugin` everything worked only because the instance GUID was cached;
+  after an FX reorder (`PlugMoveWatcher` → `invalidateTrack`) or project
+  reload the re-resolve failed → `+` shown and the plugin re-added (Bug A =
+  re-add on VPOT press; Bug B = duplicate insert). Fix: new
+  `ChannelStripAccess::installedNameForIdent()` maps a path ident to its
+  `EnumInstalledFX` display name (cached list) and pass 2 now also accepts
+  that name. JS idents already matched via pass 1.
+  Symptom seen by the user: `+` in front of every param name after moving the
+  plugin; `+` in the pick list (new feature) for every strip.
 - **Bug C — plugin column blank on editor re-open (NOT fixed):** the deferred
   `MessageManager::callAsync` resize/repaint in `CSTPluginCombo::
   setRowAndColumn` did NOT fix it. Last attempt was
@@ -365,12 +367,11 @@ src/modes/channelstrip/
 
 ### Next concrete steps when resuming
 
-1. **Confirm Bug A/B root cause from the log** (user reproduces, agent reads
-   `~/.config/REAPER/mcu_klinke_debug.log`).
-2. **Fix `findSlotByIdent`** so it reliably matches an existing instance (likely
-   normalise/compare the `fx_ident`-parm string and/or the `GetFXName` string
-   against the stored `EnumInstalledFX` ident; the log shows the exact
-   strings). This should fix both Bug A and Bug B.
+1. ~~Confirm Bug A/B root cause from the log~~ — done (path-ident mismatch,
+   see above).
+2. ~~Fix `findSlotByIdent`~~ — done (`installedNameForIdent` name fallback).
+   **User re-test needed:** assign strip on empty track, move the FX in the
+   chain, verify no `+` and no duplicate add on VPOT press.
 3. **Re-test Bug C** (plugin column on re-open); if the `setModel` reset didn't
    help, debug the `CCSModesEditor` re-show path.
 4. **Step E verification:** confirm `channelstrips.xml` is written/read correctly
