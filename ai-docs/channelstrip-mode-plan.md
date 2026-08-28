@@ -430,6 +430,74 @@ src/modes/channelstrip/
   7/8 move in the expected direction? (The `CSM` log lines in
   `~/.config/REAPER/mcu_klinke_debug.log` show unit/vpot/fxSlot for the
   next round.)
+- **Step G 7.75+ change (2026-08-29): slot machinery REBUILT — slot_hint
+  is the winner (0-based).** Second user test with the candidate list
+  PROVED: `TrackFX_SetNamedConfigParm(tr, fx, "slot_hint", "<N>")` moves
+  the FX to 0-BASED slot N (slot_hint="2" landed the FX at slot 2, i.e.
+  one past the target), while the `TrackFX_CopyToTrack 0x800000` flag has
+  NO effect at all (both numberings). `tryMoveToUiSlot` therefore tries
+  exactly one mechanism: `slot_hint = targetSlot` (0-based, the "+1"
+  candidates caused the observed "moves by two slots" behavior), verifies
+  via chain_index_to_slot, returns 1/0/-1. `moveFx` and `addPlugin`
+  POS2..POS8 use it; after a successful slot_hint move the GUI is refreshed
+  with `TrackList_AdjustWindows(false)`, `CSurf_OnFXChange(tr, 1)` and
+  `TrackList_UpdateAllExternalSurfaces()` because REAPER does not redraw the
+  TCP/MCP FX list on its own (user-reported stale GUI). PENDING USER TEST.
+- **Step G 7.75+ GUI refresh revision (2026-08-29):** `UpdateArrange()` /
+  `UpdateTimeline()` / external-surface notification alone did not refresh
+  the mixer FX list. After a successful `slot_hint` write, the code now calls
+  the track-panel/layout API `TrackList_AdjustWindows(false)`, explicitly
+  notifies the FX change via `CSurf_OnFXChange(tr, 1)`, and then calls
+  `TrackList_UpdateAllExternalSurfaces()`. This follows the SDK note that
+  track-panel attributes may require `TrackList_AdjustWindows` and the
+  existing codebase's FX-change notification pattern. Built + deployed;
+  PENDING USER TEST.
+- **Occupied-neighbour behavior (2026-08-29, revised):** `ALT+VPOT-7/8`
+  detects the adjacent UI slot via `chain_slot_to_index`. If occupied, it now
+  deliberately uses the original dense `TrackFX_CopyToTrack(sourceIdx,
+  targetIdx, is_move=true)` path, which exchanges adjacent FX without using
+  `slot_hint` insertion semantics or shifting later FX. Empty targets continue
+  to use the 7.75+ `slot_hint` path. The earlier temporary-slot
+  `swapUiSlots()` experiment was removed after user testing showed it did not
+  move the FX at all.
+- **Additional Step G commands (2026-08-29):** ALT+VPOT-5 is now `Delete`.
+  A later test also found and fixed the floating action variable type: the
+  `TrackFX_Show` action must be an `int` (3 was truncated to 1 when it was a
+  `bool`).
+  It deletes the assigned FX instance from the selected track, keeps the
+  global strip mapping intact, refreshes TCP/MCP via the same mixer update
+  sequence, and leaves the strip in the normal missing-plugin picker state.
+  The floating-window action bug was fixed: its local `TrackFX_Show` action
+  variable is now an `int`, so action 3 is no longer truncated to action 1
+  (chain).
+- **Step G 7.75+ change (2026-08-28): slot-targeted plugin add (SUPERSEDED
+  by the 2026-08-29 entry above, kept for context).**
+  User report: Insert Position 2 was ignored — on an empty track the plugin
+  landed in slot 1. Root cause: the classic `instantiate <= -1000` dense
+  position ("-1001 = second item in chain") cannot address a position BEYOND
+  the current chain end — REAPER clamps it. Fix: for POS2..POS8 on 7.75+,
+  `addPlugin` now adds at the end and moves the FX into the target UI slot
+  via `TrackFX_CopyToTrack(dest = slot | 0x800000)` (unused-slot flag),
+  leaving the earlier slots EMPTY. Verification: re-find the FX by GUID and
+  compare `chain_index_to_slot` against the target; if not honored (empty-
+  slot option off / unsupported) the add is UNDONE (`TrackFX_Delete`) and
+  the classic dense insertion is used. FIRST/LAST stay classic (dense
+  positions by definition). New helper `ChannelStripAccess::uiSlotForIndex()`
+  (chain_index_to_slot). Logged as `CSA addPlugin SLOT-TARGET`. PENDING
+  USER TEST (needs the REAPER 7.75 "allow empty slots" option enabled).
+- **Step G 7.75+ change (2026-08-28): slot-aware FX move (empty FX slots).**
+  REAPER 7.75 added empty FX slots: the user-visible SLOT (1-based, includes
+  empties) can differ from the FX index (0-based, real FX only). `moveFx`
+  now moves by SLOT on 7.75+ via `TrackFX_GetNamedConfigParm`
+  `chain_index_to_slot` (index → slot) and `chain_slot_to_index` (slot →
+  index, `"empty:x"` for empty slots); an empty target slot is addressed
+  with the `0x800000` unused-slot flag of `TrackFX_CopyToTrack`, an
+  occupied one as a plain dense index. REAPER < 7.75 (or any failed slot
+  read, e.g. chain edge): fallback to dense index +/- 1 (no-op at real
+  edges). All intermediate values are logged (`CSM moveFx slot-aware /
+  FALLBACK / index-based`) — the exact call semantics (slot passed in the
+  `fx` argument, `0x800000|slot` for empty targets) are SDK-documented but
+  NOT yet user-verified. PENDING USER TEST on a track with empty slots.
 - **Step G change (2026-08-28): PlugMode window settings ignored.**
   Maintainer decision: ALT+VPOT-1 TOGGLES the floating window (`TrackFX_Show`
   3 open / 2 close, checked via `TrackFX_GetFloatingWindow`) and NEW

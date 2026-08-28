@@ -82,6 +82,16 @@ public:
   // updates the slot cache for (track, stripIndex). Returns the new 0-based
   // slot index, or -1 on failure.
   int addPlugin(MediaTrack *tr, int stripIndex, const ChannelStripMap &strip);
+  // User-visible UI slot (1-based, includes empty slots) of an FX index
+  // (REAPER 7.75+ named config parm chain_index_to_slot), or -1 if unknown
+  // (REAPER < 7.75). NOTE: the API returns 0-based slot numbers (verified
+  // 2026-08-29: first FX reports slot 0) — the "UI slot" shown in REAPER's
+  // TCP/MCP is this value + 1.
+  static int uiSlotForIndex(MediaTrack *tr, int fxIndex);
+  // Try to place the FX at fxIdx into the given SLOT (0-based, as reported
+  // by chain_index_to_slot). REAPER 7.75+ only. Returns: 1 = FX is now at
+  // targetSlot; 0 = no effect; -1 = the FX moved but NOT to targetSlot.
+  static int tryMoveToUiSlot(MediaTrack *tr, int fxIdx, int targetSlot);
   // TrackFX_AddByName instantiate argument for (insertPos, current chain len).
   static int instantiateArgFor(ChannelStripMap::InsertPos pos, int chainLen);
 

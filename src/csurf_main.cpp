@@ -129,6 +129,7 @@ int (*TrackFX_AddByName)(MediaTrack *track, const char *fxname, bool recFX,
                          int instantiate);
 bool (*TrackFX_Delete)(MediaTrack *track, int fx);
 bool (*TrackFX_GetNamedConfigParm)(MediaTrack *track, int fx, const char *parmname, char *bufOut, int bufOut_sz);
+bool (*TrackFX_SetNamedConfigParm)(MediaTrack *track, int fx, const char *parmname, const char *value);
 bool (*TrackFX_FormatParamValueNormalized)(MediaTrack *tr, int fx, int param,
                                            double value, char *buf,
                                            int buflen);
@@ -392,6 +393,9 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   // TrackFX_GetNamedConfigParm is used for exact VST2/VST3 ident matching.
   *(void **)&TrackFX_FormatParamValue = (void *)rec->GetFunc("TrackFX_FormatParamValue");
   *(void **)&TrackFX_GetNamedConfigParm = (void *)rec->GetFunc("TrackFX_GetNamedConfigParm");
+  // TrackFX_SetNamedConfigParm: used for slot_hint (REAPER 7.75+ empty
+  // slot addressing). Optional like its getter.
+  *(void **)&TrackFX_SetNamedConfigParm = (void *)rec->GetFunc("TrackFX_SetNamedConfigParm");
 
   if (errcnt)
     return 0;
