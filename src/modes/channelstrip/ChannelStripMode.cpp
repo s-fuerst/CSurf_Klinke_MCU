@@ -8,7 +8,6 @@
 #include "Display.h"
 #include "ChannelStripAccess.h"
 #include "editor/ChannelStripComponent.h"
-#include "ChannelStripMeterBridge.h"
 #include "Tracks.h"
 #include "McuAssert.h"
 #include "McuDebugLog.h"
@@ -35,10 +34,9 @@ ChannelStripMode::ChannelStripMode(CCSManager *pManager)
       m_selectionMode(false), m_lastShiftState(false),
       m_lastAltState(false), m_projectChangedConnectionId(-1) {
   m_pAccess = new ChannelStripAccess(this);
-  // Replace MultiTrackMode's meter bridge with one that does NOT draw meter
-  // bars on the LCD — row 1 carries our strip-name / parameter text.
-  safe_delete(m_pMeterBridge);
-  m_pMeterBridge = new ChannelStripMeterBridge();
+  // The inherited MultiTrackMeterBridge also draws the emulated LCD meter
+  // segments in the separator columns — they do not touch the strip-name /
+  // parameter text on row 1, so no dedicated bridge is needed here.
   for (int i = 0; i < kNumStrips; i++)
     m_strips[i].initEmpty();
   // Load the 16 global strips from the user file (survives REAPER restarts).

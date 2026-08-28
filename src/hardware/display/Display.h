@@ -45,7 +45,14 @@ public:
   virtual void forwardRowTo(int sourceRow, Display *pDisplay, int targetRow);
   //      virtual static const char* getName() = 0;
 
-	virtual int getRowLength(int row) { return (row < 2) ? 55 : 56; }
+	// Logical row width: 56 for every row. Rows 0/1 address the main panel,
+	// whose hardware rows are 55 visible chars plus one unused byte each
+	// (see DisplayHandler::sendToHardware); the extra logical column (index
+	// 55) is what the emulated level meter uses for local channel 8. On
+	// controllers with a 56-char LCD (iCON/Behringer) that column is
+	// visible, on the original 55-char Mackie Control it maps to the unused
+	// byte (that model uses the native hardware meters instead).
+	virtual int getRowLength(int row) { return 56; }
 
 	void showDB(int row, int channel, double volume);
   void showPan(int row, int channel, double pan);

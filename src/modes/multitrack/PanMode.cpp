@@ -19,16 +19,6 @@ void PanMode::ensureVpotValueState(int channelCount) {
     m_vpotValueShownTill.resize(channelCount + 1, 0);
 }
 
-bool PanMode::suppressDisplayMeterForValue(int channel) {
-  if (MultiTrackMode::suppressDisplayMeterForValue(channel))
-    return true;
-  HardwareUnit *u = m_pCCSManager->getMCU()->unitForChannel(channel);
-  if (!u || u->isProX())
-    return false;
-  // Keep row 1 for the briefly-shown VPOT value as well.
-  return showingVpotValue(channel, m_pCCSManager->getLastTime());
-}
-
 bool PanMode::vpotMoved(int channel, int numSteps) {
   if (m_pCCSManager->getVPOT(channel)->isPressed()) {
     numSteps *= 5;

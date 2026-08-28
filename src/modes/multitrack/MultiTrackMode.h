@@ -67,12 +67,6 @@ public:
 
   virtual void frameUpdate() override;
 
-  // Returns true when row 1 should keep showing a value (instead of the LCD
-  // level-meter bar) for this channel. Base behaviour: non-ProX units while
-  // the channel's fader is touched, so the Volume/Pan value the fader controls
-  // stays visible even with "meters on display" active. PanMode extends this
-  // to also cover the brief VPOT-value display window.
-  virtual bool suppressDisplayMeterForValue(int channel);
   // Overlay the current fader-controlled value on row 1 while one fader is
   // touched. Volume is shown normally; pan is shown in flip mode.
   void updateFaderTouchDisplay();

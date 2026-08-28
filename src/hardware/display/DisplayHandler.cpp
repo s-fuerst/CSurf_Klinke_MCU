@@ -26,10 +26,9 @@ DisplayHandler::DisplayHandler(HardwareUnit *pUnit, EnumMCUType mcuType,
   m_pHardwareState = new Display(this, 4);
   char pInvalidText[56];
   memset(pInvalidText, 0x1, 56);
-  m_pHardwareState->changeText(0, 1, pInvalidText, 55);
-  m_pHardwareState->changeText(1, 1, pInvalidText, 55);
-  m_pHardwareState->changeText(2, 1, pInvalidText, 56);
-  m_pHardwareState->changeText(3, 1, pInvalidText, 56);
+  // Mark every row fully invalid so the first activate() resends it all.
+  for (int row = 0; row < 4; row++)
+    m_pHardwareState->changeText(row, 0, pInvalidText, 56);
 }
 
 DisplayHandler::~DisplayHandler() { safe_delete(m_pHardwareState); }
@@ -102,8 +101,11 @@ void DisplayHandler::sendToHardware(int row, int pos, char const *text,
   if (hardwareRow > 1 && !m_isProX)
     return;
 
-  pos += m_pActualDisplay->getRowLength(hardwareRow) * (hardwareRow % 2) +
-    (hardwareRow == 1); // + row because there is one unused byte at the end of each row
+  // Hardware row stride within a panel is 56 bytes for every panel: the
+  // main panel rows are 55 visible chars plus one unused byte (row 1
+  // begins at offset 56), the ProX second-panel rows are 56 chars. The
+  // offset space resets per panel (rows 0/1 use 0x12, rows 2/3 use 0x13).
+  pos += (hardwareRow % 2) * 56;
 
   MIDI_Message mm;
   addHeader(&mm, hardwareRow);

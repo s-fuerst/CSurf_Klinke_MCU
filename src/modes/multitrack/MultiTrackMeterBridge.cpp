@@ -34,6 +34,11 @@ void MultiTrackMeterBridge::updateMeterBridge(CSurf_MCU * pMCU) {
 
     if ((t = Tracks::instance()->getMediaTrackForChannel(x))) {
 			updateMeter(x, t, pMCU, decay, -1);
+    } else if (alsoOnDisplay()) {
+      // Empty channel: clear the meter column so a stale segment from a
+      // previously assigned track cannot remain (the mode's field clears do
+      // not cover the separator columns).
+      showMeterOnDisplay(pMCU, x, 0);
     }
   }
 	MeterBridge::updateMasterLEDs(pMCU, decay);
