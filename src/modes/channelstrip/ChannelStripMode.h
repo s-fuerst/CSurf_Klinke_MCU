@@ -111,9 +111,12 @@ public:
   // selected track (close it if already open; PlugMode window settings
   // ignored).
   // ALT+VPOT-2: toggle the FX CHAIN (close it if already open).
+  // ALT+VPOT-5: delete the assigned FX instance from the selected track.
   void openFxWindow(MediaTrack *tr, int fxSlot, bool floating);
-  // ALT+VPOT-7/8: move the strip FX up (-1) / down (+1) in the chain.
-  // Returns false if the FX would move out of the chain.
+  // ALT+VPOT-7/8: move the strip FX one slot up (-1) / down (+1).
+  // Empty target slots use the REAPER 7.75+ slot_hint path; occupied
+  // neighbouring slots use the original dense TrackFX_CopyToTrack move so
+  // the two FX exchange positions. Returns false at chain edges.
   bool moveFx(MediaTrack *tr, int fxSlot, int dir);
 
   // --- persistence ---

@@ -14,6 +14,8 @@
 #include "McuDebugLog.h"
 #include "ProjectConfig.h"
 #include <boost/bind.hpp>
+#include <cstdlib>
+#include <cstring>
 
 using boost::placeholders::_1;
 using boost::placeholders::_2;
@@ -168,13 +170,14 @@ bool ChannelStripMode::vpotPressed(int channel, bool pressed) {
 
   // ALT commands (Step G), unshifted VPOT range only. NOTE: `vpot` here is
   // 0-based — hardware VPOT N is vpot N-1, so the commands live at vpot
-  // 0 (VPOT-1, open floating window), 1 (VPOT-2, open chain), 6 (VPOT-7)
-  // and 7 (VPOT-8, move FX up/down). They are only active on units whose
-  // strip is assigned AND whose plugin is present on the selected track —
+  // 0 (VPOT-1, open floating window), 1 (VPOT-2, open chain), 4 (VPOT-5,
+  // delete), 6 (VPOT-7) and 7 (VPOT-8, move FX up/down). They are only
+  // active on units whose strip is assigned AND whose plugin is present on
+  // the selected track —
   // only then is the target FX known. Other VPOTs fall through to the
   // normal behaviour below.
   if (isModifierPressed(VK_ALT) && vpot < 8 &&
-      (vpot == 0 || vpot == 1 || vpot == 6 || vpot == 7)) {
+      (vpot == 0 || vpot == 1 || vpot == 4 || vpot == 6 || vpot == 7)) {
     int stripIdx = getAssignedStripIndex(tr, unit);
     int fxSlot = (stripIdx >= 0 && m_strips[stripIdx].isAssigned())
         ? m_pAccess->resolveSlot(tr, stripIdx, m_strips[stripIdx])
@@ -186,6 +189,19 @@ bool ChannelStripMode::vpotPressed(int channel, bool pressed) {
     if (vpot == 0 || vpot == 1) {
       openFxWindow(tr, fxSlot, /*floating=*/vpot == 0);
       return true;
+    }
+    if (vpot == 4) {
+      MCU_LOG("CSM deleteFx ch=%d unit=%d fxSlot=%d", channel, unit,
+              fxSlot);
+      if (TrackFX_Delete(tr, fxSlot)) {
+        TrackList_AdjustWindows(false);
+        CSurf_OnFXChange(tr, 1);
+        TrackList_UpdateAllExternalSurfaces();
+        m_pAccess->invalidateTrack(tr);
+        updateEverything();
+        return true;
+      }
+      return false;
     }
     if (moveFx(tr, fxSlot, (vpot == 6) ? -1 : +1))
       return true;
@@ -329,6 +345,8 @@ void ChannelStripMode::updateChannel(int globalChannel) {
         label = "Float";
       else if (localCh == 1) // hardware VPOT 2
         label = "Chain";
+      else if (localCh == 4) // hardware VPOT 5
+        label = "Delete";
       else if (localCh == 6) // hardware VPOT 7
         label = "FXup";
       else if (localCh == 7) // hardware VPOT 8
@@ -415,7 +433,7 @@ void ChannelStripMode::openFxWindow(MediaTrack *tr, int fxSlot,
   // show/close floating window, 1/0 = show/close chain.
   int chainVis = TrackFX_GetChainVisible(tr);
   HWND floatHwnd = TrackFX_GetFloatingWindow(tr, fxSlot);
-  bool action;
+  int action;
   if (floating)
     action = (floatHwnd == NULL) ? 3 : 2; // open, or close if already open
   else
@@ -428,12 +446,76 @@ void ChannelStripMode::openFxWindow(MediaTrack *tr, int fxSlot,
 }
 
 bool ChannelStripMode::moveFx(MediaTrack *tr, int fxSlot, int dir) {
+  // REAPER 7.75+ allows EMPTY FX SLOTS: the user-visible "slot" (as
+  // reported by chain_index_to_slot, 0-BASED — verified) can differ from
+  // the dense FX "index" (0-based, real FX only). Moving by index +/- 1
+  // would jump OVER empty slots instead of stepping into them, so on 7.75+
+  // we move by SLOT. The actual move is done by tryMoveToUiSlot, which
+  // tries the possible API variants (0x800000 flag / slot_hint) and
+  // verifies each; only if nothing had any effect we fall back to the
+  // classic dense index move (no-op at real chain edges).
+  if (!tr || fxSlot < 0)
+    return false;
   int n = TrackFX_GetCount(tr);
+  if (fxSlot >= n)
+    return false;
+
+  if (TrackFX_GetNamedConfigParm) {
+    int uiSlot = ChannelStripAccess::uiSlotForIndex(tr, fxSlot);
+    if (uiSlot >= 0) {
+      int targetSlot = uiSlot + dir;
+      char probe[64] = {0};
+      if (targetSlot >= 0 &&
+          TrackFX_GetNamedConfigParm(tr, targetSlot, "chain_slot_to_index",
+                                     probe, sizeof(probe))) {
+        MCU_LOG("CSM moveFx slot-aware idx=%d uiSlot=%d targetSlot=%d"
+                " raw=[%s]",
+                fxSlot, uiSlot, targetSlot, probe);
+        // An occupied target must use the original dense move. With two
+        // adjacent occupied slots, TrackFX_CopyToTrack(is_move=true) swaps
+        // their order; the slot_hint path would insert and shift later FX.
+        // chain_slot_to_index returns a dense FX index for an occupied slot
+        // and "empty:x" for an empty slot.
+        if (strncmp(probe, "empty:", 6) != 0) {
+          int targetIdx = atoi(probe);
+          if (targetIdx < 0 || targetIdx == fxSlot)
+            return false;
+          MCU_LOG("CSM moveFx occupied swap idx=%d targetIdx=%d", fxSlot,
+                  targetIdx);
+          TrackFX_CopyToTrack(tr, fxSlot, tr, targetIdx, true);
+          TrackList_AdjustWindows(false);
+          CSurf_OnFXChange(tr, 1);
+          TrackList_UpdateAllExternalSurfaces();
+          m_pAccess->invalidateTrack(tr);
+          updateEverything();
+          return true;
+        }
+        int r = ChannelStripAccess::tryMoveToUiSlot(tr, fxSlot, targetSlot);
+        if (r == 1) {
+          // slot_hint is a "preferred slot" hint — REAPER's GUI does not
+          // redraw the TCP/MCP FX list on its own after this call.
+          UpdateTimeline();
+          m_pAccess->invalidateTrack(tr);
+          updateEverything();
+          return true;
+        }
+        if (r == -1)
+          return false; // moved somewhere unexpected: stop here
+        // r == 0: no slot candidate had any effect -> dense fallback below
+      } else {
+        MCU_LOG("CSM moveFx slot-aware targetSlot=%d unknown (chain edge)",
+                targetSlot);
+      }
+    }
+  }
+
+  // Fallback (REAPER < 7.75, or slot machinery without effect): dense
+  // index +/- 1.
   int newSlot = fxSlot + dir;
-  if (fxSlot < 0 || newSlot < 0 || newSlot >= n)
+  if (newSlot < 0 || newSlot >= n)
     return false; // would move out of the chain
-  MCU_LOG("CSM moveFx slot=%d dir=%d new=%d chain=%d", fxSlot, dir, newSlot,
-          n);
+  MCU_LOG("CSM moveFx index-based slot=%d dir=%d new=%d chain=%d", fxSlot,
+          dir, newSlot, n);
   TrackFX_CopyToTrack(tr, fxSlot, tr, newSlot, true);
   // The slot cache now holds the old index for this track's strips.
   m_pAccess->invalidateTrack(tr);

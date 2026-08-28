@@ -150,6 +150,7 @@ extern HWND (*TrackFX_GetFloatingWindow)(MediaTrack* tr, int  index);
 // showflag=0 for hidechain, =1 for show chain(index valid), =2 for hide floating window(index valid), =3 for show floating window (index valid)
 extern void (*TrackFX_Show)(MediaTrack* tr, int index, int showFlag);
 extern void (*TrackFX_CopyToTrack)(MediaTrack* src_track, int src_fx, MediaTrack* dest_track, int dest_fx, bool is_move); // available since REAPER 4.0
+extern bool (*TrackFX_SetNamedConfigParm)(MediaTrack* track, int fx, const char* parmname, const char* value);
 
 extern GUID* (*TrackFX_GetFXGUID)(MediaTrack* tr, int fx);
 
