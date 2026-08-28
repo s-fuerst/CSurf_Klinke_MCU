@@ -31,7 +31,7 @@ ChannelStripMode::PerTrackAssignments::PerTrackAssignments() {
 ChannelStripMode::ChannelStripMode(CCSManager *pManager)
     : MultiTrackMode(pManager), m_pAccess(NULL), m_pEditor(NULL),
       m_selectionMode(false), m_lastShiftState(false),
-      m_projectChangedConnectionId(-1) {
+      m_lastAltState(false), m_projectChangedConnectionId(-1) {
   m_pAccess = new ChannelStripAccess(this);
   // Replace MultiTrackMode's meter bridge with one that does NOT draw meter
   // bars on the LCD — row 1 carries our strip-name / parameter text.
@@ -165,6 +165,33 @@ bool ChannelStripMode::vpotPressed(int channel, bool pressed) {
   int localCh = (channel - 1) % 8;
   int unit = (channel - 1) / 8;
   int vpot = slotFor(localCh); // 0..7 normal, 8..15 with Shift
+
+  // ALT commands (Step G), unshifted VPOT range only. NOTE: `vpot` here is
+  // 0-based — hardware VPOT N is vpot N-1, so the commands live at vpot
+  // 0 (VPOT-1, open floating window), 1 (VPOT-2, open chain), 6 (VPOT-7)
+  // and 7 (VPOT-8, move FX up/down). They are only active on units whose
+  // strip is assigned AND whose plugin is present on the selected track —
+  // only then is the target FX known. Other VPOTs fall through to the
+  // normal behaviour below.
+  if (isModifierPressed(VK_ALT) && vpot < 8 &&
+      (vpot == 0 || vpot == 1 || vpot == 6 || vpot == 7)) {
+    int stripIdx = getAssignedStripIndex(tr, unit);
+    int fxSlot = (stripIdx >= 0 && m_strips[stripIdx].isAssigned())
+        ? m_pAccess->resolveSlot(tr, stripIdx, m_strips[stripIdx])
+        : -1;
+    if (fxSlot < 0)
+      return false; // no active strip on this unit: command inactive
+    MCU_LOG("CSM ALT cmd ch=%d unit=%d vpot=%d fxSlot=%d", channel, unit,
+            vpot, fxSlot);
+    if (vpot == 0 || vpot == 1) {
+      openFxWindow(tr, fxSlot, /*floating=*/vpot == 0);
+      return true;
+    }
+    if (moveFx(tr, fxSlot, (vpot == 6) ? -1 : +1))
+      return true;
+    return false; // move refused (chain edge): do nothing else
+  }
+
   int stripIdx = getAssignedStripIndex(tr, unit);
   // A strip whose plugin is missing on the selected track behaves like
   // "no strip": the unit shows the picker and a press (re)picks a strip.
@@ -290,6 +317,27 @@ void ChannelStripMode::updateChannel(int globalChannel) {
   int fxSlot = (strip && strip->isAssigned())
       ? m_pAccess->resolveSlot(tr, stripIdx, *strip)
       : -1;
+
+  // ALT held: per-unit command legend on row 1, directly in the VPOT fields
+  // (6 chars each). Only units with an ACTIVE strip (assigned + plugin
+  // present) get labels — only there is the target FX known; the other
+  // fields (and all fields of inactive units) stay empty.
+  if (isModifierPressed(VK_ALT)) {
+    String label;
+    if (fxSlot >= 0) {
+      if (localCh == 0) // hardware VPOT 1
+        label = "Float";
+      else if (localCh == 1) // hardware VPOT 2
+        label = "Chain";
+      else if (localCh == 6) // hardware VPOT 7
+        label = "FXup";
+      else if (localCh == 7) // hardware VPOT 8
+        label = "FXdown";
+    }
+    m_pDisplay->changeField(1, globalChannel, label.toRawUTF8());
+    return;
+  }
+
   String text;
 
   // Pick / re-pick: no strip assigned, selection mode (TRACK held), or the
@@ -349,6 +397,48 @@ void ChannelStripMode::frameUpdate() {
     m_lastShiftState = shift;
     updateDisplay();
   }
+  // Refresh display when ALT state changes (command legend on row 1).
+  bool alt = isModifierPressed(VK_ALT);
+  if (alt != m_lastAltState) {
+    m_lastAltState = alt;
+    updateDisplay();
+  }
+}
+
+// --- ALT commands (Step G) ---
+
+void ChannelStripMode::openFxWindow(MediaTrack *tr, int fxSlot,
+                                    bool floating) {
+  // ALT+VPOT-1 (floating) / ALT+VPOT-2 (chain) — deliberate: the PlugMode
+  // window settings are IGNORED. Both TOGGLE: if the window/chain for this
+  // FX is already open it is closed, else it is opened. showflag 3/2 =
+  // show/close floating window, 1/0 = show/close chain.
+  int chainVis = TrackFX_GetChainVisible(tr);
+  HWND floatHwnd = TrackFX_GetFloatingWindow(tr, fxSlot);
+  bool action;
+  if (floating)
+    action = (floatHwnd == NULL) ? 3 : 2; // open, or close if already open
+  else
+    action = (chainVis == -1) ? 1 : 0;    // open, or close if already open
+  MCU_LOG("CSM openFxWindow slot=%d floating=%d chainVis=%d floatHwnd=%p"
+          " action=%d", fxSlot, (int)floating, chainVis, (void *)floatHwnd,
+          action);
+  TrackFX_Show(tr, fxSlot, action);
+  updateEverything();
+}
+
+bool ChannelStripMode::moveFx(MediaTrack *tr, int fxSlot, int dir) {
+  int n = TrackFX_GetCount(tr);
+  int newSlot = fxSlot + dir;
+  if (fxSlot < 0 || newSlot < 0 || newSlot >= n)
+    return false; // would move out of the chain
+  MCU_LOG("CSM moveFx slot=%d dir=%d new=%d chain=%d", fxSlot, dir, newSlot,
+          n);
+  TrackFX_CopyToTrack(tr, fxSlot, tr, newSlot, true);
+  // The slot cache now holds the old index for this track's strips.
+  m_pAccess->invalidateTrack(tr);
+  updateEverything();
+  return true;
 }
 
 void ChannelStripMode::bindingChanged() {

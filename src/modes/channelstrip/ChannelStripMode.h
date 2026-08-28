@@ -106,6 +106,16 @@ public:
   // called by the editor after a strip is mutated
   void bindingChanged();
 
+  // --- ALT commands (Step G) ---
+  // ALT+VPOT-1: toggle the FLOATING FX window of the unit's strip FX on the
+  // selected track (close it if already open; PlugMode window settings
+  // ignored).
+  // ALT+VPOT-2: toggle the FX CHAIN (close it if already open).
+  void openFxWindow(MediaTrack *tr, int fxSlot, bool floating);
+  // ALT+VPOT-7/8: move the strip FX up (-1) / down (+1) in the chain.
+  // Returns false if the FX would move out of the chain.
+  bool moveFx(MediaTrack *tr, int fxSlot, int dir);
+
   // --- persistence ---
   // All 16 strips (header + VPOT mapping) live in ONE file,
   // ~/.config/REAPER/MCU/ChannelStripMaps/channelstrips.xml. Loaded once at
@@ -145,5 +155,6 @@ private:
 
   bool m_selectionMode;
   bool m_lastShiftState;
+  bool m_lastAltState;
   int m_projectChangedConnectionId;
 };
