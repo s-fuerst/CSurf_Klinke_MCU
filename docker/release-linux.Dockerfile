@@ -92,7 +92,10 @@ WORKDIR /repo
 
 # Fetch the pinned deps first (cached layer; only re-runs when fetch_deps.sh
 # changes). .dockerignore keeps host deps/build artifacts OUT of the context,
-# so the image always fetches from upstream -- reproducible.
+# so the image always fetches from upstream at the exact revisions pinned in
+# fetch_deps.sh (REAPER_SDK_REV / WDL_REV) -- reproducible. Never let this
+# track WDL upstream HEAD: a new SWELL API in WDL makes the modstub exit(1)
+# against REAPERs whose libSwell.so predates it (see the note in fetch_deps.sh).
 # NOTE: fetch_deps.sh resolves the repo root as the PARENT of its own directory
 # (dirname $0/..), so it must be copied into ./scripts/ to make that resolve to
 # /repo. Copying it to the WORKDIR root would fetch the deps into the container

@@ -4,8 +4,16 @@
 #
 # Produces (all at repo root, gitignored):
 #   juce_8/          JUCE 8 module build   (github.com/juce-framework/JUCE tag 8.0.14)
-#   reaper-sdk/sdk/   REAPER plugin headers  (github.com/justinfrankel/reaper-sdk)
-#   reaper-sdk/WDL/   WDL + SWELL            (github.com/justinfrankel/WDL)
+#   reaper-sdk/sdk/   REAPER plugin headers  (github.com/justinfrankel/reaper-sdk @ REAPER_SDK_REV)
+#   reaper-sdk/WDL/   WDL + SWELL            (github.com/justinfrankel/WDL @ WDL_REV)
+#
+# reaper-sdk and WDL are PINNED to exact commits (see REAPER_SDK_REV / WDL_REV
+# below). Do NOT track upstream HEAD: the plugin resolves the whole SWELL API
+# table at runtime against REAPER's libSwell.so, and the generic SWELL modstub
+# does exit(1) on a single missing API. An unpinned WDL fetch silently breaks
+# every REAPER older than the newest SWELL commit (e.g. WDL added MoveFile in
+# 2026-07, which crashed REAPER with "SWELL API not found: MoveFile").
+# Bump a pin deliberately, then test against the oldest REAPER you support.
 #   boost_1_91_0/    Boost 1.91.0 headers   (archives.boost.io)
 #
 # Idempotent: any dependency already present is skipped. Delete its folder to
@@ -25,9 +33,16 @@ esac
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# --- pinned dependency revisions ------------------------------------------------
+# Exact upstream commits (full SHAs) for the REAPER SDK and WDL/SWELL.
+# These match the SWELL API table supported by REAPER's libSwell.so in the
+# oldest REAPER versions we test against. See the header comment before bumping.
+REAPER_SDK_REV="b5da337e747a1af79e0d3514ad82137b457f8c51"
+WDL_REV="96b770f7368f75b53756e0c8941ce3ecc8b6c29b"
+
 # --- helpers -----------------------------------------------------------------
 
-# clone_shallow <url> <dest> [ref]  — shallow clone, then drop its .git
+# clone_shallow <url> <dest> [ref]  — shallow clone by branch/tag, then drop its .git
 clone_shallow() {
   local url="$1" dest="$2" ref="${3:-}"
   if [ -n "$ref" ]; then
@@ -35,6 +50,17 @@ clone_shallow() {
   else
     git clone --depth 1 "$url" "$dest"
   fi
+  rm -rf "$dest/.git"
+}
+
+# fetch_commit <url> <sha> <dest>  — depth-1 fetch of an exact commit SHA
+# (git clone --branch does not accept raw SHAs; GitHub does allow fetching them)
+fetch_commit() {
+  local url="$1" sha="$2" dest="$3"
+  rm -rf "$dest"
+  git init -q "$dest"
+  git -C "$dest" fetch -q --depth 1 "$url" "$sha"
+  git -C "$dest" checkout -q FETCH_HEAD
   rm -rf "$dest/.git"
 }
 
@@ -66,13 +92,13 @@ if [ -d reaper-sdk/sdk ] && [ -d reaper-sdk/WDL/swell ]; then
   ok "already present, skipping (use --force to re-fetch)"
 else
   rm -rf reaper-sdk
-  clone_shallow https://github.com/justinfrankel/reaper-sdk reaper-sdk
+  fetch_commit https://github.com/justinfrankel/reaper-sdk "$REAPER_SDK_REV" reaper-sdk
   [ -f reaper-sdk/sdk/reaper_plugin.h ] \
     || { echo "error: reaper-sdk/sdk/reaper_plugin.h missing" >&2; exit 1; }
-  ok "sdk/ headers in place"
+  ok "sdk/ headers in place (pinned: $REAPER_SDK_REV)"
 
   tmp="$(mktemp -d)"
-  clone_shallow https://github.com/justinfrankel/WDL "$tmp/src"
+  fetch_commit https://github.com/justinfrankel/WDL "$WDL_REV" "$tmp/src"
   mv "$tmp/src/WDL" reaper-sdk/WDL
   rm -rf "$tmp"
   [ -f reaper-sdk/WDL/swell/swell-modstub-generic.cpp ] && [ -f reaper-sdk/WDL/ptrlist.h ] \
