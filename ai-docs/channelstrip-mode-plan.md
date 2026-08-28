@@ -257,10 +257,14 @@ src/modes/channelstrip/
 - Per-track per-unit assignments via `ProjectConfig` (READ/WRITE/FREE).
 - Roundtrip survives a REAPER restart.
 
-### F — Move/delete tracking
+### F — Move/delete tracking — DONE (see §8 for details)
 
 - `PlugMoveWatcher`: reorder → invalidate the slot cache for that track.
 - FX delete / track remove → mark strip dangling, update display.
+- Deliberately NOT implemented (decided with the maintainer): pruning
+  `m_assignments`/`m_slotCache` entries of deleted tracks during a session.
+  The stale entries are ~170 bytes per deleted track, bounded per project
+  session (cleared on project READ/FREE) — not worth the extra hook.
 
 ### G — ALT shortcuts
 
@@ -356,14 +360,30 @@ src/modes/channelstrip/
   that name. JS idents already matched via pass 1.
   Symptom seen by the user: `+` in front of every param name after moving the
   plugin; `+` in the pick list (new feature) for every strip.
-- **Bug C — plugin column blank on editor re-open (NOT fixed):** the deferred
-  `MessageManager::callAsync` resize/repaint in `CSTPluginCombo::
-  setRowAndColumn` did NOT fix it. Last attempt was
-  `m_table->setModel(nullptr); setModel(this)` in `BindingTable::updateEverything`
-  to force cell-component recreation — **needs user re-test** to confirm. If
-  still broken, investigate deeper (likely the JUCE `TableListBox` cell
-  lifecycle when the editor is re-shown via the `CCSModesEditor` "re-show same
-  component" path — see `setMainComponent` in `src/ui/CCSModesEditor.cpp`).
+- **Bug C — plugin column blank — ROOT CAUSE FOUND, fix pending re-test:**
+  the text WAS set correctly (also on re-open; JUCE recreates the rows on
+  `visibilityChanged`, so `setRowAndColumn` re-runs each time). The picked
+  plugin name was simply drawn in WHITE: `CSTPluginCombo` is the only
+  editable cell in the codebase that did not set explicit `TextEditor`
+  colours, and inside the `TableListBox` the window's `KlinkeLookAndFeel`
+  defaults are not resolved for that editor (default text colour = white
+  on white background). Fix: set `TextEditor::textColourId` (black) and
+  `backgroundColourId` (white) explicitly in the `CSTPluginCombo` ctor,
+  same pattern as all other editable cells. **Confirmed fixed by the user.**
+  The temporary `CST` diagnostic logging has been removed again.
+  Note: `MCU_DEBUG_LOG` is only defined for Debug builds (CMake generator
+  expression `$<$<CONFIG:Debug>:MCU_DEBUG_LOG>`), so logging builds are
+  Debug builds, not "Release with logging".
+- **Strip clearing ("delete") — implemented:** row 0 of the plugin
+  autocomplete popup is always a "— (no plugin) —" sentinel; picking it
+  clears the whole strip (fxIdent, abbrev, VPOT mapping AND per-VPOT
+  names). Any plugin pick also refreshes the row's other cells (Abbrev
+  label, Edit button) via `ChannelStripBindingTable::resetCells()`.
+  Return key never picks the sentinel (first real match instead).
+- **Abbrev refresh — implemented:** selecting a different plugin in the
+  plugin cell now ALWAYS regenerates the shortName from the new plugin
+  name (previously only auto-filled when empty). A user-customised
+  abbrev is overwritten when the plugin itself changes.
 
 ### Next concrete steps when resuming
 
@@ -372,15 +392,19 @@ src/modes/channelstrip/
 2. ~~Fix `findSlotByIdent`~~ — done (`installedNameForIdent` name fallback).
    **User re-test needed:** assign strip on empty track, move the FX in the
    chain, verify no `+` and no duplicate add on VPOT press.
-3. **Re-test Bug C** (plugin column on re-open); if the `setModel` reset didn't
-   help, debug the `CCSModesEditor` re-show path.
+3. ~~Re-test Bug C~~ — done, confirmed fixed (white TextEditor colour, see
+   above).
 4. **Step E verification:** confirm `channelstrips.xml` is written/read correctly
    (one file, no per-Abbrev files left over) and assignments survive a project
    save/reload.
-5. After bugs are fixed: continue with **Step F** (PlugMoveWatcher reorder →
-   re-resolve slot cache; FX delete / track remove) and **Step G** (ALT+VPOT-1
-   open FX window, ALT+VPOT-7/8 move FX, ALT+Name/Values labels).
-6. Before release: **set `MCU_DEBUG_LOG=OFF`** and rebuild.
+5. ~~Step F~~ — done (reorder invalidation via `plugMoved`; FX delete handled
+   implicitly by per-access GUID verification + picker/"+" fallback, refreshed
+   every frame; track-deletion pruning deliberately skipped — see §F).
+   Next: **Step G** (ALT+VPOT-1 open FX window, ALT+VPOT-7/8 move FX,
+   ALT+Name/Values labels).
+6. Before release: build **Release** (logging is Debug-config only — see note
+   in the Bug C entry) and remove the remaining A/B `CSA`/`CSM` diagnostic
+   logging if it is no longer wanted.
 
 ### Build/deploy reminder
 

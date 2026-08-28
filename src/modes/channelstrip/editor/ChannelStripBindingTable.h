@@ -50,6 +50,10 @@ public:
 
   void refreshInstalledFX();
   void updateEverything();
+  // force recreation of all cell components — needed after a strip change
+  // that affects a DIFFERENT cell than the one being edited (e.g. picking a
+  // plugin changes the Abbrev cell, clearing the strip empties it)
+  void resetCells();
 
 private:
   ChannelStripMode *m_pMode;

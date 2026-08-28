@@ -49,6 +49,12 @@ void ChannelStripBindingTable::updateEverything() {
   if (!m_table)
     return;
   m_table->updateContent();
+  resetCells();
+}
+
+void ChannelStripBindingTable::resetCells() {
+  if (!m_table)
+    return;
   // JUCE's TableListBox::updateContent() does NOT re-run
   // refreshComponentForCell when the row count is unchanged, so custom cell
   // components (plugin names etc.) keep stale state when the editor is
@@ -118,6 +124,12 @@ CSTPluginCombo::CSTPluginCombo(ChannelStripBindingTable &o)
   addAndMakeVisible(m_editor = new TextEditor());
   m_editor->setFont(
       Font(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain));
+  // Explicit colours: inside the TableListBox the window's
+  // KlinkeLookAndFeel defaults are not resolved for this editor, and the
+  // default text colour is white -> the picked plugin name was invisible
+  // (bug C). Same pattern as every other editable cell in the codebase.
+  m_editor->setColour(TextEditor::textColourId, Colours::black);
+  m_editor->setColour(TextEditor::backgroundColourId, Colours::white);
   m_editor->setTextToShowWhenEmpty("type plugin name here", Colours::lightgrey);
   m_editor->addListener(this);
 }
@@ -152,9 +164,17 @@ void CSTPluginCombo::setRowAndColumn(int r, int c) {
   });
 }
 
+// row 0 of the popup is always a sentinel to clear the strip
+static const ChannelStripAccess::InstalledFX &clearSentinel() {
+  static const ChannelStripAccess::InstalledFX s = {
+      String("empty (no plugin)"), String()};
+  return s;
+}
+
 void CSTPluginCombo::applyFilter(const String &text) {
   String f = text.trim();
   m_filtered.clear();
+  m_filtered.push_back(clearSentinel());
   const auto &fx = owner.installedFX();
   for (const auto &item : fx) {
     if (f.isEmpty() || item.name.containsIgnoreCase(f))
@@ -193,6 +213,7 @@ void CSTPluginCombo::hidePopup() {
 
 void CSTPluginCombo::pickFiltered(int filteredRow) {
   if (filteredRow < 0 || filteredRow >= (int)m_filtered.size()) return;
+  // the empty ident of the sentinel (row 0) clears the strip
   setSelectedByIdent(m_filtered[filteredRow].ident);
   hidePopup();
 }
@@ -201,9 +222,13 @@ void CSTPluginCombo::setSelectedByIdent(const String &ident) {
   ChannelStripMap *strip = owner.stripForRow(row);
   if (!strip) return;
   if (ident.isEmpty()) {
+    // clear the whole strip: plugin, abbrev, VPOT mapping and per-VPOT names
     strip->setFxIdent(String());
-    for (int i = 0; i < ChannelStripMap::kNumVPOTs; i++)
+    strip->setShortName(String());
+    for (int i = 0; i < ChannelStripMap::kNumVPOTs; i++) {
       strip->setParamForVPOT(i, -1);
+      strip->setVPOTName(i, String());
+    }
     m_editor->setText(String(), dontSendNotification);
   } else {
     const auto &fx = owner.installedFX();
@@ -213,8 +238,10 @@ void CSTPluginCombo::setSelectedByIdent(const String &ident) {
         // new plugin -> its parameter indices differ, clear the VPOT map
         for (int i = 0; i < ChannelStripMap::kNumVPOTs; i++)
           strip->setParamForVPOT(i, -1);
-        if (strip->getShortName().isEmpty()) {
-          // auto-fill shortName: strip "TYPE:" prefix and " (Manufacturer)"
+        // refresh shortName on every plugin change: strip "TYPE:" prefix
+        // and " (Manufacturer)" (a user-customised name is overwritten when
+        // the plugin itself changes)
+        {
           String base = f.name;
           int colon = base.indexOfChar(':');
           if (colon >= 0)
@@ -230,6 +257,9 @@ void CSTPluginCombo::setSelectedByIdent(const String &ident) {
     }
   }
   m_lastValidText = m_editor->getText();
+  // refresh the other cells of this row (Abbrev label, Edit button) which
+  // do not update themselves when the strip changes
+  owner.resetCells();
   owner.notifyBindingChanged();
 }
 
@@ -247,7 +277,15 @@ void CSTPluginCombo::textEditorFocusLost(TextEditor &) {
     sp->hidePopup();
   });
 }
-void CSTPluginCombo::textEditorReturnKeyPressed(TextEditor &) { pickFiltered(0); }
+void CSTPluginCombo::textEditorReturnKeyPressed(TextEditor &) {
+  // pick the first real match, never the clear sentinel
+  for (int i = 1; i < (int)m_filtered.size(); i++)
+    if (!m_filtered[i].ident.isEmpty()) {
+      pickFiltered(i);
+      return;
+    }
+  pickFiltered(0); // only the sentinel -> clear
+}
 void CSTPluginCombo::textEditorEscapeKeyPressed(TextEditor &) {
   hidePopup();
   m_editor->setText(m_lastValidText, dontSendNotification);
