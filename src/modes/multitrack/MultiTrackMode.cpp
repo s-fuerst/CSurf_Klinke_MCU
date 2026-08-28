@@ -510,6 +510,14 @@ void MultiTrackMode::trackPan(int id, double pan) {
 }
 
 void MultiTrackMode::updateDisplay() {
+  // Clear the ENTIRE row 0 first. changeField writes only 6 columns of the
+  // 7-column fields, so the 7th (separator) column of every field is never
+  // touched by field writes — stale hardware content (e.g. the "Goodbye"
+  // line written at shutdown of the previous session, centered at columns
+  // 24-30) would bleed through those columns. The display line buffer makes
+  // this a no-op in terms of SysEx as long as nothing actually changed.
+  m_pDisplay->changeTextFullLine(0, "");
+
   // widened from 8 to getNumberOfChannelStrips()
   int nStrips = Tracks::instance()->getNumberOfChannelStrips();
   for (int x = 1; x <= nStrips; x++) {
