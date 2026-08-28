@@ -29,6 +29,7 @@ public:
   bool buttonFaderBanks(int button, bool pressed) override;
   bool buttonFlip(bool pressed) override;
   bool buttonGView(bool pressed) override;
+  bool faderTouched(int channel, bool touched) override;
 
   bool buttonRec(int channel, bool pressed) override;
   bool buttonMute(int channel, bool pressed) override;
@@ -72,6 +73,10 @@ public:
   // stays visible even with "meters on display" active. PanMode extends this
   // to also cover the brief VPOT-value display window.
   virtual bool suppressDisplayMeterForValue(int channel);
+  // Overlay the current fader-controlled value on row 1 while one fader is
+  // touched. Volume is shown normally; pan is shown in flip mode.
+  void updateFaderTouchDisplay();
+  void updateFaderTouchDisplay(int channel);
 
   virtual Options *getOptions() override { return Tracks::instance()->getOptions(); }
   virtual Options *get2ndOptions() override {

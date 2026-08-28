@@ -53,6 +53,10 @@ void MultiTrackMode::frameUpdate() {
 
   m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU());
 
+  // Derived modes may use row 1 for their own content. While a single fader
+  // is touched, the common fader value takes precedence, just as in PanMode.
+  updateFaderTouchDisplay();
+
   if (Tracks::instance()->clampCurrentGlobalOffset()) {
     TrackList_UpdateAllExternalSurfaces();
     updateAssignmentDisplay();
@@ -474,6 +478,46 @@ bool MultiTrackMode::buttonGView(bool pressed) {
 }
 
 void MultiTrackMode::trackListChange() { updateEverything(); }
+
+bool MultiTrackMode::faderTouched(int channel, bool touched) {
+  // Refresh immediately on touch so the value appears before the next frame;
+  // the frame update repeats the overlay while the fader remains touched.
+  updateDisplay();
+  if (touched)
+    updateFaderTouchDisplay(channel);
+  return true;
+}
+
+void MultiTrackMode::updateFaderTouchDisplay() {
+  if (m_pCCSManager->getNumFadersTouched() != 1)
+    return;
+  for (int channel = 1;
+       channel <= m_pCCSManager->getMCU()->availableChannels(); ++channel) {
+    if (m_pCCSManager->getFaderTouched(channel)) {
+      updateFaderTouchDisplay(channel);
+      return;
+    }
+  }
+}
+
+void MultiTrackMode::updateFaderTouchDisplay(int channel) {
+  if (channel <= 0)
+    return; // channel 0 is the master fader and has no ordinary channel field
+  MediaTrack *tr = getMediaTrackForChannel(channel);
+  if (!tr)
+    return;
+  // ProX units already show the fader-controlled values in their dedicated
+  // display rows. Do not overwrite row 1 during a fader touch.
+  HardwareUnit *u = m_pCCSManager->getMCU()->unitForChannel(channel);
+  if (!u || u->isProX())
+    return;
+  if (s_flipmode)
+    m_pDisplay->showPan(1, channel,
+                        m_pCCSManager->getMCU()->GetSurfacePan(tr));
+  else
+    m_pDisplay->showDB(1, channel,
+                       m_pCCSManager->getMCU()->GetSurfaceVolume(tr));
+}
 
 void MultiTrackMode::trackVolume(int id, double volume) {
   MIDIOUT
