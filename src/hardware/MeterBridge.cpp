@@ -25,14 +25,6 @@ void MeterBridge::ensureStripMeterState(int channelCount) {
     m_stripMeterPos.assign(channelCount, -100000.0);
 }
 
-void MeterBridge::setDisplayMeterSuppressed(int channel, bool suppressed) {
-  // Indexed by global channel (1..availableChannels()). Grow defensively so
-  // a channel number seen before updateMeterBridge sized the vector is safe.
-  if ((int)m_displayMeterSuppressed.size() <= channel)
-    m_displayMeterSuppressed.assign(channel + 1, false);
-  m_displayMeterSuppressed[channel] = suppressed;
-}
-
 void MeterBridge::updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
                               double decay, int pin) {
   auto ts = Tracks::instance()->getTrackStateForMediaTrack(pMT);
@@ -68,14 +60,14 @@ void MeterBridge::updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
     }
     sendToHardware(pMCU, x, v);
   }
-  // Software-meter bars are only drawn for modes that opt in via
-  // alsoOnDisplay() (MultiTrack/Pan/Send). Plug Mode never draws them —
-  // they would overwrite the parameter name/value text on the LCD.
-  // Inside showMeterOnDisplay the per-unit metersOnDisplay() option is the
-  // final gate, so even opted-in modes only paint on units with the option.
+  // The software meter is only drawn for modes that opt in via
+  // alsoOnDisplay() (MultiTrack/Pan). Inside showMeterOnDisplay the per-unit
+  // metersOnDisplay() option is the final gate, so even opted-in modes only
+  // paint on units with the option.
   // The hardware LED meters keep their original -70 dB signal threshold,
-  // but the emulated LCD bars only appear for signals above -60 dB so that
-  // low-level noise no longer paints a one-bar flicker on the display.
+  // but the emulated LCD segments only appear for signals above -60 dB so
+  // that low-level noise no longer paints a one-segment flicker on the
+  // display.
   if (alsoOnDisplay())
     showMeterOnDisplay(pMCU, iChannel, pp > -60.0 ? v : 0);
 }
@@ -128,36 +120,46 @@ void MeterBridge::showMeterOnDisplay(CSurf_MCU *pMCU, int channel,
   if (!unit)
     return;
 
-  // The software meter bars are only drawn on units that opted into
-  // "Emulate level meters on the display". Without this guard the bars
-  // overwrite the regular row-1 text on every unit (e.g. the FADER
-  // name/value in Plug Mode), so extenders appear to have no text and
-  // units that never enabled the option still show meters.
+  // The meter segments are only drawn on units that opted into
+  // "Emulate level meters on the display". They live in the separator
+  // columns between the field areas (and the last column for local channel
+  // 8), so they do not touch the mode text in the fields.
   if (!unit->metersOnDisplay())
-    return;
-
-  // The mode can ask to keep row 1 for a value (touched fader or a briefly
-  // shown VPOT value) by suppressing the LCD bar for this channel.
-  if (channel < (int)m_displayMeterSuppressed.size() &&
-      m_displayMeterSuppressed[channel])
     return;
 
   Display *display = unit->displayHandler()->getDisplay();
   if (!display)
     return;
 
-  // The LCD field is six characters wide. Meter values 1..12 become one to
-  // six bars. When there is no signal (meter == 0) we do NOT clear the
-  // field — instead we leave row 1 untouched so the normal mode text the
-  // mode wrote this frame (dB / pan value in MultiTrack/Pan/Send modes,
-  // action name in Action mode, etc.) stays visible. The bars only replace
-  // that text while actual signal is present. This does not depend on
+  // The meter lives in a single column per channel: the separator column
+  // right after the channel's six-character field. Row-0/1 fields sit at
+  // (local-1)*7, six chars wide, so local channels 1..8 use 1-based row
+  // positions 7, 14, ..., 56. Position 56 is the column beyond the
+  // original 55-char Mackie LCD (the unused byte at the end of each
+  // hardware row) — on iCON/Behringer 56-char displays it is visible, on
+  // the original Mackie Control it is not (that model uses the native
+  // hardware meters instead).
+  int local = CSurf_MCU::localOf(channel);
+  int col = local * 7 - 1; // 0-based
+
+  // The meter column has two rows, giving four fill states. Meter values
+  // 1..12 map to the four states in thirds; meter <= 0 clears the column
+  // (spaces) so a stale segment cannot remain. This does not depend on
   // Mackie's optional LCD-meter SysEx support.
-  int bars = std::min(6, std::max(0, (int)((meter + 1) / 2)));
-  if (bars == 0)
-    return;
-  char text[7];
-  memset(text, '|', bars);
-  text[bars] = 0;
-  display->changeField(1, CSurf_MCU::localOf(channel), text);
+  //   1..3   : '.' on row 1
+  //   4..6   : ':' on row 1
+  //   7..9   : '.' on row 0 plus ':' on row 1
+  //   10..12 : ':' on both rows
+  char top = ' ', bottom = ' ';
+  if (meter >= 10)
+    top = bottom = ':';
+  else if (meter >= 7)
+    top = '.', bottom = ':';
+  else if (meter >= 4)
+    bottom = ':';
+  else if (meter >= 1)
+    bottom = '.';
+
+  display->changeText(0, col, &top, 1);
+  display->changeText(1, col, &bottom, 1);
 }

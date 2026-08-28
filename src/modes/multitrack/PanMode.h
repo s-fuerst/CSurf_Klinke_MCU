@@ -22,10 +22,6 @@ public:
 
   void updateDisplay();
 
-  // Extends MultiTrackMode: also suppress the LCD meter while a VPOT value
-  // is briefly shown for this channel (non-ProX only).
-  bool suppressDisplayMeterForValue(int channel) override;
-
   Selector *getSelector() { return m_pSelector; }
 
 private:
