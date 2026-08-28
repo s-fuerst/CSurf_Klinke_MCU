@@ -247,10 +247,7 @@ bool CommandMode::vpotPressed(int channel, bool pressed) {
 // while the fader is touched the level is written to the display
 // overwrite it with the page names
 bool CommandMode::faderTouched(int channel, bool touched) {
-  if (!touched)
-    updateDisplay();
-
-  return true;
+  return MultiTrackMode::faderTouched(channel, touched);
 }
 
 // Disable the VPOT leds

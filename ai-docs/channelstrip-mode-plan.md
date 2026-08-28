@@ -461,6 +461,14 @@ src/modes/channelstrip/
   `swapUiSlots()` experiment was removed after user testing showed it did not
   move the FX at all.
 - **Additional Step G commands (2026-08-29):** ALT+VPOT-5 is now `Delete`.
+- **Common fader-touch display (2026-08-29):** `MultiTrackMode` now owns the
+  shared fader-touch overlay used by PanMode, CommandMode, and
+  ChannelStripMode. While exactly one channel fader is touched, row 1 shows
+  the current channel volume in dB, or pan in flip mode; for QCon ProX units
+  the overlay is skipped because those values already use the dedicated
+  display rows. Releasing the fader restores the active mode's normal
+  display. The implementation runs after derived-mode display updates so
+  their regular row-1 content is restored automatically when touch ends.
   A later test also found and fixed the floating action variable type: the
   `TrackFX_Show` action must be an `int` (3 was truncated to 1 when it was a
   `bool`).
