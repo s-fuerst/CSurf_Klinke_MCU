@@ -106,14 +106,16 @@ public:
   // called by the editor after a strip is mutated
   void bindingChanged();
 
-  // --- ALT commands (Step G) ---
-  // ALT+VPOT-1: toggle the FLOATING FX window of the unit's strip FX on the
-  // selected track (close it if already open; PlugMode window settings
+  // --- CTRL commands (Step G) ---
+  // CONTROL+VPOT-1: toggle the FLOATING FX window of the unit's strip FX on
+  // the selected track (close it if already open; PlugMode window settings
   // ignored).
-  // ALT+VPOT-2: toggle the FX CHAIN (close it if already open).
-  // ALT+VPOT-5: delete the assigned FX instance from the selected track.
+  // CONTROL+VPOT-2: toggle the FX CHAIN (close it if already open).
+  // CONTROL+VPOT-3 ("PlMode"): switch to PlugMode and select the unit's
+  // strip FX there (active unit = the pressed unit's).
+  // CONTROL+VPOT-5: remove the assigned FX instance from the selected track.
   void openFxWindow(MediaTrack *tr, int fxSlot, bool floating);
-  // ALT+VPOT-7/8: move the strip FX one slot up (-1) / down (+1).
+  // CONTROL+VPOT-7/8: move the strip FX one slot up (-1) / down (+1).
   // Empty target slots use the REAPER 7.75+ slot_hint path; occupied
   // neighbouring slots use the original dense TrackFX_CopyToTrack move so
   // the two FX exchange positions. Returns false at chain edges.
@@ -158,6 +160,6 @@ private:
 
   bool m_selectionMode;
   bool m_lastShiftState;
-  bool m_lastAltState;
+  bool m_lastCtrlState; // last CONTROL state, for the command legend refresh
   int m_projectChangedConnectionId;
 };

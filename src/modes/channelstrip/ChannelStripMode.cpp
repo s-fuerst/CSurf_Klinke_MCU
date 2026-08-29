@@ -32,7 +32,7 @@ ChannelStripMode::PerTrackAssignments::PerTrackAssignments() {
 ChannelStripMode::ChannelStripMode(CCSManager *pManager)
     : MultiTrackMode(pManager), m_pAccess(NULL), m_pEditor(NULL),
       m_selectionMode(false), m_lastShiftState(false),
-      m_lastAltState(false), m_projectChangedConnectionId(-1) {
+      m_lastCtrlState(false), m_projectChangedConnectionId(-1) {
   m_pAccess = new ChannelStripAccess(this);
   // The inherited MultiTrackMeterBridge also draws the emulated LCD meter
   // segments in the separator columns — they do not touch the strip-name /
@@ -166,30 +166,37 @@ bool ChannelStripMode::vpotPressed(int channel, bool pressed) {
   int unit = (channel - 1) / 8;
   int vpot = slotFor(localCh); // 0..7 normal, 8..15 with Shift
 
-  // ALT commands (Step G), unshifted VPOT range only. NOTE: `vpot` here is
+  // CTRL commands (Step G), unshifted VPOT range only. NOTE: `vpot` here is
   // 0-based — hardware VPOT N is vpot N-1, so the commands live at vpot
-  // 0 (VPOT-1, open floating window), 1 (VPOT-2, open chain), 4 (VPOT-5,
-  // delete), 6 (VPOT-7) and 7 (VPOT-8, move FX up/down). They are only
+  // 0 (VPOT-1, open floating window), 1 (VPOT-2, open chain), 2 (VPOT-3,
+  // switch to PlugMode with the strip FX selected), 4 (VPOT-5, remove), 6
+  // (VPOT-7) and 7 (VPOT-8, move FX up/down). They are only
   // active on units whose strip is assigned AND whose plugin is present on
   // the selected track —
   // only then is the target FX known. Other VPOTs fall through to the
   // normal behaviour below.
-  if (isModifierPressed(VK_ALT) && vpot < 8 &&
-      (vpot == 0 || vpot == 1 || vpot == 4 || vpot == 6 || vpot == 7)) {
+  if (isModifierPressed(VK_CONTROL) && vpot < 8 &&
+      (vpot == 0 || vpot == 1 || vpot == 2 || vpot == 4 || vpot == 6 ||
+       vpot == 7)) {
     int stripIdx = getAssignedStripIndex(tr, unit);
     int fxSlot = (stripIdx >= 0 && m_strips[stripIdx].isAssigned())
         ? m_pAccess->resolveSlot(tr, stripIdx, m_strips[stripIdx])
         : -1;
     if (fxSlot < 0)
       return false; // no active strip on this unit: command inactive
-    MCU_LOG("CSM ALT cmd ch=%d unit=%d vpot=%d fxSlot=%d", channel, unit,
+    MCU_LOG("CSM CTRL cmd ch=%d unit=%d vpot=%d fxSlot=%d", channel, unit,
             vpot, fxSlot);
     if (vpot == 0 || vpot == 1) {
       openFxWindow(tr, fxSlot, /*floating=*/vpot == 0);
       return true;
     }
+    if (vpot == 2) {
+      // "PlMode": switch to PlugMode with this unit's strip FX selected.
+      m_pCCSManager->switchToPlugModeWithSlot(tr, fxSlot, unit);
+      return true;
+    }
     if (vpot == 4) {
-      MCU_LOG("CSM deleteFx ch=%d unit=%d fxSlot=%d", channel, unit,
+      MCU_LOG("CSM removeFx ch=%d unit=%d fxSlot=%d", channel, unit,
               fxSlot);
       if (TrackFX_Delete(tr, fxSlot)) {
         TrackList_AdjustWindows(false);
@@ -332,19 +339,21 @@ void ChannelStripMode::updateChannel(int globalChannel) {
       ? m_pAccess->resolveSlot(tr, stripIdx, *strip)
       : -1;
 
-  // ALT held: per-unit command legend on row 1, directly in the VPOT fields
-  // (6 chars each). Only units with an ACTIVE strip (assigned + plugin
-  // present) get labels — only there is the target FX known; the other
-  // fields (and all fields of inactive units) stay empty.
-  if (isModifierPressed(VK_ALT)) {
+  // CONTROL held: per-unit command legend on row 1, directly in the VPOT
+  // fields (6 chars each). Only units with an ACTIVE strip (assigned +
+  // plugin present) get labels — only there is the target FX known; the
+  // other fields (and all fields of inactive units) stay empty.
+  if (isModifierPressed(VK_CONTROL)) {
     String label;
     if (fxSlot >= 0) {
       if (localCh == 0) // hardware VPOT 1
         label = "Float";
       else if (localCh == 1) // hardware VPOT 2
         label = "Chain";
+      else if (localCh == 2) // hardware VPOT 3
+        label = "PlMode";
       else if (localCh == 4) // hardware VPOT 5
-        label = "Delete";
+        label = "Remove";
       else if (localCh == 6) // hardware VPOT 7
         label = "FXup";
       else if (localCh == 7) // hardware VPOT 8
@@ -413,19 +422,20 @@ void ChannelStripMode::frameUpdate() {
     m_lastShiftState = shift;
     updateDisplay();
   }
-  // Refresh display when ALT state changes (command legend on row 1).
-  bool alt = isModifierPressed(VK_ALT);
-  if (alt != m_lastAltState) {
-    m_lastAltState = alt;
+  // Refresh display when CONTROL state changes (command legend on row 1).
+  bool ctrl = isModifierPressed(VK_CONTROL);
+  if (ctrl != m_lastCtrlState) {
+    m_lastCtrlState = ctrl;
     updateDisplay();
   }
 }
 
-// --- ALT commands (Step G) ---
+// --- CTRL commands (Step G) ---
 
 void ChannelStripMode::openFxWindow(MediaTrack *tr, int fxSlot,
                                     bool floating) {
-  // ALT+VPOT-1 (floating) / ALT+VPOT-2 (chain) — deliberate: the PlugMode
+  // CONTROL+VPOT-1 (floating) / CONTROL+VPOT-2 (chain) — deliberate: the
+  // PlugMode
   // window settings are IGNORED. Both TOGGLE: if the window/chain for this
   // FX is already open it is closed, else it is opened. showflag 3/2 =
   // show/close floating window, 1/0 = show/close chain.
