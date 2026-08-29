@@ -69,7 +69,7 @@ void MeterBridge::updateMeter(int iChannel, MediaTrack *pMT, CSurf_MCU *pMCU,
   // that low-level noise no longer paints a one-segment flicker on the
   // display.
   if (alsoOnDisplay())
-    showMeterOnDisplay(pMCU, iChannel, pp > -60.0 ? v : 0);
+    showMeterOnDisplay(pMCU, iChannel, pp > -60.0 ? v : 0, pp >= 0.0);
 }
 
 void MeterBridge::updateMasterLEDs(CSurf_MCU *pMCU, double decay) {
@@ -115,7 +115,7 @@ void MeterBridge::sendToHardware(CSurf_MCU *pMCU, int pos, short meter) {
 }
 
 void MeterBridge::showMeterOnDisplay(CSurf_MCU *pMCU, int channel,
-                                     short meter) {
+                                     short meter, bool clip) {
   HardwareUnit *unit = pMCU->unitForChannel(channel);
   if (!unit)
     return;
@@ -150,6 +150,9 @@ void MeterBridge::showMeterOnDisplay(CSurf_MCU *pMCU, int channel,
   //   4..6   : ':' on row 1
   //   7..9   : '.' on row 0 plus ':' on row 1
   //   10..12 : ':' on both rows
+  // While the held peak is above 0 dB (clip), the top character is replaced
+  // by '*' so an overdriven channel is recognizable at a glance. The clip
+  // mark follows the meter peak decay like the bar itself.
   char top = ' ', bottom = ' ';
   if (meter >= 10)
     top = bottom = ':';
@@ -159,6 +162,8 @@ void MeterBridge::showMeterOnDisplay(CSurf_MCU *pMCU, int channel,
     bottom = ':';
   else if (meter >= 1)
     bottom = '.';
+  if (clip)
+    top = '*';
 
   display->changeText(0, col, &top, 1);
   display->changeText(1, col, &bottom, 1);
