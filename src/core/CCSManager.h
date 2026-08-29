@@ -139,6 +139,9 @@ public:
 	void resetAllFaderTouch();
 	PlugMode *getPlugMode() { return m_pPlugMode; }
 	ChannelStripMode *getChannelStripMode() { return m_pChannelStripMode; }
+	// Switch to PlugMode with the active unit pinned to `unit` and the FX at
+	// `fxSlot` on `tr` selected there (ChannelStripMode ALT+VPOT-3 "PlMode").
+	void switchToPlugModeWithSlot(MediaTrack *tr, int fxSlot, int unit);
 	
 private:
   void elementTouched(EElement fader, int channel, bool touched);

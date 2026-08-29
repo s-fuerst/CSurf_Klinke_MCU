@@ -16,6 +16,7 @@
 #include "SendMode.h"
 #include "ReceiveMode.h"
 #include "PlugMode.h"
+#include "PlugAccess.h"
 #include "ChannelStripMode.h"
 #include "csurf_mcu.h"
 #include "McuAssert.h"
@@ -774,6 +775,15 @@ void CCSManager::changeMode(CCSMode *pNewMode) {
     m_pActualMode = pNewMode;
     m_pActualMode->activate();
   }
+}
+
+void CCSManager::switchToPlugModeWithSlot(MediaTrack *tr, int fxSlot,
+                                          int unit) {
+  // Pin the active unit BEFORE activate() so the whole switch already
+  // operates on this unit's bank/page state.
+  m_pPlugMode->setActiveUnit(unit);
+  changeMode(m_pPlugMode);
+  m_pPlugMode->getPlugAccess()->accessPlugin(tr, fxSlot);
 }
 
 void CCSManager::closeEditorIfOpen(Component *pComponent) {

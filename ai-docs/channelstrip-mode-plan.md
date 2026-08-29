@@ -266,30 +266,46 @@ src/modes/channelstrip/
   The stale entries are ~170 bytes per deleted track, bounded per project
   session (cleared on project READ/FREE) — not worth the extra hook.
 
-### G — ALT shortcuts — DONE for ChannelStripMode (2026-08-28)
+### G — CTRL shortcuts — DONE for ChannelStripMode (2026-08-28, key switched
+2026-08-29)
 
-- ALT+VPOT-7 / ALT+VPOT-8: move the unit's strip FX up/down
+- Modifier: the VPOT commands use **CONTROL** (maintainer decision,
+  2026-08-29 — switched from ALT). The on-screen editor stays **ALT+TRACK**.
+  CONTROL+VPOT was free in ChannelStripMode: the inherited CONTROL semantics
+  of MultiTrackMode live on the SELECT button (multi-select toggle), not on
+  VPOTs.
+- CTRL+VPOT-7 / CTRL+VPOT-8: move the unit's strip FX up/down
   (`TrackFX_CopyToTrack`, `is_move=true`); no-op at chain edges; invalidates
   the track's slot cache afterwards.
-- ALT+VPOT-1: open the floating FX window; ALT+VPOT-2: open the FX chain.
+- CTRL+VPOT-1: open the floating FX window; CTRL+VPOT-2: open the FX chain.
   The PlugMode window settings are deliberately IGNORED (maintainer decision,
   2026-08-28) — the commands always do exactly this, no option plumbing.
-- ALT held (any button, NOT Name/Values specifically): the ALT-command
+- CTRL+VPOT-3 ("PlMode"): switch to PlugMode and select the unit's strip FX
+  there. Implementation: `PlugMode::setActiveUnit(unit)` (pinned BEFORE the
+  switch so activate/accessPlugin already use this unit's bank/page state),
+  `CCSManager::changeMode(plugMode)`, then
+  `PlugAccess::accessPlugin(track, fxSlot)`.
+- CTRL held (any button, NOT Name/Values specifically): the command
   legend appears in the per-VPOT row-1 fields (maintainer decision — plain
-  ALT, no Name/Values button). Revised after the first user test: NOT a
+  modifier, no Name/Values button). Revised after the first user test: NOT a
   full-line legend — the labels sit directly in the VPOT fields
   (`changeField`, 6 chars) and ONLY on units whose strip is ACTIVE (assigned
   + plugin present, checked per unit — only then is the target FX known):
-  VPOT-1 "Float", VPOT-2 "Chain", VPOT-7 "FXup", VPOT-8 "FXdown"; all other
+  VPOT-1 "Float", VPOT-2 "Chain", VPOT-3 "PlMode", VPOT-5 "Remove",
+  VPOT-7 "FXup", VPOT-8 "FXdown"; all other
   fields (and all fields of inactive units) stay empty. The commands
   themselves are likewise only active on units with an active strip.
-- Deferred (maintainer decision): ALT+VPOT-7/8 in PlugMode (per `notes.org`) —
-  not implemented in this pass.
-- Implementation: `ChannelStripMode::vpotPressed` intercepts ALT at vpot
-  0/1/6/7 (= hardware VPOT 1/2/7/8 — **vpot is 0-based**; first test failed
+- Shared FX commands: the FX-chain commands (open floating, open chain, move
+  up/down) are to be SHARED with PlugMode — each mode only resolves its own
+  (track, fxSlot). Architecture proposal:
+  `ai-docs/modifier-command-scheme.md` (2026-08-29). Supersedes the earlier
+  "deferred: ALT+VPOT-7/8 in PlugMode (per notes.org)" note — PlugMode now
+  gets the same command set as a planned step of that scheme.
+- Implementation: `ChannelStripMode::vpotPressed` intercepts CONTROL at vpot
+  0/1/2/6/7 (= hardware VPOT 1/2/3/7/8 — **vpot is 0-based**; first test failed
   due to an off-by-one, see §8), unshifted range only, other VPOTs fall
   through to normal behaviour; `openFxWindow(tr, slot, floating)` / `moveFx()`
-  helpers; per-unit legend in `updateChannel()`; `m_lastAltState` refresh in
+  helpers; per-unit legend in `updateChannel()`; `m_lastCtrlState` refresh in
   `frameUpdate()`. `TrackFX_CopyToTrack` added to the mandatory `IMPAPI` list
   (csurf_main.cpp, since REAPER 4.0 — below the 6.37 floor) and to
   `vendor/csurf.h`.
@@ -460,7 +476,8 @@ src/modes/channelstrip/
   to use the 7.75+ `slot_hint` path. The earlier temporary-slot
   `swapUiSlots()` experiment was removed after user testing showed it did not
   move the FX at all.
-- **Additional Step G commands (2026-08-29):** ALT+VPOT-5 is now `Delete`.
+- **Additional Step G commands (2026-08-29):** ALT+VPOT-5 is now `Remove`
+  (name revised 2026-08-29 — Reaper terminology).
 - **Common fader-touch display (2026-08-29):** `MultiTrackMode` now owns the
   shared fader-touch overlay used by PanMode, CommandMode, and
   ChannelStripMode. While exactly one channel fader is touched, row 1 shows
