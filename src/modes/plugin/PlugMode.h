@@ -4,6 +4,7 @@
  */
 #include <boost/smart_ptr/scoped_ptr.hpp>
 #include "CCSMode.h"
+#include "ModifierCommands.h" // CTRL+VPOT command table (Layer 2)
 #include "PlugModeSelectors.h"
 #include "PlugModeOptions.h"
 #include "PlugMode2ndOptions.h"
@@ -174,6 +175,19 @@ private:
   // True while any unit's BankPagePlugSelector is in PLUG state (i.e. a
   // Select button is held somewhere). Drives the all-units PLUG overlay.
   bool anyPlugSelectorActive() const;
+
+  // CTRL+VPOT commands (modifier command scheme, see
+  // ai-docs/modifier-command-scheme.md). Target is the MODE-LEVEL accessed
+  // plugin (one at a time) regardless of which unit's VPOT was pressed.
+  // VPOT-3 (the mode-switch slot) is deliberately NOT registered here.
+  // `m_ctrlCommands` is populated in the constructor.
+  bool ctrlResolveAccessed(MediaTrack *&tr, int &fxSlot);
+  bool ctrlToggleFloating();
+  bool ctrlToggleChain();
+  bool ctrlRemoveAccessed();
+  bool ctrlMoveAccessed(int dir);
+  // Per-unit command legend on row 1 while CONTROL is held.
+  void updateCtrlLegend();
   void updateParamsDisplay();
   void updateValueDisplay();
   void updateTouchedDisplay();
@@ -220,6 +234,11 @@ private:
   PlugModeSelector *m_pPlugSelector;
   // per-unit BankPagePlugSelector instances
   BankPagePlugSelector *m_pBankPagePlugSelectorPerUnit[MAX_SURFACE_UNITS];
+
+  // CTRL+VPOT command table (Layer 2); see updateCtrlLegend(). No
+  // modifier-state member needed: PlugMode redraws its display every
+  // frame, so the legend simply follows the live modifier state.
+  ModifierCommands m_ctrlCommands;
 
   Options *m_pPlugModeOptions;
   PlugMode2ndOptions *m_pPlugMode2ndOptions;

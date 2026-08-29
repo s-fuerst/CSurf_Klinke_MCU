@@ -22,6 +22,7 @@
 #pragma once
 #include "JuceHeader.h"
 #include "ChannelStripMap.h"
+#include "FxSlotCommands.h" // slot helpers (delegated, Layer 1)
 #include <vector>
 #include <map>
 
@@ -44,7 +45,11 @@ public:
   static void getInstalledFX(std::vector<InstalledFX> &out);
 
   // --- resolution (all return a 0-based slot index, or -1 if not found) ---
-  static int findSlotByGUID(MediaTrack *tr, const String &guid);
+  // Thin delegation: the canonical implementation lives in
+  // FxSlotCommands (shared with the CTRL+VPOT command bodies).
+  static int findSlotByGUID(MediaTrack *tr, const String &guid) {
+    return FxSlotCommands::findSlotByGUID(tr, guid);
+  }
   static int findSlotByIdent(MediaTrack *tr, const String &fxIdent);
   // Display name of the installed FX whose EnumInstalledFX ident equals the
   // given ident ("" if not found). Used to match file-path idents (VST/VST3)
@@ -87,11 +92,16 @@ public:
   // (REAPER < 7.75). NOTE: the API returns 0-based slot numbers (verified
   // 2026-08-29: first FX reports slot 0) — the "UI slot" shown in REAPER's
   // TCP/MCP is this value + 1.
-  static int uiSlotForIndex(MediaTrack *tr, int fxIndex);
+  // Delegated to FxSlotCommands (canonical implementation there).
+  static int uiSlotForIndex(MediaTrack *tr, int fxIndex) {
+    return FxSlotCommands::uiSlotForIndex(tr, fxIndex);
+  }
   // Try to place the FX at fxIdx into the given SLOT (0-based, as reported
   // by chain_index_to_slot). REAPER 7.75+ only. Returns: 1 = FX is now at
   // targetSlot; 0 = no effect; -1 = the FX moved but NOT to targetSlot.
-  static int tryMoveToUiSlot(MediaTrack *tr, int fxIdx, int targetSlot);
+  static int tryMoveToUiSlot(MediaTrack *tr, int fxIdx, int targetSlot) {
+    return FxSlotCommands::tryMoveToUiSlot(tr, fxIdx, targetSlot);
+  }
   // TrackFX_AddByName instantiate argument for (insertPos, current chain len).
   static int instantiateArgFor(ChannelStripMap::InsertPos pos, int chainLen);
 

@@ -6,7 +6,8 @@
 #include "csurf_mcu.h"
 #include "Tracks.h"
 
-CCSMode::CCSMode(CCSManager *pManager) { m_pCCSManager = pManager; }
+CCSMode::CCSMode(CCSManager *pManager)
+    : m_pCCSManager(pManager), m_lastModifierBits(0) {}
 
 CCSMode::~CCSMode(void) {}
 
@@ -48,6 +49,23 @@ void CCSMode::updateAssignmentDisplay() {
 
 bool CCSMode::isModifierPressed(int modifier) {
   return m_pCCSManager->getMCU()->IsModifierPressed(modifier);
+}
+
+bool CCSMode::modifierStateChanged(int modifier) {
+  int bits = 0;
+  if (isModifierPressed(VK_SHIFT))
+    bits |= 1;
+  if (isModifierPressed(VK_OPTION))
+    bits |= 2;
+  if (isModifierPressed(VK_CONTROL))
+    bits |= 4;
+  if (isModifierPressed(VK_ALT))
+    bits |= 8;
+  int mask = (modifier == VK_SHIFT) ? 1 : (modifier == VK_OPTION) ? 2
+          : (modifier == VK_CONTROL) ? 4 : 8;
+  bool changed = ((m_lastModifierBits ^ bits) & mask) != 0;
+  m_lastModifierBits = bits;
+  return changed;
 }
 
 void CCSMode::updateEverything() {

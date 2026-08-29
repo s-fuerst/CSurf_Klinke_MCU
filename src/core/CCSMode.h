@@ -111,4 +111,15 @@ protected:
   CCSManager *m_pCCSManager;
 
 	MeterBridge *m_pMeterBridge;
+
+  // Layer 3 of the modifier command scheme
+  // (ai-docs/modifier-command-scheme.md): poll the live state of
+  // `modifier` (VK_SHIFT / VK_OPTION / VK_CONTROL / VK_ALT) and return
+  // true only on the press/release EDGE since the last call. Modes call
+  // this in frameUpdate() and refresh their display on true (e.g. a
+  // per-VPOT command legend). State is tracked once per mode, shared by
+  // all modifiers.
+  bool modifierStateChanged(int modifier);
+  int m_lastModifierBits; // modifierStateChanged(): bit0 SHIFT, bit1
+                          // OPTION, bit2 CONTROL, bit3 ALT
 };
