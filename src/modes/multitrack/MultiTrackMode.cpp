@@ -45,8 +45,8 @@ void MultiTrackMode::frameUpdate() {
 
   m_pMeterBridge->updateMeterBridge(m_pCCSManager->getMCU());
 
-  // Derived modes may use row 1 for their own content. While a single fader
-  // is touched, the common fader value takes precedence, just as in PanMode.
+  // Derived modes may use row 1 for their own content. While faders are
+  // touched, the common fader value takes precedence, just as in PanMode.
   updateFaderTouchDisplay();
 
   if (Tracks::instance()->clampCurrentGlobalOffset()) {
@@ -471,14 +471,12 @@ bool MultiTrackMode::faderTouched(int channel, bool touched) {
 }
 
 void MultiTrackMode::updateFaderTouchDisplay() {
-  if (m_pCCSManager->getNumFadersTouched() != 1)
-    return;
+  // Show the value for EVERY touched fader: each channel owns its own field
+  // on row 1, so multiple channels can be revealed at the same time.
   for (int channel = 1;
        channel <= m_pCCSManager->getMCU()->availableChannels(); ++channel) {
-    if (m_pCCSManager->getFaderTouched(channel)) {
+    if (m_pCCSManager->getFaderTouched(channel))
       updateFaderTouchDisplay(channel);
-      return;
-    }
   }
 }
 
