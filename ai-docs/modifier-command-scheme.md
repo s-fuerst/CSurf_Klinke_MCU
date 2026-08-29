@@ -1,8 +1,9 @@
-# Modifier+Control Command Scheme — Architecture Proposal
+# Modifier+Control Command Scheme — Architecture
 
-Status: PROPOSAL (2026-08-29), not yet implemented except Phase 0.
-Open questions Q1–Q3 decided (all yes) 2026-08-29; implementation on hold
-per maintainer.
+Status: IMPLEMENTED (2026-08-29), all phases (0–3) done.
+Open questions Q1–Q3 decided (all yes) 2026-08-29; Q3a and the PlugMode
+legend row decided 2026-08-29 (see §6); PlugMode VPOT-3 therefore not
+registered.
 Trigger: the ChannelStripMode CTRL commands (Step G, see
 `channelstrip-mode-plan.md`) work and are to be extended to other modes —
 notably PlugMode, which shares the same FX-chain commands (open floating
@@ -162,7 +163,7 @@ private:
 `ChannelStripMode::m_lastCtrlState` disappears (SHIFT tracking can move to
 the base later where modes use it for the same reason — not required now).
 
-## 4. Command sets per mode (target state)
+## 4. Command sets per mode (as implemented)
 
 Same VPOT positions, same legend labels, in every mode that adopts the
 scheme — the user muscle memory transfers. Only the (track, fxSlot)
@@ -172,9 +173,36 @@ RESOLUTION differs per mode:
 |---|---|---|---|
 | 1 | `Float` | strip FX of the unit on the selected track | the accessed plugin (`PlugAccess::getPlugTrack/getPlugSlot`) |
 | 2 | `Chain` | selected track's FX chain | same track's FX chain |
-| 3 | mode switch | switch to PlugMode + select strip FX ("PlMode") | generic mode-switch slot (target mode: open design point, Q3=yes) |
+| 3 | mode switch | switch to PlugMode + select strip FX ("PlMode") | **not registered** (Q3a: omitted for now) |
 | 5 | `Remove` | strip FX | the accessed plugin |
 | 7 / 8 | `FXup` / `FXdown` | strip FX | the accessed plugin |
+
+Implementation notes (deviations / additions to the original proposal):
+
+- `FxSlotCommands::toggleFxChain` keeps the `fxSlot` parameter (the
+  proposal's signature had none) because `TrackFX_Show` requires a slot
+  argument even for chain show/hide.
+- `FxSlotCommands` owns `findSlotByGUID` / `uiSlotForIndex` /
+  `tryMoveToUiSlot` (moved from `ChannelStripAccess`, which now delegates
+  to them) so Layer 1 stays free of mode dependencies.
+- `ModifierCommands` gained `hasCommand(modifier, control)` beyond the
+  proposed API: a MATCHED-but-inactive command must consume the event
+  (no fall-through to the control's normal behaviour), which
+  `dispatch()` alone cannot express.
+- `CCSMode::modifierStateChanged()` is used by ChannelStripMode (legend
+  edge refresh). PlugMode does not need it: it redraws its display every
+  frame (`frameUpdate` → `updateEverything`), so `updateCtrlLegend()`
+  simply follows the live modifier state.
+- PlugMode re-establishes the accessed plugin after its own mutations:
+  move → `accessPlugin(tr, newSlot)` by GUID; remove → re-access whatever
+  now occupies the slot, or deselect (`accessPlugin(tr, -1)`) if the
+  chain shortened. With `PMO_LIMIT_FLOATING` set to "only chain", the
+  `Float` command is INACTIVE in PlugMode (no legend entry, press is a
+  no-op): the per-frame `checkFloatWindows()` would otherwise
+  immediately convert the floating window into the chain.
+- Legend row: row 1 on ALL PlugMode layouts (maintainer decision
+  2026-08-29) — on an MCU 2-row unit that overwrites the fader names,
+  exactly like ChannelStripMode.
 
 Notes:
 
@@ -192,14 +220,17 @@ Notes:
 
 - **Phase 0 — DONE (2026-08-29):** ChannelStripMode commands on CONTROL
   (was ALT), incl. PlMode (VPOT-3). Ad-hoc inline implementation.
-- **Phase 1:** extract `FxSlotCommands`; `ChannelStripMode` delegates to it.
-  Pure refactor, no behaviour change. Build + user smoke test of the four
-  FX commands.
-- **Phase 2:** introduce `ModifierCommands` + `CCSMode::modifierStateChanged`;
-  refactor `ChannelStripMode` onto both. No behaviour change.
-- **Phase 3:** PlugMode adopts the shared set (VPOT 1/2/5/7/8, target =
-  accessed plugin; VPOT-3 = mode-switch slot per Q3), legend on PlugMode's
-  row-1 layout. User test.
+- **Phase 1 — DONE (2026-08-29):** `FxSlotCommands` extracted to
+  `src/core/FxSlotCommands.h/.cpp`; `ChannelStripMode` delegates to it.
+  Pure refactor, no behaviour change. Smoke test of the four FX commands
+  still owed by the user.
+- **Phase 2 — DONE (2026-08-29):** `ModifierCommands`
+  (`src/core/ModifierCommands.h/.cpp`) + `CCSMode::modifierStateChanged`
+  introduced; `ChannelStripMode` refactored onto both (its
+  `m_lastCtrlState` is gone). No behaviour change.
+- **Phase 3 — DONE (2026-08-29):** PlugMode adopts the shared set (VPOT
+  1/2/5/7/8, target = accessed plugin; VPOT-3 omitted per Q3a), legend on
+  PlugMode's row 1 (all layouts). User test owed.
   (Supersedes the old "deferred: ALT+VPOT-7/8 in PlugMode" note in
   `channelstrip-mode-plan.md`.)
 
@@ -209,16 +240,17 @@ doing 1–2 first keeps the shared code where it belongs.
 
 ## 6. Open questions (maintainer decision)
 
-Decided 2026-08-29 (all yes), implementation on hold:
+Decided 2026-08-29 (all yes), implemented the same day:
 
 - **Q1 (yes):** `Remove` (VPOT-5) goes to PlugMode as well.
 - **Q2 (yes):** PlugMode command target = the mode-level accessed plugin.
 - **Q3 (yes):** the mode-switch slot (VPOT-3, "PlMode" in ChannelStripMode)
   also exists in the other modes as a generic "switch to mode X" slot.
 
-- **Q3a (still open, design point for Phase 3+):** which target mode each
-  mode's VPOT-3 switches to (e.g. PlugMode → ChannelStripMode? or a
-  rotating/last-mode behaviour?). Decide before implementing that slot.
+- **Q3a (decided 2026-08-29):** OMIT PlugMode's VPOT-3 for now — the
+  mode-switch slot is only registered in ChannelStripMode ("PlMode" →
+  PlugMode). Revisit when a concrete target mode / last-mode behaviour is
+  wanted.
 - **Q4:** Buttons as controls: the table's `control` index is positional
   today (VPOT 0..7). If button commands are ever wanted, the entry key
   becomes a small (EElement, position) pair — noted here so the interface

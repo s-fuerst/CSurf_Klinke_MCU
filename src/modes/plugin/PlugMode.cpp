@@ -12,6 +12,7 @@
 #include "csurf.h"
 #include "csurf_mcu.h"
 #include "Display.h"
+#include "FxSlotCommands.h"
 #include "MultiDisplay.h"
 #include "std_helper.h"
 #include <math.h>
@@ -36,6 +37,24 @@ PlugMode::PlugMode(CCSManager *pManager)
   lastFaderValues.assign(8 * 8 * 8, 0.0);
   lastVPotValues.assign(8 * 8 * 8, 0.0);
   m_pAccess = new PlugAccess(this);
+
+  // CTRL+VPOT command set (modifier-command-scheme.md Layer 2). `control`
+  // is the unshifted 0..7 VPOT index (hardware VPOT N = control N-1).
+  // Target is the mode-level accessed plugin, independent of the pressed
+  // unit (Q2). VPOT-3 (mode-switch slot) is omitted on purpose (maintainer
+  // decision 2026-09). No legend-state member is needed: PlugMode redraws
+  // its display every frame (frameUpdate -> updateEverything), so the
+  // legend in updateCtrlLegend() simply follows the live modifier state.
+  m_ctrlCommands.add(VK_CONTROL, 0,
+                     [this](int) { return ctrlToggleFloating(); });
+  m_ctrlCommands.add(VK_CONTROL, 1,
+                     [this](int) { return ctrlToggleChain(); });
+  m_ctrlCommands.add(VK_CONTROL, 4,
+                     [this](int) { return ctrlRemoveAccessed(); });
+  m_ctrlCommands.add(VK_CONTROL, 6,
+                     [this](int) { return ctrlMoveAccessed(-1); });
+  m_ctrlCommands.add(VK_CONTROL, 7,
+                     [this](int) { return ctrlMoveAccessed(+1); });
 
   m_pPlugModeOptions = new PlugModeOptions(pManager->getDisplayHandler());
   m_pPlugMode2ndOptions = new PlugMode2ndOptions(pManager->getDisplayHandler());
@@ -406,6 +425,19 @@ bool PlugMode::vpotPressed(int channel, bool pressed) {
   int localCh = (channel - 1) % 8;
   setActiveUnit(unit);
 
+  // CTRL+VPOT commands (modifier command scheme), unshifted VPOT range
+  // only. A MATCHED command always consumes the event — without an
+  // accessed plugin it is a no-op instead of falling through to the
+  // bank/page/plug selection below. (PlugMode's other CONTROL semantics
+  // are BUTTON-based, so there is no conflict.)
+  if (pressed && isModifierPressed(VK_CONTROL) &&
+      !isModifierPressed(VK_SHIFT)) {
+    if (m_ctrlCommands.dispatch(VK_CONTROL, localCh, channel))
+      return true;
+    if (m_ctrlCommands.hasCommand(VK_CONTROL, localCh))
+      return false; // no accessed plugin: command inactive, do nothing
+  }
+
   if (pressed) {
     switch (m_pBankPagePlugSelectorPerUnit[m_activeUnit]->getWhatToSelect()) {
     case BankPagePlugSelector::NOTHING:
@@ -534,6 +566,136 @@ void PlugMode::updateDisplay() {
       updateParamsDisplay();
     }
   }
+  // CONTROL held: per-unit command legend (same positions / labels as
+  // ChannelStripMode — the muscle memory transfers). Redrawn every frame
+  // by frameUpdate(), so press/release needs no edge tracking here.
+  if (isModifierPressed(VK_CONTROL))
+    updateCtrlLegend();
+}
+
+void PlugMode::updateCtrlLegend() {
+  if (!m_pAccess->plugExist())
+    return; // no accessed plugin: commands (and the legend) are inactive
+  // Same display the normal update just wrote (touched layout wins while a
+  // fader/VPOT is touched, like in updateDisplay()).
+  bool touched = (isSingleFaderTouched() || isSingleVPotTouched()) &&
+                 !m_buttonNameValuePressed &&
+                 m_pPlugMode2ndOptions->isOptionSetTo(PMO2_SHOW_DETAILS,
+                                                      PMO2A_ON);
+  Display *d = touched ? m_pTouchedDisplay : m_pParamsDisplay;
+  if (!d)
+    return;
+  int nStrips = m_pCCSManager->getMCU()->numUnits() * 8;
+  for (int iChannel = 0; iChannel < nStrips; iChannel++) {
+    int unit = iChannel / 8;
+    int localCh = iChannel % 8;
+    if (m_pAccess->isUnitEmpty(unit))
+      continue;
+    // "Float" (VPOT 1) is not offered while "Limit float = only chain" is
+    // set: checkFloatWindows() would immediately convert the floating
+    // window to the chain, so the command is inactive (ctrlToggleFloating
+    // returns false as well).
+    bool floatLimited = m_pPlugModeOptions->isOptionSetTo(PMO_LIMIT_FLOATING,
+                                                          PMOA_ONLY_CHAIN);
+    String label;
+    switch (localCh) {
+    case 0:
+      if (!floatLimited)
+        label = "Float"; // hardware VPOT 1
+      break;
+    case 1:
+      label = "Chain"; // hardware VPOT 2
+      break;
+    case 4:
+      label = "Remove"; // hardware VPOT 5
+      break;
+    case 6:
+      label = "FXup"; // hardware VPOT 7
+      break;
+    case 7:
+      label = "FXdown"; // hardware VPOT 8
+      break;
+    default:
+      break; // 3 (VPOT-4), 5 (VPOT-6) and 2 (VPOT-3: no command here)
+    }
+    // Row 1 on ALL layouts (maintainer decision 2026-09): on an MCU 2-row
+    // unit that overwrites the fader names, exactly like ChannelStripMode.
+    d->changeField(1, iChannel + 1, label.toRawUTF8());
+  }
+}
+
+// --- CTRL command handlers (modifier command scheme) ---
+//
+// Target is the MODE-LEVEL accessed plugin (m_pAccess), not a per-unit
+// selection. After move/remove the accessed slot is re-established (by
+// GUID for move, by slot index for remove) so the mode keeps pointing at
+// the right plugin.
+
+bool PlugMode::ctrlResolveAccessed(MediaTrack *&tr, int &fxSlot) {
+  tr = m_pAccess->getPlugTrack();
+  fxSlot = m_pAccess->getPlugSlot();
+  return m_pAccess->plugExist();
+}
+
+bool PlugMode::ctrlToggleFloating() {
+  // Inactive while "Limit float = only chain": the per-frame
+  // checkFloatWindows() would immediately convert the floating window to
+  // the chain, so the command is not offered (no legend entry either).
+  if (m_pPlugModeOptions->isOptionSetTo(PMO_LIMIT_FLOATING, PMOA_ONLY_CHAIN))
+    return false;
+  MediaTrack *tr = NULL;
+  int fxSlot = -1;
+  if (!ctrlResolveAccessed(tr, fxSlot))
+    return false; // no accessed plugin: command inactive
+  FxSlotCommands::toggleFloatingWindow(tr, fxSlot);
+  updateEverything();
+  return true;
+}
+
+bool PlugMode::ctrlToggleChain() {
+  MediaTrack *tr = NULL;
+  int fxSlot = -1;
+  if (!ctrlResolveAccessed(tr, fxSlot))
+    return false; // no accessed plugin: command inactive
+  FxSlotCommands::toggleFxChain(tr, fxSlot);
+  updateEverything();
+  return true;
+}
+
+bool PlugMode::ctrlMoveAccessed(int dir) {
+  MediaTrack *tr = NULL;
+  int fxSlot = -1;
+  if (!ctrlResolveAccessed(tr, fxSlot))
+    return false; // no accessed plugin: command inactive
+  GUID *g = TrackFX_GetFXGUID(tr, fxSlot);
+  if (!g)
+    return false;
+  String guid = GUID2String(g);
+  if (!FxSlotCommands::moveFx(tr, fxSlot, dir))
+    return false; // move refused (chain edge): do nothing else
+  // The old slot may now hold a different plugin (or none): re-access by
+  // GUID so the mode keeps pointing at the moved FX.
+  int newSlot = FxSlotCommands::findSlotByGUID(tr, guid);
+  m_pAccess->accessPlugin(tr, newSlot >= 0 ? newSlot : -1);
+  updateEverything();
+  return true;
+}
+
+bool PlugMode::ctrlRemoveAccessed() {
+  MediaTrack *tr = NULL;
+  int fxSlot = -1;
+  if (!ctrlResolveAccessed(tr, fxSlot))
+    return false; // no accessed plugin: command inactive
+  if (!FxSlotCommands::removeFx(tr, fxSlot))
+    return false;
+  // The accessed plugin is gone: re-access whatever now occupies the slot
+  // (the next FX slid down), or deselect if the chain shortened.
+  if (fxSlot < TrackFX_GetCount(tr))
+    m_pAccess->accessPlugin(tr, fxSlot);
+  else
+    m_pAccess->accessPlugin(tr, -1);
+  updateEverything();
+  return true;
 }
 
 void PlugMode::updateFaders() {

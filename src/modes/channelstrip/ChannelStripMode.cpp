@@ -7,6 +7,7 @@
 #include "csurf_mcu.h"
 #include "Display.h"
 #include "ChannelStripAccess.h"
+#include "FxSlotCommands.h"
 #include "editor/ChannelStripComponent.h"
 #include "Tracks.h"
 #include "McuAssert.h"
@@ -32,13 +33,29 @@ ChannelStripMode::PerTrackAssignments::PerTrackAssignments() {
 ChannelStripMode::ChannelStripMode(CCSManager *pManager)
     : MultiTrackMode(pManager), m_pAccess(NULL), m_pEditor(NULL),
       m_selectionMode(false), m_lastShiftState(false),
-      m_lastCtrlState(false), m_projectChangedConnectionId(-1) {
+      m_projectChangedConnectionId(-1) {
   m_pAccess = new ChannelStripAccess(this);
   // The inherited MultiTrackMeterBridge also draws the emulated LCD meter
   // segments in the separator columns — they do not touch the strip-name /
   // parameter text on row 1, so no dedicated bridge is needed here.
   for (int i = 0; i < kNumStrips; i++)
     m_strips[i].initEmpty();
+  // CTRL+VPOT command set (modifier-command-scheme.md Layer 2). `control`
+  // is the unshifted 0..7 VPOT index (hardware VPOT N = control N-1). The
+  // table only routes — the per-unit precondition (assigned strip + plugin
+  // present on the selected track) is resolved inside each handler.
+  m_ctrlCommands.add(VK_CONTROL, 0,
+                     [this](int ch) { return ctrlOpenFxWindow(ch, true); });
+  m_ctrlCommands.add(VK_CONTROL, 1,
+                     [this](int ch) { return ctrlOpenFxWindow(ch, false); });
+  m_ctrlCommands.add(VK_CONTROL, 2,
+                     [this](int ch) { return ctrlSwitchToPlugMode(ch); });
+  m_ctrlCommands.add(VK_CONTROL, 4,
+                     [this](int ch) { return ctrlRemoveFx(ch); });
+  m_ctrlCommands.add(VK_CONTROL, 6,
+                     [this](int ch) { return ctrlMoveFx(ch, -1); });
+  m_ctrlCommands.add(VK_CONTROL, 7,
+                     [this](int ch) { return ctrlMoveFx(ch, +1); });
   // Load the 16 global strips from the user file (survives REAPER restarts).
   loadStripsFromFile();
   // Persist per-(track, unit) assignments inside the Reaper project.
@@ -166,51 +183,17 @@ bool ChannelStripMode::vpotPressed(int channel, bool pressed) {
   int unit = (channel - 1) / 8;
   int vpot = slotFor(localCh); // 0..7 normal, 8..15 with Shift
 
-  // CTRL commands (Step G), unshifted VPOT range only. NOTE: `vpot` here is
-  // 0-based — hardware VPOT N is vpot N-1, so the commands live at vpot
-  // 0 (VPOT-1, open floating window), 1 (VPOT-2, open chain), 2 (VPOT-3,
-  // switch to PlugMode with the strip FX selected), 4 (VPOT-5, remove), 6
-  // (VPOT-7) and 7 (VPOT-8, move FX up/down). They are only
-  // active on units whose strip is assigned AND whose plugin is present on
-  // the selected track —
-  // only then is the target FX known. Other VPOTs fall through to the
-  // normal behaviour below.
-  if (isModifierPressed(VK_CONTROL) && vpot < 8 &&
-      (vpot == 0 || vpot == 1 || vpot == 2 || vpot == 4 || vpot == 6 ||
-       vpot == 7)) {
-    int stripIdx = getAssignedStripIndex(tr, unit);
-    int fxSlot = (stripIdx >= 0 && m_strips[stripIdx].isAssigned())
-        ? m_pAccess->resolveSlot(tr, stripIdx, m_strips[stripIdx])
-        : -1;
-    if (fxSlot < 0)
-      return false; // no active strip on this unit: command inactive
-    MCU_LOG("CSM CTRL cmd ch=%d unit=%d vpot=%d fxSlot=%d", channel, unit,
-            vpot, fxSlot);
-    if (vpot == 0 || vpot == 1) {
-      openFxWindow(tr, fxSlot, /*floating=*/vpot == 0);
+  // CTRL+VPOT commands (modifier command scheme), unshifted VPOT range
+  // only. Dispatch through the per-mode command table. A MATCHED command
+  // always consumes the event — when its precondition fails (no active
+  // strip on this unit) it is a no-op instead of falling through to the
+  // pick / toggle behaviour below. The command set is registered in the
+  // constructor; the bodies live in FxSlotCommands (shared with PlugMode).
+  if (isModifierPressed(VK_CONTROL) && !isModifierPressed(VK_SHIFT)) {
+    if (m_ctrlCommands.dispatch(VK_CONTROL, localCh, channel))
       return true;
-    }
-    if (vpot == 2) {
-      // "PlMode": switch to PlugMode with this unit's strip FX selected.
-      m_pCCSManager->switchToPlugModeWithSlot(tr, fxSlot, unit);
-      return true;
-    }
-    if (vpot == 4) {
-      MCU_LOG("CSM removeFx ch=%d unit=%d fxSlot=%d", channel, unit,
-              fxSlot);
-      if (TrackFX_Delete(tr, fxSlot)) {
-        TrackList_AdjustWindows(false);
-        CSurf_OnFXChange(tr, 1);
-        TrackList_UpdateAllExternalSurfaces();
-        m_pAccess->invalidateTrack(tr);
-        updateEverything();
-        return true;
-      }
-      return false;
-    }
-    if (moveFx(tr, fxSlot, (vpot == 6) ? -1 : +1))
-      return true;
-    return false; // move refused (chain edge): do nothing else
+    if (m_ctrlCommands.hasCommand(VK_CONTROL, localCh))
+      return false; // command inactive on this unit: do nothing else
   }
 
   int stripIdx = getAssignedStripIndex(tr, unit);
@@ -423,108 +406,75 @@ void ChannelStripMode::frameUpdate() {
     updateDisplay();
   }
   // Refresh display when CONTROL state changes (command legend on row 1).
-  bool ctrl = isModifierPressed(VK_CONTROL);
-  if (ctrl != m_lastCtrlState) {
-    m_lastCtrlState = ctrl;
+  if (modifierStateChanged(VK_CONTROL))
     updateDisplay();
-  }
 }
 
-// --- CTRL commands (Step G) ---
+// --- CTRL command handlers (modifier command scheme) ---
+//
+// The table (m_ctrlCommands) routes CTRL+VPOT presses to these handlers.
+// Each handler resolves the per-unit precondition (assigned strip + plugin
+// present on the selected track), performs the shared FX operation via
+// FxSlotCommands, then does the mode-specific post-processing (ChannelStrip
+// slot-cache invalidation + display refresh).
 
-void ChannelStripMode::openFxWindow(MediaTrack *tr, int fxSlot,
-                                    bool floating) {
-  // CONTROL+VPOT-1 (floating) / CONTROL+VPOT-2 (chain) — deliberate: the
-  // PlugMode
-  // window settings are IGNORED. Both TOGGLE: if the window/chain for this
-  // FX is already open it is closed, else it is opened. showflag 3/2 =
-  // show/close floating window, 1/0 = show/close chain.
-  int chainVis = TrackFX_GetChainVisible(tr);
-  HWND floatHwnd = TrackFX_GetFloatingWindow(tr, fxSlot);
-  int action;
+bool ChannelStripMode::ctrlResolveFxSlot(MediaTrack *tr, int ch, int &fxSlot) {
+  if (!tr)
+    return false;
+  int unit = (ch - 1) / 8;
+  int stripIdx = getAssignedStripIndex(tr, unit);
+  if (stripIdx < 0 || !m_strips[stripIdx].isAssigned())
+    return false;
+  fxSlot = m_pAccess->resolveSlot(tr, stripIdx, m_strips[stripIdx]);
+  return fxSlot >= 0; // plugin missing — needs press (+), not a command
+}
+
+bool ChannelStripMode::ctrlOpenFxWindow(int ch, bool floating) {
+  MediaTrack *tr = getSelectedTrack();
+  int fxSlot = -1;
+  if (!ctrlResolveFxSlot(tr, ch, fxSlot))
+    return false; // no active strip on this unit: command inactive
   if (floating)
-    action = (floatHwnd == NULL) ? 3 : 2; // open, or close if already open
+    FxSlotCommands::toggleFloatingWindow(tr, fxSlot);
   else
-    action = (chainVis == -1) ? 1 : 0;    // open, or close if already open
-  MCU_LOG("CSM openFxWindow slot=%d floating=%d chainVis=%d floatHwnd=%p"
-          " action=%d", fxSlot, (int)floating, chainVis, (void *)floatHwnd,
-          action);
-  TrackFX_Show(tr, fxSlot, action);
+    FxSlotCommands::toggleFxChain(tr, fxSlot);
   updateEverything();
+  return true;
 }
 
-bool ChannelStripMode::moveFx(MediaTrack *tr, int fxSlot, int dir) {
-  // REAPER 7.75+ allows EMPTY FX SLOTS: the user-visible "slot" (as
-  // reported by chain_index_to_slot, 0-BASED — verified) can differ from
-  // the dense FX "index" (0-based, real FX only). Moving by index +/- 1
-  // would jump OVER empty slots instead of stepping into them, so on 7.75+
-  // we move by SLOT. The actual move is done by tryMoveToUiSlot, which
-  // tries the possible API variants (0x800000 flag / slot_hint) and
-  // verifies each; only if nothing had any effect we fall back to the
-  // classic dense index move (no-op at real chain edges).
-  if (!tr || fxSlot < 0)
-    return false;
-  int n = TrackFX_GetCount(tr);
-  if (fxSlot >= n)
-    return false;
+bool ChannelStripMode::ctrlSwitchToPlugMode(int ch) {
+  MediaTrack *tr = getSelectedTrack();
+  int fxSlot = -1;
+  if (!ctrlResolveFxSlot(tr, ch, fxSlot))
+    return false; // no active strip on this unit: command inactive
+  // "PlMode": switch to PlugMode with this unit's strip FX selected.
+  int unit = (ch - 1) / 8;
+  m_pCCSManager->switchToPlugModeWithSlot(tr, fxSlot, unit);
+  return true;
+}
 
-  if (TrackFX_GetNamedConfigParm) {
-    int uiSlot = ChannelStripAccess::uiSlotForIndex(tr, fxSlot);
-    if (uiSlot >= 0) {
-      int targetSlot = uiSlot + dir;
-      char probe[64] = {0};
-      if (targetSlot >= 0 &&
-          TrackFX_GetNamedConfigParm(tr, targetSlot, "chain_slot_to_index",
-                                     probe, sizeof(probe))) {
-        MCU_LOG("CSM moveFx slot-aware idx=%d uiSlot=%d targetSlot=%d"
-                " raw=[%s]",
-                fxSlot, uiSlot, targetSlot, probe);
-        // An occupied target must use the original dense move. With two
-        // adjacent occupied slots, TrackFX_CopyToTrack(is_move=true) swaps
-        // their order; the slot_hint path would insert and shift later FX.
-        // chain_slot_to_index returns a dense FX index for an occupied slot
-        // and "empty:x" for an empty slot.
-        if (strncmp(probe, "empty:", 6) != 0) {
-          int targetIdx = atoi(probe);
-          if (targetIdx < 0 || targetIdx == fxSlot)
-            return false;
-          MCU_LOG("CSM moveFx occupied swap idx=%d targetIdx=%d", fxSlot,
-                  targetIdx);
-          TrackFX_CopyToTrack(tr, fxSlot, tr, targetIdx, true);
-          TrackList_AdjustWindows(false);
-          CSurf_OnFXChange(tr, 1);
-          TrackList_UpdateAllExternalSurfaces();
-          m_pAccess->invalidateTrack(tr);
-          updateEverything();
-          return true;
-        }
-        int r = ChannelStripAccess::tryMoveToUiSlot(tr, fxSlot, targetSlot);
-        if (r == 1) {
-          // slot_hint is a "preferred slot" hint — REAPER's GUI does not
-          // redraw the TCP/MCP FX list on its own after this call.
-          UpdateTimeline();
-          m_pAccess->invalidateTrack(tr);
-          updateEverything();
-          return true;
-        }
-        if (r == -1)
-          return false; // moved somewhere unexpected: stop here
-        // r == 0: no slot candidate had any effect -> dense fallback below
-      } else {
-        MCU_LOG("CSM moveFx slot-aware targetSlot=%d unknown (chain edge)",
-                targetSlot);
-      }
-    }
-  }
+bool ChannelStripMode::ctrlRemoveFx(int ch) {
+  MediaTrack *tr = getSelectedTrack();
+  int fxSlot = -1;
+  if (!ctrlResolveFxSlot(tr, ch, fxSlot))
+    return false; // no active strip on this unit: command inactive
+  if (!FxSlotCommands::removeFx(tr, fxSlot))
+    return false;
+  m_pAccess->invalidateTrack(tr);
+  updateEverything();
+  return true;
+}
 
-  // Fallback (REAPER < 7.75, or slot machinery without effect): dense
-  // index +/- 1.
-  int newSlot = fxSlot + dir;
-  if (newSlot < 0 || newSlot >= n)
-    return false; // would move out of the chain
-  MCU_LOG("CSM moveFx index-based slot=%d dir=%d new=%d chain=%d", fxSlot,
-          dir, newSlot, n);
-  TrackFX_CopyToTrack(tr, fxSlot, tr, newSlot, true);
+bool ChannelStripMode::ctrlMoveFx(int ch, int dir) {
+  MediaTrack *tr = getSelectedTrack();
+  int fxSlot = -1;
+  if (!ctrlResolveFxSlot(tr, ch, fxSlot))
+    return false; // no active strip on this unit: command inactive
+  if (!FxSlotCommands::moveFx(tr, fxSlot, dir))
+    return false; // move refused (chain edge): do nothing else
+  // REAPER's GUI does not always redraw on its own after a move; nudge the
+  // UI (kept from the original slot_hint path).
+  UpdateTimeline();
   // The slot cache now holds the old index for this track's strips.
   m_pAccess->invalidateTrack(tr);
   updateEverything();

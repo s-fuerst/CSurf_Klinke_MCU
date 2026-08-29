@@ -52,6 +52,7 @@
 #include "ChannelStripMap.h"
 #include "SurfaceConfig.h" // MAX_SURFACE_UNITS
 #include "ProjectConfig.h"
+#include "ModifierCommands.h" // CTRL+VPOT command table (Layer 2)
 #include <map>
 
 class ChannelStripAccess;
@@ -106,20 +107,31 @@ public:
   // called by the editor after a strip is mutated
   void bindingChanged();
 
-  // --- CTRL commands (Step G) ---
-  // CONTROL+VPOT-1: toggle the FLOATING FX window of the unit's strip FX on
-  // the selected track (close it if already open; PlugMode window settings
-  // ignored).
-  // CONTROL+VPOT-2: toggle the FX CHAIN (close it if already open).
+  // --- CTRL commands (modifier command scheme, see
+  // ai-docs/modifier-command-scheme.md) ---
+  // CONTROL+VPOT-1 ("Float"): toggle the FLOATING FX window of the unit's
+  // strip FX on the selected track (close it if already open; PlugMode
+  // window settings ignored).
+  // CONTROL+VPOT-2 ("Chain"): toggle the FX CHAIN (close it if already
+  // open).
   // CONTROL+VPOT-3 ("PlMode"): switch to PlugMode and select the unit's
   // strip FX there (active unit = the pressed unit's).
-  // CONTROL+VPOT-5: remove the assigned FX instance from the selected track.
-  void openFxWindow(MediaTrack *tr, int fxSlot, bool floating);
-  // CONTROL+VPOT-7/8: move the strip FX one slot up (-1) / down (+1).
-  // Empty target slots use the REAPER 7.75+ slot_hint path; occupied
-  // neighbouring slots use the original dense TrackFX_CopyToTrack move so
-  // the two FX exchange positions. Returns false at chain edges.
-  bool moveFx(MediaTrack *tr, int fxSlot, int dir);
+  // CONTROL+VPOT-5 ("Remove"): remove the assigned FX instance from the
+  // selected track.
+  // CONTROL+VPOT-7/8 ("FXup"/"FXdown"): move the strip FX one slot up
+  // (-1) / down (+1). Empty target slots use the REAPER 7.75+ slot_hint
+  // path; occupied neighbouring slots use the original dense
+  // TrackFX_CopyToTrack move so the two FX exchange positions.
+  //
+  // The command bodies live in FxSlotCommands (shared with PlugMode); the
+  // table routing in m_ctrlCommands; these handlers only resolve the
+  // per-unit precondition (assigned strip + plugin present) and the
+  // mode-specific post-processing (slot cache invalidation, refresh).
+  bool ctrlResolveFxSlot(MediaTrack *tr, int ch, int &fxSlot);
+  bool ctrlOpenFxWindow(int ch, bool floating);
+  bool ctrlSwitchToPlugMode(int ch);
+  bool ctrlRemoveFx(int ch);
+  bool ctrlMoveFx(int ch, int dir);
 
   // --- persistence ---
   // All 16 strips (header + VPOT mapping) live in ONE file,
@@ -160,6 +172,11 @@ private:
 
   bool m_selectionMode;
   bool m_lastShiftState;
-  bool m_lastCtrlState; // last CONTROL state, for the command legend refresh
+
+  // CTRL+VPOT command table (Layer 2). Populated in the constructor;
+  // dispatch happens at the top of vpotPressed(). The legend refresh uses
+  // CCSMode::modifierStateChanged() (no per-mode state member needed).
+  ModifierCommands m_ctrlCommands;
+
   int m_projectChangedConnectionId;
 };

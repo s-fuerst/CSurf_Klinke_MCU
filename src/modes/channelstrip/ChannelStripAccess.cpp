@@ -85,18 +85,6 @@ String ChannelStripAccess::normalizeName(const String &nameOrIdent) {
   return s.trim();
 }
 
-int ChannelStripAccess::findSlotByGUID(MediaTrack *tr, const String &guid) {
-  if (!tr || guid.isEmpty())
-    return -1;
-  int n = TrackFX_GetCount(tr);
-  for (int slot = 0; slot < n; slot++) {
-    GUID *g = TrackFX_GetFXGUID(tr, slot);
-    if (g && GUID2String(g) == guid)
-      return slot;
-  }
-  return -1;
-}
-
 int ChannelStripAccess::findSlotByIdent(MediaTrack *tr,
                                          const String &fxIdent) {
   if (!tr || fxIdent.isEmpty())
@@ -351,57 +339,6 @@ int ChannelStripAccess::addPlugin(MediaTrack *tr, int stripIndex,
         CacheEntry{slot, GUID2String(g)};
   }
   return slot;
-}
-
-int ChannelStripAccess::uiSlotForIndex(MediaTrack *tr, int fxIndex) {
-  if (!TrackFX_GetNamedConfigParm || !tr || fxIndex < 0)
-    return -1;
-  char buf[32] = {0};
-  if (TrackFX_GetNamedConfigParm(tr, fxIndex, "chain_index_to_slot", buf,
-                                 sizeof(buf)))
-    return atoi(buf);
-  return -1;
-}
-
-int ChannelStripAccess::tryMoveToUiSlot(MediaTrack *tr, int fxIdx,
-                                        int targetSlot) {
-  // REAPER 7.75+ only. Verified 2026-08-29: TrackFX_SetNamedConfigParm
-  // with "slot_hint" = <0-based slot number> is the ONLY mechanism that
-  // actually moves an FX into a (possibly empty) UI slot; the
-  // TrackFX_CopyToTrack 0x800000 flag had no effect at all. The value is
-  // 0-based (slot_hint = "2" placed the FX at 0-based slot 2).
-  if (!TrackFX_SetNamedConfigParm || !tr || fxIdx < 0)
-    return 0;
-  GUID *g0 = TrackFX_GetFXGUID(tr, fxIdx);
-  if (!g0)
-    return 0;
-  String guid = GUID2String(g0);
-  int oldIdx = fxIdx;
-  int oldSlot = uiSlotForIndex(tr, oldIdx);
-  if (oldSlot < 0 || oldSlot == targetSlot)
-    return 0;
-
-  char tmp[32];
-  snprintf(tmp, sizeof(tmp), "%d", targetSlot);
-  bool ok = TrackFX_SetNamedConfigParm(tr, oldIdx, "slot_hint", tmp);
-  // Verify where the FX actually ended up.
-  int moved = findSlotByGUID(tr, guid);
-  int newSlot = (moved >= 0) ? uiSlotForIndex(tr, moved) : -1;
-  MCU_LOG("CSA moveToUiSlot slot_hint=%d ok=%d old=(idx %d slot %d)"
-          " -> new=(idx %d slot %d) target=%d",
-          targetSlot, (int)ok, oldIdx, oldSlot, moved, newSlot, targetSlot);
-  if (newSlot == targetSlot) {
-    // slot_hint is a "preferred slot" hint — REAPER does NOT redraw the
-    // TCP/MCP FX list on its own after this call. Adjust the track panels
-    // first, notify the FX change, then republish the surface state.
-    TrackList_AdjustWindows(false);
-    CSurf_OnFXChange(tr, 1);
-    TrackList_UpdateAllExternalSurfaces();
-    return 1;
-  }
-  if (moved < 0 || moved != oldIdx || newSlot != oldSlot)
-    return -1; // moved, but to the wrong place: stop touching it
-  return 0;    // no effect at all
 }
 
 void ChannelStripAccess::plugMoved(MediaTrack *pOldTrack, int oldSlot,
