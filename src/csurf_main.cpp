@@ -179,10 +179,18 @@ void *(*projectconfig_var_addr)(ReaProject *proj, int idx);
 void (*guidToString)(GUID *g, char *dest);
 void (*stringToGuid)(const char *str, GUID *g);
 
-char *(*GetSetObjectState)(void *obj, char *str);
+char *(*GetSetObjectState)(void *obj, const char *str);
 void (*FreeHeapPtr)(void *ptr);
 
 int (*GetNumTracks)();
+
+// track / item manipulation (PanMode CTRL+VPOT commands)
+int (*CountTracks)(ReaProject *projOptional);
+MediaTrack *(*GetTrack)(ReaProject *proj, int trackidx);
+MediaTrack *(*InsertTrackAtIndex)(int idx, bool wantDefaults);
+void (*DeleteTrack)(MediaTrack *tr);
+MediaItem *(*GetTrackMediaItem)(MediaTrack *tr, int itemidx);
+bool (*DeleteTrackMediaItem)(MediaTrack *tr, MediaItem *it);
 
 // returns index of effect visible in chain, or -1 for chain hidden, or -2 for
 // chain visible but no effect selected
@@ -360,6 +368,14 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   IMPAPI(FreeHeapPtr);
 
   IMPAPI(GetNumTracks);
+  // PanMode CTRL+VPOT commands. All available since REAPER 4.0 or earlier,
+  // well below the 6.37 load floor.
+  IMPAPI(CountTracks)
+  IMPAPI(GetTrack)
+  IMPAPI(InsertTrackAtIndex)
+  IMPAPI(DeleteTrack)
+  IMPAPI(GetTrackMediaItem)
+  IMPAPI(DeleteTrackMediaItem)
   // returns index of effect visible in chain, or -1 for chain hidden, or -2 for
   // chain visible but no effect selected
   IMPAPI(TrackFX_GetChainVisible)
@@ -518,6 +534,14 @@ public:
 
         if (lastbuf)
           _this->m_output->SendMsg((MIDI_event_t *)lastbuf->Get(), -1);
+        { // TEMP DEBUG
+          static int tcnt = 0;
+          if (tcnt < 5) {
+            FILE *f = fopen("/tmp/klinke_thr.txt", "a");
+            if (f) { fprintf(f, "threadSend#%d size=%d\n", tcnt, lastbuf ? lastbuf->GetSize() : -1); fclose(f); }
+            tcnt++;
+          }
+        }
         scnt = 0;
       } else {
         Sleep(1);

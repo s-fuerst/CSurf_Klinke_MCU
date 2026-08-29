@@ -278,6 +278,23 @@ In FX-Mode the meterbridge displays the level of the first eight
 channels of the selected track, unless the device has like the Mackie Control Universal only a virtual 
 meterbridge (on the display).
 
+\subsubsection{Commands}\label{plugcommands}
+In the FX-Mode the \hyperref[commands]{Commands} act on the accessed plugin.
+Press the \vpot while holding the \control modifier; while \control is held,
+the display shows the command label on the \vpots:
+
+\begin{itemize}
+\item \control + \vpot 1 (\emph{Float}): Toggle the floating window of the
+  accessed plugin. This command is not offered while the ``Limit float''
+  \attribute is set to ``only chain''.
+\item \control + \vpot 2 (\emph{Chain}): Toggle the FX chain window of the
+  track of the accessed plugin.
+\item \control + \vpot 5 (\emph{Remove}): Remove the accessed plugin from the
+  track.
+\item \control + \vpot 7 / \vpot 8 (\emph{FXup} / \emph{FXdown}): Move the
+  accessed plugin one slot up / down in the FX chain.
+\end{itemize}
+
 %%% Local Variables: 
 %%% mode: latex
 %%% TeX-master: "../mcu_klinke_manual"

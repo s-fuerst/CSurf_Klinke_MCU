@@ -1,4 +1,4 @@
-* [12/15] v0.9.5 Release
+* [14/14] v0.9.5 Release
 ** DONE Track/Mixer mode (PanMode): show fader value on touch with meters-on-display
    While a fader is touched, keep the value it controls (Volume, or Pan in
    flip mode) visible on row 1, even when "meters on display"
@@ -68,9 +68,7 @@ blank (display, faders 0, VPOTs off) but keep the bank LED and show the
 selectable (used) pages via the page LEDs; the current-page blink is
 off. Persisted as UNIT_STATES v2 (per-unit "empty" attribute); legacy
 states are normalized on restore.
-** TODO Merge PR#1
 ** DONE Test Plug-Favorites with extenders 
-** TODO Improved Documentation #5 
 ** DONE Leak-Detection
 Run a leak detection pass (valgrind / AddressSanitizer)
 before the first release to identify and fix any memory leaks. Bitbucket
@@ -78,15 +76,17 @@ issue #27 reported a leak detector warning on Reaper close; the
 CCSModesEditor destructor crash (#50) may also be leak-related.
 ** DONE code check regarding null pointer tests etc.
 ** DONE Update Link to manual
-** DONE Test on original Mackie Control
-** TODO Installation via ReaPack
-* [2/2] v0.9.5.5 Release
+** DONE Test on original Mackie Control 
 ** DONE #1 Monitor and RecArm can only be changed for armed tracks    :bug:
 ** DONE use TrackFX_GetParameterStepSizes to improve automatical mapping,
 and parameter learn (fill table automatically)
-* [0/2] v0.9.7 ChannelStrip
-** TODO ChannelStripMode                                           :feature:
-** TODO Support for Move Plugins :feature:
+* [2/6] v0.9.7 ChannelStrip
+** DONE ChannelStripMode                                          :feature:
+** DONE Support for Move Plugins
+** TODO Bug: Goodbye not removed at start
+** TODO Merge PR#1
+** TODO Installation via ReaPack
+** TODO Improved Documentation #5                           :feature:
 * [0/1] v0.9.9 PerformanceMode
 ** TODO PerformanceMode
 * [0/4] v1.0.0 Release

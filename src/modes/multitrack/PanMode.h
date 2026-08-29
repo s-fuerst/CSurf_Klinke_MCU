@@ -6,6 +6,7 @@
 #include "MultiTrackMode.h"
 #include "PlugModeOptions.h"
 #include "MultiTrackSelector.h"
+#include "ModifierCommands.h" // CTRL+VPOT command table (Layer 2)
 #include <vector>
 
 class PanMode : public MultiTrackMode {
@@ -20,6 +21,8 @@ public:
   bool vpotMoved(int channel,
                  int numSteps); // numSteps are negativ for left rotation
 
+  bool vpotPressed(int channel, bool pressed) override;
+
   void updateDisplay();
 
   Selector *getSelector() { return m_pSelector; }
@@ -32,6 +35,29 @@ private:
   // which the VPOT-controlled value is shown on row 1 instead of the
   // fader-controlled value. 0 means "not showing".
   std::vector<DWORD> m_vpotValueShownTill;
+
+  // --- CTRL commands (modifier command scheme, see
+  // ai-docs/modifier-command-scheme.md). Target is the track on the pressed
+  // channel; without a track only "Insert" is active (it inserts at
+  // position 0). The command set is registered in the constructor; dispatch
+  // happens at the top of vpotPressed(). The row-1 legend is drawn by
+  // updateCtrlLegend() from updateDisplay() (PanMode redraws every frame,
+  // so the legend follows the live modifier state — no edge tracking).
+  bool ctrlInsertTrack(int channel);
+  bool ctrlDuplicateTrack(int channel);
+  bool ctrlClearTrack(int channel);
+  bool ctrlRemoveTrack(int channel);
+  void updateCtrlLegend();
+
+  // RPPXML chunk helpers (REAPER has no native API for these operations):
+  // stripEnvelopeSections removes every <ENV ...> section (used by
+  // "Clear"); withoutTopLevelGUID drops the track's own GUID line so a
+  // duplicated chunk gets a fresh identity (used by "Duplic").
+  bool stripEnvelopeSections(const String &chunk, String &out);
+  String withoutTopLevelGUID(const String &chunk);
+
+  // CTRL+VPOT command table (Layer 2).
+  ModifierCommands m_ctrlCommands;
 
   void ensureVpotValueState(int channelCount);
   bool showingVpotValue(int channel, DWORD now) {
