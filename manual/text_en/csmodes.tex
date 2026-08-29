@@ -14,9 +14,9 @@ send levels of this channel.
 The LED of the VPOT ASSIGN button flashes when the mode corresponding
 to this button is activated. If it makes sense to select a mode the LED
 is turned on. For example when only one track is selected and it contains an
-FX, the LED of the \plug button is turned on. The Plug-, Action- and
-Pan-Mode come with a separate editor. The editor can be opened by pressing
-\alt and the corresponding VPOT ASSIGN button.
+FX, the LED of the \plug button is turned on. The Channel Strip-, Plug-,
+Action- and Pan-Mode come with a separate editor. The editor can be opened
+by pressing \alt and the corresponding VPOT ASSIGN button.
 
 The Plug-, Action- and Pan-Mode also come with mode specific
 options\footnote{The Action- and Pan-Mode options are the same.} that
@@ -32,6 +32,30 @@ option. Alternatively, you can just turn the \vpots. These options
 work on a global, not a project-dependent basis.
 
 \noindent
+\textbf{Commands.}\label{commands} In addition to the direct functions of
+the buttons and \vpots, several channel-strip modes support short
+\emph{commands} that are triggered by pressing a \vpot while holding the
+\control modifier. The set of commands depends on the mode: in the
+\hyperref[panmode]{Pan-Mode} they act on the track of the pressed channel,
+in the \hyperref[plugmode]{FX-Mode} and the
+\hyperref[channelstrip]{Channel Strip-Mode} they act on a plugin of the
+track (opening the floating window or the FX chain, moving the FX up or down
+in the chain, removing the FX, ...). While you hold the \control modifier,
+the display shows a short label on every \vpot that carries a command, so
+you always see which command is available on that \vpot. The command set of
+each mode is listed in the section of that mode.
+
+\noindent
+\textbf{Modifier keys.} Across the channel-strip modes the four modifier
+buttons follow the same convention. \shift is reserved for \emph{addressing}:
+it selects the second 8 of a group (e.g.~the \vpots 9\,--\,16, or the FXs,
+presets or pages 9\,--\,16) and is never used to trigger a command. \option
+switches the display to the mode \emph{options} (with \shift \option the 2nd
+options). \alt opens the mode's \emph{editor} when pressed together with the
+corresponding VPOT ASSIGN button. And \control triggers the \emph{commands}
+described above when pressed together with a \vpot.
+
+\noindent
 \textbf{Multiple units.} When more than one hardware unit is
 configured (see section~\ref{units}), all channel-strip modes span the
 full channel count: each additional unit simply adds eight more
@@ -43,6 +67,7 @@ the FX-Mode as described in section~\ref{plugmode}.
 
 
 \pikText{panmode}
+\pikText{channelstrip}
 \pikText{actionmode}
 \pikText{sendmode}
 \pikText{plugmode}

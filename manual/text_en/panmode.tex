@@ -194,6 +194,23 @@ the caseof the TCP, only the tracks are shown that are selected.
 \pikTable[15cm]{multitrack_options2}{2nd Options in Pan-Mode and Action-Mode
 (\shift \option)}{}{} 
 
+\subsubsection{Commands}\label{pancommands}
+In the Pan-Mode the \hyperref[commands]{Commands} act on the track that is
+shown on the pressed channel. Press the \vpot while holding the \control
+modifier; while \control is held, the display shows the command label on the
+\vpots (an empty channel can only insert a track):
+
+\begin{itemize}
+\item \control + \vpot 1 (\emph{Insert}): Insert a new track directly after
+  the track on this channel. On an empty channel the new track is inserted at
+  the beginning of the track list.
+\item \control + \vpot 2 (\emph{Duplic}): Duplicate the track, including its
+  items and envelopes, inserted after the original.
+\item \control + \vpot 3 (\emph{Clear}): Delete every item and every envelope
+  of the track.
+\item \control + \vpot 4 (\emph{Remove}): Remove the track.
+\end{itemize}
+
 %%% Local Variables: 
 %%% mode: latex
 %%% TeX-master: "../mcu_klinke_manual"

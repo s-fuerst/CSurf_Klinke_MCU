@@ -1,0 +1,166 @@
+\subsection{Channel Strip-Mode}\label{channelstrip}
+
+The Channel Strip-Mode can be selected by pressing the \track button of the
+VPOT ASSIGN section. It is built on the same base as the
+\hyperref[panmode]{Pan-Mode}, so the \faders, the \select, \mute, \solo
+and \rec buttons, the \bankdu/\channeldu navigation and the LEDs all work
+exactly as described for the Pan-Mode. The only difference is that the
+\vpots no longer act on the track assigned to the individual channel strip,
+but on the \textbf{selected track}: all \vpots of a unit drive the
+parameters of one plugin of the selected track's FX chain.
+
+The idea behind the mode is to have quick access to the most used parameters
+of a plugin without opening the FX window. To structure this, the mode works
+on two levels:
+
+\begin{itemize}
+\item \textbf{Channel strips.} There are \textbf{16 global channel
+  strips} that exist independently of any track or project. Each strip is
+  bound to \emph{one} plugin and stores the mapping of that plugin's
+  parameters onto 16 \vpots (VPOTs 1\,--\,8, and 9\,--\,16 with the \shift
+  modifier). The strips are shared across all tracks and all projects and
+  are stored in the user location.
+\item \textbf{Assignments.} For every track and every hardware unit you can
+  assign one of the 16 global strips (or none). The 8 \vpots of that unit
+  (16 with \shift) then drive the 16 parameters of the assigned strip on the
+  selected track. Two units of the same track can be assigned to different
+  strips, e.g.~one for the EQ and one for the compressor. These assignments
+  are stored in the \reaper project file.
+\end{itemize}
+
+The mode requires exactly \textbf{one selected track}. If no track, or more
+than one track, is selected, no strip is active: the \vpots are dark and the
+display shows the hint ``You must select a single track.''
+
+\begin{itemize}
+\item \faders: Control the track volume (or the pan, when \flip is active),
+  as in the Pan-Mode.
+\item \vpots: Control the parameters of the strip assigned to this unit.
+  Turning a \vpot nudges the parameter; pressing a \vpot toggles the
+  parameter between its two extreme values (e.g.~on/off).
+\item \shift \vpots: Address the second 8 parameters of the strip (VPOTs
+  9\,--\,16).
+\item \select, \mute, \solo, \rec: As in the
+  \hyperref[panmode]{Pan-Mode}.
+\item \bankdu / \channeldu: As in the \hyperref[panmode]{Pan-Mode}.
+\item \flip: Flip the function of the \faders and \vpots, as in the
+  Pan-Mode.
+\item \mfader: Control the master volume.
+\end{itemize}
+
+\subsubsection{Selecting and re-picking a strip}\label{stripselect}
+
+How a unit's \vpots behave depends on whether a strip is assigned to that
+unit for the selected track, and whether the plugin of that strip is present
+on the track:
+
+\begin{itemize}
+\item \textbf{No strip (or plugin missing).} The display of the unit shows
+  the names of the 16 global strips: VPOT 1\,--\,8 address strips
+  1\,--\,8, and with \shift the VPOTs address strips 9\,--\,16. A strip whose
+  plugin is not yet present on the selected track is marked with a leading
+  ``\verb|+|''. Pressing a \vpot assigns the corresponding strip to this unit
+  for the selected track and, if the plugin is still missing, adds it to the
+  FX chain automatically (at the strip's insert position, see
+  \hyperref[channelstripeditor]{next section}). If the same plugin is already
+  on the track, the existing instance is reused and no second instance is
+  added.
+\item \textbf{Strip with plugin present.} The \vpots control the parameters
+  of the assigned strip. The display shows the parameter name while idle and,
+  shortly after turning a \vpot, its current value.
+\end{itemize}
+
+To change the strip of a unit that already has one, \textbf{press and hold
+the \track button}. While it is held, every unit shows the strip-name list
+again and a \vpot press re-assigns the strip for that unit. When you release
+the \track button, the \vpots return to parameter control.
+
+\subsubsection{Editor}\label{channelstripeditor}
+The channel strips are edited in the \hyperref[F:Screenshot_ChannelStrip_Mode]{Channel
+Strip-Mode editor}, which can be opened with \alt \track (see
+Figure~\ref{F:Screenshot_ChannelStrip_Mode}). The editor is global: it shows
+the 16 channel strips independently of the selected track or unit.
+
+\pikFigure[0.62][11.5cm][-2.4mm]{Screenshot_ChannelStrip_Mode}{Channel
+  Strip-Mode editor (\alt \track)}{}{}
+
+Each row of the table represents one of the 16 global strips. The columns
+are:
+
+\begin{itemize}
+\item \textbf{VPOT}: The position of the strip in the strip list (1\,--\,8
+  and Shift 1\,--\,Shift 8). This is the number that the \vpots of a unit
+  refer to when they show the strip-name list.
+\item \textbf{Plugin}: The plugin bound to this strip. You can type to filter
+  the list of installed plugins or pick one from the list. Selecting
+  ``--- (no plugin) ---'' clears the whole strip (plugin, abbreviation and
+  the \vpot mapping). When you pick a different plugin, the abbreviation is
+  regenerated from the new plugin name.
+\item \textbf{Abbrev}: A short display abbreviation (up to 5 characters)
+  that is shown on the MCU. It is filled automatically from the plugin name
+  and can be edited.
+\item \textbf{Insert Position}: Where the plugin is inserted into the FX
+  chain when a \vpot press adds it: at the \emph{first} position, at a fixed
+  position 2\,--\,8, or \emph{last}.
+  
+  \par With REAPER 7.75 and the corresponding mixer option for empty FX
+  slots, a fixed position (2\,--\,8) is honored exactly: the plugin is placed
+  in that slot even if this leaves empty slots (gaps) in the FX chain. On
+  older REAPER versions, or with that option disabled, the fixed position is
+  only treated as a maximum: if the chain contains fewer FX, the plugin is
+  inserted earlier (in a higher slot) instead of leaving gaps. The
+  \emph{first} and \emph{last} positions are not affected by this.
+\item \textbf{Edit Mapping}: Opens the mapping editor for this strip, see
+  \hyperref[stripmapping]{next section}.
+\end{itemize}
+
+\subsubsection{Mapping Editor}\label{stripmapping}
+The ``Edit Mapping'' button of a strip opens the
+\hyperref[F:Screenshot_ChannelStrip_Mapping]{VPOT mapping editor} (see
+Figure~\ref{F:Screenshot_ChannelStrip_Mapping}). It shows 16 rows
+(VPOT 1\,--\,8 and Shift 1\,--\,Shift 8), one for each \vpot of the strip.
+
+\pikFigure[0.6][9.0cm][-2.2mm]{Screenshot_ChannelStrip_Mapping}{VPOT mapping
+  editor (\texttt{Edit Mapping})}{}{}
+
+For each row you select the parameter of the strip's plugin that the \vpot
+should control in the \textbf{Parameter} column. The parameter can be picked
+directly from the combo box, or you can select the row and then change the
+corresponding value in the plugin's own user interface; the parameter that
+changes is assigned to the selected row. The \textbf{Name} column holds a
+short display label (up to 6 characters) that is shown on the MCU; it is
+filled automatically from the parameter name and can be edited afterwards.
+
+The mapping of a strip is applied to every unit that is assigned to that
+strip. If the plugin is not present on the selected track, the editor adds a
+temporary instance for the purpose of learning the mapping and removes it
+again when the editor is closed.
+
+\subsubsection{Commands}\label{channelstripcommands}
+In the Channel Strip-Mode the \hyperref[commands]{Commands} act on the strip
+FX of the pressed unit on the selected track. Press the \vpot while holding
+the \control modifier; while \control is held, the display shows the command
+label on the active units.
+
+\begin{itemize}
+\item \control + \vpot 1 (\emph{Float}): Toggle the floating window of the
+  strip FX.
+\item \control + \vpot 2 (\emph{Chain}): Toggle the FX chain window of the
+  selected track.
+\item \control + \vpot 3 (\emph{PlMode}): Switch to the
+  \hyperref[plugmode]{FX-Mode} and select the strip FX there.
+\item \control + \vpot 5 (\emph{Remove}): Remove the strip FX from the
+  selected track.
+\item \control + \vpot 7 / \vpot 8 (\emph{FXup} / \emph{FXdown}): Move the
+  strip FX one slot up / down in the FX chain.
+\end{itemize}
+
+\subsubsection{Options}
+The Channel Strip-Mode uses the same Main Options and 2nd Options as the
+\hyperref[panmode]{Pan-Mode} (see Table~\ref{T:multitrack_options1} and
+Table~\ref{T:multitrack_options2}).
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "../mcu_klinke_manual"
+%%% End:
