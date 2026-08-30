@@ -244,10 +244,8 @@ reaper loads the .dll/.so/.dylib
   macOS (no impl in JUCE 8). Linux/X11 needs the manual pump (#if
   JUCE_LINUX in csurf_mcu.cpp Run()).
 - JUCE modal dialogs in this plugin: NEVER use the synchronous
-  runModalLoop() pattern (DialogWindow::runModalLoop; AlertWindow::
-  showMessageBox also goes through runModalLoop and should be assumed
-  equally risky, though untested) — in the REAPER csurf plugin the JUCE
-  "message thread" assumptions of runModalLoop do not hold (REAPER's
+  DialogWindow::runModalLoop() pattern — in the REAPER csurf plugin the
+  JUCE "message thread" assumptions of runModalLoop do not hold (REAPER's
   main loop pumps JUCE's X11 queue via dispatchNextMessageOnSystemQueue
   in Run()), so runModalLoop deadlocks: the dialog never appears and
   Reaper hangs (found 2026-08-30 in the Channel Strip save/load
@@ -258,9 +256,13 @@ reaper loads the .dll/.so/.dylib
   (the DialogWindow auto-deletes via the ModalComponentManager when the
   modal state ends). Synchronous save/load work belongs into the
   button-callback that precedes exitModalState; on failure keep the
-  dialog open and show an error in a status Label (no AlertWindow).
+  dialog open and show an error in a status Label.
+  EXCEPTION: AlertWindow::showMessageBox works fine in practice (tested
+  2026-08-31 via the ChannelStripParamEditor::open alerts "No track
+  selected" / "No plugin assigned" / "Could not open the plugin") — it
+  goes through a similar mechanism but is OK for short messages.
   See src/modes/channelstrip/editor/ChannelStripFileDialogs.{h,cpp} as
-  the reference implementation.
+  the reference implementation for the async dialogs.
 - macOS SWELL stub: each platform has a DIFFERENT swell-modstub
   variant. macOS = swell-modstub.mm (NSApp delegate constructor),
   Linux = swell-modstub-generic.cpp (SWELL_LOAD_SWELL_DYLIB dlopens

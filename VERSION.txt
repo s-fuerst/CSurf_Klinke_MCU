@@ -8,4 +8,4 @@
 # This file is only ever READ by CMake; it is never rewritten automatically.
 # Edit it by hand to change the version or build number, then configure.
 # Displayed in Reaper as: v<version> build <count>.
-0.9.7.0 6
+0.9.7.0 7
