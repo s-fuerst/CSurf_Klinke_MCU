@@ -184,51 +184,6 @@ reaper loads the .dll/.so/.dylib
   - Unit type encoding (CB_SETITEMDATA and KLINKE2 tokens):
     0 = mackie-main, 1 = mackie-ext, 2 = prox-main, 3 = prox-ext.
 
-### Using the knowledge graph (graphify)
-
-A `graphify-out/graph.json` knowledge graph lives in the repo root. It is the
-fastest way to understand cross-subsystem relationships before changing them.
-**Treat any architecture question as a graphify query first** when the graph
-exists.
-
-**Keep it fresh.** After editing source files, run `graphify_update .` before the
-next query — it re-extracts only changed files (cheap) and keeps node locations
-and edges accurate. A stale graph silently points you at the wrong line numbers.
-
-**Pick the right tool for the question:**
-
-- **`graphify_explain "<concept>"` — component audit (preferred default).**
-  Returns only the direct neighbours of one node — no truncation regardless of
-  graph size. Run this **before** changing a class to confirm you have seen every
-  caller/dependency. Example: `graphify_explain "Tracks"` before editing
-  channel-mapping logic surfaces every consumer of the channel vector.
-- **`graphify_path "<from>" "<to>"` — impact / data-flow tracing.** Best for
-  "how does an event reach every unit's display?" type questions. It walks a
-  single shortest path and lists every station, so missed hops (e.g. a
-  `getDisplayHandler()` that only returns unit 0) become obvious.
-- **`graphify_query "<q>" --dfs --budget 4000` — deep connectivity.** Use DFS
-  (not the default BFS) and a raised `--budget` for "what is everything connected
-  to X?" questions. BFS scatters into hundreds of nodes and truncates; DFS stays
-  on path and wastes less of the budget on noise.
-
-**Known limitations — use `grep`/`read` instead:**
-
-- **Finding hardcoded constants** (e.g. every `i <= 8` or `resize(8, …)`):
-  graphify is *not* a text search. Use `rg -n "<= 8|resize\(8"` and then read
-  the hits.
-- **Exact code for edits:** graphify node labels and locations orient you, but
-  `edit` needs verbatim source text — switch to `read` once you know the file.
-- **BFS truncation:** a default-budget BFS over this codebase easily finds
-  300+ nodes and cuts ~80% of them. The cut is purely by graph distance from
-  the seed (not by relevance), so an important far-away node can vanish.
-  Mitigate with narrow seeds, DFS, `graphify_explain`, or `--budget`.
-
-**Workflow that works well here:** graphify (`explain`/`path`) to find the
-relevant files and confirm the blast radius → `read` for the exact text → `edit`
-→ build + deploy → `graphify_update` to refresh. Don't skip the first step on a
-change that touches more than one subsystem — the graph catches cross-subsystem
-callers that a single-file read misses.
-
 ## 5. References
 - **Reaper Extension / csurf SDK** — https://github.com/justinfrankel/reaper-sdk
   (most relevant: `reaper-sdk/reaper-plugins/reaper_csurf/`)
@@ -288,6 +243,24 @@ callers that a single-file read misses.
   REAPER main thread); do NOT call dispatchNextMessageOnSystemQueue on
   macOS (no impl in JUCE 8). Linux/X11 needs the manual pump (#if
   JUCE_LINUX in csurf_mcu.cpp Run()).
+- JUCE modal dialogs in this plugin: NEVER use the synchronous
+  runModalLoop() pattern (DialogWindow::runModalLoop; AlertWindow::
+  showMessageBox also goes through runModalLoop and should be assumed
+  equally risky, though untested) — in the REAPER csurf plugin the JUCE
+  "message thread" assumptions of runModalLoop do not hold (REAPER's
+  main loop pumps JUCE's X11 queue via dispatchNextMessageOnSystemQueue
+  in Run()), so runModalLoop deadlocks: the dialog never appears and
+  Reaper hangs (found 2026-08-30 in the Channel Strip save/load
+  dialogs). Use the ASYNC pattern instead — the one
+  ChannelStripParamEditor::open() proves works here: build the content
+  component, DialogWindow::LaunchOptions + launchAsync(), and let the
+  content call getParentComponent()->exitModalState(n) to close
+  (the DialogWindow auto-deletes via the ModalComponentManager when the
+  modal state ends). Synchronous save/load work belongs into the
+  button-callback that precedes exitModalState; on failure keep the
+  dialog open and show an error in a status Label (no AlertWindow).
+  See src/modes/channelstrip/editor/ChannelStripFileDialogs.{h,cpp} as
+  the reference implementation.
 - macOS SWELL stub: each platform has a DIFFERENT swell-modstub
   variant. macOS = swell-modstub.mm (NSApp delegate constructor),
   Linux = swell-modstub-generic.cpp (SWELL_LOAD_SWELL_DYLIB dlopens

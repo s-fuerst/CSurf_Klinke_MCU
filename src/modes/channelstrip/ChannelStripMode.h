@@ -139,6 +139,40 @@ public:
   // startup; saved when either the main editor or the mapping editor closes.
   void loadStripsFromFile();
   void saveStripsToFile();
+
+  // --- user-file import/export (Channel Strip editor Save/Load buttons) ---
+  // User files use the SAME format as channelstrips.xml: a <CHANNELSTRIPS>
+  // root with one or more <STRIP nr=..> children. A single-strip file
+  // simply contains one <STRIP>.
+  bool saveStripToUserFile(int index, const juce::File &file) const;
+  // Reads the FIRST <STRIP> element of the file into slot `index`,
+  // overwriting it (no confirmation), then persists the global file.
+  bool loadStripFromUserFile(int index, const juce::File &file);
+  bool saveAllStripsToUserFile(const juce::File &file) const;
+  // FULL REPLACE: all 16 slots are wiped first, then the <STRIP nr=..>
+  // elements present in the file are set. Only applied when the file
+  // contains at least one valid <STRIP>, so a bad file never wipes the
+  // current set.
+  bool loadAllStripsFromUserFile(const juce::File &file);
+
+  // User-file layout (all below userMapsDir(), the dir of channelstrips.xml):
+  //   Strips/ — one file per single channel strip (Save/Load row buttons)
+  //   Sets/   — one file per complete set, all 16 slots (toolbar buttons)
+  // The categories are managed separately; each load dialog only lists the
+  // files of its own category.
+  static juce::File stripFilesDir();
+  static juce::File setFilesDir();
+  // Base dir holding channelstrips.xml (also the choosers' legacy start dir).
+  static juce::File userMapsDir();
+
+  // Default file name for strip `index`: its abbrev (sanitized) + ".xml",
+  // or "stripNN.xml" when the abbrev is empty.
+  String stripDefaultName(int index) const;
+  // Sanitize a user-typed name (invalid filename chars replaced by '_')
+  // and map it into the given directory, appending ".xml" when missing.
+  static juce::File stripFileForName(const String &name, const juce::File &dir);
+  // List all *.xml files of a directory, sorted by name (empty if none).
+  static StringArray listXmlFiles(const juce::File &dir);
   // per-(track, unit) assignments: stored in the Reaper project via
   // ProjectConfig (WRITE/READ/FREE).
   void projectChanged(XmlElement *pRootNode, ProjectConfig::EAction action);
@@ -151,7 +185,7 @@ private:
   int slotFor(int localCh);
   void updateChannel(int globalChannel);
   // persistence helpers
-  static juce::File getStripsDir();
+  static juce::File getStripsDir(); // = userMapsDir()
   static juce::File getGlobalFile();
 
   ChannelStripAccess *m_pAccess;

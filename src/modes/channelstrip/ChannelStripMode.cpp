@@ -514,10 +514,24 @@ void ChannelStripMode::removeEditor() {
 // ===========================================================================
 
 File ChannelStripMode::getStripsDir() {
-#ifdef _WIN32
+// One per-OS home for all channel-strip files (the global channelstrips.xml
+// and every user save/load file the choosers open in):
+//   Windows : <Documents>\Reaper\MCU\ChannelStripMaps\
+//             (REAPER keeps user data in Documents on Windows)
+//   macOS   : ~/Library/Application Support/REAPER/MCU/ChannelStripMaps/
+//             (standard per-app support dir; REAPER itself uses
+//              ~/Library/Application Support/REAPER there)
+//   Linux   : ~/.config/REAPER/MCU/ChannelStripMaps/
+//             (XDG-style per-app config dir; REAPER itself uses
+//              ~/.config/REAPER there)
+#if defined(_WIN32)
   File dir = File::getSpecialLocation(File::userDocumentsDirectory)
                      .getFullPathName() +
              String("\\Reaper\\MCU\\ChannelStripMaps\\");
+#elif defined(JUCE_MAC)
+  File dir = File::getSpecialLocation(File::userHomeDirectory)
+                     .getFullPathName() +
+             String("/Library/Application Support/REAPER/MCU/ChannelStripMaps/");
 #else
   File dir = File::getSpecialLocation(File::userHomeDirectory)
                      .getFullPathName() +
@@ -557,6 +571,155 @@ void ChannelStripMode::saveStripsToFile() {
   if (!root->writeToFile(getGlobalFile(), String()))
     MCU_LOG("CSM saveStripsToFile FAILED");
   delete root;
+}
+
+File ChannelStripMode::userMapsDir() { return getStripsDir(); }
+
+File ChannelStripMode::stripFilesDir() {
+  File dir = getStripsDir().getChildFile("Strips");
+  if (!dir.exists())
+    dir.createDirectory();
+  return dir;
+}
+
+File ChannelStripMode::setFilesDir() {
+  File dir = getStripsDir().getChildFile("Sets");
+  if (!dir.exists())
+    dir.createDirectory();
+  return dir;
+}
+
+static String sanitizeFileNamePart(const String &name) {
+  String s = name.trim();
+  for (const char bad : {'/', '\\', ':', '*', '?', '"', '<', '>', '|'})
+    s = s.replace(String(bad), "_");
+  return s;
+}
+
+String ChannelStripMode::stripDefaultName(int index) const {
+  if (index < 0 || index >= kNumStrips)
+    return String();
+  String name = sanitizeFileNamePart(m_strips[index].getShortName());
+  if (name.isEmpty())
+    name = "strip" + String(index + 1).paddedLeft('0', 2);
+  return name;
+}
+
+File ChannelStripMode::stripFileForName(const String &name, const File &dir) {
+  String n = sanitizeFileNamePart(name);
+  if (n.isNotEmpty() && !n.endsWithIgnoreCase(".xml"))
+    n = n + ".xml";
+  return dir.getChildFile(n);
+}
+
+StringArray ChannelStripMode::listXmlFiles(const File &dir) {
+  StringArray names;
+  if (dir.exists()) {
+    for (const auto &entry : RangedDirectoryIterator(dir, false, "*.xml")) {
+      const File f = entry.getFile();
+      if (f.existsAsFile())
+        names.add(f.getFileName());
+    }
+  }
+  names.sort([](const String &a, const String &b) {
+    return a.compareIgnoreCase(b) < 0;
+  });
+  return names;
+}
+
+bool ChannelStripMode::saveStripToUserFile(int index, const File &file) const {
+  if (index < 0 || index >= kNumStrips || !m_strips[index].isAssigned())
+    return false;
+  XmlElement *root = new XmlElement(CSM_TAG_ROOT);
+  m_strips[index].writeToXml(root, index + 1);
+  const bool ok = root->writeToFile(file, String());
+  delete root;
+  if (!ok)
+    MCU_LOG("CSM saveStripToUserFile FAILED");
+  return ok;
+}
+
+bool ChannelStripMode::loadStripFromUserFile(int index, const File &file) {
+  if (index < 0 || index >= kNumStrips || !file.existsAsFile())
+    return false;
+  XmlDocument doc(file);
+  // JUCE 8: getDocumentElement() RETURNS OWNERSHIP of the whole parsed tree
+  // (the XmlDocument keeps no copy). Keep the unique_ptr alive in FUNCTION
+  // scope — the raw pointers taken from it dangle the moment it dies.
+  auto rootU = doc.getDocumentElement();
+  const XmlElement *pStrip = nullptr;
+  if (rootU) {
+    const XmlElement *root = rootU.get();
+    // accept both a bare <STRIP> root and a <CHANNELSTRIPS> container
+    // (take the first strip in the latter case)
+    if (root->hasTagName(String("STRIP")))
+      pStrip = root;
+    else
+      for (int i = 0; i < root->getNumChildElements(); ++i) {
+        if (root->getChildElement(i)->hasTagName(String("STRIP"))) {
+          pStrip = root->getChildElement(i);
+          break;
+        }
+      }
+  }
+  if (!pStrip)
+    return false;
+  ChannelStripMap tmp;
+  if (!tmp.readFromXml(pStrip))
+    return false;
+  m_strips[index] = tmp;
+  saveStripsToFile();
+  bindingChanged();
+  return true;
+}
+
+bool ChannelStripMode::saveAllStripsToUserFile(const File &file) const {
+  XmlElement *root = new XmlElement(CSM_TAG_ROOT);
+  for (int i = 0; i < kNumStrips; i++) {
+    if (m_strips[i].isAssigned())
+      m_strips[i].writeToXml(root, i + 1);
+  }
+  const bool ok = root->writeToFile(file, String());
+  delete root;
+  if (!ok)
+    MCU_LOG("CSM saveAllStripsToUserFile FAILED");
+  return ok;
+}
+
+bool ChannelStripMode::loadAllStripsFromUserFile(const File &file) {
+  if (!file.existsAsFile())
+    return false;
+  XmlDocument doc(file);
+  auto rootU = doc.getDocumentElement();
+  XmlElement *root = rootU.get();
+  if (!root)
+    return false;
+  // Collect into a temporary set first so a bad/empty file never wipes the
+  // current 16 slots (full-replace semantics apply only when the file has
+  // at least one valid <STRIP>).
+  ChannelStripMap tmp[kNumStrips];
+  bool got[kNumStrips] = {};
+  int found = 0;
+  auto readOne = [&](const XmlElement *pStrip) {
+    int nr = pStrip->getIntAttribute(CSB_ATT_NR, 0);
+    if (nr >= 1 && nr <= kNumStrips && !got[nr - 1] &&
+        tmp[nr - 1].readFromXml(pStrip)) {
+      got[nr - 1] = true;
+      found++;
+    }
+  };
+  if (root->hasTagName(String("STRIP")))
+    readOne(root);
+  else
+    forEachXmlChildElementWithTagName(*root, pStrip, String("STRIP"))
+      readOne(pStrip);
+  if (found == 0)
+    return false;
+  for (int i = 0; i < kNumStrips; i++)
+    m_strips[i] = tmp[i];
+  saveStripsToFile();
+  bindingChanged();
+  return true;
 }
 
 void ChannelStripMode::projectChanged(XmlElement *pRootNode,

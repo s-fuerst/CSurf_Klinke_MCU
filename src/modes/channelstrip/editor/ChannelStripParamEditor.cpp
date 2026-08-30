@@ -167,11 +167,23 @@ void ChannelStripParamEditor::notifyBindingChanged() {
 
 void ChannelStripParamEditor::open(ChannelStripMode *pMode, int stripIndex) {
   if (!pMode || s_dialogOpen)
-    return;
+    return; // a mapping dialog is already open
   MediaTrack *tr = pMode->selectedTrack();
   ChannelStripMap *strip = pMode->getStrip(stripIndex);
-  if (!tr || !strip || !strip->isAssigned())
+  if (!strip || !strip->isAssigned()) {
+    AlertWindow::showMessageBox(
+        AlertWindow::WarningIcon, String("No plugin assigned"),
+        String("This strip has no plugin assigned, so there is no VPOT "
+               "mapping to edit."));
     return;
+  }
+  if (!tr) {
+    AlertWindow::showMessageBox(
+        AlertWindow::WarningIcon, String("No track selected"),
+        String("Select exactly one track in REAPER first: the VPOT mapping "
+               "editor reads the plugin's parameters from that track."));
+    return;
+  }
 
   // Reuse an existing instance of this plugin on the track if one is
   // present (do NOT add a duplicate). Only add a temp instance at the end of
@@ -184,8 +196,13 @@ void ChannelStripParamEditor::open(ChannelStripMode *pMode, int stripIndex) {
                                                         chainLen);
     slot = TrackFX_AddByName(tr, strip->getFxIdent().toRawUTF8(), false,
                              instArg);
-    if (slot < 0)
+    if (slot < 0) {
+      AlertWindow::showMessageBox(
+          AlertWindow::WarningIcon, String("Could not open the plugin"),
+          String("REAPER could not instantiate\n") + strip->getFxIdent() +
+              String("\non the selected track."));
       return;
+    }
     ownsTemp = true;
   }
 
@@ -208,6 +225,13 @@ void ChannelStripParamEditor::open(ChannelStripMode *pMode, int stripIndex) {
   o.useNativeTitleBar = true;
   o.resizable = true;
   o.dialogBackgroundColour = Colours::white;
+  // Centre around the component with keyboard focus (normally the main MCU
+  // editor window): the default placement can end up off-screen, in which
+  // case the dialog is invisible and s_dialogOpen sticks at true (dead
+  // Edit-Mapping button).
+  Component *focused = Component::getCurrentlyFocusedComponent();
+  o.componentToCentreAround = focused ? focused->getTopLevelComponent()
+                                      : nullptr;
   o.launchAsync();
   content->enterModalState(true);
 }
