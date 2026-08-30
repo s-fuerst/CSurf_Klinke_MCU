@@ -19,7 +19,8 @@ on two levels:
   bound to \emph{one} plugin and stores the mapping of that plugin's
   parameters onto 16 \vpots (VPOTs 1\,--\,8, and 9\,--\,16 with the \shift
   modifier). The strips are shared across all tracks and all projects and
-  are stored in the user location.
+  are stored in a single XML file in the user's Channel Strip Maps directory
+  (see \hyperref[stripsave]{Saving and Loading Strips}).
 \item \textbf{Assignments.} For every track and every hardware unit you can
   assign one of the 16 global strips (or none). The 8 \vpots of that unit
   (16 with \shift) then drive the 16 parameters of the assigned strip on the
@@ -112,7 +113,23 @@ are:
   \emph{first} and \emph{last} positions are not affected by this.
 \item \textbf{Edit Mapping}: Opens the mapping editor for this strip, see
   \hyperref[stripmapping]{next section}.
+\item \textbf{Save}: Write the strip (plugin, abbreviation and \vpot
+  mapping) to a file that you choose in a file dialog. The file name is
+  pre-filled with the strip's abbreviation.
+\item \textbf{Load}: Replace the strip with the first strip found in a file
+  that you choose. The current contents of this row are overwritten without
+  a confirmation.
+\item \textbf{Clear}: Reset the whole strip (plugin, abbreviation and \vpot
+  mapping) to unassigned. \textbf{Save} and \textbf{Clear} are only enabled
+  for strips that have a plugin; \textbf{Load} is always available.
 \end{itemize}
+
+Below the table, the buttons \textbf{Save all 16...} and
+\textbf{Load all 16...} work on the complete set: \emph{Save all} writes
+every assigned strip to one file, and \emph{Load all} \textbf{replaces all
+16 slots} with the strips found in the file --- slots that the file does not
+contain become unassigned. A file that does not contain a single valid strip
+is rejected, so an accidental load of a wrong file cannot wipe the set.
 
 \subsubsection{Mapping Editor}\label{stripmapping}
 The ``Edit Mapping'' button of a strip opens the
@@ -135,6 +152,29 @@ The mapping of a strip is applied to every unit that is assigned to that
 strip. If the plugin is not present on the selected track, the editor adds a
 temporary instance for the purpose of learning the mapping and removes it
 again when the editor is closed.
+
+\subsubsection{Saving and Loading Strips}\label{stripsave}
+Strips can be exchanged as files, either single strips (the \textbf{Save}
+and \textbf{Load} buttons of the table) or the complete set of all 16
+strips (the \textbf{Save all 16...} and \textbf{Load all 16...} buttons
+below the table).
+
+The file dialog always opens in the Channel Strip Maps directory of the
+user location:
+
+\begin{itemize}
+\item \reaper on Windows: \texttt{<Documents>\textbackslash Reaper\textbackslash MCU\textbackslash ChannelStripMaps\textbackslash}
+\item \reaper on macOS: \texttt{~/Library/Application Support/REAPER/MCU/ChannelStripMaps/}
+\item \reaper on Linux: \texttt{~/.config/REAPER/MCU/ChannelStripMaps/}
+\end{itemize}
+
+The file format is plain XML and identical to the internal
+\texttt{channelstrips.xml} file that stores the strips between \reaper
+restarts: a root element that contains one entry per strip (plugin,
+abbreviation, insert position and the 16 \vpot mappings). A single-strip
+file simply contains one such entry, and a complete-set file contains up to
+16. Because the format is readable, the files can also be edited by hand or
+exchanged between systems.
 
 \subsubsection{Commands}\label{channelstripcommands}
 In the Channel Strip-Mode the \hyperref[commands]{Commands} act on the strip

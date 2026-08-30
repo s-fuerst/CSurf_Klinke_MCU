@@ -5,11 +5,14 @@
  * Editor table for the 16 GLOBAL Channel Strips — one row per strip.
  * Modeled on TrackStatesTableComponent.
  *
- *   # | Plugin | Abbrev (≤5) | InsPos | Parameter…
+ *   # | Plugin | Abbrev (≤5) | InsPos | Parameter… | Save | Load | Clear
  *
  * Each row is one ChannelStripMap (a plugin + its VPOT→param mapping). The
  * Plugin/Abbrev/InsPos cells edit the strip's header fields. The Parameter
- * button opens the VPOT→param sub-editor for that strip. Editing notifies
+ * button opens the VPOT→param sub-editor for that strip. Save stores a
+ * single strip in the Strips/ folder (name dialog, PlugMap-style); Load
+ * lists the existing strip files and replaces the strip with the selected
+ * one; Clear resets the whole strip (unassigned). Editing notifies
  * ChannelStripMode::bindingChanged() so the hardware refreshes.
  */
 #pragma once
@@ -24,6 +27,9 @@ class ChannelStripMode;
 #define CST_COL_ABBREV 3
 #define CST_COL_INSPOS 4
 #define CST_COL_PARAM 5
+#define CST_COL_SAVE 6
+#define CST_COL_LOAD 7
+#define CST_COL_CLEAR 8
 
 class ChannelStripBindingTable : public Component, public TableListBoxModel {
 public:
@@ -128,4 +134,20 @@ public:
   void buttonClicked(Button *) override;
 private:
   ChannelStripBindingTable &owner; TextButton *m_button; int row, column;
+};
+
+// One button class for the Save / Load / Clear columns. Save and Load open
+// a JUCE FileChooser (XML); Load overwrites the slot without confirmation.
+// Clear resets the whole strip (plugin + mapping) to unassigned.
+class CSTStripFileButton : public Component, public Button::Listener {
+public:
+  enum Action { SAVE = 0, LOAD, CLEAR };
+  CSTStripFileButton(ChannelStripBindingTable &o, Action action);
+  ~CSTStripFileButton() { deleteAllChildren(); }
+  void resized() override { m_button->setBoundsInset(BorderSize(2)); }
+  void setRowAndColumn(int r, int c);
+  void buttonClicked(Button *) override;
+private:
+  ChannelStripBindingTable &owner; TextButton *m_button; int row, column;
+  Action m_action;
 };

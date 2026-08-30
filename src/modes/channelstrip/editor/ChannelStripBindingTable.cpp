@@ -5,6 +5,8 @@
 #include "ChannelStripBindingTable.h"
 #include "ChannelStripMode.h"
 #include "ChannelStripParamEditor.h"
+#include "ChannelStripFileDialogs.h"
+#include "McuDebugLog.h"
 
 ChannelStripBindingTable::ChannelStripBindingTable(ChannelStripMode *pMode)
     : m_pMode(pMode), m_table(NULL) {
@@ -23,6 +25,12 @@ ChannelStripBindingTable::ChannelStripBindingTable(ChannelStripMode *pMode)
   m_table->getHeader().addColumn("Insert Position", CST_COL_INSPOS, 110, 90, 130,
                                  TableHeaderComponent::notResizable);
   m_table->getHeader().addColumn("Edit Mapping", CST_COL_PARAM, 130, 100, 200,
+                                 TableHeaderComponent::notResizable);
+  m_table->getHeader().addColumn("Save", CST_COL_SAVE, 60, 50, 80,
+                                 TableHeaderComponent::notResizable);
+  m_table->getHeader().addColumn("Load", CST_COL_LOAD, 60, 50, 80,
+                                 TableHeaderComponent::notResizable);
+  m_table->getHeader().addColumn("Clear", CST_COL_CLEAR, 60, 50, 80,
                                  TableHeaderComponent::notResizable);
 
   m_table->setMultipleSelectionEnabled(false);
@@ -111,6 +119,15 @@ Component *ChannelStripBindingTable::refreshComponentForCell(
   case CST_COL_PARAM: {
     auto *c = (CSTParamButton *)existing;
     if (!c) c = new CSTParamButton(*this);
+    c->setRowAndColumn(row, col); return c;
+  }
+  case CST_COL_SAVE:
+  case CST_COL_LOAD:
+  case CST_COL_CLEAR: {
+    auto *c = (CSTStripFileButton *)existing;
+    if (!c)
+      c = new CSTStripFileButton(*this,
+                                 (CSTStripFileButton::Action)(col - CST_COL_SAVE));
     c->setRowAndColumn(row, col); return c;
   }
   default: jassert(!existing); return nullptr;
@@ -386,7 +403,101 @@ void CSTParamButton::setRowAndColumn(int r, int c) {
 
 void CSTParamButton::buttonClicked(Button *) {
   ChannelStripMap *strip = owner.stripForRow(row);
-  if (!strip || !strip->isAssigned())
+  if (!strip)
     return;
+  // open() shows a hint dialog when the strip is unassigned
   ChannelStripParamEditor::open(owner.getMode(), row);
+}
+
+// ===== Save / Load / Clear buttons (single-strip user files) =====
+
+CSTStripFileButton::CSTStripFileButton(ChannelStripBindingTable &o,
+                                       Action action)
+    : owner(o), m_button(NULL), row(0), column(0), m_action(action) {
+  const char *label = (action == SAVE) ? "Save" : (action == LOAD ? "Load"
+                                                                  : "Clear");
+  addAndMakeVisible(m_button = new TextButton(label));
+  m_button->setColour(TextButton::buttonColourId, Colour(0xffe8e8e8));
+  m_button->setColour(TextButton::buttonOnColourId, Colour(0xffc8c8c8));
+  m_button->setColour(TextButton::textColourOffId, Colours::black);
+  m_button->setColour(ComboBox::outlineColourId, Colours::darkgrey);
+  m_button->setTooltip(String("Save: store this strip in a file of the Strips "
+                              "folder (name dialog, default = abbrev).\n"
+                              "Load: pick one of the existing strip files and "
+                              "replace this strip with it (no confirmation).\n"
+                              "Clear: reset this strip (plugin and VPOT mapping) to "
+                              "unassigned."));
+  m_button->addListener(this);
+}
+
+void CSTStripFileButton::setRowAndColumn(int r, int c) {
+  row = r; column = c;
+  ChannelStripMap *strip = owner.stripForRow(row);
+  const bool assigned = strip && strip->isAssigned();
+  // Loading into an empty slot is valid; Save/Clear need an assigned strip
+  const bool enabled = (m_action == LOAD) || assigned;
+  const char *label = (m_action == SAVE) ? "Save"
+                                         : (m_action == LOAD ? "Load" : "Clear");
+  m_button->setEnabled(enabled);
+  m_button->setButtonText(enabled ? label : "-");
+}
+
+void CSTStripFileButton::buttonClicked(Button *) {
+  ChannelStripMode *mode = owner.getMode();
+  if (!mode)
+    return;
+  if (m_action == CLEAR) {
+    // Deferred to the next message: notifyBindingChanged() -> bindingChanged()
+    // -> updateEverything() -> resetCells() destroys all cell components —
+    // including THIS button while its click handler is still on the stack
+    // (use-after-free crash).
+    ChannelStripBindingTable &table = owner;
+    const int stripRow = row;
+    MessageManager::callAsync([&table, stripRow]() {
+      ChannelStripMap *strip = table.stripForRow(stripRow);
+      if (!strip)
+        return;
+      // clear the whole strip: plugin, abbrev, VPOT mapping and per-VPOT names
+      strip->initEmpty();
+      table.notifyBindingChanged(); // refreshes the cells via bindingChanged()
+    });
+    return;
+  }
+  // single strips live in the Strips/ folder (save and load alike)
+  const File dir = ChannelStripMode::stripFilesDir();
+  const int stripRow = row;
+  if (m_action == SAVE) {
+    // name dialog (PlugMap-style): default = the strip's abbrev, plus the
+    // list of existing strip files (click pre-fills the name)
+    openStripSaveDialog("Save channel strip map",
+                        mode->stripDefaultName(stripRow),
+                        ChannelStripMode::listXmlFiles(dir),
+                        [mode, stripRow, dir](const String &name) {
+                          const File file =
+                              ChannelStripMode::stripFileForName(name, dir);
+                          if (!mode->saveStripToUserFile(stripRow, file)) {
+                            MCU_LOG("CSM save strip " + String(stripRow + 1) +
+                                    " to " + file.getFullPathName() + " FAILED");
+                            return false;
+                          }
+                          return true;
+                        });
+    return;
+  }
+  const StringArray files = ChannelStripMode::listXmlFiles(dir);
+  const String note = files.isEmpty()
+                          ? ("No channel strip files found in " +
+                             dir.getFullPathName())
+                          : String();
+  openStripLoadDialog("Load channel strip map", files, note,
+                      [mode, stripRow, dir, files](int index) {
+                        const File file = dir.getChildFile(files[index]);
+                        if (!mode->loadStripFromUserFile(stripRow, file)) {
+                          MCU_LOG("CSM load strip " + String(stripRow + 1) +
+                                  " from " + file.getFullPathName() +
+                                  " FAILED");
+                          return false;
+                        }
+                        return true;
+                      });
 }
