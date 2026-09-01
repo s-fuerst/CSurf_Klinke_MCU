@@ -486,8 +486,19 @@ void ChannelStripMode::bindingChanged() {
   // type, and the display/LEDs must refresh.
   m_pAccess->invalidateAll();
   updateEverything();
-  if (m_pEditor)
-    m_pEditor->updateEverything();
+  if (m_pEditor) {
+    // Deferred: the editor refresh recreates the table's cell components
+    // (resetCells -> TableListBox::setModel(null->this)). When bindingChanged
+    // is fired from inside a cell-component callback (e.g. a plugin pick or
+    // an abbrev-label edit), that synchronous recreation destroys the very
+    // component still executing its callback — use-after-free (seen as a
+    // crash when selecting a plugin in the editor). Refresh one message-loop
+    // turn later; SafePointer guards the editor's lifetime.
+    Component::SafePointer<ChannelStripComponent> ed(m_pEditor);
+    MessageManager::callAsync([ed]() {
+      if (ed) ed->updateEverything();
+    });
+  }
 }
 
 // --- editor lifecycle ---
@@ -621,9 +632,8 @@ StringArray ChannelStripMode::listXmlFiles(const File &dir) {
         names.add(f.getFileName());
     }
   }
-  names.sort([](const String &a, const String &b) {
-    return a.compareIgnoreCase(b) < 0;
-  });
+  // JUCE 8: StringArray::sort() takes a bool (ignoreCase), not a comparator.
+  names.sort(true);
   return names;
 }
 

@@ -19,6 +19,12 @@ public:
   ~PluginWatcher(void);
 
   void setPlugin(MediaTrack *pMediaTrack, int iSlot);
+  // Restore the per-parameter poll in frame() for watchers that are NOT fed
+  // by the Part C event stream (CSurf_MCU::Extended() routes
+  // CSURF_EXT_SETFXPARAM only to PlugMode's watcher). Used by the
+  // ChannelStripParamEditor, whose learn feed has no event path: it polls
+  // the watched plugin while its dialog is open (100 ms timer, one plugin).
+  void setParamFeedFromEvents(bool on) { m_paramFeedFromEvents = on; }
   void frame(DWORD time);
   // Event-driven parameter feed (Part C). REAPER delivers parameter changes
   // through CSURF_EXT_SETFXPARAM with a NORMALIZED value, but this watcher's
