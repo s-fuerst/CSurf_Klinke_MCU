@@ -5,6 +5,7 @@
 #include "PluginWatcher.h"
 #include "reaper_plugin.h"
 #include "csurf_mcu.h"
+#include "McuDebugLog.h"
 #include "boost/bind.hpp"
 #include "PlugAccess.h"
 
@@ -56,6 +57,8 @@ void PluginWatcher::frame(DWORD time) {
           TrackFX_GetParam(m_pMediaTrack, m_iSlot, iParam, &minVal, &maxVal);
       if (m_mapParamValues.count(iParam) > 0) {
         if (value != m_mapParamValues[iParam]) {
+          MCU_LOG("PW poll CHANGED slot=%d param=%d %.4f -> %.4f", m_iSlot,
+                  iParam, m_mapParamValues[iParam], value);
           m_signalParamChanged(
               m_pMediaTrack, m_iSlot, iParam, value,
               getParamString(m_pMediaTrack, m_iSlot, iParam, value));

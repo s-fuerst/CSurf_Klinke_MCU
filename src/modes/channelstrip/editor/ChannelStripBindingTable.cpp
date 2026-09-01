@@ -274,10 +274,26 @@ void CSTPluginCombo::setSelectedByIdent(const String &ident) {
     }
   }
   m_lastValidText = m_editor->getText();
-  // refresh the other cells of this row (Abbrev label, Edit button) which
-  // do not update themselves when the strip changes
-  owner.resetCells();
-  owner.notifyBindingChanged();
+  // The refresh below (resetCells + notifyBindingChanged) destroys ALL cell
+  // components — including THIS combo — via TableListBox::setModel(null->this).
+  // Running it synchronously frees `this` while setSelectedByIdent is still
+  // executing and pickFiltered() then calls hidePopup() on it afterwards:
+  // classic use-after-free, seen as an access violation (and heap corruption)
+  // when picking a plugin in the editor. Defer it to the next message-loop
+  // turn; SafePointer guards against the editor being closed in between.
+  SafePointer<CSTPluginCombo> sp(this);
+  MessageManager::callAsync([sp]() {
+    if (!sp) return;
+    // Non-destructive refresh FIRST: bindingChanged updates the MCU
+    // display/LEDs (its editor refresh is itself deferred, so it does not
+    // touch the table here). resetCells() must be LAST: it recreates the
+    // table's cell components and therefore DESTROYS this combo, so `sp`
+    // must not be dereferenced afterwards. (SafePointer resolves via
+    // dynamic_cast; touching it after the combo is gone yields null and
+    // dereferencing that null is what crashed before this reordering.)
+    sp->owner.notifyBindingChanged();
+    sp->owner.resetCells();
+  });
 }
 
 void CSTPluginCombo::textEditorTextChanged(TextEditor &) {
@@ -476,8 +492,11 @@ void CSTStripFileButton::buttonClicked(Button *) {
                           const File file =
                               ChannelStripMode::stripFileForName(name, dir);
                           if (!mode->saveStripToUserFile(stripRow, file)) {
-                            MCU_LOG("CSM save strip " + String(stripRow + 1) +
-                                    " to " + file.getFullPathName() + " FAILED");
+                            MCU_LOG("%s",
+                                    ("CSM save strip " +
+                                     String(stripRow + 1) + " to " +
+                                     file.getFullPathName() + " FAILED")
+                                        .toRawUTF8());
                             return false;
                           }
                           return true;
@@ -493,9 +512,11 @@ void CSTStripFileButton::buttonClicked(Button *) {
                       [mode, stripRow, dir, files](int index) {
                         const File file = dir.getChildFile(files[index]);
                         if (!mode->loadStripFromUserFile(stripRow, file)) {
-                          MCU_LOG("CSM load strip " + String(stripRow + 1) +
-                                  " from " + file.getFullPathName() +
-                                  " FAILED");
+                          MCU_LOG("%s",
+                                  ("CSM load strip " +
+                                   String(stripRow + 1) + " from " +
+                                   file.getFullPathName() + " FAILED")
+                                      .toRawUTF8());
                           return false;
                         }
                         return true;

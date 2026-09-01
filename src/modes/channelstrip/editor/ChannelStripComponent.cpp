@@ -67,8 +67,10 @@ void ChannelStripComponent::buttonClicked(Button *button) {
                           const File file =
                               ChannelStripMode::stripFileForName(name, dir);
                           if (!m_pMode->saveAllStripsToUserFile(file)) {
-                            MCU_LOG("CSM save all strips to " +
-                                    file.getFullPathName() + " FAILED");
+                            MCU_LOG("%s",
+                                    ("CSM save all strips to " +
+                                     file.getFullPathName() + " FAILED")
+                                        .toRawUTF8());
                             return false;
                           }
                           return true;
@@ -84,8 +86,10 @@ void ChannelStripComponent::buttonClicked(Button *button) {
                       [this, dir, files](int index) {
                         const File file = dir.getChildFile(files[index]);
                         if (!m_pMode->loadAllStripsFromUserFile(file)) {
-                          MCU_LOG("CSM load all strips from " +
-                                  file.getFullPathName() + " FAILED");
+                          MCU_LOG("%s",
+                                  ("CSM load all strips from " +
+                                   file.getFullPathName() + " FAILED")
+                                      .toRawUTF8());
                           return false;
                         }
                         return true;

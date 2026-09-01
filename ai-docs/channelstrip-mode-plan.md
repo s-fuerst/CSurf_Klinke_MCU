@@ -56,6 +56,20 @@ its parameters and is only re-pickable while B_VPOT_TRACK is held.
 - **On-screen editor:** opened by **ALT+TRACK**. A 16-row table —
   `Number | Plugin | short display abbreviation | Insert Pos | Open Map`.
   Global (independent of track/unit).
+- **Automatic Learn in the mapping editor** (`ChannelStripParamEditor`):
+  a **Learn** toggle (default ON) arms the automatic learn; the armed row
+  is highlighted in red (Colour(255,0,0) — the PlugMode learn red).
+  Turning a parameter in the plugin's floating FX window assigns it to the
+  armed row. One knob gesture emits MANY param-change events; same-param
+  events are coalesced onto ONE row, and the selection advances to the
+  next row ~1 s after the last event or immediately when a DIFFERENT
+  parameter is touched (new gesture). With Learn OFF no row is highlighted
+  and knob movements are ignored. A manual row click re-arms learn at that
+  row. The feed is the editor's own `PluginWatcher` in POLL mode — the
+  Part C event feed (`CSURF_EXT_SETFXPARAM`) only reaches PlugMode's
+  watcher, so this watcher polls the watched plugin while the dialog is
+  open (100 ms timer, one plugin; the poll is the same mechanism PlugMap
+  learn used before Part C).
 - **ALT+VPOT-1:** opens the floating FX window of the plugin controlled by
   that slot's binding (PlugMode's open-window-count rules duplicated).
 - **ALT+VPOT-7 / ALT+VPOT-8:** move the FX up / down in the chain.
@@ -539,6 +553,51 @@ src/modes/channelstrip/
   0 via `changeTextFullLine(0, "")` at the start of `updateDisplay` (display
   line buffer → no extra SysEx while unchanged). Same pattern ChannelStrip
   mode already used for row 1. Rebuilt + deployed.
+
+### ChannelStripParamEditor Learn — fixed (2026-09-XX)
+
+- **Bug:** learn never fired. Part C (`0f7f6ff`) made `PluginWatcher`
+  default to event-driven (`m_paramFeedFromEvents = true`, per-parameter
+  poll OFF) and `CSurf_MCU::Extended()` routes `CSURF_EXT_SETFXPARAM` only
+  to PlugMode's watcher — the mapping editor's own watcher received
+  NEITHER events NOR polling, so `onParamChanged` never ran. The learn was
+  added AFTER Part C (`407be41`), so it never worked since introduction.
+- **Fix:** the editor's watcher now runs the poll fallback
+  (`setParamFeedFromEvents(false)`, new public setter on `PluginWatcher`),
+  active only while the dialog is open (100 ms timer, one plugin).
+- **UX (maintainer decision 2026-09):** row 0 is pre-selected on open.
+  Learn advance is DEBOUNCED: a knob gesture emits many values, so
+  same-param events stay on the current row and the selection advances
+  only ~1 s after the last learn event (10 ticks of the editor's 100 ms
+  timer), or immediately when a DIFFERENT parameter arrives (new gesture).
+  After the last row (15) it wraps to row 0. A manual row click cancels
+  the pending advance and re-arms at that row. Moving a parameter in the
+  floating FX window assigns it to the selected row; the row's combo +
+  name cell refresh immediately.
+- **User test needed:** open a strip's mapping editor → move knobs in the
+  floating FX window in sequence → rows 0..15 fill up automatically.
+
+### ChannelStripParamEditor per-row Clear button (2026-09-01)
+
+- Fourth table column **Clear**: same look as the Save/Load/Clear buttons in
+  the main editor (`ChannelStripBindingTable`): light-grey fill
+  (0xffe8e8e8), black text, dark border (`ComboBox::outlineColourId =
+  darkgrey`). Unbinds the row (`setParamForVPOT(vpot, -1)` + empty name)
+  and refreshes the table + MCU display/LEDs (`bindingChanged`).
+- **Parameter combo border** aligned with the InsPos combo of the main
+  editor: the explicit black `outlineColourId` override was removed, the
+  theme default now applies (background white / learn-red, text black are
+  still pinned). Built + deployed (Debug, logging).
+
+### ChannelStripParamEditor Learn toggle + red row highlight (2026-09-01)
+
+- **Learn button:** `ToggleButton("Learn")` above the table, default ON.
+  OFF: no row highlighted, knob movements ignored, pending advance
+  cancelled. ON: row 0 armed as a fresh gesture (same as on open).
+- **Highlight colour:** `Colour(255,0,0)` — identical to PlugMode's
+  mapping editor learn red (`PlugModeParamComponent::setLearn`). Applied to
+  the armed row's background AND its parameter combo (`isLearnTarget(row)`).
+  Built + deployed (Debug, logging).
 
 ### Next concrete steps when resuming
 
