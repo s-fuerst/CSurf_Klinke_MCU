@@ -80,10 +80,10 @@ CCSModesEditor destructor crash (#50) may also be leak-related.
 ** DONE #1 Monitor and RecArm can only be changed for armed tracks    :bug:
 ** DONE use TrackFX_GetParameterStepSizes to improve automatical mapping,
 and parameter learn (fill table automatically)
-* [2/6] v0.9.7 ChannelStrip
+* [3/6] v0.9.7 ChannelStrip
 ** DONE ChannelStripMode                                          :feature:
 ** DONE Support for Move Plugins
-** TODO Bug: Goodbye not removed at start
+** DONE Bug: Goodbye not removed at start
 ** TODO Merge PR#1
 ** TODO Installation via ReaPack
 ** TODO Improved Documentation #5                           :feature:
@@ -91,9 +91,16 @@ and parameter learn (fill table automatically)
 ** TODO PerformanceMode
 * [0/4] v1.0.0 Release
 ** TODO Improve Pan-Mode (Dual-Pan etc.)
+see ai-docs/pan-mode-enhancement-plan.md
 ** TODO #3 Try to improve record mode
-** TODO Jump to touched 
-** TODO VCV Rack zeigt sehr merkwuerdige Parameternamen an
+see ai-docs/record-mode-drop-button-analysis.md
+must be tested with mackie control
+** TODO Jump to touched
+When grabbing a fader/VPOT in MultiTrack mode, make the Reaper view
+(Arrange/Mixer) jump to the affected track — REAPER has actions for
+this such as "View: Jump to track" (CSURF_EXT_SETMIXERSCROLL could
+help with scrolling the mixer).
+** TODO VCV Rack shows very strange parameter names
 * [0/3] v1.1.0 Release
 ** TODO #4 Secondary shift function for VPOTs in Plug-Mode :proposal:
 ** TODO #2 VCA muting and solo ignored :bug:
