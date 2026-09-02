@@ -27,6 +27,9 @@ public:
 
   void resized() override;
   void updateEverything();
+  // grey out the "Load all 16..." button while the Sets/ folder has no
+  // files, and refresh the table's per-strip Load buttons
+  void refreshFileButtonStates();
   void buttonClicked(Button *button) override;
 
 private:

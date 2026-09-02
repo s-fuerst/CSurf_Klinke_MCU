@@ -56,7 +56,19 @@ void ChannelStripBindingTable::refreshInstalledFX() {
 void ChannelStripBindingTable::updateEverything() {
   if (!m_table)
     return;
+  m_stripFilesExist =
+      !ChannelStripMode::listXmlFiles(ChannelStripMode::stripFilesDir())
+           .isEmpty();
   m_table->updateContent();
+  resetCells();
+}
+
+void ChannelStripBindingTable::refreshFileButtonStates() {
+  if (!m_table)
+    return;
+  m_stripFilesExist =
+      !ChannelStripMode::listXmlFiles(ChannelStripMode::stripFilesDir())
+           .isEmpty();
   resetCells();
 }
 
@@ -450,8 +462,9 @@ void CSTStripFileButton::setRowAndColumn(int r, int c) {
   row = r; column = c;
   ChannelStripMap *strip = owner.stripForRow(row);
   const bool assigned = strip && strip->isAssigned();
-  // Loading into an empty slot is valid; Save/Clear need an assigned strip
-  const bool enabled = (m_action == LOAD) || assigned;
+  // Save/Clear need an assigned strip; Load needs an existing strip file
+  const bool enabled =
+      (m_action == LOAD) ? owner.stripFilesExist() : assigned;
   const char *label = (m_action == SAVE) ? "Save"
                                          : (m_action == LOAD ? "Load" : "Clear");
   m_button->setEnabled(enabled);
@@ -488,7 +501,7 @@ void CSTStripFileButton::buttonClicked(Button *) {
     openStripSaveDialog("Save channel strip map",
                         mode->stripDefaultName(stripRow),
                         ChannelStripMode::listXmlFiles(dir),
-                        [mode, stripRow, dir](const String &name) {
+                        [this, mode, stripRow, dir](const String &name) {
                           const File file =
                               ChannelStripMode::stripFileForName(name, dir);
                           if (!mode->saveStripToUserFile(stripRow, file)) {
@@ -499,18 +512,36 @@ void CSTStripFileButton::buttonClicked(Button *) {
                                         .toRawUTF8());
                             return false;
                           }
+                          // a new file may now be loadable — grey out / un-grey
+                          // the Load buttons. Deferred: the refresh recreates
+                          // the cell components, including THIS button (the
+                          // same use-after-free hazard as CLEAR).
+                          ChannelStripBindingTable &table = owner;
+                          MessageManager::callAsync([&table]() {
+                            table.refreshFileButtonStates();
+                          });
+                          return true;
+                        },
+                        [dir](const String &name) {
+                          const File file = dir.getChildFile(name);
+                          if (!file.deleteFile()) {
+                            MCU_LOG("%s",
+                                    ("CSM delete strip file " +
+                                     file.getFullPathName() + " FAILED")
+                                        .toRawUTF8());
+                            return false;
+                          }
+                          MCU_LOG("%s",
+                                  ("CSM deleted strip file " +
+                                   file.getFullPathName()).toRawUTF8());
                           return true;
                         });
     return;
   }
   const StringArray files = ChannelStripMode::listXmlFiles(dir);
-  const String note = files.isEmpty()
-                          ? ("No channel strip files found in " +
-                             dir.getFullPathName())
-                          : String();
-  openStripLoadDialog("Load channel strip map", files, note,
-                      [mode, stripRow, dir, files](int index) {
-                        const File file = dir.getChildFile(files[index]);
+  openStripLoadDialog("Load channel strip map", files,
+                      [mode, stripRow, dir](const String &name) {
+                        const File file = dir.getChildFile(name);
                         if (!mode->loadStripFromUserFile(stripRow, file)) {
                           MCU_LOG("%s",
                                   ("CSM load strip " +
@@ -519,6 +550,28 @@ void CSTStripFileButton::buttonClicked(Button *) {
                                       .toRawUTF8());
                           return false;
                         }
+                        return true;
+                      },
+                      [this, dir](const String &name) {
+                        const File file = dir.getChildFile(name);
+                        if (!file.deleteFile()) {
+                          MCU_LOG("%s",
+                                  ("CSM delete strip file " +
+                                   file.getFullPathName() + " FAILED")
+                                      .toRawUTF8());
+                          return false;
+                        }
+                        MCU_LOG("%s",
+                                ("CSM deleted strip file " +
+                                 file.getFullPathName()).toRawUTF8());
+                        // one file gone — the Load buttons may need to grey
+                        // out. Deferred: the refresh recreates the cell
+                        // components, including THIS button (the same
+                        // use-after-free hazard as CLEAR).
+                        ChannelStripBindingTable &table = owner;
+                        MessageManager::callAsync([&table]() {
+                          table.refreshFileButtonStates();
+                        });
                         return true;
                       });
 }
