@@ -60,11 +60,16 @@ public:
   // that affects a DIFFERENT cell than the one being edited (e.g. picking a
   // plugin changes the Abbrev cell, clearing the strip empties it)
   void resetCells();
+  // re-check whether the Strips/ folder has loadable files and rebuild the
+  // cells so the per-strip Load buttons grey out accordingly
+  void refreshFileButtonStates();
+  bool stripFilesExist() const { return m_stripFilesExist; }
 
 private:
   ChannelStripMode *m_pMode;
   TableListBox *m_table;
   std::vector<ChannelStripAccess::InstalledFX> m_installedFX;
+  bool m_stripFilesExist = false;
 };
 
 // --- custom cell components ---

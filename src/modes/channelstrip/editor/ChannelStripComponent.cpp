@@ -32,6 +32,7 @@ ChannelStripComponent::ChannelStripComponent(ChannelStripMode *pMode)
   m_loadAllButton->addListener(this);
   // width: table columns (590 + 3 * 60) + margins
   setSize(820, 460);
+  refreshFileButtonStates();
 }
 
 ChannelStripComponent::~ChannelStripComponent() { deleteAllChildren(); }
@@ -52,6 +53,16 @@ void ChannelStripComponent::updateEverything() {
     m_table->refreshInstalledFX();
     m_table->updateEverything();
   }
+  refreshFileButtonStates();
+}
+
+void ChannelStripComponent::refreshFileButtonStates() {
+  if (m_loadAllButton)
+    m_loadAllButton->setEnabled(
+        !ChannelStripMode::listXmlFiles(ChannelStripMode::setFilesDir())
+             .isEmpty());
+  if (m_table)
+    m_table->refreshFileButtonStates();
 }
 
 void ChannelStripComponent::buttonClicked(Button *button) {
@@ -73,18 +84,36 @@ void ChannelStripComponent::buttonClicked(Button *button) {
                                         .toRawUTF8());
                             return false;
                           }
+                          // a new set file may now be loadable — un-grey the
+                          // "Load all 16..." button (safe synchronously: the
+                          // refresh only rebuilds the table's cell components,
+                          // not these toolbar buttons)
+                          refreshFileButtonStates();
+                          return true;
+                        },
+                        [this, dir](const String &name) {
+                          const File file = dir.getChildFile(name);
+                          if (!file.deleteFile()) {
+                            MCU_LOG("%s",
+                                    ("CSM delete set file " +
+                                     file.getFullPathName() + " FAILED")
+                                        .toRawUTF8());
+                            return false;
+                          }
+                          MCU_LOG("%s",
+                                  ("CSM deleted set file " +
+                                   file.getFullPathName()).toRawUTF8());
+                          // one set file gone — "Load all 16..." may need to
+                          // grey out (safe synchronously, see the save callback)
+                          refreshFileButtonStates();
                           return true;
                         });
     return;
   }
   const StringArray files = ChannelStripMode::listXmlFiles(dir);
-  const String note =
-      files.isEmpty()
-          ? ("No channel strip set files found in " + dir.getFullPathName())
-          : String();
-  openStripLoadDialog("Load all 16 channel strips", files, note,
-                      [this, dir, files](int index) {
-                        const File file = dir.getChildFile(files[index]);
+  openStripLoadDialog("Load all 16 channel strips", files,
+                      [this, dir](const String &name) {
+                        const File file = dir.getChildFile(name);
                         if (!m_pMode->loadAllStripsFromUserFile(file)) {
                           MCU_LOG("%s",
                                   ("CSM load all strips from " +
@@ -92,6 +121,20 @@ void ChannelStripComponent::buttonClicked(Button *button) {
                                       .toRawUTF8());
                           return false;
                         }
+                        return true;
+                      },
+                      [dir](const String &name) {
+                        const File file = dir.getChildFile(name);
+                        if (!file.deleteFile()) {
+                          MCU_LOG("%s",
+                                  ("CSM delete set file " +
+                                   file.getFullPathName() + " FAILED")
+                                      .toRawUTF8());
+                          return false;
+                        }
+                        MCU_LOG("%s",
+                                ("CSM deleted set file " +
+                                 file.getFullPathName()).toRawUTF8());
                         return true;
                       });
 }

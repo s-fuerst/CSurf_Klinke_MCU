@@ -243,6 +243,28 @@ reaper loads the .dll/.so/.dylib
   REAPER main thread); do NOT call dispatchNextMessageOnSystemQueue on
   macOS (no impl in JUCE 8). Linux/X11 needs the manual pump (#if
   JUCE_LINUX in csurf_mcu.cpp Run()).
+- JUCE 8 AlertWindow API (found 2026-09-01 in the ChannelStrip file
+  dialogs): `AlertWindow::showMessageBox(...)` returns `void` in JUCE 8
+  (fine for one-button OK boxes). For a Yes/No answer use
+  `MessageBoxOptions().withIconType(...).withTitle(...).withMessage(...)
+  .withButton("Yes").withButton("No")` + `int answer =
+  AlertWindow::show(options)` (modal, button 0 returns 1, button 1
+  returns 0). `showMessageBoxWithOptions`, `primaryButtonText` /
+  `secondaryButtonText` and the old std::function-callback
+  `showMessageBoxAsync` overload do NOT exist in JUCE 8. Also:
+  `StringArray::remove()` takes an index only — no `remove(String)`
+  overload; use `array.remove(array.indexOf(s))`. And
+  `ListBox::Listener` (listSelectionChanged) was REMOVED in JUCE 8 —
+  hook selection-dependent UI into `ListBoxModel::listBoxItemClicked`
+  instead (see ChannelStripFileDialogs).
+- JUCE button keyboard focus: LookAndFeel_V4::drawButtonBackground only
+  boosts the SATURATION of the button colour when the button has keyboard
+  focus (x1.3) — invisible on near-grey button colours (tab focus was
+  nearly undetectable on the ChannelStrip file dialogs' Ok/Cancel). Fix
+  used: subclass TextButton and render keyboard focus exactly like the
+  mouse-hover state — paintButton(g, highlighted || hasKeyboardFocus(true),
+  down) (FocusTextButton in ChannelStripFileDialogs.cpp). Do not draw an
+  extra outline (rejected as ugly) and do not touch the global LookAndFeel.
 - JUCE modal dialogs in this plugin: NEVER use the synchronous
   DialogWindow::runModalLoop() pattern — in the REAPER csurf plugin the
   JUCE "message thread" assumptions of runModalLoop do not hold (REAPER's
@@ -321,6 +343,17 @@ MIDI ports open (multiclient).
 The version label in the surface config dialog (`IDC_VERSION_LABEL`) appends a
 "k" to the version string in KLINKE builds so the private build is
 distinguishable from the public release.
+
+- ALWAYS check which system you are on BEFORE building (`uname -r`; a
+  `microsoft-standard-WSL` marker in the kernel string = WSL). On WSL the
+  build MUST go through `scripts/build-windows-from-wsl.sh` (Windows .dll
+  build); do NOT run the native Linux CMake build here — the WSL image
+  lacks the X11/font dev headers JUCE needs and the Linux .so is not the
+  target on WSL anyway.
+- NEVER use `find` (especially not filesystem-wide `find / ...`): it is
+  slow, hits /proc and permission errors, and can hang the session. Use
+  `rg --files`, `ls`, targeted `git ls-files`, or a bounded `find <dir> -maxdepth N`
+  only when strictly necessary.
 
 ## 8. Most important: Ask instead of assuming stuff.
 
