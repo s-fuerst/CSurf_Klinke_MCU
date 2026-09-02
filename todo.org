@@ -80,10 +80,13 @@ CCSModesEditor destructor crash (#50) may also be leak-related.
 ** DONE #1 Monitor and RecArm can only be changed for armed tracks    :bug:
 ** DONE use TrackFX_GetParameterStepSizes to improve automatical mapping,
 and parameter learn (fill table automatically)
-* [3/6] v0.9.7 ChannelStrip
+* [3/8] v0.9.7 ChannelStrip
 ** DONE ChannelStripMode                                          :feature:
 ** DONE Support for Move Plugins
 ** DONE Bug: Goodbye not removed at start
+** TODO VPOT press: scan for next discrete parameter
+** TODO Bug: Highlight bug in Learn mode 
+Sometime the wrong row is highlighted in the Parameter column
 ** TODO Merge PR#1
 ** TODO Installation via ReaPack
 ** TODO Improved Documentation #5                           :feature:
