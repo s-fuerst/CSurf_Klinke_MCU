@@ -16,6 +16,8 @@ void ChannelStripMap::initEmpty() {
   for (int i = 0; i < kNumVPOTs; i++) {
     m_vpotParam[i] = -1;
     m_vpotName[i] = String();
+    m_vpotDiscreteCount[i] = 0;
+    m_vpotStepsManual[i] = false;
   }
 }
 
@@ -42,6 +44,34 @@ void ChannelStripMap::setVPOTName(int position, const String &name) {
   if (position < 0 || position >= kNumVPOTs)
     return;
   m_vpotName[position] = name;
+}
+
+int ChannelStripMap::getDiscreteCountForVPOT(int position) const {
+  if (position < 0 || position >= kNumVPOTs)
+    return 0;
+  return m_vpotDiscreteCount[position];
+}
+
+void ChannelStripMap::setDiscreteCountForVPOT(int position, int count) {
+  if (position < 0 || position >= kNumVPOTs)
+    return;
+  m_vpotDiscreteCount[position] = count;
+}
+
+bool ChannelStripMap::isDiscreteForVPOT(int position) const {
+  return getDiscreteCountForVPOT(position) > 0;
+}
+
+bool ChannelStripMap::isStepsManualForVPOT(int position) const {
+  if (position < 0 || position >= kNumVPOTs)
+    return false;
+  return m_vpotStepsManual[position];
+}
+
+void ChannelStripMap::setStepsManualForVPOT(int position, bool manual) {
+  if (position < 0 || position >= kNumVPOTs)
+    return;
+  m_vpotStepsManual[position] = manual;
 }
 
 int ChannelStripMap::numBoundVPOTs() const {
@@ -94,6 +124,10 @@ void ChannelStripMap::writeToXml(XmlElement *pParent, int nr) const {
     pV->setAttribute(CSB_ATT_PARAM, m_vpotParam[i]);
     if (!m_vpotName[i].isEmpty())
       pV->setAttribute(CSB_ATT_NAME, m_vpotName[i]);
+    if (m_vpotDiscreteCount[i] > 0)
+      pV->setAttribute(CSB_ATT_DISCRETE, m_vpotDiscreteCount[i]);
+    if (m_vpotStepsManual[i])
+      pV->setAttribute(CSB_ATT_MANUAL, 1);
     pStrip->addChildElement(pV);
   }
   pParent->addChildElement(pStrip);
@@ -105,13 +139,19 @@ bool ChannelStripMap::readFromXml(const XmlElement *pStrip) {
   m_fxIdent = pStrip->getStringAttribute(CSB_ATT_FXIDENT);
   m_shortName = pStrip->getStringAttribute(CSB_ATT_NAME);
   m_insertPos = insertPosFromToken(pStrip->getStringAttribute(CSB_ATT_INSPOS));
-  for (int i = 0; i < kNumVPOTs; i++)
+  for (int i = 0; i < kNumVPOTs; i++) {
     m_vpotParam[i] = -1;
+    m_vpotDiscreteCount[i] = 0;
+    m_vpotStepsManual[i] = false;
+  }
   forEachXmlChildElementWithTagName(*pStrip, pV, CSM_TAG_VPOT) {
     int nr = pV->getIntAttribute(CSB_ATT_NR, 0);
     if (nr >= 1 && nr <= kNumVPOTs) {
       m_vpotParam[nr - 1] = pV->getIntAttribute(CSB_ATT_PARAM, -1);
       m_vpotName[nr - 1] = pV->getStringAttribute(CSB_ATT_NAME);
+      m_vpotDiscreteCount[nr - 1] =
+          pV->getIntAttribute(CSB_ATT_DISCRETE, 0);
+      m_vpotStepsManual[nr - 1] = (pV->getIntAttribute(CSB_ATT_MANUAL, 0) != 0);
     }
   }
   return true;

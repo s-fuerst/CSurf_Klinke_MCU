@@ -53,7 +53,7 @@ ChannelStripSaveDialog::ChannelStripSaveDialog(const String &title,
       m_onOk(std::move(onOk)), m_onDelete(std::move(onDelete)) {
   addAndMakeVisible(m_label = new Label(String(), String()));
   m_label->setText(title, dontSendNotification);
-  m_label->setFont(Font(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain));
+  m_label->setFont(Font(FontOptions(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain)));
   m_label->setJustificationType(Justification::centredLeft);
   m_label->setEditable(false, false, false);
   m_label->setColour(Label::textColourId, Colours::black);
@@ -69,7 +69,7 @@ ChannelStripSaveDialog::ChannelStripSaveDialog(const String &title,
   m_name->setColour(TextEditor::outlineColourId, Colours::darkgrey);
   m_name->setColour(TextEditor::highlightedTextColourId, Colours::white);
   m_name->setColour(TextEditor::highlightColourId, Colour(0xff4f6f9f));
-  m_name->setFont(Font(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain));
+  m_name->setFont(Font(FontOptions(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain)));
   m_name->setText(defaultName, dontSendNotification);
   // select the whole default so the user can just start typing
   m_name->selectAll();
@@ -83,7 +83,7 @@ ChannelStripSaveDialog::ChannelStripSaveDialog(const String &title,
   m_files->updateContent();
 
   addAndMakeVisible(m_status = new Label(String(), String()));
-  m_status->setFont(Font(Font::getDefaultSansSerifFontName(), 12.0f, Font::plain));
+  m_status->setFont(Font(FontOptions(Font::getDefaultSansSerifFontName(), 12.0f, Font::plain)));
   m_status->setJustificationType(Justification::centredLeft);
   m_status->setEditable(false, false, false);
   m_status->setColour(Label::textColourId, Colours::red);
@@ -128,7 +128,7 @@ void ChannelStripSaveDialog::paintListBoxItem(int row, Graphics &g, int w,
     return;
   g.fillAll(sel ? Colours::lightblue : Colours::white);
   g.setColour(Colours::black);
-  g.setFont(Font(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain));
+  g.setFont(Font(FontOptions(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain)));
   // display name without the .xml extension (the stored name keeps it)
   g.drawText(File(m_existing[row]).getFileNameWithoutExtension(), 4, 1, w - 8,
              h, Justification::centredLeft, true);
@@ -210,7 +210,7 @@ ChannelStripLoadDialog::ChannelStripLoadDialog(const String &title,
   m_list->updateContent();
 
   addAndMakeVisible(m_status = new Label(String(), String()));
-  m_status->setFont(Font(Font::getDefaultSansSerifFontName(), 12.0f, Font::plain));
+  m_status->setFont(Font(FontOptions(Font::getDefaultSansSerifFontName(), 12.0f, Font::plain)));
   m_status->setJustificationType(Justification::centredLeft);
   m_status->setEditable(false, false, false);
   m_status->setColour(Label::textColourId, Colours::red);
@@ -250,7 +250,7 @@ void ChannelStripLoadDialog::paintListBoxItem(int row, Graphics &g, int w,
     return;
   g.fillAll(sel ? Colours::lightblue : Colours::white);
   g.setColour(Colours::black);
-  g.setFont(Font(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain));
+  g.setFont(Font(FontOptions(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain)));
   // display name without the .xml extension (the stored name keeps it)
   g.drawText(File(m_files[row]).getFileNameWithoutExtension(), 4, 1, w - 8, h,
              Justification::centredLeft, true);

@@ -7,6 +7,7 @@
 #include "csurf.h" // TrackFX_* + EnumInstalledFX/TrackFX_AddByName (vendored)
 #include "csurf_mcu.h" // GUID2String
 #include "Tracks.h"
+#include "PlugAccess.h" // fillDiscreteSteps (verified name scan, detectDiscreteCount path 2)
 #include "PlugMoveWatcher.h"
 #include "McuDebugLog.h"
 #include <boost/bind.hpp>
@@ -22,6 +23,95 @@ using boost::placeholders::_4;
 namespace {
 // Clamp a normalized 0..1 value.
 inline double clampN(double v) { return v < 0.0 ? 0.0 : (v > 1.0 ? 1.0 : v); }
+
+// Number of quantization grid segments the FX reports for the parameter
+// via TrackFX_GetParameterStepSizes (0 = continuous / no usable step,
+// 1 = toggle, i.e. the two range endpoints). *isToggleOut (optional) is
+// set when the FX marks the parameter as a two-state toggle. The
+// dual-range evaluation mirrors PlugAccess::discreteStepSegments (which is
+// private there): use the reading that divides the respective range into
+// an integral number of segments.
+//
+// Some FXs set the toggle flag on parameters that also report a fine step
+// grid (e.g. SPL BiG marks its 41-step BiGness as toggle). Such a flag is
+// spurious: a genuine toggle reports step=1 or none. Disambiguation via
+// the value names: a real 2-state parameter displays one of its two
+// endpoint names at the middle of the range ("Off"/"Off"/"On"), a stepped
+// parameter displays a distinct middle name. Without names the fine grid
+// is trusted.
+int reportedStepSegments(MediaTrack *tr, int slot, int param,
+                          bool *isToggleOut = NULL) {
+  if (isToggleOut)
+    *isToggleOut = false;
+  if (!tr || slot < 0 || param < 0 || !TrackFX_GetParameterStepSizes)
+    return 0;
+  double step = 0.0, smallStep = 0.0, largeStep = 0.0;
+  bool isToggle = false;
+  if (!TrackFX_GetParameterStepSizes(tr, slot, param, &step, &smallStep,
+                                     &largeStep, &isToggle))
+    return 0;
+  if (isToggleOut)
+    *isToggleOut = true;
+  if (step <= 0.0)
+    return isToggle ? 1 : 0;
+  double minVal = 0.0, maxVal = 1.0;
+  TrackFX_GetParam(tr, slot, param, &minVal, &maxVal);
+  double segments = 1.0 / step;
+  const double devNormalized = fabs(segments - floor(segments + 0.5));
+  if (maxVal > minVal) {
+    const double segmentsRaw = (maxVal - minVal) / step;
+    const double devRaw = fabs(segmentsRaw - floor(segmentsRaw + 0.5));
+    if (devRaw + 0.000001 < devNormalized)
+      segments = segmentsRaw;
+  }
+  const int segs = (int)floor(segments + 0.5);
+  if (segs < 2 || segs > 100)
+    return isToggle ? 1 : 0; // no fine grid: toggle = endpoints only
+  if (isToggle) {
+    const String n0 = ChannelStripAccess::formattedValueName(tr, slot, param, 0.0);
+    const String nMid = ChannelStripAccess::formattedValueName(tr, slot, param, 0.5);
+    const String n1 = ChannelStripAccess::formattedValueName(tr, slot, param, 1.0);
+    if (nMid.isNotEmpty() && (nMid == n0 || nMid == n1)) {
+      MCU_LOG("CSA stepSegs param=%d toggle flag + fine grid (segs=%d), middle name redundant -> real toggle",
+              param, segs);
+      return 1; // genuine toggle: only the two endpoints are real states
+    }
+    MCU_LOG("CSA stepSegs param=%d toggle flag + fine grid (segs=%d), distinct middle name -> spurious flag, use grid",
+            param, segs);
+    return segs; // spurious flag: the fine grid is the real quantization
+  }
+  return segs;
+}
+
+// Position (normalized) of the grid neighbour of v in the given direction
+// on an even segments-point grid, or -1 if the value is already at the
+// 0/1 end in that direction.
+//
+// A two-value grid (segments == 1) is special: its only two positions are
+// the range endpoints, so any mid-range value belongs to neither. A turn
+// always moves to the endpoint in the turn direction instead of deriving
+// a "current index" (rounding would map the whole upper half of the range
+// to the top step and make right turns from there dead).
+double stepGridPosition(double v, int segments, int direction) {
+  if (segments < 1)
+    return -1.0;
+  v = clampN(v);
+  if (segments == 1) {
+    const double target = (direction < 0) ? 0.0 : 1.0;
+    if (fabs(v - target) < 1e-9)
+      return -1.0; // already at that endpoint
+    return target;
+  }
+  const int idx0 = (int)floor(v * segments + 0.5);
+  int idx = idx0 + (direction < 0 ? -1 : 1);
+  if (idx < 0)
+    idx = 0;
+  if (idx > segments)
+    idx = segments;
+  if (idx == idx0)
+    return -1.0;
+  return (double)idx / (double)segments;
+}
 
 // The EnumInstalledFX list is static within a REAPER session; cache it so
 // per-channel findSlotByIdent() calls (display updates) do not re-enumerate
@@ -214,12 +304,199 @@ double ChannelStripAccess::nudgeParam(MediaTrack *tr, int slot, int param,
   return v;
 }
 
+String ChannelStripAccess::formattedValueName(MediaTrack *tr, int slot,
+                                               int param,
+                                               double normalized) {
+  if (!tr || slot < 0 || param < 0 || !TrackFX_FormatParamValueNormalized)
+    return String();
+  char buf[80] = {};
+  if (TrackFX_FormatParamValueNormalized(tr, slot, param,
+                                         clampN(normalized), buf, 79) &&
+      buf[0] != 0)
+    return String(buf);
+  return String();
+}
+
+double ChannelStripAccess::nudgeDiscreteParam(MediaTrack *tr, int slot,
+                                               int param, int direction,
+                                               int valueCount, bool manual) {
+  if (!tr || slot < 0 || param < 0)
+    return 0.0;
+  if (direction == 0)
+    direction = 1;
+  const double v0 = getParamValue(tr, slot, param);
+
+  // (0) A count entered by hand in the mapping editor, or a genuine
+  // two-value parameter: step that grid unconditionally, no matter what
+  // the FX reports. A two-value parameter must flip between its range
+  // endpoints — the name walk would stop at the display boundary (~0.5)
+  // and leave the value mid-range (the ring then shows a middle position
+  // although the parameter is a simple two-state switch).
+  if ((manual && valueCount >= 2) || valueCount == 2) {
+    const double target = stepGridPosition(v0, valueCount - 1, direction);
+    if (target >= 0.0) {
+      MCU_LOG("CSA nudgeDiscrete param=%d v0=%.4f -> MANUAL grid %.4f (count=%d)",
+              param, v0, target, valueCount);
+      setParamValue(tr, slot, param, target);
+      return target;
+    }
+    return v0; // already at the 0/1 end in the turn direction
+  }
+
+  // (1) The FX reports a step size. If the stored value count (detected at
+  // bind time or entered by hand in the mapping editor) DIFFERS from the
+  // live grid's count, it is a manual override: step the stored grid. If
+  // it matches (the normal detected case), step the exact live
+  // quantization grid — which must take precedence over the name-change
+  // walk because the FX value formatter may display unquantized values
+  // (e.g. SPL BiG BiGness shows "3.0"/"3.2"/... although the real grid has
+  // 41 positions), so a name walk would stop between grid points and the
+  // FX would snap the value back, leaving it unchanged.
+  const int liveSegments = reportedStepSegments(tr, slot, param);
+  if (liveSegments >= 1) {
+    const int liveCount = (liveSegments == 1) ? 2 : liveSegments + 1;
+    const int useSegments =
+        (valueCount > 0 && valueCount != liveCount) ? valueCount - 1
+                                                     : liveSegments;
+    if (useSegments < 1)
+      return v0;
+    const double target = stepGridPosition(v0, useSegments, direction);
+    if (target >= 0.0) {
+      MCU_LOG("CSA nudgeDiscrete param=%d v0=%.4f -> grid %.4f (stored=%d live=%d, segments=%d%s)",
+              param, v0, target, valueCount, liveCount, useSegments,
+              (valueCount > 0 && valueCount != liveCount) ? " OVERRIDE" : "");
+      setParamValue(tr, slot, param, target);
+      return target;
+    }
+    return v0; // already at the 0/1 end in the turn direction
+  }
+
+  // (2) No step grid: walk the normalized value in 0.01 increments
+  // (direction +1 = turned right, -1 = turned left) until the formatted
+  // value name changes or the value reaches 1 or 0. One turn event moves
+  // to the next/previous discrete value only, no matter the CC delta.
+  const String nameAt0 = formattedValueName(tr, slot, param, v0);
+  if (nameAt0.isNotEmpty()) {
+    for (int i = 1; i <= 100; i++) {
+      const double cand = clampN(v0 + direction * i * CSA_VPOT_STEP);
+      if (cand == 0.0 || cand == 1.0) {
+        MCU_LOG("CSA nudgeDiscrete param=%d v0=%.4f -> endpoint %.0f",
+                param, v0, cand);
+        setParamValue(tr, slot, param, cand);
+        return cand;
+      }
+      const String name = formattedValueName(tr, slot, param, cand);
+      if (!name.isEmpty() && name != nameAt0) {
+        MCU_LOG("CSA nudgeDiscrete param=%d v0=%.4f -> %.4f (name '%s' -> '%s')",
+                param, v0, cand, nameAt0.toRawUTF8(), name.toRawUTF8());
+        setParamValue(tr, slot, param, cand);
+        return cand;
+      }
+    }
+    return v0; // unreachable: i=100 always hits an endpoint
+  }
+
+  // (3) No step grid and no usable value names: fall back to the stored
+  // value count detected at bind time (even grid).
+  const double target = stepGridPosition(v0, valueCount - 1, direction);
+  if (target < 0.0)
+    return v0;
+  MCU_LOG("CSA nudgeDiscrete param=%d v0=%.4f -> stored-count grid %.4f (count=%d)",
+          param, v0, target, valueCount);
+  setParamValue(tr, slot, param, target);
+  return target;
+}
+
+int ChannelStripAccess::detectDiscreteCount(MediaTrack *tr, int slot,
+                                             int param) {
+  if (!tr || slot < 0 || param < 0)
+    return 0;
+
+  // (1) The FX reports a step grid (with spurious-toggle disambiguation):
+  // the quantization is known exactly. A genuine toggle (segments == 1)
+  // counts as exactly two values.
+  bool isToggle = false;
+  const int segs = reportedStepSegments(tr, slot, param, &isToggle);
+  if (segs >= 1) {
+    const int count = (segs == 1) ? 2 : segs + 1;
+    MCU_LOG("CSA detectDiscrete param=%d via step grid count=%d (segments=%d, toggle=%d)",
+            param, count, segs, isToggle ? 1 : 0);
+    return count;
+  }
+
+  // (2) No step grid: PlugMode's verified, evenly distributed value-name
+  // scan (its step-grid part cannot fire without a step size).
+  PMVPot::tSteps steps;
+  int n = PlugAccess::fillDiscreteSteps(tr, slot, param, &steps);
+  if (n > 0) {
+    MCU_LOG("CSA detectDiscrete param=%d via PlugMode detection count=%d",
+            param, n);
+    return n;
+  }
+
+  // (3) Value-name scan WITHOUT the even-distribution verification: some
+  // FXs quantize normalized positions by truncation, which fails
+  // PlugMode's exact i/(N-1) position check although the parameter is
+  // clearly discrete. For the channel strip's name-change walk any
+  // 2..100 distinct value names across the range are enough.
+  if (!TrackFX_FormatParamValueNormalized)
+    return 0;
+  const String nameAtZero = formattedValueName(tr, slot, param, 0.0);
+  if (nameAtZero.isEmpty())
+    return 0; // without value names the heuristic cannot work
+  // If the name of 0.00 and 0.01 differ, the display changes with every
+  // 1% step and the parameter is effectively continuous.
+  const String nameAtOnePercent = formattedValueName(tr, slot, param, 0.01);
+  if (!nameAtOnePercent.isEmpty() && nameAtOnePercent != nameAtZero)
+    return 0;
+  int distinct = 1;
+  String lastName = nameAtZero;
+  for (int i = 1; i <= 100; i++) {
+    const String name = formattedValueName(tr, slot, param, i / 100.0);
+    if (name.isEmpty() || name == lastName)
+      continue;
+    lastName = name;
+    if (++distinct > 100) {
+      MCU_LOG("CSA detectDiscrete param=%d scan: >100 distinct names -> continuous",
+              param);
+      return 0;
+    }
+  }
+  if (distinct < 2)
+    return 0;
+  MCU_LOG("CSA detectDiscrete param=%d via name scan (unverified) count=%d",
+          param, distinct);
+  return distinct;
+}
+
 void ChannelStripAccess::toggleParam(MediaTrack *tr, int slot, int param) {
   if (!tr || slot < 0 || param < 0)
     return;
   // notes.org: set to 1 if current != 1, else 0. Compare in normalized space.
   double v = getParamValue(tr, slot, param);
   setParamValue(tr, slot, param, (v < 1.0) ? 1.0 : 0.0);
+}
+
+void ChannelStripAccess::cycleDiscreteParam(MediaTrack *tr, int slot,
+                                             int param, int valueCount) {
+  if (!tr || slot < 0 || param < 0 || valueCount < 2)
+    return;
+  const double v0 = getParamValue(tr, slot, param);
+  const int segments = valueCount - 1;
+  // Current step index exactly as the VPOT LED ring derives it
+  // (ChannelStripMode::updateVPOTs: round-half-up over the count grid).
+  int idx = (int)floor(clampN(v0) * segments + 0.5);
+  if (idx < 0)
+    idx = 0;
+  if (idx > segments)
+    idx = segments;
+  // Advance one value; after the highest wrap back to the lowest.
+  const int next = (idx + 1) % valueCount;
+  const double target = (double)next / (double)segments;
+  MCU_LOG("CSA cycleDiscrete param=%d v0=%.4f -> %.4f (step %d -> %d of %d%s)",
+          param, v0, target, idx, next, valueCount,
+          next == 0 ? ", wrap" : "");
+  setParamValue(tr, slot, param, target);
 }
 
 int ChannelStripAccess::getNumParams(MediaTrack *tr, int slot) {

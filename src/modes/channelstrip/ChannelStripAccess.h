@@ -72,6 +72,52 @@ public:
   static void setParamValue(MediaTrack *tr, int slot, int param, double norm);
   // VPOT turn: step the normalized value by numSteps; returns the new value.
   static double nudgeParam(MediaTrack *tr, int slot, int param, int numSteps);
+  // VPOT turn for a DISCRETE parameter (detected at bind time, see
+  // ChannelStripMap::getDiscreteCountForVPOT). One turn event moves to the
+  // next/previous discrete value only, no matter the CC delta. Resolution
+  // order:
+  //   (0) the count was entered by hand in the mapping editor (manual),
+  //       or the parameter has exactly two values (valueCount == 2)
+  //       -> step that grid unconditionally. A two-value parameter flips
+  //       between its range endpoints; the name walk would stop at the
+  //       display boundary (~0.5) and leave the value mid-range.
+  //   (1) the FX reports a step size:
+  //       - the stored valueCount DIFFERS from the live grid's value count
+  //         -> a stale detection: step the STORED grid.
+  //       - it matches (the normal detected case) -> step the exact live
+  //         quantization grid. This takes precedence over the name walk
+  //         because value formatters may show unquantized values, which
+  //         would make the name walk stop between grid points (the FX
+  //         snaps the value back).
+  //   (2) no live step grid, but value names: walk the normalized value in
+  //       0.01 increments (direction +1 = turned right, -1 = turned left)
+  //       until the formatted value NAME changes or the value reaches 1 or
+  //       0 (covers parameters with non-even value distributions).
+  //   (3) no step grid and no value names: step the stored valueCount grid
+  //       (detected at bind time or entered by hand).
+  // Returns the new value (the old one if nothing changed).
+  static double nudgeDiscreteParam(MediaTrack *tr, int slot, int param,
+                                   int direction, int valueCount,
+                                   bool manual);
+  // Press on a DISCRETE parameter: advance to the NEXT value and wrap from
+  // the highest back to the lowest (cycle). The steps are the even grid of
+  // the stored valueCount — the same positions the VPOT LED ring quantizes
+  // to. valueCount == 2 therefore behaves like a plain 0/1 toggle.
+  static void cycleDiscreteParam(MediaTrack *tr, int slot, int param,
+                                 int valueCount);
+  // Discrete detection at bind time (channel-strip specific, looser than
+  // PlugMode's fillDiscreteSteps, which is kept untouched): returns the
+  // number of discrete values, or 0 = not discrete / continuous.
+  //   (1) the FX reports a step grid — the quantization is known exactly
+  //       (spurious toggle flags on stepped parameters are filtered out,
+  //       genuine toggles count as two values)
+  //   (2) PlugAccess::fillDiscreteSteps (verified, evenly distributed
+  //       value-name scan)
+  //   (3) a value-name scan WITHOUT the even-distribution verification
+  //       (PlugMode needs it for its exact step positions; the channel
+  //       strip's name-change walk does not): 2..100 distinct value names
+  //       across the range count as discrete
+  static int detectDiscreteCount(MediaTrack *tr, int slot, int param);
   // Toggle: set to 1.0 if the current value != 1.0, else 0.0 (per notes.org).
   static void toggleParam(MediaTrack *tr, int slot, int param);
 
@@ -81,6 +127,12 @@ public:
   // Formatted parameter value (e.g. "1.0k", "-3.2 dB"). Uses the optional
   // TrackFX_FormatParamValue API; returns "" if unavailable.
   static String getFormattedParamValue(MediaTrack *tr, int slot, int param);
+  // Formatted value name at a NORMALIZED 0..1 position (e.g. "On"/"Off",
+  // "SINE"). Uses TrackFX_FormatParamValueNormalized; returns "" if the FX
+  // reports none. Public: used by the discrete detection and the VPOT
+  // name-change walk.
+  static String formattedValueName(MediaTrack *tr, int slot, int param,
+                                   double normalized);
 
   // --- add plugin ("+" flow) ---
   // Adds the strip's plugin at its insert position on the given track and

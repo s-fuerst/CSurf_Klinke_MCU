@@ -64,37 +64,37 @@ ChannelStripParamEditor::ChannelStripParamEditor(ChannelStripMode *pMode,
                                  TableHeaderComponent::notResizable);
   m_table->getHeader().addColumn("Name", CSTP_COL_NAME, 70, 60, 80,
                                  TableHeaderComponent::notResizable);
+  m_table->getHeader().addColumn("Steps", CSTP_COL_STEPS, 50, 40, 50,
+                                 TableHeaderComponent::notResizable);
   m_table->getHeader().addColumn("Clear", CSTP_COL_CLEAR, 60, 60, 60,
                                  TableHeaderComponent::notResizable);
 
   m_table->setMultipleSelectionEnabled(false);
 
-  // Learn toggle: arms the automatic learn (default ON). With Learn OFF no
-  // row is highlighted and knob movements in the FX window are ignored.
+  // Learn toggle: arms the automatic learn (default OFF — the editor opens
+  // for manual parameter selection; the user switches Learn on to arm it).
+  // With Learn OFF no dropdown is red and knob movements in the FX window
+  // are ignored.
   addAndMakeVisible(m_learnButton = new ToggleButton(String("Learn")));
   m_learnButton->setTooltip(String(
       "When ON, turning a parameter in the floating FX window assigns it\n"
-      "to the highlighted (red) VPOT row and then advances to the next."));
-  m_learnButton->setToggleState(true, dontSendNotification);
+      "to the red-highlighted VPOT row and then advances to the next row.\n"
+      "A row click re-arms at that row."));
+  m_learnButton->setToggleState(false, dontSendNotification);
   m_learnButton->addListener(this);
 
-  // Auto-arm learn: pre-select row 0 so a knob movement in the floating FX
-  // window immediately assigns the first VPOT (no manual row click needed).
-  // updateContent() FIRST: TableListBox's ListBox base is constructed with
-  // totalItems=0 (the model is stored without setModel), so a bare
-  // selectRow() would silently no-op (JUCE guards isPositiveAndBelow(row,
-  // totalItems)) and even run the deselectAllRows fallback. After
-  // updateContent() totalItems=16 and selectRow(0) sticks.
+  // Populate the table rows (combos, name labels, steps, clear buttons).
   m_table->updateContent();
-  m_learnVPOT = 0;
-  m_table->selectRow(0, false, true);
+  // m_learnVPOT stays -1 (constructor init): no row is armed until the
+  // user turns Learn on.
   MCU_LOG("CSTPE ctor: strip=%d slot=%d numParams=%d learnVPOT=%d",
           m_stripIndex, fxSlot, numParams, m_learnVPOT);
   // 8px margin around the table so this dialog matches the BindingTable's
   // look (which sits inside ChannelStripComponent with the same margin).
   const int m = 8;
   // 36 = Learn button row, 24 = table header, 8 = bottom margin.
-  setSize(400 + 2 * m, 36 + 24 + ChannelStripMap::kNumVPOTs * 24 + 8 + m);
+  // Columns: 60 + 180 + 70 + 50 + 60 = 420.
+  setSize(420 + 2 * m, 36 + 24 + ChannelStripMap::kNumVPOTs * 24 + 8 + m);
 
   startTimer(100);
 }
@@ -133,6 +133,11 @@ int ChannelStripParamEditor::getNumRows() {
 
 void ChannelStripParamEditor::paintRowBackground(Graphics &g, int, int w,
                                                   int h, bool sel) {
+  // While Learn is ON the armed (selected) row is highlighted RED as a
+  // whole, and its parameter dropdown is red too (see isLearnTarget /
+  // VpotParamCombo). The dropdown colours are kept in sync with the armed
+  // row by scheduleLearnHighlightRefresh(), so no stale red remains on a
+  // previously armed row.
   const bool learn = m_learnButton && m_learnButton->getToggleState();
   g.fillAll(sel ? (learn ? Colour(255, 0, 0) : Colours::lightblue)
                 : Colours::white);
@@ -140,9 +145,9 @@ void ChannelStripParamEditor::paintRowBackground(Graphics &g, int, int w,
 
 void ChannelStripParamEditor::paintCell(Graphics &g, int row, int col,
                                          int w, int h, bool) {
+  g.setFont(Font(FontOptions(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain)));
   if (col != CSTP_COL_NR) return;
   g.setColour(Colours::black);
-  g.setFont(Font(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain));
   String n = (row < 8) ? String(row + 1) : ("Shift " + String(row - 7));
   g.drawText(n, 2, 1, w - 4, h, Justification::centred, true);
 }
@@ -159,6 +164,12 @@ Component *ChannelStripParamEditor::refreshComponentForCell(
   case CSTP_COL_NAME: {
     auto *c = (VpotNameLabel *)existing;
     if (!c) c = new VpotNameLabel(*this);
+    c->setRowAndColumn(row, col);
+    return c;
+  }
+  case CSTP_COL_STEPS: {
+    auto *c = (VpotStepsLabel *)existing;
+    if (!c) c = new VpotStepsLabel(*this);
     c->setRowAndColumn(row, col);
     return c;
   }
@@ -182,6 +193,24 @@ void ChannelStripParamEditor::selectedRowsChanged(int lastRow) {
   // pending debounce is cancelled.
   m_lastLearnParam = -1;
   m_learnTicksRemaining = 0;
+  // The red arm indicator lives in the parameter dropdowns (set per cell at
+  // updateContent time). Row-selection changes alone do NOT refresh the
+  // cells, so without this the red would stay on the previously armed row
+  // while the newly selected row shows none (stale/wrong red dropdown).
+  if (m_learnButton && m_learnButton->getToggleState())
+    scheduleLearnHighlightRefresh();
+}
+
+void ChannelStripParamEditor::scheduleLearnHighlightRefresh() {
+  // Recreate/refresh the cell components so the red dropdown follows the
+  // armed row. Deferred because selectedRowsChanged fires from inside the
+  // listbox's own update; recreating cells synchronously there can destroy
+  // the component that is still handling the event (see bindingChanged).
+  Component::SafePointer<ChannelStripParamEditor> safe(this);
+  MessageManager::callAsync([safe]() {
+    if (safe != nullptr && safe->m_table != nullptr)
+      safe->m_table->updateContent();
+  });
 }
 
 void ChannelStripParamEditor::timerCallback() {
@@ -203,17 +232,19 @@ void ChannelStripParamEditor::buttonClicked(Button *b) {
   if (b != m_learnButton)
     return;
   if (m_learnButton->getToggleState()) {
-    // Learn ON: arm row 0 as a fresh gesture.
+    // Learn ON: arm row 0 as a fresh gesture. m_learnVPOT FIRST so the
+    // following updateContent colours the row-0 dropdown red immediately
+    // (the cells read isLearnTarget()); selectRow() then marks the row.
     m_lastLearnParam = -1;
     m_learnTicksRemaining = 0;
-    m_table->updateContent();
     m_learnVPOT = 0;
+    m_table->updateContent();
     m_table->selectRow(0, false, true);
   } else {
-    // Learn OFF: no row highlighted, no assignment, pending advance
-    // cancelled. deselectAllRows() fires selectedRowsChanged(-1), which
-    // resets the learn state; updateContent() re-runs setRowAndColumn so
-    // the combos lose the red learn colour.
+    // Learn OFF: no row armed, no assignment, pending advance cancelled.
+    // deselectAllRows() fires selectedRowsChanged(-1), which resets the
+    // learn state; updateContent() re-runs setRowAndColumn so the combos
+    // lose the red learn colour.
     m_table->deselectAllRows();
     m_table->updateContent();
   }
@@ -252,6 +283,25 @@ void ChannelStripParamEditor::setVPOTParam(int vpot, int paramIdx) {
   if (!m_strip || vpot < 0 || vpot >= ChannelStripMap::kNumVPOTs)
     return;
   m_strip->setParamForVPOT(vpot, paramIdx);
+  if (paramIdx >= 0) {
+    // Discrete detection (ChannelStripAccess::detectDiscreteCount: PlugMode's
+    // fillDiscreteSteps first, then a looser channel-strip fallback for
+    // step-grid parameters without value names and for non-even value
+    // distributions) — run ONLY on the parameter being bound, never on all
+    // parameters. The live plugin instance on the track provides the value
+    // names. The count (0 = not discrete) is stored in the global strip
+    // mapping.
+    int discreteCount =
+        ChannelStripAccess::detectDiscreteCount(m_pTrack, m_fxSlot, paramIdx);
+    m_strip->setDiscreteCountForVPOT(vpot, discreteCount);
+    // A (re-)bind is a fresh detection: drop any earlier manual override.
+    m_strip->setStepsManualForVPOT(vpot, false);
+    MCU_LOG("CSTPE setVPOTParam vpot=%d param=%d discreteCount=%d",
+            vpot, paramIdx, discreteCount);
+  } else {
+    m_strip->setDiscreteCountForVPOT(vpot, 0);
+    m_strip->setStepsManualForVPOT(vpot, false);
+  }
   // auto-fill the name from the param name if empty
   if (paramIdx >= 0 && paramIdx < m_paramNames.size() &&
       m_strip->getVPOTName(vpot).isEmpty())
@@ -273,6 +323,8 @@ void ChannelStripParamEditor::clearVPOT(int vpot) {
     return;
   m_strip->setParamForVPOT(vpot, -1);
   m_strip->setVPOTName(vpot, String());
+  m_strip->setDiscreteCountForVPOT(vpot, 0);
+  m_strip->setStepsManualForVPOT(vpot, false);
   m_table->updateContent();
   if (m_pMode)
     m_pMode->bindingChanged();
@@ -407,8 +459,9 @@ void VpotParamCombo::setRowAndColumn(int r, int c) {
   ChannelStripMap *strip = owner.getStrip();
   int cur = strip ? strip->getParamForVPOT(row) : -1;
   m_combo->setSelectedId(cur >= 0 ? cur + 2 : 1, dontSendNotification);
-  // PlugMode learn red (Colour(255,0,0)) on the armed learn row; white
-  // otherwise (also when Learn is OFF — no row is highlighted then).
+  // Learn red (Colour(255,0,0)) on the parameter dropdown of the armed
+  // (red-highlighted) row; white otherwise. The armed row itself is painted
+  // red by paintRowBackground.
   m_combo->setColour(ComboBox::backgroundColourId,
                      owner.isLearnTarget(row) ? Colour(255, 0, 0)
                                               : Colours::white);
@@ -425,7 +478,7 @@ void VpotParamCombo::comboBoxChanged(ComboBox *) {
 VpotNameLabel::VpotNameLabel(ChannelStripParamEditor &o)
     : owner(o), m_label(NULL), row(0), col(0) {
   addAndMakeVisible(m_label = new Label(String(), String()));
-  m_label->setFont(Font(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain));
+  m_label->setFont(Font(FontOptions(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain)));
   m_label->setJustificationType(Justification::centredLeft);
   m_label->setEditable(true, true, false);
   m_label->setColour(Label::backgroundColourId, Colours::white);
@@ -447,6 +500,51 @@ void VpotNameLabel::labelTextChanged(Label *l) {
   String s = l->getText().substring(0, 6);
   strip->setVPOTName(row, s);
   l->setText(s, dontSendNotification);
+  owner.notifyBindingChanged();
+}
+
+// ===== VpotStepsLabel =====
+
+// Editable discrete value count ("Steps"): filled by the automatic
+// detection when a parameter is bound, overwritable by hand when the
+// detection failed. Empty / non-numeric text means 0 = not discrete.
+VpotStepsLabel::VpotStepsLabel(ChannelStripParamEditor &o)
+    : owner(o), m_label(NULL), row(0), col(0) {
+  addAndMakeVisible(m_label = new Label(String(), String()));
+  m_label->setFont(Font(FontOptions(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain)));
+  m_label->setJustificationType(Justification::centred);
+  m_label->setEditable(true, true, false);
+  m_label->setColour(Label::backgroundColourId, Colours::white);
+  m_label->setColour(Label::outlineColourId, Colours::lightgrey);
+  m_label->setTooltip(String(
+      "Discrete value count of the bound parameter (0 = continuous).\n"
+      "Filled automatically by the detection on binding; edit it to\n"
+      "override a wrong detection (0 = not discrete)."));
+  m_label->addListener(this);
+}
+
+void VpotStepsLabel::setRowAndColumn(int r, int c) {
+  row = r; col = c;
+  ChannelStripMap *strip = owner.getStrip();
+  int count = strip ? strip->getDiscreteCountForVPOT(row) : 0;
+  m_label->setText(count > 0 ? String(count) : String(), dontSendNotification);
+}
+
+void VpotStepsLabel::labelTextChanged(Label *l) {
+  ChannelStripMap *strip = owner.getStrip();
+  if (!strip) return;
+  // Empty or non-numeric text = 0 (not discrete). Clamp to a sane range.
+  int v = l->getText().trim().getIntValue();
+  if (v < 0)
+    v = 0;
+  if (v > 1000)
+    v = 1000;
+  strip->setDiscreteCountForVPOT(row, v);
+  // A hand-entered value is a manual override: the runtime steps this grid
+  // unconditionally.
+  strip->setStepsManualForVPOT(row, true);
+  MCU_LOG("CSTPE steps manual override row=%d count=%d", row, v);
+  l->setText(v > 0 ? String(v) : String(), dontSendNotification);
   owner.notifyBindingChanged();
 }
 

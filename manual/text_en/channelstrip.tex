@@ -37,8 +37,14 @@ display shows the hint ``You must select a single track.''
 \item \faders: Control the track volume (or the pan, when \flip is active),
   as in the Pan-Mode.
 \item \vpots: Control the parameters of the strip assigned to this unit.
-  Turning a \vpot nudges the parameter; pressing a \vpot toggles the
-  parameter between its two extreme values (e.g.~on/off).
+  For a \emph{continuous} parameter, turning a \vpot nudges the parameter
+  and pressing it toggles between its two extreme values
+  (e.g.~on/off). A parameter that was detected as \emph{discrete} (see the
+  \textbf{Steps} column in the
+  \hyperref[stripmapping]{Mapping Editor}) behaves differently: turning
+  moves exactly one value per detent, pressing cycles through the values
+  (after the highest value it wraps back to the lowest), and the LED ring
+  displays only the value positions instead of a continuous fill.
 \item \shift \vpots: Address the second 8 parameters of the strip (VPOTs
   9\,--\,16).
 \item \select, \mute, \solo, \rec: As in the
@@ -141,12 +147,36 @@ Figure~\ref{F:Screenshot_ChannelStrip_Mapping}). It shows 16 rows
   editor (\texttt{Edit Mapping})}{}{}
 
 For each row you select the parameter of the strip's plugin that the \vpot
-should control in the \textbf{Parameter} column. The parameter can be picked
-directly from the combo box, or you can select the row and then change the
-corresponding value in the plugin's own user interface; the parameter that
-changes is assigned to the selected row. The \textbf{Name} column holds a
-short display label (up to 6 characters) that is shown on the MCU; it is
-filled automatically from the parameter name and can be edited afterwards.
+should control in the \textbf{Parameter} column. The parameter can be
+picked directly from the combo box, or it can be \emph{learned}: switch on
+the \textbf{Learn} button (the currently selected row turns red), then move
+a parameter in the plugin's floating window --- the parameter that changes
+is assigned to the selected row, and the learning advances to the next row
+after a short pause (a row click re-arms learning at that row). With Learn
+switched off, movements in the plugin window are ignored and the rows are
+edited purely by hand. The \textbf{Name} column holds a short display label
+(up to 6 characters) that is shown on the MCU; it is filled automatically
+from the parameter name and can be edited afterwards.
+
+\textbf{Steps column and discrete parameters.}
+The \textbf{Steps} column shows the number of discrete values the bound
+parameter has; an empty field (or $0$) means the parameter is treated as
+continuous. The value is detected automatically when a parameter is bound
+to a row, using the same detection as the FX-Mode: first the step size the
+plugin reports, then the value names the plugin displays across its range.
+Only the parameter being bound is examined, never the whole plugin. The
+detection can fail (some plugins report no step size and only generic value
+names), so the field is \emph{editable}: you can correct the number by
+hand. A hand-entered value is used exactly as entered; entering $0$
+declares the parameter as not discrete (plain nudging).
+
+For a row marked as discrete, the \vpots behave as described above: turning
+moves one value per detent (a parameter with two values flips between its
+extremes), pressing cycles through the values and wraps from the highest
+back to the lowest, and the LED ring shows only the value positions. The
+detected value and a possible manual correction are stored with the strip
+and therefore shared across all tracks and projects like the rest of the
+mapping.
 
 The mapping of a strip is applied to every unit that is assigned to that
 strip. If the plugin is not present on the selected track, the editor adds a

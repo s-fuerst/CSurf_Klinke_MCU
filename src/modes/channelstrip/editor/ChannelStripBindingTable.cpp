@@ -105,7 +105,7 @@ void ChannelStripBindingTable::paintCell(Graphics &g, int row, int col,
                                          int w, int h, bool) {
   if (col != CST_COL_NR) return;
   g.setColour(Colours::black);
-  g.setFont(Font(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain));
+  g.setFont(Font(FontOptions(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain)));
   String n = (row < 8) ? String(row + 1) : ("Shift " + String(row - 7));
   g.drawText(n, 2, 1, w - 4, h, Justification::centred, true);
 }
@@ -152,7 +152,7 @@ CSTPluginCombo::CSTPluginCombo(ChannelStripBindingTable &o)
     : owner(o), m_editor(NULL), row(0), column(0) {
   addAndMakeVisible(m_editor = new TextEditor());
   m_editor->setFont(
-      Font(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain));
+      Font(FontOptions(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain)));
   // Explicit colours: inside the TableListBox the window's
   // KlinkeLookAndFeel defaults are not resolved for this editor, and the
   // default text colour is white -> the picked plugin name was invisible
@@ -340,7 +340,7 @@ void CSTPluginCombo::paintListBoxItem(int r, Graphics &g, int w, int h, bool sel
   if (r < 0 || r >= (int)m_filtered.size()) return;
   g.fillAll(sel ? Colours::lightblue : Colours::white);
   g.setColour(Colours::black);
-  g.setFont(Font(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain));
+  g.setFont(Font(FontOptions(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain)));
   g.drawText(m_filtered[r].name, 6, 0, w - 8, h, Justification::centredLeft, true);
 }
 void CSTPluginCombo::listBoxItemClicked(int r, const MouseEvent &) { pickFiltered(r); }
@@ -350,7 +350,7 @@ void CSTPluginCombo::listBoxItemClicked(int r, const MouseEvent &) { pickFiltere
 CSTAbbrevLabel::CSTAbbrevLabel(ChannelStripBindingTable &o)
     : owner(o), m_label(NULL), row(0), column(0) {
   addAndMakeVisible(m_label = new Label(String(), String()));
-  m_label->setFont(Font(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain));
+  m_label->setFont(Font(FontOptions(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain)));
   m_label->setJustificationType(Justification::centredLeft);
   m_label->setEditable(true, true, false);
   m_label->setColour(Label::backgroundColourId, Colours::white);

@@ -166,7 +166,17 @@ bool ChannelStripMode::vpotMoved(int channel, int numSteps) {
   if (fxSlot < 0)
     return false; // plugin missing — needs press (+), not turn
 
-  ChannelStripAccess::nudgeParam(tr, fxSlot, param, numSteps);
+  // Discrete parameters (detected when the parameter was bound to this
+  // VPOT) move to the next/previous value only: a 0.01 walk until the
+  // value name changes. One turn event = one value, independent of the
+  // CC delta (same semantics as PlugMode's discrete V-Pots).
+  if (strip->isDiscreteForVPOT(vpot))
+    ChannelStripAccess::nudgeDiscreteParam(
+        tr, fxSlot, param, numSteps > 0 ? 1 : -1,
+        strip->getDiscreteCountForVPOT(vpot),
+        strip->isStepsManualForVPOT(vpot));
+  else
+    ChannelStripAccess::nudgeParam(tr, fxSlot, param, numSteps);
   m_lastVPOTChangeTime[channel - 1] = Time::getCurrentTime();
   updateEverything();
   return true;
@@ -223,7 +233,8 @@ bool ChannelStripMode::vpotPressed(int channel, bool pressed) {
     return true;
   }
 
-  // Active state: toggle the parameter 0/1.
+  // Active state. A DISCRETE parameter cycles through its values on each
+  // press (highest wraps back to lowest); anything else toggles 0/1.
   ChannelStripMap *strip = &m_strips[stripIdx];
   if (!strip->isAssigned())
     return false;
@@ -231,7 +242,11 @@ bool ChannelStripMode::vpotPressed(int channel, bool pressed) {
   if (param < 0)
     return false;
 
-  ChannelStripAccess::toggleParam(tr, fxSlot, param);
+  if (strip->isDiscreteForVPOT(vpot))
+    ChannelStripAccess::cycleDiscreteParam(
+        tr, fxSlot, param, strip->getDiscreteCountForVPOT(vpot));
+  else
+    ChannelStripAccess::toggleParam(tr, fxSlot, param);
   m_lastVPOTChangeTime[channel - 1] = Time::getCurrentTime();
   updateEverything();
   return true;
@@ -298,6 +313,20 @@ void ChannelStripMode::updateVPOTs() {
     if (param >= 0 && fxSlot >= 0) {
       double norm = ChannelStripAccess::getParamValue(tr, fxSlot, param);
       v->setMode(VPOT_LED::FROM_LEFT);
+      // A discrete parameter: snap the ring to the current STEP position so
+      // that mid-range values (e.g. a name-walk landing at a display
+      // boundary, or a manual override between grid points) never show a
+      // half-filled ring. A two-value parameter therefore only ever shows
+      // the two endpoints of the ring.
+      const int count = strip->getDiscreteCountForVPOT(vpot);
+      if (count > 1) {
+        int idx = (int)(norm * (count - 1) + 0.5);
+        if (idx < 0)
+          idx = 0;
+        if (idx >= count)
+          idx = count - 1;
+        norm = (double)idx / (double)(count - 1);
+      }
       v->setValue(1 + (int)(norm * 10.0 + 0.5));
     } else {
       v->setMode(VPOT_LED::OFF);

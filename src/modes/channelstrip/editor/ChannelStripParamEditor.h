@@ -6,18 +6,29 @@
  * parameters onto the 16 VPOT positions (1..8 normal, Shift-1..Shift-8).
  * Opened by the "edit…" button in the main strip table.
  *
- * A **Learn** toggle arms the automatic learn; the armed row is
- * highlighted in red (Colour(255,0,0) — the same red PlugMode's mapping
- * editor uses for its learn state). Turning a parameter in the floating FX
- * window assigns it to that row. One knob gesture emits MANY param-change
- * events; those are coalesced onto ONE row, and the selection advances to
- * the next row ~1 s after the last event (or immediately when a different
- * parameter is touched = new gesture). A manual row click re-arms learn at
- * that row. With Learn OFF no row is highlighted and knob movements are
- * ignored. The learn feed comes from the editor's own PluginWatcher in
- * poll mode (the Part C event feed only reaches PlugMode's watcher).
+ * A **Learn** toggle arms the automatic learn (default OFF — the editor
+ * opens for manual parameter selection). When Learn is ON, the armed row
+ * is highlighted in RED as a whole (Colour(255,0,0) — the same red
+ * PlugMode's mapping editor uses for its learn state), including its
+ * parameter dropdown; a row click re-arms learn at that row. Turning a
+ * parameter in the floating FX window assigns it to the armed row. One
+ * knob gesture emits MANY param-change events; those are coalesced onto
+ * ONE row, and the arm advances to the next row ~1 s after the last event
+ * (or immediately when a different parameter is touched = new gesture).
+ * With Learn OFF no row is highlighted and knob movements are ignored.
+ * The learn feed comes from the editor's own PluginWatcher in poll mode
+ * (the Part C event feed only reaches PlugMode's watcher).
  *
- * Columns:  # | Parameter | Name (≤6) | Clear
+ * Columns:  # | Parameter | Name (≤6) | Steps | Clear
+ *
+ * **Steps**: when a parameter is bound to a VPOT row (learn or manual),
+ * the discrete detection (ChannelStripAccess::detectDiscreteCount, based on
+ * PlugMode's fillDiscreteSteps plus looser fallbacks) is run on just THAT
+ * parameter (no full scan) against the live plugin instance.
+ * The detected value count is stored in the strip's mapping and shown in
+ * this column; 0 = continuous / not detected. The cell is
+ * EDITABLE so a failed detection can be corrected by hand (0 = not
+ * discrete).
  *
  * A temporary plugin instance is added to the track (end of chain), its
  * floating window is opened, and it is removed when the dialog closes.
@@ -33,7 +44,8 @@ class PluginWatcher;
 #define CSTP_COL_NR 1
 #define CSTP_COL_PARAM 2
 #define CSTP_COL_NAME 3
-#define CSTP_COL_CLEAR 4
+#define CSTP_COL_STEPS 4
+#define CSTP_COL_CLEAR 5
 
 class ChannelStripParamEditor : public Component,
                                 public TableListBoxModel,
@@ -73,6 +85,10 @@ public:
   const StringArray &paramNames() const { return m_paramNames; }
   void notifyBindingChanged();
   bool isLearnTarget(int row) const; // armed learn row while Learn is ON
+  // Re-colours the parameter dropdowns after the armed row changed (row
+  // click, programmatic arm advance, learn toggle). Deferred to keep it out
+  // of the listbox's own update callbacks.
+  void scheduleLearnHighlightRefresh();
 
   static void open(ChannelStripMode *pMode, int stripIndex);
 
@@ -115,6 +131,19 @@ class VpotNameLabel : public Component, public Label::Listener {
 public:
   VpotNameLabel(ChannelStripParamEditor &o);
   ~VpotNameLabel() { deleteAllChildren(); }
+  void resized() override { m_label->setBoundsInset(BorderSize(2)); }
+  void setRowAndColumn(int r, int c);
+  void labelTextChanged(Label *) override;
+private:
+  ChannelStripParamEditor &owner;
+  Label *m_label;
+  int row, col;
+};
+
+class VpotStepsLabel : public Component, public Label::Listener {
+public:
+  VpotStepsLabel(ChannelStripParamEditor &o);
+  ~VpotStepsLabel() { deleteAllChildren(); }
   void resized() override { m_label->setBoundsInset(BorderSize(2)); }
   void setRowAndColumn(int r, int c);
   void labelTextChanged(Label *) override;
