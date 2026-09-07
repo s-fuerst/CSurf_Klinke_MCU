@@ -101,18 +101,14 @@ void PanMode::updateDisplay() {
         // per-unit ProX check
         HardwareUnit *u = m_pCCSManager->getMCU()->unitForChannel(iTrack);
         if (u && u->isProX()) {
-          if (s_flipmode) {
-            m_pDisplay->showPan(3, iTrack,
-                                m_pCCSManager->getMCU()->GetSurfacePan(tr));
+          // Row 3 (second panel) is written by MultiTrackMode::updateDisplay();
+          // here row 1 shows the value the VPOT controls.
+          if (s_flipmode)
             m_pDisplay->showDB(1, iTrack,
-                              m_pCCSManager->getMCU()->GetSurfaceVolume(tr));
-          }
-          else {
-            m_pDisplay->showDB(3, iTrack,
-                              m_pCCSManager->getMCU()->GetSurfaceVolume(tr));
+                               m_pCCSManager->getMCU()->GetSurfaceVolume(tr));
+          else
             m_pDisplay->showPan(1, iTrack,
                                 m_pCCSManager->getMCU()->GetSurfacePan(tr));
-          }
         } else {
           // Non-ProX: row 1 normally shows the value the FADER controls
           // (Volume, or Pan when flipped). For ~1s after the VPOT is turned

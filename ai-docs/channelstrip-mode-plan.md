@@ -503,6 +503,15 @@ src/modes/channelstrip/
   A later test also found and fixed the floating action variable type: the
   `TrackFX_Show` action must be an `int` (3 was truncated to 1 when it was a
   `bool`).
+- **ProX second-panel fader values (2026-09-07):** `MultiTrackMode::
+  updateDisplay()` now permanently writes the fader-controlled value to row 3
+  (second LCD panel) of every QCon ProX unit (volume in dB, or pan in flip
+  mode). Previously only PanMode wrote row 3 (per unit) and CommandMode wrote
+  it behind a global channel-1 ProX check; MultiTrack, Action, and
+  ChannelStrip modes never did, so the ProX touch-overlay skip in
+  `updateFaderTouchDisplay` was wrong for those modes (the value was never
+  shown anywhere). The duplicated per-mode row-3 writes in PanMode and
+  CommandMode were removed; all four derived modes inherit the base write.
   It deletes the assigned FX instance from the selected track, keeps the
   global strip mapping intact, refreshes TCP/MCP via the same mixer update
   sequence, and leaves the strip in the normal missing-plugin picker state.

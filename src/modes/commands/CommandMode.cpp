@@ -266,27 +266,8 @@ void CommandMode::updateVPOTs() {
 // write the page names to the second row
 void CommandMode::updateDisplay() {
   MultiTrackMode::updateDisplay();
-
-  // per-unit ProX check, widened loop
-  if (m_pCCSManager->getMCU()->unitForChannel(1) &&
-      m_pCCSManager->getMCU()->unitForChannel(1)->isProX()) {
-    int nStrips = Tracks::instance()->getNumberOfChannelStrips();
-    for (int iChan = 1; iChan <= nStrips; iChan++) {
-      MediaTrack *tr = getMediaTrackForChannel(iChan);
-      if (tr) {
-	if (s_flipmode) {
-	  m_pDisplay->showPan(3, iChan,
-			      m_pCCSManager->getMCU()->GetSurfacePan(tr));
-	}
-	else {
-	  m_pDisplay->showDB(3, iChan,
-			     m_pCCSManager->getMCU()->GetSurfaceVolume(tr));
-	}
-      } else {
-	m_pDisplay->changeField(3, iChan, "");
-      }
-    }
-  }
+  // ProX second-panel fader values (row 3) are written per unit by
+  // MultiTrackMode::updateDisplay(); only row 1 is mode-specific here.
 
   int shift = m_pCCSManager->getMCU()->IsModifierPressed(VK_SHIFT) ? 1 : 0;
   // P3: render line 1 per unit from each unit's own active page.

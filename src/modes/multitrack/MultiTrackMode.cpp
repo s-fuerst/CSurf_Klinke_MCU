@@ -551,8 +551,19 @@ void MultiTrackMode::updateDisplay() {
         m_pDisplay->changeField(0, x, pTS->showInDisplay().toRawUTF8());
         // select the display layout from the owning unit's model.
         HardwareUnit *u = m_pCCSManager->getMCU()->unitForChannel(x);
-        if (u && u->isProX())
+        if (u && u->isProX()) {
           m_pDisplay->changeField(2, x, pTS->showInDisplay().toRawUTF8());
+          // The ProX second panel (row 3) permanently shows the value the
+          // fader controls (volume, or pan in flip mode). Written here so
+          // every derived multi-track mode (MultiTrack, Pan, Action,
+          // ChannelStrip) inherits it per unit.
+          if (s_flipmode)
+            m_pDisplay->showPan(3, x,
+                                m_pCCSManager->getMCU()->GetSurfacePan(tr));
+          else
+            m_pDisplay->showDB(3, x,
+                               m_pCCSManager->getMCU()->GetSurfaceVolume(tr));
+        }
       }
     } else {
       m_pDisplay->changeField(0, x, "");
