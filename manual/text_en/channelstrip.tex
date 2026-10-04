@@ -20,7 +20,9 @@ on two levels:
   parameters onto 16 \vpots (VPOTs 1\,--\,8, and 9\,--\,16 with the \shift
   modifier). The strips are shared across all tracks and all projects and
   are stored in a single XML file in the user's Channel Strip Maps directory
-  (see \hyperref[stripsave]{Saving and Loading Strips}).
+  (see \hyperref[stripsave]{Saving and Loading Strips}); on the very first
+  run, that file is seeded from a default configuration file that is
+  installed next to the plugin (see below).
 \item \textbf{Assignments.} For every track and every hardware unit you can
   assign one of the 16 global strips (or none). The 8 \vpots of that unit
   (16 with \shift) then drive the 16 parameters of the assigned strip on the
@@ -136,6 +138,9 @@ every assigned strip to one file, and \emph{Load all} \textbf{replaces all
 16 slots} with the strips found in the file --- slots that the file does not
 contain become unassigned. A file that does not contain a single valid strip
 is rejected, so an accidental load of a wrong file cannot wipe the set.
+The \textbf{Restore defaults} button replaces all 16 slots with the
+\emph{default configuration} (the \texttt{channelstrips.default.xml} file
+installed next to the plugin in the UserPlugins directory).
 
 \subsubsection{Mapping Editor}\label{stripmapping}
 The ``Edit Mapping'' button of a strip opens the

@@ -11,11 +11,13 @@ static const int kToolbarHeight = 30;
 
 ChannelStripComponent::ChannelStripComponent(ChannelStripMode *pMode)
     : m_pMode(pMode), m_table(NULL), m_saveAllButton(NULL),
-      m_loadAllButton(NULL) {
+      m_loadAllButton(NULL), m_restoreDefaultsButton(NULL) {
   addAndMakeVisible(m_table = new ChannelStripBindingTable(m_pMode));
   addAndMakeVisible(m_saveAllButton =
                         new TextButton("Save all 16..."));
   addAndMakeVisible(m_loadAllButton = new TextButton("Load all 16..."));
+  addAndMakeVisible(m_restoreDefaultsButton =
+                        new TextButton("Restore defaults"));
   m_saveAllButton->setTooltip(
       String("Store the complete set (all 16 slots) in a file of the Sets "
              "folder (name dialog)."));
@@ -28,8 +30,19 @@ ChannelStripComponent::ChannelStripComponent(ChannelStripMode *pMode)
   m_loadAllButton->setColour(TextButton::buttonOnColourId, Colour(0xffc8c8c8));
   m_saveAllButton->setColour(TextButton::textColourOffId, Colours::black);
   m_loadAllButton->setColour(TextButton::textColourOffId, Colours::black);
+  m_restoreDefaultsButton->setTooltip(
+      String("REPLACE ALL 16 slots with the default configuration template "
+             "deployed next to the plugin (channelstrips.default.xml). "
+             "Confirmation required."));
+  m_restoreDefaultsButton->setColour(TextButton::buttonColourId,
+                                     Colour(0xffe8e8e8));
+  m_restoreDefaultsButton->setColour(TextButton::buttonOnColourId,
+                                     Colour(0xffc8c8c8));
+  m_restoreDefaultsButton->setColour(TextButton::textColourOffId,
+                                     Colours::black);
   m_saveAllButton->addListener(this);
   m_loadAllButton->addListener(this);
+  m_restoreDefaultsButton->addListener(this);
   // width: table columns (590 + 3 * 60) + margins
   setSize(820, 460);
   refreshFileButtonStates();
@@ -46,6 +59,8 @@ void ChannelStripComponent::resized() {
     m_saveAllButton->setBounds(m, getHeight() - m - 26, 130, 26);
   if (m_loadAllButton)
     m_loadAllButton->setBounds(m + 138, getHeight() - m - 26, 130, 26);
+  if (m_restoreDefaultsButton)
+    m_restoreDefaultsButton->setBounds(m + 276, getHeight() - m - 26, 130, 26);
 }
 
 void ChannelStripComponent::updateEverything() {
@@ -61,6 +76,9 @@ void ChannelStripComponent::refreshFileButtonStates() {
     m_loadAllButton->setEnabled(
         !ChannelStripMode::listXmlFiles(ChannelStripMode::setFilesDir())
              .isEmpty());
+  if (m_restoreDefaultsButton)
+    m_restoreDefaultsButton->setEnabled(
+        ChannelStripMode::defaultConfigFile().existsAsFile());
   if (m_table)
     m_table->refreshFileButtonStates();
 }
@@ -110,9 +128,10 @@ void ChannelStripComponent::buttonClicked(Button *button) {
                         });
     return;
   }
-  const StringArray files = ChannelStripMode::listXmlFiles(dir);
-  openStripLoadDialog("Load all 16 channel strips", files,
-                      [this, dir](const String &name) {
+  if (button == m_loadAllButton) {
+    const StringArray files = ChannelStripMode::listXmlFiles(dir);
+    openStripLoadDialog("Load all 16 channel strips", files,
+                        [this, dir](const String &name) {
                         const File file = dir.getChildFile(name);
                         if (!m_pMode->loadAllStripsFromUserFile(file)) {
                           MCU_LOG("%s",
@@ -122,19 +141,52 @@ void ChannelStripComponent::buttonClicked(Button *button) {
                           return false;
                         }
                         return true;
-                      },
-                      [dir](const String &name) {
-                        const File file = dir.getChildFile(name);
-                        if (!file.deleteFile()) {
+                        },
+                        [dir](const String &name) {
+                          const File file = dir.getChildFile(name);
+                          if (!file.deleteFile()) {
+                            MCU_LOG("%s",
+                                    ("CSM delete set file " +
+                                     file.getFullPathName() + " FAILED")
+                                        .toRawUTF8());
+                            return false;
+                          }
                           MCU_LOG("%s",
-                                  ("CSM delete set file " +
-                                   file.getFullPathName() + " FAILED")
+                                  ("CSM deleted set file " +
+                                   file.getFullPathName())
                                       .toRawUTF8());
-                          return false;
-                        }
-                        MCU_LOG("%s",
-                                ("CSM deleted set file " +
-                                 file.getFullPathName()).toRawUTF8());
-                        return true;
-                      });
+                          return true;
+                        });
+    return;
+  }
+  if (button == m_restoreDefaultsButton) {
+    // A short synchronous AlertWindow is safe here (see AGENTS.md); only
+    // the DialogWindow::runModalLoop pattern deadlocks.
+    const MessageBoxOptions confirm = MessageBoxOptions()
+                                          .withIconType(
+                                              AlertWindow::QuestionIcon)
+                                          .withTitle("Restore defaults")
+                                          .withMessage(
+                                              "Replace ALL 16 channel "
+                                              "strips with the default "
+                                              "configuration template?\n"
+                                              "Your current global mapping "
+                                              "will be overwritten (set "
+                                              "files in the Sets folder "
+                                              "are not affected).")
+                                          .withButton("Yes")
+                                          .withButton("No");
+    // JUCE 8: button index 0 ("Yes") returns 1, button 1 ("No") returns 0
+    if (AlertWindow::show(confirm) != 1)
+      return; // answered No
+    if (!m_pMode->restoreStripsFromDefaults()) {
+      AlertWindow::showMessageBox(
+          AlertWindow::WarningIcon, "Restore defaults",
+          "Failed to restore the default configuration. The template "
+          "file (channelstrips.default.xml) next to the plugin is "
+          "missing or invalid.");
+      return;
+    }
+    updateEverything();
+  }
 }

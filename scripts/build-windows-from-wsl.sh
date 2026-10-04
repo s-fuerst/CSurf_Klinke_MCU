@@ -284,6 +284,12 @@ if [ "$DEPLOY" = 1 ]; then
   fi
   if [ -n "$DEST" ] && [ -d "$DEST" ]; then
     cp -f "$DLL" "$DEST/"
+    # Always copy the default channel strip configuration template next to
+    # the DLL (read-only for the extension; see the Linux/macOS script).
+    if [ -f "$ROOT/resources/channelstrips.default.xml" ]; then
+      cp -f "$ROOT/resources/channelstrips.default.xml" "$DEST/"
+      echo "=== deployed channelstrips.default.xml ==="
+    fi
     # With --profiler the DLL is built with debug symbols; copy the matching
     # PDB next to it so the VS CPU profiler can resolve surface function names.
     if [ "$PROFILER" = 1 ]; then

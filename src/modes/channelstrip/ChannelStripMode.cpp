@@ -56,7 +56,10 @@ ChannelStripMode::ChannelStripMode(CCSManager *pManager)
                      [this](int ch) { return ctrlMoveFx(ch, -1); });
   m_ctrlCommands.add(VK_CONTROL, 7,
                      [this](int ch) { return ctrlMoveFx(ch, +1); });
-  // Load the 16 global strips from the user file (survives REAPER restarts).
+  // First-run bootstrap: seed the user file from the deployed default
+  // template (never touches the template, never clobbers an existing
+  // user file), then load the 16 global strips (survives REAPER restarts).
+  ensureGlobalFileFromDefaults();
   loadStripsFromFile();
   // Persist per-(track, unit) assignments inside the Reaper project.
   m_projectChangedConnectionId =
@@ -611,6 +614,79 @@ void ChannelStripMode::saveStripsToFile() {
   if (!root->writeToFile(getGlobalFile(), String()))
     MCU_LOG("CSM saveStripsToFile FAILED");
   delete root;
+}
+
+File ChannelStripMode::defaultConfigFile() {
+  // The deploy scripts copy resources/channelstrips.default.xml next to the
+  // plugin binary (Linux/macOS: ~/.config/REAPER/UserPlugins/ or
+  // ~/Library/Application Support/REAPER/UserPlugins/; Windows: the REAPER
+  // directory). It is read-only from the extension's point of view.
+  return File::getSpecialLocation(File::currentExecutableFile)
+      .getParentDirectory()
+      .getChildFile("channelstrips.default.xml");
+}
+
+void ChannelStripMode::ensureGlobalFileFromDefaults() {
+  File gf = getGlobalFile();
+  if (gf.existsAsFile())
+    return; // user file present — never touch it
+  File df = defaultConfigFile();
+  if (!df.existsAsFile())
+    return; // no template deployed — start with 16 empty strips
+  if (df.copyFileTo(gf))
+    MCU_LOG("CSM seeded %s from default template",
+            gf.getFullPathName().toRawUTF8());
+  else
+    MCU_LOG("CSM failed to seed %s from default template",
+            gf.getFullPathName().toRawUTF8());
+}
+
+void ChannelStripMode::clearAllStrips() {
+  for (int i = 0; i < kNumStrips; i++)
+    m_strips[i].initEmpty();
+}
+
+bool ChannelStripMode::restoreStripsFromDefaults() {
+  File df = defaultConfigFile();
+  if (!df.existsAsFile()) {
+    MCU_LOG("CSM restoreStripsFromDefaults: template missing");
+    return false;
+  }
+  // FULL REPLACE from the template (same semantics as Load all 16): wipe
+  // everything, keep only the <STRIP> elements the template actually holds.
+  XmlDocument doc(df);
+  auto rootU = doc.getDocumentElement();
+  XmlElement *root = rootU.get();
+  if (!root) {
+    MCU_LOG("CSM restoreStripsFromDefaults: bad XML in template");
+    return false;
+  }
+  ChannelStripMap tmp[kNumStrips];
+  bool got[kNumStrips] = {};
+  int found = 0;
+  auto readOne = [&](const XmlElement *pStrip) {
+    int nr = pStrip->getIntAttribute(CSB_ATT_NR, 0);
+    if (nr >= 1 && nr <= kNumStrips && !got[nr - 1] &&
+        tmp[nr - 1].readFromXml(pStrip)) {
+      got[nr - 1] = true;
+      found++;
+    }
+  };
+  if (root->hasTagName(String("STRIP")))
+    readOne(root);
+  else
+    forEachXmlChildElementWithTagName(*root, pStrip, String("STRIP"))
+      readOne(pStrip);
+  for (int i = 0; i < kNumStrips; i++)
+    m_strips[i] = tmp[i];
+  if (!df.copyFileTo(getGlobalFile())) {
+    MCU_LOG("CSM restoreStripsFromDefaults: copy FAILED");
+    return false;
+  }
+  saveStripsToFile(); // persist the parsed view (canonical format)
+  bindingChanged();
+  MCU_LOG("CSM restored defaults: %d strip(s)", found);
+  return true;
 }
 
 File ChannelStripMode::userMapsDir() { return getStripsDir(); }

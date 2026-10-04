@@ -140,6 +140,22 @@ public:
   void loadStripsFromFile();
   void saveStripsToFile();
 
+  // --- default configuration template ---
+  // The deployment scripts copy resources/channelstrips.default.xml next to
+  // the plugin binary on every deploy. It is a READ-ONLY template: the
+  // extension never writes to it, so redeploying can never clobber user
+  // data (which lives exclusively in the global user file).
+  static juce::File defaultConfigFile();
+  // First-run bootstrap: when the global user file does not exist yet, seed
+  // it from the deployed template. Called once in the constructor, before
+  // loadStripsFromFile().
+  void ensureGlobalFileFromDefaults();
+  // "Restore defaults" (editor button): FULL REPLACE from the template —
+  // all 16 slots wiped, then the template's <STRIP> elements set, then the
+  // global file overwritten with the template. False when the template is
+  // missing or the copy fails.
+  bool restoreStripsFromDefaults();
+
   // --- user-file import/export (Channel Strip editor Save/Load buttons) ---
   // User files use the SAME format as channelstrips.xml: a <CHANNELSTRIPS>
   // root with one or more <STRIP nr=..> children. A single-strip file
@@ -187,6 +203,9 @@ private:
   // persistence helpers
   static juce::File getStripsDir(); // = userMapsDir()
   static juce::File getGlobalFile();
+  // Wipes all 16 in-memory strips to unassigned (used by full-replace
+  // loads, where loadStripsFromFile() would only merge).
+  void clearAllStrips();
 
   ChannelStripAccess *m_pAccess;
   ChannelStripComponent *m_pEditor;

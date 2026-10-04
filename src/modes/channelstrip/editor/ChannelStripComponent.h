@@ -11,7 +11,7 @@
  *   +---------------------------------------------------------------------+
  *   | # | Plugin | Abbrev | InsPos | Parameter… | Save | Load | Clear     | (16 rows)
  *   +---------------------------------------------------------------------+
- *   | [ Save all 16… ]   [ Load all 16… ]                                  |
+ *   | [ Save all 16… ]   [ Load all 16… ]   [ Restore defaults ]           |
  *   +---------------------------------------------------------------------+
  */
 #pragma once
@@ -28,7 +28,8 @@ public:
   void resized() override;
   void updateEverything();
   // grey out the "Load all 16..." button while the Sets/ folder has no
-  // files, and refresh the table's per-strip Load buttons
+  // files, grey out "Restore defaults" while the default template is not
+  // deployed, and refresh the table's per-strip Load buttons
   void refreshFileButtonStates();
   void buttonClicked(Button *button) override;
 
@@ -37,4 +38,5 @@ private:
   ChannelStripBindingTable *m_table;
   TextButton *m_saveAllButton;
   TextButton *m_loadAllButton;
+  TextButton *m_restoreDefaultsButton;
 };

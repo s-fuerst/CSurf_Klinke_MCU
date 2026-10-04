@@ -53,4 +53,5 @@ echo "==> built: $SO  ($(du -h "$SO" | cut -f1))"
 echo
 echo "    deploy:"
 echo "      cp \"$SO\" ~/.config/REAPER/UserPlugins/"
+echo "      cp resources/channelstrips.default.xml ~/.config/REAPER/UserPlugins/   # default channel strip config (copied on every deploy)"
 echo "    (fully restart REAPER to reload the extension)"

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Default channel strip configuration for the CSurf Klinke MCU extension.
+
+  This file is a READ-ONLY TEMPLATE. The deployment scripts copy it next to
+  the plugin binary (e.g. ~/.config/REAPER/UserPlugins/) on every deploy.
+
+  On first run (when no user file exists yet) the extension copies it to
+  the user file:
+      ~/.config/REAPER/MCU/ChannelStripMaps/channelstrips.xml   (Linux)
+      <Documents>\Reaper\MCU\ChannelStripMaps\channelstrips.xml (Windows)
+      ~/Library/Application Support/REAPER/MCU/ChannelStripMaps/channelstrips.xml (macOS)
+
+  All user changes are written to the USER file only — this template is
+  never modified by the extension, so redeploying can never clobber user
+  data. The "Restore defaults" button in the channel strip editor copies
+  this template back over the user file.
+
+  Format: one <STRIP> per assigned slot (nr = 1..16) with its <VPOT>
+  children. See src/modes/channelstrip/ChannelStripMap.h for the schema.
+  The file is currently EMPTY — paste the <STRIP> elements of your
+  preferred channelstrips.xml into the <CHANNELSTRIPS> root below.
+-->
+<CHANNELSTRIPS/>
