@@ -234,6 +234,21 @@ void DisplayHandler::addHeader(MIDI_Message *pmm, int row) {
   }
 }
 
+void DisplayHandler::forceResync() {
+  // One-shot full resend: forget what we believe the LCD currently shows
+  // and re-send every row of the active display. Scheduled shortly after
+  // plugin load and hardware resets because some controllers (observed on
+  // the iCON QCon Pro X) drop the LCD SysEx sent right after the MIDI port
+  // opens, while they are not ready yet. Without this the per-frame diff
+  // (sendDifferences) would compare against a stale m_pHardwareState and
+  // never re-send the lost lines, so e.g. the previous session's "Goodbye"
+  // line survives a restart. The normal diff behaviour resumes afterwards.
+  for (int row = 0; row < 4; row++)
+    memset(m_pHardwareState->getText()[row], 1,
+           m_pHardwareState->getRowLength(row));
+  safe_call(m_pActualDisplay, resendAllRows());
+}
+
 void DisplayHandler::waitForMoreChanges(bool block) {
   if (m_wait == block)
     return;

@@ -48,6 +48,7 @@ public:
 
   void waitForMoreChanges(bool block);
   void sendDifferences(Display *pDisplay, int row, const char *text);
+  void forceResync();
   void sendToHardware(int row, int pos, char const *text, int len);
 };
 

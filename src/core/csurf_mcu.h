@@ -350,6 +350,7 @@ public:
 
   void ScheduleAction(DWORD time, ScheduleFunc func);
   void MCUReset();
+  void ResyncDisplays();
   void UpdateMackieDisplay(int pos, const char *text, int pad);
   bool OnMCUReset(MIDI_event_t *evt);
   bool OnFaderMove(MIDI_event_t *evt);

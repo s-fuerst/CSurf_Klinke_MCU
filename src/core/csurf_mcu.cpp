@@ -261,6 +261,18 @@ void CSurf_MCU::MCUReset() {
       dh->switchTo(m_pSplashDisplays[ui]);
     }
   }
+
+  // Some controllers (iCON QCon Pro X) drop the LCD SysEx sent while the
+  // hardware is not ready yet (plugin load / hardware reset). Force one
+  // full display resend per unit shortly after the splash so lost lines
+  // (e.g. the previous session's "Goodbye" line) are actually replaced.
+  ScheduleAction(timeGetTime() + 1000, &CSurf_MCU::ResyncDisplays);
+}
+
+void CSurf_MCU::ResyncDisplays() {
+  for (size_t ui = 0; ui < m_units.size(); ui++)
+    if (m_units[ui] && m_units[ui]->displayHandler())
+      m_units[ui]->displayHandler()->forceResync();
 }
 
 void CSurf_MCU::CallTransportForward() {
@@ -910,13 +922,15 @@ CSurf_MCU::CSurf_MCU(const SurfaceConfig &cfg, int *errStats)
     m_units[ui]->invalidateLEDCache();
   }
 
+  // Clear any stale schedule BEFORE MCUReset: it schedules the deferred
+  // display resync (ResyncDisplays) that must survive to the Run loop.
+  m_schedule = NULL;
+
   MCUReset();
 
   // Start MIDI input on all constructed units
   for (size_t ui = 0; ui < m_units.size(); ui++)
     m_units[ui]->startInput();
-
-  m_schedule = NULL;
 
   // ensure Tracks knows the channel count BEFORE init/activate,
   // so the first updateFaders() iterates the correct number of strips.
