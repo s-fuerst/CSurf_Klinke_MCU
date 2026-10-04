@@ -341,9 +341,8 @@ bool CSurf_MCU::OnVPOTAssign(MIDI_event_t *evt) {
 }
 
 bool CSurf_MCU::OnJogWheel(MIDI_event_t *evt) {
-  // jog wheel is global — only accept from primary unit
-  if (m_currentInputOffset != 0)
-    return false;
+  // jog wheel is global — extender units are filtered out in Run()
+  // (isStripEvent); any main unit may send it.
   if ((evt->midi_message[0] & 0xf0) == 0xb0 &&
       evt->midi_message[1] == 0x3c) // jog wheel
     {
@@ -762,9 +761,8 @@ bool CSurf_MCU::OnButtonPress(MIDI_event_t *evt) {
 }
 
 bool CSurf_MCU::OnPedalMove(MIDI_event_t *evt) {
-  // pedal is global — only accept from primary unit
-  if (m_currentInputOffset != 0)
-    return false;
+  // pedal is global — extender units are filtered out in Run()
+  // (isStripEvent); any main unit may send it.
   if (evt->midi_message[0] == 0x90 && evt->midi_message[1] == 0x66) {
     MIDI_event_t sendEvent = {0, 3, {0xB0, 0x05, evt->midi_message[2]}};
     kbd_OnMidiEvent(&sendEvent, -1);
@@ -1060,6 +1058,23 @@ int CSurf_MCU::Extended(int call, void *parm1, void *parm2, void *parm3) {
   return 0; // unsupported
 }
 
+// Channel-strip events that an extender unit may send: fader
+// (CC 0xE0-0xE7), VPOT (CC 0x10-0x17), fader touch (CC 0x68-0x70), and the
+// strip buttons select/mute/solo/rec (notes 0x00-0x1F) plus VPOT push
+// (notes 0x20-0x27). Everything else (transport, F-keys, modifiers, jog
+// wheel, pedal, bank, ...) is only accepted from main units.
+static bool isStripEvent(const MIDI_event_t *evt) {
+  unsigned char status = evt->midi_message[0] & 0xf0;
+  unsigned char code = evt->midi_message[1];
+  if (status == 0xb0)
+    return (code >= 0x10 && code <= 0x17) || // VPOT
+           (code >= 0x68 && code <= 0x70) || // fader touch
+           (code >= 0xe0 && code <= 0xe7);   // fader
+  if (status == 0x90 || status == 0x80)
+    return code <= 0x27; // select/mute/solo/rec + VPOT push
+  return false;
+}
+
 void CSurf_MCU::Run() {
   DWORD now = timeGetTime();
 
@@ -1261,7 +1276,8 @@ void CSurf_MCU::Run() {
     // iterate over all units' MIDI inputs.
     // m_currentInputOffset is set per-unit so strip handlers translate
     // local channel → global channel. Global events (transport, modifiers,
-    // jog wheel, etc.) are only accepted from unit 0.
+    // jog wheel, pedal, etc.) are accepted from every MAIN unit; extender
+    // units only pass their channel-strip events (see isStripEvent).
     for (size_t ui = 0; ui < m_units.size(); ui++) {
       midi_Input *in = m_units[ui]->midiInput();
       if (!in) continue;
@@ -1284,6 +1300,14 @@ void CSurf_MCU::Run() {
           if ((int)ui != 0 && !comboNote)
             continue;
         }
+        // The hand-off combo relies on bank notes 0x2e-0x31, which are not
+        // part of the extender strip list — keep the M+ ungated.
+        const bool comboUnit = ui == KLINKE_COMBO_UNIT_INDEX;
+        if (!comboUnit && !m_units[ui]->isMain() && !isStripEvent(evts))
+          continue; // extender units: strip events only
+#else
+        if (!m_units[ui]->isMain() && !isStripEvent(evts))
+          continue; // extender units: strip events only
 #endif
         OnMIDIEvent(evts);
       }
