@@ -2,334 +2,316 @@
  * Copyright (C) 2009-2026 Steffen Fuerst
  * Distributed under the GNU GPL v3. For full terms see the file gplv3.txt.
  */
-/*
-  ==============================================================================
-
-  This is an automatically generated file created by the Jucer!
-
-  Creation date:  20 Dec 2009 1:17:38 am
-
-  Be careful when adding custom code to these files, as only the code within
-  the "//[xyz]" and "//[/xyz]" sections will be retained when the file is loaded
-  and re-saved.
-
-  Jucer version: 1.11
-
-  ------------------------------------------------------------------------------
-
-  The Jucer is part of the JUCE library - "Jules' Utility Class Extensions"
-  Copyright 2004-6 by Raw Material Software ltd.
-
-  ==============================================================================
-*/
-
-//[Headers] You can add your own extra header files here...
 #include "JuceHeader.h"
-//[/Headers]
-
 #include "PlugMapSaveDialog.h"
 
+// Shared button styling, copied from ChannelStripFileDialogs.cpp:
+// the default LookAndFeel_V4 keyboard-focus emphasis only boosts the
+// saturation of the button colour - invisible on the near-grey Save/Cancel
+// buttons (which is why tab focus was hard to see). Render keyboard focus
+// exactly like the mouse-hover state instead (the darker highlight).
+class FocusTextButton : public TextButton {
+public:
+  explicit FocusTextButton(const String &text) : TextButton(text) {}
+  void paintButton(Graphics &g, bool highlighted, bool down) override {
+    TextButton::paintButton(g, highlighted || hasKeyboardFocus(true), down);
+  }
+};
 
-//[MiscUserDefs] You can add your own user definitions and misc code here...
-class PlugMapManager;
-//[/MiscUserDefs]
+static void styleButton(TextButton *b) {
+  b->setColour(TextButton::buttonColourId, Colour(0xffe8e8e8));
+  b->setColour(TextButton::buttonOnColourId, Colour(0xffc8c8c8));
+  b->setColour(TextButton::textColourOffId, Colours::black);
+}
 
-//==============================================================================
+static TextButton *makeDeleteButton() {
+  auto *b = new FocusTextButton("Delete");
+  b->setColour(TextButton::buttonColourId, Colour(0xfff4dada));
+  b->setColour(TextButton::buttonOnColourId, Colour(0xffe4b8b8));
+  b->setColour(TextButton::textColourOffId, Colours::black);
+  return b;
+}
+
+// ===== PlugMapListModel =====
+
+void PlugMapListModel::paintListBoxItem(int row, Graphics &g, int w, int h,
+                                        bool selected) {
+  if (row < 0 || row >= m_files.size())
+    return;
+  g.fillAll(selected ? Colours::lightblue : Colours::white);
+  g.setColour(Colours::black);
+  g.setFont(Font(FontOptions(Font::getDefaultSansSerifFontName(), 13.0f,
+                             Font::plain)));
+  // display name without the .xml extension (the stored name keeps it)
+  g.drawText(displayName(row), 4, 1, w - 8, h, Justification::centredLeft,
+             true);
+}
+
+void PlugMapListModel::listBoxItemClicked(int row, const MouseEvent &event) {
+  // default model behavior = select the row, then hand over to the dialog
+  ListBoxModel::listBoxItemClicked(row, event);
+  if (m_owner && row >= 0 && row < m_files.size())
+    m_owner->listEntryClicked(this, row);
+}
+
+// ===== PlugMapSaveDialog =====
+
+static String defaultMapNameFromPlugName(const String &plugName) {
+  // TrackFX_GetFXName returns e.g. "VST: FabFilter Pro-L 3 (1, 2)"
+  // -> "FabFilter Pro-L 3" (after ':', up to '(', trimmed)
+  String name = plugName.fromFirstOccurrenceOf(":", false, false);
+  const int paren = name.indexOf("(");
+  if (paren >= 0)
+    name = name.substring(0, paren);
+  return name.trim();
+}
+
 PlugMapSaveDialog::PlugMapSaveDialog(PlugMapManager *pPMM)
-    : Component(String("PlugMapSaveDialog")), m_okButton(0), m_cancelButton(0),
-      m_labelExisting(0), m_mapList(0), m_labelNameOfNewMap(0), m_mapName(0),
-      m_fileDialog(0), m_labelConflict(0), m_labelExisting2(0),
-      m_mapInstalled(0) {
-  addAndMakeVisible(m_okButton = new TextButton(String("Ok")));
-  m_okButton->setExplicitFocusOrder(2);
-  m_okButton->addListener(this);
+    : Component(String("PlugMapSaveDialog")),
+      m_pPMM(pPMM), m_labelName(NULL), m_mapName(NULL), m_labelUser(NULL),
+      m_mapList(NULL), m_userModel(NULL), m_labelInstalled(NULL),
+      m_mapInstalled(NULL), m_installedModel(NULL), m_status(NULL),
+      m_delete(NULL), m_okButton(NULL), m_cancelButton(NULL),
+      m_selectedModel(NULL), m_selectedRow(-1) {
+  addAndMakeVisible(m_labelName =
+                        new Label(String("Name"), String("Name of new Map:\n")));
+  m_labelName->setFont(Font(FontOptions(15.0f, Font::plain)));
+  m_labelName->setJustificationType(Justification::centredLeft);
+  m_labelName->setEditable(false, false, false);
+  m_labelName->setColour(Label::textColourId, Colours::black);
+  m_labelName->setColour(Label::backgroundColourId, Colours::white);
 
-  addAndMakeVisible(m_cancelButton = new TextButton(String("Cancel")));
-  m_cancelButton->setExplicitFocusOrder(3);
+  addAndMakeVisible(m_mapName = new TextEditor(String("Map Name")));
+  m_mapName->setTooltip(String("Name of the map to save. It should be part of "
+                               "the plugin name so the map is found "
+                               "automatically when the plugin is selected."));
+  // JUCE 8 gotcha: the text colour is captured into the editor's text model
+  // at setText() time - set the explicit colours BEFORE the first setText()
+  m_mapName->setColour(TextEditor::textColourId, Colours::black);
+  m_mapName->setColour(TextEditor::backgroundColourId, Colours::white);
+  m_mapName->setColour(TextEditor::outlineColourId, Colours::darkgrey);
+  m_mapName->setColour(TextEditor::highlightedTextColourId, Colours::white);
+  m_mapName->setColour(TextEditor::highlightColourId, Colour(0xff4f6f9f));
+  m_mapName->setFont(Font(FontOptions(Font::getDefaultSansSerifFontName(),
+                                      13.0f, Font::plain)));
+  // pre-fill with the plugin name (after ':', up to '(', trimmed)
+  m_mapName->setText(defaultMapNameFromPlugName(m_pPMM->getActivePlugName()),
+                     dontSendNotification);
+  // select the whole default so the user can just start typing
+  m_mapName->selectAll();
+
+  addAndMakeVisible(m_labelUser = new Label(
+      String("Existing"), String("Existing User-Maps:\n")));
+  m_labelUser->setFont(Font(FontOptions(15.0f, Font::plain)));
+  m_labelUser->setJustificationType(Justification::centredLeft);
+  m_labelUser->setEditable(false, false, false);
+  m_labelUser->setColour(Label::textColourId, Colours::black);
+  m_labelUser->setColour(Label::backgroundColourId, Colours::white);
+
+  m_userModel = new PlugMapListModel(this);
+  addAndMakeVisible(m_mapList = new ListBox(String("Map List")));
+  m_mapList->setModel(m_userModel);
+  m_mapList->setRowHeight(20);
+  m_mapList->setColour(ListBox::outlineColourId, Colours::grey);
+  m_mapList->setOutlineThickness(1);
+  m_mapList->setColour(ListBox::backgroundColourId, Colours::white);
+  // derive the real path from getUserMapsLocation() so the tooltip always
+  // matches the platform (My Documents on Windows, ~/.config/REAPER on
+  // Linux/macOS)
+  m_mapList->setTooltip(String("User maps are stored in the '") +
+                        m_pPMM->getUserMapsLocation().getFullPathName() +
+                        String("' directory. Click an entry to use its "
+                               "name."));
+
+  addAndMakeVisible(m_labelInstalled =
+                        new Label(String("Installed"),
+                                  String("Installed Maps:\n")));
+  m_labelInstalled->setFont(Font(FontOptions(15.0f, Font::plain)));
+  m_labelInstalled->setJustificationType(Justification::centredLeft);
+  m_labelInstalled->setEditable(false, false, false);
+  m_labelInstalled->setColour(Label::textColourId, Colours::black);
+  m_labelInstalled->setColour(Label::backgroundColourId, Colours::white);
+
+  m_installedModel = new PlugMapListModel(this);
+  addAndMakeVisible(m_mapInstalled = new ListBox(String("Installed Map List")));
+  m_mapInstalled->setModel(m_installedModel);
+  m_mapInstalled->setRowHeight(20);
+  m_mapInstalled->setColour(ListBox::outlineColourId, Colours::grey);
+  m_mapInstalled->setOutlineThickness(1);
+  m_mapInstalled->setColour(ListBox::backgroundColourId, Colours::white);
+  m_mapInstalled->setTooltip(
+      String("Maps installed with the plugin, found in the "
+             "UserPlugins/MCU/PlugMaps/ directory."));
+
+  addAndMakeVisible(m_status = new Label(String(), String()));
+  m_status->setFont(Font(FontOptions(Font::getDefaultSansSerifFontName(),
+                                     12.0f, Font::plain)));
+  m_status->setJustificationType(Justification::centredLeft);
+  m_status->setEditable(false, false, false);
+  m_status->setColour(Label::textColourId, Colours::red);
+  m_status->setColour(Label::backgroundColourId, Colours::white);
+
+  // the delete button is greyed out (disabled) while no list entry is
+  // selected (toggled in listEntryClicked)
+  addAndMakeVisible(m_delete = makeDeleteButton());
+  m_delete->setEnabled(false);
+  m_delete->addListener(this);
+  addAndMakeVisible(m_okButton = new FocusTextButton("Save"));
+  addAndMakeVisible(m_cancelButton = new FocusTextButton("Cancel"));
+  styleButton(m_okButton);
+  styleButton(m_cancelButton);
+  m_okButton->addListener(this);
   m_cancelButton->addListener(this);
 
-  addAndMakeVisible(m_labelExisting =
-                        new Label(String("Existing"), String("Existing User-Maps:\n")));
-  m_labelExisting->setFont(Font(FontOptions(15.0000f, Font::plain)));
-  m_labelExisting->setJustificationType(Justification::centredLeft);
-  m_labelExisting->setEditable(false, false, false);
-  m_labelExisting->setColour(TextEditor::textColourId, Colours::black);
-  m_labelExisting->setColour(TextEditor::backgroundColourId, Colour(0x0));
-
-  addAndMakeVisible(m_mapList = new TextEditor(String("Map List")));
-  m_mapList->setTooltip(
-      String("The list of plugin maps that are created by the user (the are stored "
-        "in the \"My Documents/MCU/PlugMaps/\" directory)."));
-  m_mapList->setExplicitFocusOrder(100);
-  m_mapList->setMultiLine(true);
-  m_mapList->setReturnKeyStartsNewLine(true);
-  m_mapList->setReadOnly(true);
-  m_mapList->setScrollbarsShown(true);
-  m_mapList->setCaretVisible(false);
-  m_mapList->setPopupMenuEnabled(false);
-  m_mapList->setColour(TextEditor::textColourId, Colours::black);
-  m_mapList->setColour(TextEditor::highlightedTextColourId, Colours::white);
-  m_mapList->setColour(TextEditor::highlightColourId, Colour(0xff4f6f9f));
-  m_mapList->setColour(TextEditor::backgroundColourId, Colours::white);
-  m_mapList->setColour(TextEditor::outlineColourId, Colours::black);
-  m_mapList->setColour(TextEditor::shadowColourId, Colour(0x0));
-  m_mapList->setText(String());
-
-  addAndMakeVisible(m_labelNameOfNewMap =
-                        new Label(String("Existing"), String("Name of new Map:\n")));
-  m_labelNameOfNewMap->setFont(Font(FontOptions(15.0000f, Font::plain)));
-  m_labelNameOfNewMap->setJustificationType(Justification::centredLeft);
-  m_labelNameOfNewMap->setEditable(false, false, false);
-  m_labelNameOfNewMap->setColour(TextEditor::textColourId, Colours::black);
-  m_labelNameOfNewMap->setColour(TextEditor::backgroundColourId, Colour(0x0));
-
-  addAndMakeVisible(m_mapName = new Label(String("Map Name"), String()));
-  m_mapName->setTooltip(String("The name of the map that should be created."));
-  m_mapName->setExplicitFocusOrder(1);
-  m_mapName->setFont(Font(FontOptions(15.0000f, Font::plain)));
-  m_mapName->setJustificationType(Justification::centredLeft);
-  m_mapName->setEditable(true, true, false);
-  m_mapName->setColour(Label::outlineColourId, Colours::black);
-  m_mapName->setColour(TextEditor::textColourId, Colours::black);
-  m_mapName->setColour(TextEditor::backgroundColourId, Colour(0x0));
-  m_mapName->addListener(this);
-
-  addAndMakeVisible(m_fileDialog = new TextButton(String("FileDialog")));
-  m_fileDialog->setTooltip(
-      String("Rescan the \"My Documents/MCU/PlugMaps/\" directory."));
-  m_fileDialog->setExplicitFocusOrder(2);
-  m_fileDialog->setButtonText(String("Rescan"));
-  m_fileDialog->addListener(this);
-
-  addAndMakeVisible(m_labelConflict = new Label(String("Conflict"), String()));
-  m_labelConflict->setFont(Font(FontOptions(15.0000f, Font::plain)));
-  m_labelConflict->setJustificationType(Justification::centredLeft);
-  m_labelConflict->setEditable(false, false, false);
-  m_labelConflict->setColour(Label::textColourId, Colour(0xffbc0000));
-  m_labelConflict->setColour(TextEditor::textColourId, Colours::black);
-  m_labelConflict->setColour(TextEditor::backgroundColourId, Colour(0x0));
-
-  addAndMakeVisible(m_labelExisting2 =
-                        new Label(String("Existing"), String("Factory Maps:\n")));
-  m_labelExisting2->setFont(Font(FontOptions(15.0000f, Font::plain)));
-  m_labelExisting2->setJustificationType(Justification::centredLeft);
-  m_labelExisting2->setEditable(false, false, false);
-  m_labelExisting2->setColour(TextEditor::textColourId, Colours::black);
-  m_labelExisting2->setColour(TextEditor::backgroundColourId, Colour(0x0));
-
-  addAndMakeVisible(m_mapInstalled = new TextEditor(String("Map List")));
-  m_mapInstalled->setTooltip(
-      String("The list of plugin maps that came with the distribution. They can\'t "
-        "cause name conflicts, so there is no need to modify them."));
-  m_mapInstalled->setExplicitFocusOrder(100);
-  m_mapInstalled->setMultiLine(true);
-  m_mapInstalled->setReturnKeyStartsNewLine(true);
-  m_mapInstalled->setReadOnly(true);
-  m_mapInstalled->setScrollbarsShown(true);
-  m_mapInstalled->setCaretVisible(false);
-  m_mapInstalled->setPopupMenuEnabled(false);
-  m_mapInstalled->setColour(TextEditor::textColourId, Colours::black);
-  m_mapInstalled->setColour(TextEditor::highlightedTextColourId, Colours::white);
-  m_mapInstalled->setColour(TextEditor::highlightColourId, Colour(0xff4f6f9f));
-  m_mapInstalled->setColour(TextEditor::backgroundColourId, Colours::white);
-  m_mapInstalled->setColour(TextEditor::outlineColourId, Colours::black);
-  m_mapInstalled->setColour(TextEditor::shadowColourId, Colour(0x0));
-  m_mapInstalled->setText(String());
-
-  //[UserPreSize]
-  m_mapList->setText(pPMM->getUserMapsAsString());
-  m_mapInstalled->setText(pPMM->getInstalledMapsAsString());
-  //[/UserPreSize]
-
-  setSize(450, 550);
-
-  //[Constructor] You can add your own custom stuff here..
-  m_pPMM = pPMM;
-  //		startThread(2);
-  //[/Constructor]
+  m_pPMM->rescanDirs();
+  refreshLists();
+  setSize(460, 660);
 }
 
-PlugMapSaveDialog::~PlugMapSaveDialog() {
-  //[Destructor_pre]. You can add your own custom destruction code here..
-  //[/Destructor_pre]
-
-  deleteAndZero(m_okButton);
-  deleteAndZero(m_cancelButton);
-  deleteAndZero(m_labelExisting);
-  deleteAndZero(m_mapList);
-  deleteAndZero(m_labelNameOfNewMap);
-  deleteAndZero(m_mapName);
-  deleteAndZero(m_fileDialog);
-  deleteAndZero(m_labelConflict);
-  deleteAndZero(m_labelExisting2);
-  deleteAndZero(m_mapInstalled);
-
-  //[Destructor]. You can add your own custom destruction code here..
-  //[/Destructor]
-}
-
-//==============================================================================
-void PlugMapSaveDialog::paint(Graphics &g) {
-  //[UserPrePaint] Add your own custom painting code here..
-  //[/UserPrePaint]
-
-  g.fillAll(Colours::white);
-
-  //[UserPaint] Add your own custom painting code here..
-  //[/UserPaint]
-}
+void PlugMapSaveDialog::paint(Graphics &g) { g.fillAll(Colours::white); }
 
 void PlugMapSaveDialog::resized() {
-  m_okButton->setBounds(80, 515, 100, 24);
-  m_cancelButton->setBounds(270, 515, 100, 24);
-  m_labelExisting->setBounds(18, 180, 150, 24);
-  m_mapList->setBounds(20, 204, 410, 220);
-  m_labelNameOfNewMap->setBounds(18, 425, 150, 24);
-  m_mapName->setBounds(20, 449, 410, 24);
-  m_fileDialog->setBounds(328, 180, 100, 24);
-  m_labelConflict->setBounds(18, 476, 414, 24);
-  m_labelExisting2->setBounds(18, 3, 150, 24);
-  m_mapInstalled->setBounds(20, 27, 410, 140);
-  //[UserResized] Add your own custom resize handling here..
-  //[/UserResized]
+  const int w = getWidth();
+  const int h = getHeight();
+  const int m = 12;
+  const int listH = 230; // 11 rows at the 20px row height
+
+  if (m_labelName)
+    m_labelName->setBounds(m, 8, w - 2 * m, 20);
+  if (m_mapName)
+    m_mapName->setBounds(m, 30, w - 2 * m, 24);
+  if (m_labelUser)
+    m_labelUser->setBounds(m, 60, w - 2 * m, 20);
+  if (m_mapList)
+    m_mapList->setBounds(m, 82, w - 2 * m, listH);
+  if (m_labelInstalled)
+    m_labelInstalled->setBounds(m, 82 + listH + 8, w - 2 * m, 20);
+  if (m_mapInstalled)
+    m_mapInstalled->setBounds(m, 82 + listH + 8 + 22, w - 2 * m, listH);
+  if (m_status)
+    m_status->setBounds(m, h - 70, w - 2 * m, 24);
+  // right-aligned button row (same metrics as the ChannelStrip dialogs)
+  if (m_delete)
+    m_delete->setBounds(w - 220, h - 34, 64, 26);
+  if (m_okButton)
+    m_okButton->setBounds(w - 148, h - 34, 64, 26);
+  if (m_cancelButton)
+    m_cancelButton->setBounds(w - 76, h - 34, 64, 26);
+}
+
+void PlugMapSaveDialog::refreshLists() {
+  if (m_userModel) {
+    StringArray files;
+    m_pPMM->rescanDirs();
+    const String user = m_pPMM->getUserMapsAsString();
+    if (!user.isEmpty())
+      files.addTokens(user.trim(), "\n");
+    m_userModel->setFiles(files);
+  }
+  if (m_installedModel) {
+    StringArray files;
+    const String installed = m_pPMM->getInstalledMapsAsString();
+    if (!installed.isEmpty())
+      files.addTokens(installed.trim(), "\n");
+    m_installedModel->setFiles(files);
+  }
+  m_mapList->updateContent();
+  m_mapInstalled->updateContent();
+}
+
+void PlugMapSaveDialog::refreshDeleteState() {
+  if (m_delete)
+    m_delete->setEnabled(m_selectedModel != NULL && m_selectedRow >= 0);
+}
+
+void PlugMapSaveDialog::listEntryClicked(PlugMapListModel *which, int row) {
+  m_selectedModel = which;
+  m_selectedRow = row;
+  // pre-fill the name field with the clicked map's name
+  if (m_mapName) {
+    m_mapName->setText(which->displayName(row), dontSendNotification);
+    m_mapName->selectAll();
+  }
+  refreshDeleteState();
 }
 
 void PlugMapSaveDialog::buttonClicked(Button *buttonThatWasClicked) {
-  //[UserbuttonClicked_Pre]
-  //[/UserbuttonClicked_Pre]
+  if (buttonThatWasClicked == m_cancelButton) {
+    getParentComponent()->exitModalState(SAVEMAP_CANCEL);
+    return;
+  }
 
-  if (buttonThatWasClicked == m_okButton) {
-    //[UserButtonCode_m_okButton] -- add your button handler code here..
-    if (m_pPMM->isValidAdditionalName(m_mapName->getText())) {
-      if (!m_pPMM->isMapNameInPlugName(m_mapName->getText())) {
-        const MessageBoxOptions nameCheck = MessageBoxOptions()
-            .withIconType(MessageBoxIconType::WarningIcon)
-            .withTitle("Map name check")
-            .withMessage(String("The map name \'" + m_mapName->getText() +
-                                "\' is not contained in the plugin name \'" +
-                                m_pPMM->getActivePlugName() +
-                                "\'. A map whose name is part of the plugin "
-                                "name can be found automatically when the "
-                                "plugin is selected. Save it anyway?"))
+  if (buttonThatWasClicked == m_delete) {
+    if (!m_selectedModel || m_selectedRow < 0)
+      return; // nothing selected - stay open
+    const bool isUserList = (m_selectedModel == m_userModel);
+    // list entries carry the name without extension; map files are always
+    // .xml (scanDir only searches for *.xml)
+    const String file = m_selectedModel->fileName(m_selectedRow) + String(".xml");
+    // note: the currently active map may be deleted as well (no reload is
+    // triggered) - it stays loaded in memory until the next plug is
+    // selected; with autosave on it could be re-created on the next
+    // parameter change
+    // A short synchronous AlertWindow is safe here (tested in this plugin,
+    // see AGENTS.md); only the DialogWindow::runModalLoop content pattern
+    // of this dialog itself is the one kept on purpose.
+    const MessageBoxOptions confirm =
+        MessageBoxOptions()
+            .withIconType(AlertWindow::QuestionIcon)
+            .withTitle("Delete map?")
+            .withMessage("Really delete \"" + file
+                         + "\"?\nThis cannot be undone.")
             .withButton("Yes")
             .withButton("No");
-        if (AlertWindow::show(nameCheck) == 0) // "No" - keep the dialog open
-          return;
-      }
-      if (m_pPMM->writeMapFile(m_mapName->getText()))
-        getParentComponent()->exitModalState(SAVEMAP_OK);
-    } else {
-      AlertWindow::showMessageBox(
-          AlertWindow::WarningIcon, String("Name is invalid"),
-          String("The name \'" + m_mapName->getText() +
-                 "\' collide with the existing map \'" +
-                 m_pPMM->nameIsInvalidBecauseOf() + "\'."));
+    // JUCE 8: button index 0 ("Yes") returns 1, button 1 ("No") returns 0
+    if (AlertWindow::show(confirm) != 1)
+      return; // answered No
+    if (!m_pPMM->deleteMapFile(isUserList, file)) {
+      m_status->setText(
+          "Could not delete the selected map.", dontSendNotification);
+      return;
     }
-
-    //[/UserButtonCode_m_okButton]
-  } else if (buttonThatWasClicked == m_cancelButton) {
-    //[UserButtonCode_m_cancelButton] -- add your button handler code here..
-    getParentComponent()->exitModalState(SAVEMAP_CANCEL);
-    //[/UserButtonCode_m_cancelButton]
-  } else if (buttonThatWasClicked == m_fileDialog) {
-    //[UserButtonCode_m_fileDialog] -- add your button handler code here..
-    // 				FileChooser* pChooser = new FileChooser ("Administrate your user
-    // maps...", m_pPMM->getUserMapsLocation(), "*.xml");
-    //
-    // 				if (pChooser->browseForFileToOpen())
-    // 				{
-    // 					File mooseFile (pChooser->getResult());
-    //
-    // 					m_mapName->setText(mooseFile.getFileNameWithoutExtension(),
-    // false);
-    // 				}
-    // 				delete(pChooser);
-
-    m_pPMM->rescanDirs();
-    m_mapList->setText(m_pPMM->getUserMapsAsString());
-    //[/UserButtonCode_m_fileDialog]
+    refreshLists();
+    m_selectedModel = NULL;
+    m_selectedRow = -1;
+    refreshDeleteState();
+    return;
   }
 
-  //[UserbuttonClicked_Post]
-  //[/UserbuttonClicked_Post]
-}
+  if (buttonThatWasClicked != m_okButton)
+    return;
 
-void PlugMapSaveDialog::labelTextChanged(Label *labelThatHasChanged) {
-  //[UserlabelTextChanged_Pre]
-  //[/UserlabelTextChanged_Pre]
-
-  if (labelThatHasChanged == m_mapName) {
-    //[UserLabelCode_m_mapName] -- add your label text handling code here..
-    //[/UserLabelCode_m_mapName]
+  const String name = m_mapName->getText().trim();
+  if (name.isEmpty()) {
+    m_status->setText(
+        "Please enter a name for the map.", dontSendNotification);
+    return;
   }
-
-  //[UserlabelTextChanged_Post]
-  //[/UserlabelTextChanged_Post]
+  if (!m_pPMM->isValidAdditionalName(name)) {
+    m_status->setText("The name '" + name + "' collides with the existing "
+                      "map '" + m_pPMM->nameIsInvalidBecauseOf() + "'.",
+                      dontSendNotification);
+    return;
+  }
+  if (!m_pPMM->isMapNameInPlugName(name)) {
+    const MessageBoxOptions nameCheck =
+        MessageBoxOptions()
+            .withIconType(MessageBoxIconType::WarningIcon)
+            .withTitle("Map name check")
+            .withMessage(String("The map name '" + name
+                                + "' is not contained in the plugin name '"
+                                + m_pPMM->getActivePlugName()
+                                + "'. A map whose name is part of the plugin "
+                                  "name can be found automatically when the "
+                                  "plugin is selected. Save it anyway?"))
+            .withButton("Yes")
+            .withButton("No");
+    if (AlertWindow::show(nameCheck) == 0) // "No" - keep the dialog open
+      return;
+  }
+  if (m_pPMM->writeMapFile(name))
+    getParentComponent()->exitModalState(SAVEMAP_OK);
+  else
+    m_status->setText(
+        "Could not save the map.", dontSendNotification);
 }
-
-//[MiscUserCode] You can add your own definitions of your custom methods or any
-//other code here...
-//[/MiscUserCode]
-
-//==============================================================================
-#if 0
-/*  -- Jucer information section --
-
-    This is where the Jucer puts all of its metadata, so don't change anything in here!
-
-		BEGIN_JUCER_METADATA
-
-		<JUCER_COMPONENT documentType="Component" className="PlugMapSaveDialog" componentName="PlugMapSaveDialog"
-		parentClasses="public Component, Thread" constructorParams="PlugMapManager* pPMM"
-		variableInitialisers="" snapPixels="8" snapActive="1" snapShown="1"
-		overlayOpacity="0.330000013" fixedSize="1" initialWidth="450"
-		initialHeight="550">
-		<BACKGROUND backgroundColour="ffffffff"/>
-		<TEXTBUTTON name="Ok" id="65d3243c6c5e024f" memberName="m_okButton" virtualName=""
-		explicitFocusOrder="2" pos="80 515 100 24" buttonText="Ok" connectedEdges="0"
-		needsCallback="1" radioGroupId="0"/>
-		<TEXTBUTTON name="Cancel" id="86b9083ec120b355" memberName="m_cancelButton"
-		virtualName="" explicitFocusOrder="3" pos="270 515 100 24" buttonText="Cancel"
-		connectedEdges="0" needsCallback="1" radioGroupId="0"/>
-		<LABEL name="Existing" id="5065bec996158c3d" memberName="m_labelExisting"
-		virtualName="" explicitFocusOrder="0" pos="18 180 150 24" edTextCol="ff000000"
-		edBkgCol="0" labelText="Existing User-Maps:&#10;" editableSingleClick="0"
-		editableDoubleClick="0" focusDiscardsChanges="0" fontname="Default font"
-		fontsize="15" bold="0" italic="0" justification="33"/>
-		<TEXTEDITOR name="Map List" id="210ec44d18823998" memberName="m_mapList"
-		virtualName="" explicitFocusOrder="100" pos="20 204 410 220"
-		tooltip="The list of plugin maps that are created by the user (the are stored in the &quot;My Documents/MCU/PlugMaps/&quot; directory)."
-		outlinecol="ff000000" shadowcol="0" initialText="" multiline="1"
-		retKeyStartsLine="1" readonly="1" scrollbars="1" caret="0" popupmenu="0"/>
-		<LABEL name="Existing" id="cdbd34dbb5ecac89" memberName="m_labelNameOfNewMap"
-		virtualName="" explicitFocusOrder="0" pos="18 425 150 24" edTextCol="ff000000"
-		edBkgCol="0" labelText="Name of new Map:&#10;" editableSingleClick="0"
-		editableDoubleClick="0" focusDiscardsChanges="0" fontname="Default font"
-		fontsize="15" bold="0" italic="0" justification="33"/>
-		<LABEL name="Map Name" id="2bba7de3b8466c9e" memberName="m_mapName"
-		virtualName="" explicitFocusOrder="1" pos="20 449 410 24" tooltip="The name of the map that should be created."
-		outlineCol="ff000000" edTextCol="ff000000" edBkgCol="0" labelText=""
-		editableSingleClick="1" editableDoubleClick="1" focusDiscardsChanges="0"
-		fontname="Default font" fontsize="15" bold="0" italic="0" justification="33"/>
-		<TEXTBUTTON name="FileDialog" id="19e07d4854a5df84" memberName="m_fileDialog"
-		virtualName="" explicitFocusOrder="2" pos="328 180 100 24" tooltip="Rescan the &quot;My Documents/MCU/PlugMaps/&quot; directory."
-		buttonText="Rescan" connectedEdges="0" needsCallback="1" radioGroupId="0"/>
-		<LABEL name="Conflict" id="d1e39cefcb422ed3" memberName="m_labelConflict"
-		virtualName="" explicitFocusOrder="0" pos="18 476 414 24" textCol="ffbc0000"
-		edTextCol="ff000000" edBkgCol="0" labelText="" editableSingleClick="0"
-		editableDoubleClick="0" focusDiscardsChanges="0" fontname="Default font"
-		fontsize="15" bold="0" italic="0" justification="33"/>
-		<LABEL name="Existing" id="87bb0ef8a4768f43" memberName="m_labelExisting2"
-		virtualName="" explicitFocusOrder="0" pos="18 3 150 24" edTextCol="ff000000"
-		edBkgCol="0" labelText="Factory Maps:&#10;" editableSingleClick="0"
-		editableDoubleClick="0" focusDiscardsChanges="0" fontname="Default font"
-		fontsize="15" bold="0" italic="0" justification="33"/>
-		<TEXTEDITOR name="Map List" id="b4113d119c9a8549" memberName="m_mapInstalled"
-		virtualName="" explicitFocusOrder="100" pos="20 27 410 140" tooltip="The list of plugin maps that came with the distribution. They can't cause name conflicts, so there is no need to modify them."
-		outlinecol="ff000000" shadowcol="0" initialText="" multiline="1"
-		retKeyStartsLine="1" readonly="1" scrollbars="1" caret="0" popupmenu="0"/>
-		</JUCER_COMPONENT>
-
-		END_JUCER_METADATA
-*/
-#endif

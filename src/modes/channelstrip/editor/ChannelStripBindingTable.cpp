@@ -449,12 +449,12 @@ CSTStripFileButton::CSTStripFileButton(ChannelStripBindingTable &o,
   m_button->setColour(TextButton::buttonOnColourId, Colour(0xffc8c8c8));
   m_button->setColour(TextButton::textColourOffId, Colours::black);
   m_button->setColour(ComboBox::outlineColourId, Colours::darkgrey);
-  m_button->setTooltip(String("Save: store this strip in a file of the Strips "
-                              "folder (name dialog, default = abbrev).\n"
-                              "Load: pick one of the existing strip files and "
-                              "replace this strip with it (no confirmation).\n"
-                              "Clear: reset this strip (plugin and VPOT mapping) to "
-                              "unassigned."));
+  m_button->setTooltip(String("Save: store this strip FX in a file of the "
+                              "Strip FXs folder (name dialog, default = abbrev).\n"
+                              "Load: pick one of the existing strip FX files and "
+                              "replace this strip FX with it (no confirmation).\n"
+                              "Clear: reset this strip FX (plugin and VPOT mapping) "
+                              "to unassigned."));
   m_button->addListener(this);
 }
 

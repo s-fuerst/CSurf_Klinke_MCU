@@ -31,7 +31,8 @@
 
 PlugMode::PlugMode(CCSManager *pManager)
     : CCSMode(pManager), m_iSingleFaderTouched(0), m_iSingleVPotTouched(0),
-      m_pAccess(NULL), m_pPlugEditor(NULL), m_buttonNameValuePressed(false),
+      m_pAccess(NULL), m_pPlugEditor(NULL), m_editorMap(NULL),
+      m_buttonNameValuePressed(false),
       m_followTrack(true), m_lastTimePlugWasSelected(0), m_activeUnit(0),
       m_paramCacheValid(false), m_plugBroadcastActive(false) {
   lastFaderValues.assign(8 * 8 * 8, 0.0);
@@ -1263,8 +1264,11 @@ Component **PlugMode::createEditorComponent() {
   if (m_followTrack)
     m_pAccess->trackChanged(selectedTrack());
 
-  if (!m_pPlugEditor)
+  if (!m_pPlugEditor) {
     m_pPlugEditor = new PlugModeComponent(m_pAccess);
+    // the editor UI tree holds raw pointers into this map object
+    m_editorMap = m_pAccess->getMap();
+  }
 
   m_pPlugEditor->updateEverything();
   return reinterpret_cast<Component **>(&m_pPlugEditor);
@@ -1276,6 +1280,7 @@ void PlugMode::removeEditor() {
   m_pCCSManager->closeEditorIfOpen(m_pPlugEditor);
 
   safe_delete(m_pPlugEditor);
+  m_editorMap = NULL;
 }
 
 void PlugMode::frameUpdate() {
@@ -1803,7 +1808,16 @@ MediaTrack *PlugMode::selectedTrack() {
 }
 
 void PlugMode::plugChanged() {
-	 if (m_pPlugEditor) m_pPlugEditor->changePlug(m_pAccess);
+  if (m_pPlugEditor) {
+    // The editor UI tree holds raw pointers into the PlugMap it was created
+    // with. When the active map OBJECT changed (plug switch, local-map
+    // toggle), those pointers are dangling - close the editor instead of
+    // updating a dead tree (use-after-free).
+    if (m_editorMap != m_pAccess->getMap())
+      removeEditor();
+    else
+      m_pPlugEditor->changePlug(m_pAccess);
+  }
 }
 
 // ---- active unit & display helpers ----

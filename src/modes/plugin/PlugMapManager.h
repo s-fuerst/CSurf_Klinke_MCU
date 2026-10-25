@@ -52,6 +52,9 @@ public:
   bool isMapNameInPlugName(String mapName);
   String getActivePlugName();
 
+  // delete a map file (user or installed directory) and rescan the dirs
+  bool deleteMapFile(bool userMap, String fileName);
+
   const String getInstalledMapsAsString();
 
   void rescanDirs();

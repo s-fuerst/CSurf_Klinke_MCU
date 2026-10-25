@@ -22,8 +22,9 @@ ChannelStripComponent::ChannelStripComponent(ChannelStripMode *pMode)
       String("Store the complete set (all 16 slots) in a file of the Sets "
              "folder (name dialog)."));
   m_loadAllButton->setTooltip(
-      String("REPLACE ALL 16 slots with the strips found in one of the existing "
-             "set files (slots not present in the file become unassigned)."));
+      String("REPLACE ALL 16 slots with the strip FXs found in one of the "
+             "existing set files (slots not present in the file become "
+             "unassigned)."));
   m_saveAllButton->setColour(TextButton::buttonColourId, Colour(0xffe8e8e8));
   m_loadAllButton->setColour(TextButton::buttonColourId, Colour(0xffe8e8e8));
   m_saveAllButton->setColour(TextButton::buttonOnColourId, Colour(0xffc8c8c8));

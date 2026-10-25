@@ -17,6 +17,7 @@
 #pragma once
 
 class PlugAccess;
+class PlugMap;
 class PlugModeComponent;
 class PlugPresetManager;
 
@@ -244,6 +245,7 @@ private:
   PlugMode2ndOptions *m_pPlugMode2ndOptions;
 
   PlugModeComponent *m_pPlugEditor;
+  PlugMap *m_editorMap; // the map object the editor UI tree was built from
 
   DWORD m_lastTimePlugWasSelected;
   //      int m_lastCalledPreset; // -1 if no preset was called or lastCalled

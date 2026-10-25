@@ -365,7 +365,7 @@ void ChannelStripParamEditor::open(ChannelStripMode *pMode, int stripIndex) {
   if (!strip || !strip->isAssigned()) {
     AlertWindow::showMessageBox(
         AlertWindow::WarningIcon, String("No plugin assigned"),
-        String("This strip has no plugin assigned, so there is no VPOT "
+        String("This strip FX has no plugin assigned, so there is no VPOT "
                "mapping to edit."));
     return;
   }
@@ -424,7 +424,7 @@ void ChannelStripParamEditor::open(ChannelStripMode *pMode, int stripIndex) {
   // CONTENT (as an earlier version did) registers a second, redundant modal
   // component that never gets dismissed -> stuck modal, blocks other windows.
   auto *window = new ChannelStripParamWindow(
-      "Channel Strip " + String(stripIndex + 1) + " - VPOT mapping", content);
+      "Strip FX " + String(stripIndex + 1) + " - VPOT mapping", content);
   // Centre around the component with keyboard focus (normally the main MCU
   // editor window): the default placement can end up off-screen, in which
   // case the dialog is invisible and s_dialogOpen sticks at true (dead

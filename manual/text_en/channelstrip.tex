@@ -1,5 +1,17 @@
 \subsection{Channel Strip-Mode}\label{channelstrip}
 
+The idea behind the mode is to have quick access to the most used
+parameters of a plugin without opening the FX window (or switching to
+the FX mode), like the controls found on a channel strip of a big
+analog mixer (except for the sends). The mode even automatically
+inserts the FX if it is not already present on the track. While the
+default installation comes with a setup for \reaper's stock plugins,
+you can customize the accessible plugins and their parameters
+assignments via a graphical user interface. While plugins like EQs,
+compressors and saturators fit the console idea best, nothing stops
+you from including delays, reverbs or any other effect in a strip as
+well.
+
 The Channel Strip-Mode can be selected by pressing the \track button of the
 VPOT ASSIGN section. It is built on the same base as the
 \hyperref[panmode]{Pan-Mode}, so the \faders, the \select, \mute, \solo
@@ -9,86 +21,82 @@ exactly as described for the Pan-Mode. The only difference is that the
 but on the \textbf{selected track}: all \vpots of a unit drive the
 parameters of one plugin of the selected track's FX chain.
 
-The idea behind the mode is to have quick access to the most used parameters
-of a plugin without opening the FX window. To structure this, the mode works
-on two levels:
+To structure this, the mode works on two levels:
 
 \begin{itemize}
-\item \textbf{Channel strips.} There are \textbf{16 global channel
-  strips} that exist independently of any track or project. Each strip is
-  bound to \emph{one} plugin and stores the mapping of that plugin's
-  parameters onto 16 \vpots (VPOTs 1\,--\,8, and 9\,--\,16 with the \shift
-  modifier). The strips are shared across all tracks and all projects and
-  are stored in a single XML file in the user's Channel Strip Maps directory
-  (see \hyperref[stripsave]{Saving and Loading Strips}); on the very first
-  run, that file is seeded from a default configuration file that is
-  installed next to the plugin (see below).
+\item \textbf{Channel strip FXs.} There are \textbf{16 global channel
+  strip FXs} that exist independently of any track or project. Each is
+  bound to \emph{one} plugin and stores the mapping of 16 plugin parameter's
+  (controlled by VPOTs 1\,--\,8, and parameter 9\,--\,16 with the \shift
+  modifier). This setup is shared across all tracks and all projects and
+  are stored in a single XML file in the user's Channel Strip Maps directory.
 \item \textbf{Assignments.} For every track and every hardware unit you can
-  assign one of the 16 global strips (or none). The 8 \vpots of that unit
+  assign one of the 16 global strip FXs (or none). The 8 \vpots of that unit
   (16 with \shift) then drive the 16 parameters of the assigned strip on the
-  selected track. Two units of the same track can be assigned to different
-  strips, e.g.~one for the EQ and one for the compressor. These assignments
+  selected track. Two hardware units can be assigned to different
+  strip FXs, e.g.~one for the EQ and one for the compressor. These assignments
   are stored in the \reaper project file.
 \end{itemize}
 
-The mode requires exactly \textbf{one selected track}. If no track, or more
-than one track, is selected, no strip is active: the \vpots are dark and the
-display shows the hint ``You must select a single track.''
+% The mode requires exactly \textbf{one selected track}. If no track, or more
+% than one track, is selected, no strip is active: the \vpots are dark and the
+% display shows the hint ``You must select a single track.''
 
-\begin{itemize}
-\item \faders: Control the track volume (or the pan, when \flip is active),
-  as in the Pan-Mode.
-\item \vpots: Control the parameters of the strip assigned to this unit.
-  For a \emph{continuous} parameter, turning a \vpot nudges the parameter
-  and pressing it toggles between its two extreme values
-  (e.g.~on/off). A parameter that was detected as \emph{discrete} (see the
-  \textbf{Steps} column in the
-  \hyperref[stripmapping]{Mapping Editor}) behaves differently: turning
-  moves exactly one value per detent, pressing cycles through the values
-  (after the highest value it wraps back to the lowest), and the LED ring
-  displays only the value positions instead of a continuous fill.
-\item \shift \vpots: Address the second 8 parameters of the strip (VPOTs
-  9\,--\,16).
-\item \select, \mute, \solo, \rec: As in the
-  \hyperref[panmode]{Pan-Mode}.
-\item \bankdu / \channeldu: As in the \hyperref[panmode]{Pan-Mode}.
-\item \flip: Flip the function of the \faders and \vpots, as in the
-  Pan-Mode.
-\item \mfader: Control the master volume.
-\end{itemize}
+% \begin{itemize}
+% \item \faders: Control the track volume (or the pan, when \flip is active),
+%   as in the Pan-Mode.
+% \item \vpots: Control the parameters of the strip assigned to this unit.
+%   For a \emph{continuous} parameter, turning a \vpot nudges the parameter
+%   and pressing it toggles between its two extreme values
+%   (e.g.~on/off). A parameter that was detected as \emph{discrete} (see the
+%   \textbf{Steps} column in the
+%   \hyperref[stripmapping]{Mapping Editor}) behaves differently: turning
+%   moves exactly one value per detent, pressing cycles through the values
+%   (after the highest value it wraps back to the lowest), and the LED ring
+%   displays only the value positions instead of a continuous fill.
+% \item \shift \vpots: Address the second 8 parameters of the strip (VPOTs
+%   9\,--\,16).
+% \item \select, \mute, \solo, \rec: As in the
+%   \hyperref[panmode]{Pan-Mode}.
+% \item \bankdu / \channeldu: As in the \hyperref[panmode]{Pan-Mode}.
+% \item \flip: Flip the function of the \faders and \vpots, as in the
+%   Pan-Mode.
+% \item \mfader: Control the master volume.
+% \end{itemize}
 
-\subsubsection{Selecting and re-picking a strip}\label{stripselect}
+\subsubsection{Selecting and re-picking a strip FX}\label{stripselect}
 
-How a unit's \vpots behave depends on whether a strip is assigned to that
+How a unit's \vpots behave depends on whether a strip FX is assigned to that
 unit for the selected track, and whether the plugin of that strip is present
 on the track:
 
 \begin{itemize}
 \item \textbf{No strip (or plugin missing).} The display of the unit shows
-  the names of the 16 global strips: VPOT 1\,--\,8 address strips
-  1\,--\,8, and with \shift the VPOTs address strips 9\,--\,16. A strip whose
+  the names of the 16 global strip FXs: VPOT 1\,--\,8 address strips
+  1\,--\,8, and with \shift the VPOTs address strips 9\,--\,16. A strip FX whose
   plugin is not yet present on the selected track is marked with a leading
   ``\verb|+|''. Pressing a \vpot assigns the corresponding strip to this unit
-  for the selected track and, if the plugin is still missing, adds it to the
+  for the selected track and, if the plugin is missing, adds it to the
   FX chain automatically (at the strip's insert position, see
   \hyperref[channelstripeditor]{next section}). If the same plugin is already
   on the track, the existing instance is reused and no second instance is
   added.
-\item \textbf{Strip with plugin present.} The \vpots control the parameters
+\item \textbf{Strip FX selected.} The \vpots control the parameters
   of the assigned strip. The display shows the parameter name while idle and,
   shortly after turning a \vpot, its current value.
 \end{itemize}
 
-To change the strip of a unit that already has one, \textbf{press and hold
-the \track button}. While it is held, every unit shows the strip-name list
-again and a \vpot press re-assigns the strip for that unit. When you release
-the \track button, the \vpots return to parameter control.
+To change the strip FX of a unit that already has one assigned,
+\textbf{press and hold the \track button}. While it is held, every
+unit shows the strip FX list again and a \vpot press re-assigns the
+strip FX for that unit. When you release the \track button, the \vpots
+return to parameter control.
 
 \subsubsection{Editor}\label{channelstripeditor}
 The channel strips are edited in the \hyperref[F:Screenshot_ChannelStrip_Mode]{Channel
 Strip-Mode editor}, which can be opened with \alt \track (see
 Figure~\ref{F:Screenshot_ChannelStrip_Mode}). The editor is global: it shows
-the 16 channel strips independently of the selected track or unit.
+the 16 channel strip FXs independently of the selected track or unit.
 
 \pikFigure[0.62][11.5cm][-2.4mm]{Screenshot_ChannelStrip_Mode}{Channel
   Strip-Mode editor (\alt \track)}{}{}
@@ -97,17 +105,13 @@ Each row of the table represents one of the 16 global strips. The columns
 are:
 
 \begin{itemize}
-\item \textbf{VPOT}: The position of the strip in the strip list (1\,--\,8
+\item \textbf{VPOT}: The position in the strip FX list (1\,--\,8
   and Shift 1\,--\,Shift 8). This is the number that the \vpots of a unit
   refer to when they show the strip-name list.
-\item \textbf{Plugin}: The plugin bound to this strip. You can type to filter
-  the list of installed plugins or pick one from the list. Selecting
-  ``--- (no plugin) ---'' clears the whole strip (plugin, abbreviation and
-  the \vpot mapping). When you pick a different plugin, the abbreviation is
-  regenerated from the new plugin name.
+\item \textbf{Plugin}: The plugin bound to this strip FX. You can type to filter
+  the list of installed plugins or pick one from the list.
 \item \textbf{Abbrev}: A short display abbreviation (up to 5 characters)
-  that is shown on the MCU. It is filled automatically from the plugin name
-  and can be edited.
+  that is shown on the MCU. 
 \item \textbf{Insert Position}: Where the plugin is inserted into the FX
   chain when a \vpot press adds it: at the \emph{first} position, at a fixed
   position 2\,--\,8, or \emph{last}.
@@ -117,33 +121,27 @@ are:
   in that slot even if this leaves empty slots (gaps) in the FX chain. On
   older REAPER versions, or with that option disabled, the fixed position is
   only treated as a maximum: if the chain contains fewer FX, the plugin is
-  inserted earlier (in a higher slot) instead of leaving gaps. The
-  \emph{first} and \emph{last} positions are not affected by this.
+  inserted earlier (in a higher slot) instead of leaving gaps. 
 \item \textbf{Edit Mapping}: Opens the mapping editor for this strip, see
   \hyperref[stripmapping]{next section}.
-\item \textbf{Save}: Write the strip (plugin, abbreviation and \vpot
-  mapping) to a file that you choose in a file dialog. The file name is
-  pre-filled with the strip's abbreviation.
-\item \textbf{Load}: Replace the strip with the first strip found in a file
-  that you choose. The current contents of this row are overwritten without
-  a confirmation.
+\item \textbf{Save}: Write the strip FX (plugin, abbreviation and \vpot
+  mapping) to a file.
+\item \textbf{Load}: Read a strip FX from a file.
 \item \textbf{Clear}: Reset the whole strip (plugin, abbreviation and \vpot
-  mapping) to unassigned. \textbf{Save} and \textbf{Clear} are only enabled
-  for strips that have a plugin; \textbf{Load} is always available.
+  mapping) to unassigned.
 \end{itemize}
 
 Below the table, the buttons \textbf{Save all 16...} and
 \textbf{Load all 16...} work on the complete set: \emph{Save all} writes
-every assigned strip to one file, and \emph{Load all} \textbf{replaces all
-16 slots} with the strips found in the file --- slots that the file does not
-contain become unassigned. A file that does not contain a single valid strip
-is rejected, so an accidental load of a wrong file cannot wipe the set.
+all assigned strip FXs to one file, and \emph{Load all} \textbf{replaces all
+16 slots} with the strip FXs found in the file --- slots that the file does not
+contain become unassigned. 
 The \textbf{Restore defaults} button replaces all 16 slots with the
 \emph{default configuration} (the \texttt{channelstrips.default.xml} file
 installed next to the plugin in the UserPlugins directory).
 
 \subsubsection{Mapping Editor}\label{stripmapping}
-The ``Edit Mapping'' button of a strip opens the
+The ``Edit Mapping'' button of a strip FX opens the
 \hyperref[F:Screenshot_ChannelStrip_Mapping]{VPOT mapping editor} (see
 Figure~\ref{F:Screenshot_ChannelStrip_Mapping}). It shows 16 rows
 (VPOT 1\,--\,8 and Shift 1\,--\,Shift 8), one for each \vpot of the strip.
@@ -151,65 +149,29 @@ Figure~\ref{F:Screenshot_ChannelStrip_Mapping}). It shows 16 rows
 \pikFigure[0.6][9.0cm][-2.2mm]{Screenshot_ChannelStrip_Mapping}{VPOT mapping
   editor (\texttt{Edit Mapping})}{}{}
 
-For each row you select the parameter of the strip's plugin that the \vpot
-should control in the \textbf{Parameter} column. The parameter can be
-picked directly from the combo box, or it can be \emph{learned}: switch on
-the \textbf{Learn} button (the currently selected row turns red), then move
-a parameter in the plugin's floating window --- the parameter that changes
-is assigned to the selected row, and the learning advances to the next row
-after a short pause (a row click re-arms learning at that row). With Learn
-switched off, movements in the plugin window are ignored and the rows are
-edited purely by hand. The \textbf{Name} column holds a short display label
+For each row you select the parameter of the strip's plugin that the
+\vpot should control in the \textbf{Parameter} column. The parameter
+can be picked directly from the combo box, or it can be
+\emph{learned}: switch on the \textbf{Learn} button (the currently
+selected row turns red), then move a parameter in the plugin's
+floating window --- the parameter that changes is assigned to the
+selected row, and the learning advances to the next row after a short
+pause. If the plugin is not present on the selected track, the editor
+adds a temporary instance for the purpose of learning the mapping and
+removes it again when the editor is closed.
+
+The \textbf{Name} column holds a short display label
 (up to 6 characters) that is shown on the MCU; it is filled automatically
 from the parameter name and can be edited afterwards.
 
-\textbf{Steps column and discrete parameters.}
-The \textbf{Steps} column shows the number of discrete values the bound
-parameter has; an empty field (or $0$) means the parameter is treated as
-continuous. The value is detected automatically when a parameter is bound
-to a row, using the same detection as the FX-Mode: first the step size the
-plugin reports, then the value names the plugin displays across its range.
-Only the parameter being bound is examined, never the whole plugin. The
-detection can fail (some plugins report no step size and only generic value
-names), so the field is \emph{editable}: you can correct the number by
-hand. A hand-entered value is used exactly as entered; entering $0$
-declares the parameter as not discrete (plain nudging).
-
-For a row marked as discrete, the \vpots behave as described above: turning
-moves one value per detent (a parameter with two values flips between its
-extremes), pressing cycles through the values and wraps from the highest
-back to the lowest, and the LED ring shows only the value positions. The
-detected value and a possible manual correction are stored with the strip
-and therefore shared across all tracks and projects like the rest of the
-mapping.
-
-The mapping of a strip is applied to every unit that is assigned to that
-strip. If the plugin is not present on the selected track, the editor adds a
-temporary instance for the purpose of learning the mapping and removes it
-again when the editor is closed.
-
-\subsubsection{Saving and Loading Strips}\label{stripsave}
-Strips can be exchanged as files, either single strips (the \textbf{Save}
-and \textbf{Load} buttons of the table) or the complete set of all 16
-strips (the \textbf{Save all 16...} and \textbf{Load all 16...} buttons
-below the table).
-
-The file dialog always opens in the Channel Strip Maps directory of the
-user location:
-
-\begin{itemize}
-\item \reaper on Windows: \texttt{<Documents>\textbackslash Reaper\textbackslash MCU\textbackslash ChannelStripMaps\textbackslash}
-\item \reaper on macOS: \texttt{~/Library/Application Support/REAPER/MCU/ChannelStripMaps/}
-\item \reaper on Linux: \texttt{~/.config/REAPER/MCU/ChannelStripMaps/}
-\end{itemize}
-
-The file format is plain XML and identical to the internal
-\texttt{channelstrips.xml} file that stores the strips between \reaper
-restarts: a root element that contains one entry per strip (plugin,
-abbreviation, insert position and the 16 \vpot mappings). A single-strip
-file simply contains one such entry, and a complete-set file contains up to
-16. Because the format is readable, the files can also be edited by hand or
-exchanged between systems.
+\textbf{Steps column and discrete parameters.}  The \textbf{Steps}
+column shows the number of discrete values the bound parameter has; an
+empty field (or $0$) means the parameter is treated as continuous. The
+value is detected with a heuristic automatically when a parameter is
+bound to a row. The detection can fail, so the field is
+\emph{editable}: you can correct the number by hand. A hand-entered
+value is used exactly as entered; entering $0$ declares the parameter
+as continuous.
 
 \subsubsection{Commands}\label{channelstripcommands}
 In the Channel Strip-Mode the \hyperref[commands]{Commands} act on the strip

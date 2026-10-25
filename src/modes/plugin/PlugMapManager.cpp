@@ -292,6 +292,15 @@ String PlugMapManager::getActivePlugName() {
   return GetPlugName(m_pPlugTrack, m_iSlot);
 }
 
+bool PlugMapManager::deleteMapFile(bool userMap, String fileName) {
+  const File dir = userMap ? getUserMapsLocation() : getInstalledMapsLocation();
+  const File file = dir.getChildFile(fileName);
+  if (!file.existsAsFile() || !file.deleteFile())
+    return false;
+  rescanDirs();
+  return true;
+}
+
 bool PlugMapManager::isMapNameInPlugName(String mapName) {
   String plugName = getActivePlugName();
   if (plugName.isEmpty() || mapName.isEmpty())
