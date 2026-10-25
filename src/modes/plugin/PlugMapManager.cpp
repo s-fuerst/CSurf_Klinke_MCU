@@ -130,8 +130,8 @@ bool PlugMapManager::writeMapFile(String mapFileName) {
     }
   }
 
-  File writeFile = File(getUserMapsLocation().getFullPathName() + String("\\") +
-                        mapFileName + String(".xml"));
+  File writeFile = File(getUserMapsLocation()).getChildFile(
+      mapFileName + String(".xml"));
   if (!writeFile.create()) {
     AlertWindow::showMessageBox(
         AlertWindow::WarningIcon, String("Couldn't write file"),
@@ -156,8 +156,8 @@ void PlugMapManager::rewriteMapFile() {
 
   m_pMap->writeToXml(pRootElement);
 
-  File writeFile = File(getUserMapsLocation().getFullPathName() + String("\\") +
-                        m_mapName + String(".xml"));
+  File writeFile = File(getUserMapsLocation()).getChildFile(
+      m_mapName + String(".xml"));
 
   pRootElement->writeTo(writeFile);
 
