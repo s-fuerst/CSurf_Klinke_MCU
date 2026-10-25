@@ -47,6 +47,11 @@ public:
   const String getUserMapsAsString();
   bool isValidAdditionalName(String newName);
 
+  // true if the (lower-case) map name occurs inside the active plugin's name,
+  // mirroring the matching used by findMapInList() at load time
+  bool isMapNameInPlugName(String mapName);
+  String getActivePlugName();
+
   const String getInstalledMapsAsString();
 
   void rescanDirs();

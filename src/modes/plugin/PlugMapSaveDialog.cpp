@@ -201,6 +201,21 @@ void PlugMapSaveDialog::buttonClicked(Button *buttonThatWasClicked) {
   if (buttonThatWasClicked == m_okButton) {
     //[UserButtonCode_m_okButton] -- add your button handler code here..
     if (m_pPMM->isValidAdditionalName(m_mapName->getText())) {
+      if (!m_pPMM->isMapNameInPlugName(m_mapName->getText())) {
+        const MessageBoxOptions nameCheck = MessageBoxOptions()
+            .withIconType(MessageBoxIconType::WarningIcon)
+            .withTitle("Map name check")
+            .withMessage(String("The map name \'" + m_mapName->getText() +
+                                "\' is not contained in the plugin name \'" +
+                                m_pPMM->getActivePlugName() +
+                                "\'. A map whose name is part of the plugin "
+                                "name can be found automatically when the "
+                                "plugin is selected. Save it anyway?"))
+            .withButton("Yes")
+            .withButton("No");
+        if (AlertWindow::show(nameCheck) == 0) // "No" - keep the dialog open
+          return;
+      }
       if (m_pPMM->writeMapFile(m_mapName->getText()))
         getParentComponent()->exitModalState(SAVEMAP_OK);
     } else {

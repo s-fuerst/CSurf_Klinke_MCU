@@ -286,6 +286,20 @@ String PlugMapManager::nameIsInvalidBecauseOf() {
   return m_newNameInvalidBecauseOf;
 }
 
+String PlugMapManager::getActivePlugName() {
+  if (m_pPlugTrack == NULL)
+    return String();
+  return GetPlugName(m_pPlugTrack, m_iSlot);
+}
+
+bool PlugMapManager::isMapNameInPlugName(String mapName) {
+  String plugName = getActivePlugName();
+  if (plugName.isEmpty() || mapName.isEmpty())
+    return true; // nothing to compare against - don't block saving
+  // same case-insensitive substring rule as findMapInList()
+  return plugName.toLowerCase().indexOf(mapName.toLowerCase()) > -1;
+}
+
 void PlugMapManager::setLocalMap(bool localMap) {
   if (localMap) {
     m_mapType = LOCAL_MAP;
