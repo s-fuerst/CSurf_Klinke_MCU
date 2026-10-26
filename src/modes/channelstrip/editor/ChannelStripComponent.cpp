@@ -33,8 +33,8 @@ ChannelStripComponent::ChannelStripComponent(ChannelStripMode *pMode)
   m_loadAllButton->setColour(TextButton::textColourOffId, Colours::black);
   m_restoreDefaultsButton->setTooltip(
       String("REPLACE ALL 16 slots with the default configuration template "
-             "deployed next to the plugin (channelstrips.default.xml). "
-             "Confirmation required."));
+             "deployed in the UserPlugins/MCU directory "
+             "(channelstrips.default.xml). Confirmation required."));
   m_restoreDefaultsButton->setColour(TextButton::buttonColourId,
                                      Colour(0xffe8e8e8));
   m_restoreDefaultsButton->setColour(TextButton::buttonOnColourId,
@@ -184,8 +184,8 @@ void ChannelStripComponent::buttonClicked(Button *button) {
       AlertWindow::showMessageBox(
           AlertWindow::WarningIcon, "Restore defaults",
           "Failed to restore the default configuration. The template "
-          "file (channelstrips.default.xml) next to the plugin is "
-          "missing or invalid.");
+          "file (channelstrips.default.xml) in the UserPlugins/MCU "
+          "directory is missing or invalid.");
       return;
     }
     updateEverything();

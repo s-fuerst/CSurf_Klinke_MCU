@@ -617,12 +617,20 @@ void ChannelStripMode::saveStripsToFile() {
 }
 
 File ChannelStripMode::defaultConfigFile() {
-  // The deploy scripts copy resources/channelstrips.default.xml next to the
-  // plugin binary (Linux/macOS: ~/.config/REAPER/UserPlugins/ or
-  // ~/Library/Application Support/REAPER/UserPlugins/; Windows: the REAPER
-  // directory). It is read-only from the extension's point of view.
-  return File::getSpecialLocation(File::currentExecutableFile)
-      .getParentDirectory()
+  // The deploy scripts copy resources/channelstrips.default.xml into the
+  // MCU subdirectory of REAPER's UserPlugins folder on every deploy
+  // (Linux: ~/.config/REAPER/UserPlugins/MCU/; macOS:
+  // ~/Library/Application Support/REAPER/UserPlugins/MCU/; Windows:
+  // <REAPER dir>\UserPlugins\MCU\). It is read-only from the extension's
+  // point of view.
+  // NOTE: File::getSpecialLocation(currentExecutableFile) must NOT be used
+  // here — inside a REAPER-hosted plugin it resolves to REAPER's own
+  // executable, not to the plugin. GetResourcePath() (as used for the
+  // installed FX maps) is the correct base.
+  const char *rp = GetResourcePath ? GetResourcePath() : nullptr;
+  if (!rp)
+    return File();
+  return File(String(rp) + String("/UserPlugins/MCU/"))
       .getChildFile("channelstrips.default.xml");
 }
 
@@ -631,8 +639,10 @@ void ChannelStripMode::ensureGlobalFileFromDefaults() {
   if (gf.existsAsFile())
     return; // user file present — never touch it
   File df = defaultConfigFile();
-  if (!df.existsAsFile())
+  if (!df.existsAsFile()) {
+    MCU_LOG("CSM no default template at %s", df.getFullPathName().toRawUTF8());
     return; // no template deployed — start with 16 empty strips
+  }
   if (df.copyFileTo(gf))
     MCU_LOG("CSM seeded %s from default template",
             gf.getFullPathName().toRawUTF8());

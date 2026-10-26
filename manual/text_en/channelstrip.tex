@@ -26,7 +26,7 @@ To structure this, the mode works on two levels:
 \begin{itemize}
 \item \textbf{Channel strip FXs.} There are \textbf{16 global channel
   strip FXs} that exist independently of any track or project. Each is
-  bound to \emph{one} plugin and stores the mapping of 16 plugin parameter's
+  bound to one plugin and stores the mapping of 16 plugin parameter's
   (controlled by VPOTs 1\,--\,8, and parameter 9\,--\,16 with the \shift
   modifier). This setup is shared across all tracks and all projects and
   are stored in a single XML file in the user's Channel Strip Maps directory.
@@ -46,9 +46,9 @@ To structure this, the mode works on two levels:
 % \item \faders: Control the track volume (or the pan, when \flip is active),
 %   as in the Pan-Mode.
 % \item \vpots: Control the parameters of the strip assigned to this unit.
-%   For a \emph{continuous} parameter, turning a \vpot nudges the parameter
+%   For a continuous parameter, turning a \vpot nudges the parameter
 %   and pressing it toggles between its two extreme values
-%   (e.g.~on/off). A parameter that was detected as \emph{discrete} (see the
+%   (e.g.~on/off). A parameter that was detected as discrete (see the
 %   \textbf{Steps} column in the
 %   \hyperref[stripmapping]{Mapping Editor}) behaves differently: turning
 %   moves exactly one value per detent, pressing cycles through the values
@@ -113,8 +113,8 @@ are:
 \item \textbf{Abbrev}: A short display abbreviation (up to 5 characters)
   that is shown on the MCU. 
 \item \textbf{Insert Position}: Where the plugin is inserted into the FX
-  chain when a \vpot press adds it: at the \emph{first} position, at a fixed
-  position 2\,--\,8, or \emph{last}.
+  chain when a \vpot press adds it: at the first position, at a fixed
+  position 2\,--\,8, or last.
   
   \par With REAPER 7.75 and the corresponding mixer option for empty FX
   slots, a fixed position (2\,--\,8) is honored exactly: the plugin is placed
@@ -132,13 +132,13 @@ are:
 \end{itemize}
 
 Below the table, the buttons \textbf{Save all 16...} and
-\textbf{Load all 16...} work on the complete set: \emph{Save all} writes
-all assigned strip FXs to one file, and \emph{Load all} \textbf{replaces all
+\textbf{Load all 16...} work on the complete set: Save all writes
+all assigned strip FXs to one file, and Load all \textbf{replaces all
 16 slots} with the strip FXs found in the file --- slots that the file does not
 contain become unassigned. 
 The \textbf{Restore defaults} button replaces all 16 slots with the
-\emph{default configuration} (the \texttt{channelstrips.default.xml} file
-installed next to the plugin in the UserPlugins directory).
+default configuration (the \texttt{channelstrips.default.xml} file
+installed in the \texttt{MCU} subdirectory of the UserPlugins directory).
 
 \subsubsection{Mapping Editor}\label{stripmapping}
 The ``Edit Mapping'' button of a strip FX opens the
@@ -152,7 +152,7 @@ Figure~\ref{F:Screenshot_ChannelStrip_Mapping}). It shows 16 rows
 For each row you select the parameter of the strip's plugin that the
 \vpot should control in the \textbf{Parameter} column. The parameter
 can be picked directly from the combo box, or it can be
-\emph{learned}: switch on the \textbf{Learn} button (the currently
+learned: switch on the \textbf{Learn} button (the currently
 selected row turns red), then move a parameter in the plugin's
 floating window --- the parameter that changes is assigned to the
 selected row, and the learning advances to the next row after a short
@@ -169,7 +169,7 @@ column shows the number of discrete values the bound parameter has; an
 empty field (or $0$) means the parameter is treated as continuous. The
 value is detected with a heuristic automatically when a parameter is
 bound to a row. The detection can fail, so the field is
-\emph{editable}: you can correct the number by hand. A hand-entered
+editable: you can correct the number by hand. A hand-entered
 value is used exactly as entered; entering $0$ declares the parameter
 as continuous.
 
@@ -180,15 +180,15 @@ the \control modifier; while \control is held, the display shows the command
 label on the active units.
 
 \begin{itemize}
-\item \control + \vpot 1 (\emph{Float}): Toggle the floating window of the
+\item \control + \vpot 1 (Float): Toggle the floating window of the
   strip FX.
-\item \control + \vpot 2 (\emph{Chain}): Toggle the FX chain window of the
+\item \control + \vpot 2 (Chain): Toggle the FX chain window of the
   selected track.
-\item \control + \vpot 3 (\emph{PlMode}): Switch to the
+\item \control + \vpot 3 (PlMode): Switch to the
   \hyperref[plugmode]{FX-Mode} and select the strip FX there.
-\item \control + \vpot 5 (\emph{Remove}): Remove the strip FX from the
+\item \control + \vpot 5 (Remove): Remove the strip FX from the
   selected track.
-\item \control + \vpot 7 / \vpot 8 (\emph{FXup} / \emph{FXdown}): Move the
+\item \control + \vpot 7 / \vpot 8 (FXup / FXdown): Move the
   strip FX one slot up / down in the FX chain.
 \end{itemize}
 

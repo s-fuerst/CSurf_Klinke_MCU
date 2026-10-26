@@ -130,6 +130,8 @@ this FX instance is independent of the map of other instances and
 stored in the \reaper project file and not a separate file in the
 \verb|PlugMaps| folder.
 
+Note that Local maps are not stored in track templates.
+
 \subsubsection{Favorites}\label{fav}
 
 By default, you can only control an FX of the selected track. If you
@@ -163,7 +165,7 @@ An FX that is not (yet) a favorite can only be selected via the
 The \rec buttons can be used to store FX presets. An FX preset is a
 collection of all parameter-values of parameters that are mapped to a
 \fader or \vpot plus the dry/wet and bypass setting. The \rec button
-define the preset number (e.g. the \rec button of \cs 3 is used to
+define the preset number (e.g. the \rec button of channel 3 is used to
 store or recall preset 3). Presets are bound to an FX instance and can
 not copied to a different FX instance.
 
@@ -284,14 +286,14 @@ Press the \vpot while holding the \control modifier; while \control is held,
 the display shows the command label on the \vpots:
 
 \begin{itemize}
-\item \control + \vpot 1 (\emph{Float}): Toggle the floating window of the
+\item \control + \vpot 1 (Float): Toggle the floating window of the
   accessed plugin. This command is not offered while the ``Limit float''
   \attribute is set to ``only chain''.
-\item \control + \vpot 2 (\emph{Chain}): Toggle the FX chain window of the
+\item \control + \vpot 2 (Chain): Toggle the FX chain window of the
   track of the accessed plugin.
-\item \control + \vpot 5 (\emph{Remove}): Remove the accessed plugin from the
+\item \control + \vpot 5 (Remove): Remove the accessed plugin from the
   track.
-\item \control + \vpot 7 / \vpot 8 (\emph{FXup} / \emph{FXdown}): Move the
+\item \control + \vpot 7 / \vpot 8 (FXup / FXdown): Move the
   accessed plugin one slot up / down in the FX chain.
 \end{itemize}
 

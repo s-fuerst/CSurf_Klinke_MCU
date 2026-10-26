@@ -94,7 +94,7 @@ displays less tracks then the real editor.} You can open this editor by pressing
 (\alt \pan)}{}{}
 
 The table rows represent the tracks of the current project. The
-leftmost column shows the \cs that controls the track (if any). In the
+leftmost column shows the channel that controls the track (if any). In the
 ``Nr.'' column the track number as defined in \reaper is shown. TCP and MCP
 are equal to the ``Show tracks in track list'' and ``Show tracks in
 Mixer'' settings in \reaper. The other columns are explained in the
@@ -129,13 +129,13 @@ the tracks that should be accessible in the ``MCU'' column.
 
 \subsubsection{Anchors}\label{anchor}
 
-A \cs can be attached to a track, so this track can always be
+A channel can be attached to a track, so this track can always be
 controlled via the same fader etc., independent of the track
 navigation via the \bankdu and \channeldu buttons. To attach a track,
 select an anchor slot (one per channel strip) in the Anchor column of the
 \hyperref[F:Screenshot_Track_Mode]{Track Settings Editor}. For example
 in the screenshot the track number 9 ``voc'' is always accessible through
-\cs 2. This is also the case when the \foldermode is active, so that
+channel 2. This is also the case when the \foldermode is active, so that
 anchor tracks are shown on the MCU even when they are not part of the 
 sub-mix displayed.
 
@@ -151,7 +151,7 @@ ignored.
 \subsubsection{Quick Jump}\label{quickjump}
 
 To simplify navigation, you can define up to eight tracks that can be
-set to the leftmost \cs (the one that is not used for an Anchor track)
+set to the leftmost channel (the one that is not used for an Anchor track)
 quickly, followed by the other tracks as usual. To activate the Quick
 Jump feature, press and hold the \pan button. The display will show
 the names of the targets tracks (called Pads). The track can then be
@@ -201,14 +201,14 @@ modifier; while \control is held, the display shows the command label on the
 \vpots (an empty channel can only insert a track):
 
 \begin{itemize}
-\item \control + \vpot 1 (\emph{Insert}): Insert a new track directly after
+\item \control + \vpot 1 (Insert): Insert a new track directly after
   the track on this channel. On an empty channel the new track is inserted at
   the beginning of the track list.
-\item \control + \vpot 2 (\emph{Duplic}): Duplicate the track, including its
+\item \control + \vpot 2 (Duplic): Duplicate the track, including its
   items and envelopes, inserted after the original.
-\item \control + \vpot 3 (\emph{Clear}): Delete every item and every envelope
+\item \control + \vpot 3 (Clear): Delete every item and every envelope
   of the track.
-\item \control + \vpot 4 (\emph{Remove}): Remove the track.
+\item \control + \vpot 4 (Remove): Remove the track.
 \end{itemize}
 
 %%% Local Variables: 

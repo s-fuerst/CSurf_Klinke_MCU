@@ -141,8 +141,9 @@ public:
   void saveStripsToFile();
 
   // --- default configuration template ---
-  // The deployment scripts copy resources/channelstrips.default.xml next to
-  // the plugin binary on every deploy. It is a READ-ONLY template: the
+  // The deployment scripts copy resources/channelstrips.default.xml into the
+  // MCU subdirectory of the UserPlugins folder on every deploy. It is a
+  // READ-ONLY template: the
   // extension never writes to it, so redeploying can never clobber user
   // data (which lives exclusively in the global user file).
   static juce::File defaultConfigFile();

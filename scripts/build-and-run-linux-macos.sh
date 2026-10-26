@@ -142,12 +142,14 @@ fi
 echo ""
 echo "=== Deploying $ARTIFACT → $PLUGIN_DIR ==="
 cp "$BUILD_DIR/$ARTIFACT" "$PLUGIN_DIR/$ARTIFACT"
-# Always copy the default channel strip configuration template next to the
-# binary. The extension treats it as read-only and seeds the user file from
-# it on first run, so overwriting it here can never clobber user data.
+# Always copy the default channel strip configuration template into the
+# UserPlugins/MCU subdirectory. The extension treats it as read-only and
+# seeds the user file from it on first run, so overwriting it here can
+# never clobber user data.
 if [ -f "$SCRIPT_DIR/resources/channelstrips.default.xml" ]; then
-    cp -f "$SCRIPT_DIR/resources/channelstrips.default.xml" "$PLUGIN_DIR/"
-    echo "=== copied channelstrips.default.xml → $PLUGIN_DIR ==="
+    mkdir -p "$PLUGIN_DIR/MCU"
+    cp -f "$SCRIPT_DIR/resources/channelstrips.default.xml" "$PLUGIN_DIR/MCU/"
+    echo "=== copied channelstrips.default.xml → $PLUGIN_DIR/MCU/ ==="
 fi
 echo "Done."
 echo ""

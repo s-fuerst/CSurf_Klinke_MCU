@@ -1,24 +1,55 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  Default channel strip configuration for the CSurf Klinke MCU extension.
 
-  This file is a READ-ONLY TEMPLATE. The deployment scripts copy it next to
-  the plugin binary (e.g. ~/.config/REAPER/UserPlugins/) on every deploy.
-
-  On first run (when no user file exists yet) the extension copies it to
-  the user file:
-      ~/.config/REAPER/MCU/ChannelStripMaps/channelstrips.xml   (Linux)
-      <Documents>\Reaper\MCU\ChannelStripMaps\channelstrips.xml (Windows)
-      ~/Library/Application Support/REAPER/MCU/ChannelStripMaps/channelstrips.xml (macOS)
-
-  All user changes are written to the USER file only — this template is
-  never modified by the extension, so redeploying can never clobber user
-  data. The "Restore defaults" button in the channel strip editor copies
-  this template back over the user file.
-
-  Format: one <STRIP> per assigned slot (nr = 1..16) with its <VPOT>
-  children. See src/modes/channelstrip/ChannelStripMap.h for the schema.
-  The file is currently EMPTY — paste the <STRIP> elements of your
-  preferred channelstrips.xml into the <CHANNELSTRIPS> root below.
--->
-<CHANNELSTRIPS/>
+<CHANNELSTRIPS>
+  <STRIP nr="1" fxident="/home/fuerst/opt/REAPER/Plugins/FX/reagate.vst.so"
+         name="RGate" inspos="first">
+    <VPOT nr="1" param="0" name="Thresh"/>
+    <VPOT nr="2" param="1" name="Attack"/>
+    <VPOT nr="3" param="4" name="Hold"/>
+    <VPOT nr="4" param="2" name="Releas"/>
+    <VPOT nr="5" param="12" name="Hyster"/>
+    <VPOT nr="6" param="5" name="Lowpas"/>
+    <VPOT nr="7" param="6" name="Hipass"/>
+    <VPOT nr="8" param="14" name="RMSize"/>
+    <VPOT nr="9" param="3" name="Pre-op"/>
+  </STRIP>
+  <STRIP nr="2" fxident="/home/fuerst/opt/REAPER/Plugins/FX/reaeq.vst.so"
+         name="ReaEQ" inspos="2">
+    <VPOT nr="1" param="0" name="Freq 1"/>
+    <VPOT nr="2" param="1" name="Gain 1"/>
+    <VPOT nr="3" param="3" name="Freq 2"/>
+    <VPOT nr="4" param="4" name="Gain 2"/>
+    <VPOT nr="5" param="6" name="Freq 3"/>
+    <VPOT nr="6" param="7" name="Gain 3"/>
+    <VPOT nr="7" param="9" name="Freq 4"/>
+    <VPOT nr="8" param="10" name="Gain 4"/>
+    <VPOT nr="9" param="2" name="Width1"/>
+    <VPOT nr="11" param="5" name="Width2"/>
+    <VPOT nr="13" param="8" name="Width3"/>
+    <VPOT nr="15" param="11" name="Width4"/>
+    <VPOT nr="16" param="15" name="G.Gain"/>
+  </STRIP>
+  <STRIP nr="3" fxident="/home/fuerst/opt/REAPER/Plugins/FX/reacomp.vst.so"
+         name="RComp" inspos="3">
+    <VPOT nr="1" param="0" name="Thresh"/>
+    <VPOT nr="2" param="2" name="Attack"/>
+    <VPOT nr="3" param="3" name="Releas"/>
+    <VPOT nr="4" param="1" name="Ratio"/>
+    <VPOT nr="5" param="14" name="Knee"/>
+    <VPOT nr="6" param="6" name="Lowpas"/>
+    <VPOT nr="7" param="7" name="Hipass"/>
+    <VPOT nr="8" param="13" name="RMSize"/>
+    <VPOT nr="10" param="4" name="Pre-co"/>
+    <VPOT nr="11" param="16" name="AuRele" discrete="2"/>
+    <VPOT nr="12" param="15" name="AuGain" discrete="2"/>
+    <VPOT nr="14" param="8" name="SignIn" discrete="8" manual="1"/>
+    <VPOT nr="15" param="11" name="Wet"/>
+    <VPOT nr="16" param="10" name="Dry"/>
+  </STRIP>
+  <STRIP nr="4" fxident="/home/fuerst/opt/REAPER/Plugins/FX/realimit.vst.so"
+         name="RLimi" inspos="last">
+    <VPOT nr="1" param="0" name="Thresh"/>
+    <VPOT nr="2" param="1" name="Ceilin"/>
+    <VPOT nr="3" param="2" name="Releas"/>
+  </STRIP>
+</CHANNELSTRIPS>
