@@ -321,6 +321,25 @@ private:
   tTrackSet *m_pAllTracksBefore;
   tTrackSet *m_pAllTracksNow;
 
+  // The track pointers remain unchanged when a track is moved into/out of a
+  // folder or when its MCP/TCP visibility is toggled. Those properties still
+  // affect the channel graph, so they need to be part of the cheap change
+  // detection used by tracksStatesChanged().
+  struct TrackLayoutState {
+    MediaTrack *track;
+    int folderDepth;
+    bool showInMCP;
+    bool showInTCP;
+
+    bool operator==(const TrackLayoutState &other) const {
+      return track == other.track && folderDepth == other.folderDepth &&
+             showInMCP == other.showInMCP && showInTCP == other.showInTCP;
+    }
+  };
+  typedef std::vector<TrackLayoutState> tTrackLayout;
+  tTrackLayout m_trackLayoutBefore;
+  tTrackLayout m_trackLayoutNow;
+
   tTrackSignal signalTrackAdded;
   tTrackSignal signalTrackRemoved;
 

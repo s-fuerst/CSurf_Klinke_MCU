@@ -527,15 +527,39 @@ bool Tracks::tracksStatesChanged(bool checkProjectChange) {
     ProjectConfig::instance()->checkReaProjectChange();
 
   m_pAllTracksNow->clear();
+  m_trackLayoutNow.clear();
 
-  for (TrackIterator ti; !ti.end(); ++ti)
-    m_pAllTracksNow->push_back(*ti);
+  for (TrackIterator ti; !ti.end(); ++ti) {
+    MediaTrack *pMT = *ti;
+    m_pAllTracksNow->push_back(pMT);
 
-  // O(n) comparison catches adds, removes, and reorders. Skip the O(n^2)
-  // buildGraph() on the vast majority of frames where nothing has changed.
-  // This early-exit is what makes it safe to call tracksStatesChanged() every
-  // frame (see CSurf_MCU::Run()): it costs ~0.001ms on stable frames.
-  if (*m_pAllTracksNow == *m_pAllTracksBefore)
+    int folderDepth = 0;
+    if (int *pFD = (int *)GetSetMediaTrackInfo(pMT, "I_FOLDERDEPTH", NULL))
+      folderDepth = *pFD;
+
+    bool showInMCP = false;
+    if (bool *pShown =
+            (bool *)GetSetMediaTrackInfo(pMT, "B_SHOWINMIXER", NULL))
+      showInMCP = *pShown;
+
+    bool showInTCP = false;
+    if (bool *pShown =
+            (bool *)GetSetMediaTrackInfo(pMT, "B_SHOWINTCP", NULL))
+      showInTCP = *pShown;
+
+    m_trackLayoutNow.push_back(
+        {pMT, folderDepth, showInMCP, showInTCP});
+  }
+
+  // The track pointers remain unchanged when a track is moved into/out of a
+  // folder or when MCP/TCP visibility changes. Compare the layout snapshot as
+  // well, otherwise the cached graph and channel vector stay stale until some
+  // unrelated action (for example Global View) happens to rebuild them.
+  //
+  // This remains an O(n) comparison and preserves the cheap early exit on
+  // stable frames.
+  if (*m_pAllTracksNow == *m_pAllTracksBefore &&
+      m_trackLayoutNow == m_trackLayoutBefore)
     return false;
 
   // set_difference requires sorted ranges, so build temporary sets from the
@@ -586,6 +610,7 @@ bool Tracks::tracksStatesChanged(bool checkProjectChange) {
   }
 
   *m_pAllTracksBefore = *m_pAllTracksNow;
+  m_trackLayoutBefore = m_trackLayoutNow;
 
   buildGraph();
   if (!m_structure.trackExists(m_pCurrentBaseTrack))
@@ -1103,6 +1128,11 @@ void Tracks::buildGraph() {
   m_structureVU.buildGraph(false);
 	
   createChannelTrackVector();
+  // createChannelTrackVector() changes the mapping used by the MCU. Keep the
+  // TrackState CS-number fields in sync in the same operation; otherwise the
+  // editor can briefly show stale or duplicate channel numbers until the next
+  // periodic adjust() call.
+  updateTrackStates(m_numMCUChannels);
   updateVUactive();
 }
 
