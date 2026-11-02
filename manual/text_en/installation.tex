@@ -1,35 +1,36 @@
 \newpage
 \section{Installation}\label{installation} 
 
-The current test builds of the extension can be downloaded from
-\url{https://sync.luckycloud.de/d/8b55110a1a8b41f3b18b/}. The folder currently
-contains builds for all three supported platforms:
-\begin{itemize}
-\item Windows: choose the package containing the \texttt{.dll}; use this on
-  64-bit Windows.
-\item Linux: choose the package containing the \texttt{.so}; use this on
-  Linux x86\_64.
-\item macOS: choose the package containing the \texttt{.dylib}; use this on
-  Apple Silicon
-  Macs (arm64) running macOS 11 or newer. The macOS build does not support
-  Intel Macs.
-\end{itemize}
-During the testing phase, the downloads do not include the FX maps. A switch
-from the test-build downloads to ReaPack is planned; the FX maps will be
-included again with that distribution.
+The current (latest) builds of the extension can be always downloaded from
+\url{https://sync.luckycloud.de/d/8b55110a1a8b41f3b18b/}. The download
+page offers two options: the ``Download data'' button creates a single zip
+archive containing the builds for all three supported platforms, or the
+individual files can be downloaded separately.
 
-To install the extension:
+To install the extension the first time:
 \begin{enumerate}
-\item open the \reaper resources path, e.g. via
+\item Download the complete folder via the ``Download data'' button.
+\item Open the \reaper resources path, e.g. via
 \reaper by selecting the menu-entry: {\tt Options/ Show \reaper
   resource path in explorer/finder...}.
 \item Locate the {\tt UserPlugins} folder within the \reaper resource path.
-\item Unpack the downloaded package into the {\tt UserPlugins} directory.
+\item Unpack the downloaded zip archive and copy its complete
+  contents into the {\tt UserPlugins} directory.
 \end{enumerate}
 
-Afterwards, the {\tt UserPlugins} folder contains the platform-specific
-{\tt reaper\_csurf\_mcu\_klinke} plugin file. The testing downloads do not
-contain the {\tt MCU} folder or factory FX maps. Your own configuration files
+Afterwards, the {\tt UserPlugins} folder contains the
+plugin files of all three platforms; \reaper loads the file matching the
+platform it runs on, leaving the other two files in place is harmless:
+\begin{itemize}
+\item Windows: the \texttt{.dll}; use this on 64-bit Windows.
+\item Linux: the \texttt{.so}; use this on Linux x86\_64.
+\item macOS: the \texttt{.dylib}; use this on Apple Silicon Macs (arm64)
+  running macOS 11 or newer. The macOS build does not support Intel Macs.
+\end{itemize}
+
+To update the extension, it is sufficient to overwrite the existing
+platform-specific plugin file in the {\tt UserPlugins} folder with the new
+one. Your own configuration files
 and FX maps are stored in the folder {\tt My Documents\textbackslash Reaper\textbackslash MCU}
 on Windows and in {\tt ~/.config/REAPER/MCU} on Linux and macOS. These folders
 are created when you start the \mcu surface for the first time.\\ 
