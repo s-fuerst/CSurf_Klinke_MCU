@@ -13,6 +13,7 @@
 #   ./scripts/build-and-run-linux-macos.sh --no-deploy  # build only; do not deploy or start REAPER
 #   ./scripts/build-and-run-linux-macos.sh -j8          # use eight parallel build jobs
 #   ./scripts/build-and-run-linux-macos.sh --klinke     # full configure + build (Release) with KLINKE features
+#                                                         # (a quick run without --klinke switches back to a public build)
 #   ./scripts/build-and-run-linux-macos.sh --help       # show this message
 
 set -euo pipefail
@@ -94,6 +95,11 @@ fi
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
+# Always passed to CMake explicitly (ON or OFF), so the cache can never keep a
+# stale KLINKE state from an earlier --klinke run.
+KLINKE_FLAG="OFF"
+if [ "$KLINKE" = 1 ]; then KLINKE_FLAG="ON"; fi
+
 # configure_cmake — the ONLY place that runs `cmake` configure. The quick
 # path calls it too when the build dir is not (or no longer) configured, so
 # the script works on a fresh checkout right after fetch_deps.sh — no manual
@@ -101,7 +107,7 @@ cd "$BUILD_DIR"
 configure_cmake() {
     cmake "$SCRIPT_DIR" -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
         $( [ "$BUILD_TYPE" = "Debug" ] && echo "-DMCU_DEBUG_LOG=ON" || echo "-DMCU_DEBUG_LOG=OFF" ) \
-        $( [ "$KLINKE" = 1 ] && echo "-DMCU_KLINKE_BUILD=ON" || echo "-DMCU_KLINKE_BUILD=OFF" )
+        -DMCU_KLINKE_BUILD=$KLINKE_FLAG
 }
 
 NEED_CONFIGURE=0
@@ -114,6 +120,18 @@ else
     CACHED_TYPE="$(grep -E '^CMAKE_BUILD_TYPE:' CMakeCache.txt | head -1 | cut -d= -f2)"
     if [ "$CACHED_TYPE" != "$BUILD_TYPE" ]; then
         echo "  (cached build type '$CACHED_TYPE' != requested '$BUILD_TYPE' — reconfiguring)"
+        NEED_CONFIGURE=1
+    fi
+    # The quick path must also notice a KLINKE change, otherwise a build dir
+    # last configured with --klinke keeps KLINKE=ON forever while the script
+    # prints nothing about it. Normalise the cached value (empty/unknown = OFF).
+    CACHED_KLINKE="$(grep -E '^MCU_KLINKE_BUILD:' CMakeCache.txt | head -1 | cut -d= -f2 | tr -d '\r')" || true
+    case "$CACHED_KLINKE" in
+        [Tt][Rr][Uu][Ee]|[Oo][Nn]|1) CACHED_KLINKE="ON" ;;
+        *) CACHED_KLINKE="OFF" ;;
+    esac
+    if [ "$CACHED_KLINKE" != "$KLINKE_FLAG" ]; then
+        echo "  (cached MCU_KLINKE_BUILD '$CACHED_KLINKE' != requested '$KLINKE_FLAG' — reconfiguring)"
         NEED_CONFIGURE=1
     fi
 fi

@@ -26,6 +26,9 @@
 #   scripts/build-windows-from-wsl.sh --help       # show this message
 #
 #   Switching release <-> debug requires --clean (Ninja is single-config).
+#   --klinke / --release only change the cached MCU_KLINKE_BUILD value; the flag
+#   is always passed explicitly to CMake and a mismatch forces a reconfigure,
+#   so switching back to a public build never needs --clean.
 
 set -euo pipefail
 
@@ -179,6 +182,14 @@ if [ "$CLEAN" = 1 ] || [ "$RECONFIGURE" = 1 ] \
   NEED_CONFIGURE=1
 fi
 
+# --klinke: Klinke's personal developer features (strip button row swap, M+
+# hand-off combo). The value is ALWAYS passed to CMake below — passing only
+# -DMCU_KLINKE_BUILD=ON (as the script did before) left an ON value cached in
+# build_win/CMakeCache.txt, so a plain --release afterwards silently produced
+# a KLINKE build again. A cached/requested mismatch now forces a reconfigure.
+KLINKE_FLAG="OFF"
+if [ "$KLINKE" = 1 ]; then KLINKE_FLAG="ON"; fi
+
 # --profiler: build the Release DLL with debug symbols (PDB) for CPU profiling.
 # Force a reconfigure when the requested state differs from what is cached, so
 # toggling --profiler on/off just works (lean Release <-> symbols Release).
@@ -198,11 +209,27 @@ if [ "$CACHED_PROFD" != "$PROFILER_FLAG" ]; then
   echo ">> MCU_PROFILER: cached=$CACHED_PROFD -> $PROFILER_FLAG (reconfiguring)"
 fi
 
+# Same for the KLINKE flag: read the cached value, normalise it, and
+# reconfigure when the requested state differs (in both directions).
+if [ -f "$BUILD_DIR/CMakeCache.txt" ]; then
+  CACHED_KLINKE="$(grep -E '^MCU_KLINKE_BUILD:' "$BUILD_DIR/CMakeCache.txt" | head -1 | cut -d= -f2 | tr -d '\r')" || true
+else
+  CACHED_KLINKE=""
+fi
+case "$CACHED_KLINKE" in
+  [Tt][Rr][Uu][Ee]|[Oo][Nn]|1) CACHED_KLINKE="ON" ;;
+  *) CACHED_KLINKE="OFF" ;;  # empty/unset/False/off/0 -> OFF
+esac
+if [ "$CACHED_KLINKE" != "$KLINKE_FLAG" ]; then
+  NEED_CONFIGURE=1
+  echo ">> MCU_KLINKE_BUILD: cached=$CACHED_KLINKE -> $KLINKE_FLAG (reconfiguring)"
+fi
+
 # --- generate the .bat (no pushd — source is on C:, native NTFS) -------------
 BAT="$(mktemp --suffix=.bat)"
 trap 'rm -f "$BAT"' EXIT
 if [ "$NEED_CONFIGURE" = 1 ]; then
-  echo ">> CMake configure (Ninja, $BUILD_TYPE)"
+  echo ">> CMake configure (Ninja, $BUILD_TYPE, KLINKE=$KLINKE_FLAG, PROFILER=$PROFILER_FLAG)"
   cat > "$BAT" <<EOF
 @echo off
 setlocal
@@ -211,7 +238,7 @@ if errorlevel 1 ( echo ERROR: cd to $MIRROR_WIN failed & goto :fail )
 call "$VSVARS"
 if errorlevel 1 ( echo ERROR: vcvars64.bat failed & goto :fail )
 echo === CMake configure (Ninja, $BUILD_TYPE) ===
-"$CMAKE_WIN" -G Ninja -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_MAKE_PROGRAM="$NINJA_EXE" $( [ "$KLINKE" = 1 ] && echo "-DMCU_KLINKE_BUILD=ON" ) -DMCU_PROFILER=$PROFILER_FLAG -S . -B build_win
+"$CMAKE_WIN" -G Ninja -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_MAKE_PROGRAM="$NINJA_EXE" -DMCU_KLINKE_BUILD=$KLINKE_FLAG -DMCU_PROFILER=$PROFILER_FLAG -S . -B build_win
 if errorlevel 1 ( echo ERROR: CMake configure failed & goto :fail )
 echo === Ninja build ===
 "$CMAKE_WIN" --build build_win --parallel $JOBS
