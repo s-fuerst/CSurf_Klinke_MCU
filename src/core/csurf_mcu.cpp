@@ -640,6 +640,11 @@ bool CSurf_MCU::OnUndo(MIDI_event_t *evt) {
 }
 
 bool CSurf_MCU::OnCancel(MIDI_event_t *evt) {
+  // The active mode may claim CANCEL (e.g. PlugMode's plugin insert flow);
+  // it then reports the press AND the release as consumed so the global
+  // action does not fire from the second event.
+  if (m_pCCSManager->buttonCancel(evt->midi_message[2] > 0x3f))
+    return true;
   SendMessage(g_hwnd, WM_COMMAND, ID_STOP_AND_DELETE_MEDIA, 0);
   return true;
 }

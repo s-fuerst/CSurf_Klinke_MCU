@@ -267,6 +267,13 @@ bool CCSManager::buttonFaderBanks(int button, bool pressed) {
   return m_pActualMode->buttonFaderBanks(button, pressed);
 }
 
+bool CCSManager::buttonCancel(bool pressed) {
+  if (!m_pActualMode)
+    return false;
+  // No m_switchBack here: consuming CANCEL must not change the mode.
+  return m_pActualMode->buttonCancel(pressed);
+}
+
 bool CCSManager::buttonFlip(bool pressed) {
   m_switchBack = true;
   return m_pActualMode->buttonFlip(pressed);

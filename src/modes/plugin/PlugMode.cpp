@@ -21,6 +21,10 @@
 #include "PlugWindowManager.h"
 #include "PlugMoveWatcher.h"
 #include "PlugPresetManager.h"
+#include "PlugCategoryConfig.h"
+#include "PlugCategoryEditor.h"
+#include "CCSModesEditor.h"
+#include "McuDebugLog.h"
 #include "Tracks.h"
 
 // 16 favourites per unit * up to 8 units, so the per-unit Select-button
@@ -32,12 +36,20 @@
 PlugMode::PlugMode(CCSManager *pManager)
     : CCSMode(pManager), m_iSingleFaderTouched(0), m_iSingleVPotTouched(0),
       m_pAccess(NULL), m_pPlugEditor(NULL), m_editorMap(NULL),
-      m_buttonNameValuePressed(false),
+      m_autoInsertOnEnter(true),
+      m_insertState(INSERT_NONE), m_insertUnit(0), m_insertCategory(0),
+      m_cancelConsumed(false), m_pInsertDisplay(NULL),
+      m_pCategoryEditor(NULL), m_buttonNameValuePressed(false),
       m_followTrack(true), m_lastTimePlugWasSelected(0), m_activeUnit(0),
       m_paramCacheValid(false), m_plugBroadcastActive(false) {
   lastFaderValues.assign(8 * 8 * 8, 0.0);
   lastVPotValues.assign(8 * 8 * 8, 0.0);
   m_pAccess = new PlugAccess(this);
+
+  // Load the per-unit plugin categories now (lazily reads
+  // <MCU config>/PluginCategories.xml) so the CTRL+VPOT4 flow and its editor
+  // never touch the disk while a display frame is being built.
+  PlugCategoryConfig::instance();
 
   // CTRL+VPOT command set (modifier-command-scheme.md Layer 2). `control`
   // is the unshifted 0..7 VPOT index (hardware VPOT N = control N-1).
@@ -50,6 +62,10 @@ PlugMode::PlugMode(CCSManager *pManager)
                      [this](int) { return ctrlToggleFloating(); });
   m_ctrlCommands.add(VK_CONTROL, 1,
                      [this](int) { return ctrlToggleChain(); });
+  // VPOT-4 (hardware 4): open the per-unit plugin category list. Also the
+  // carrier for the on-screen editor (CTRL+ALT+VPOT4).
+  m_ctrlCommands.add(VK_CONTROL, 3,
+                     [this](int channel) { return ctrlInsertPlugin(channel); });
   m_ctrlCommands.add(VK_CONTROL, 4,
                      [this](int) { return ctrlRemoveAccessed(); });
   m_ctrlCommands.add(VK_CONTROL, 6,
@@ -63,6 +79,11 @@ PlugMode::PlugMode(CCSManager *pManager)
   m_pParamsDisplay = pManager->createDisplay(4);
   m_pTouchedDisplay = pManager->createDisplay(4);
   m_pValueDisplay = pManager->createDisplay(2);
+  // Dedicated 2-row display for the plugin insert flow: row 1 carries the
+  // category / plugin labels of every unit (one field per VPOT), the same row
+  // the CTRL command legend uses. A separate Display keeps the switch
+  // clean and works on 2-row and 4-row (ProX) units alike.
+  m_pInsertDisplay = pManager->createDisplay(2);
 
 	m_pMeterBridge = new PlugModeMeterBridge(this);
 
@@ -114,8 +135,17 @@ PlugMode::~PlugMode(void) {
       m_plugMovedConnectionId);
 
   safe_delete(m_pPresetManager);
+  // The category editor is owned by the editor window, which stores a pointer
+  // to m_pCategoryEditor and would write through it when it is destroyed.
+  // CCSManager deletes the window before the modes, so normally there is
+  // nothing left to do; make sure in ANY case that no window keeps a
+  // reference to this object's member.
+  if (m_pCCSManager && m_pCCSManager->getEditor())
+    m_pCCSManager->getEditor()->deleteWindow();
+  m_pCategoryEditor = NULL;
   safe_delete(m_pPlugEditor);
   safe_delete(m_pAccess);
+  safe_delete(m_pInsertDisplay);
   safe_delete(m_pParamsDisplay);
   safe_delete(m_pTouchedDisplay);
 	safe_delete(m_pMeterBridge);
@@ -155,9 +185,28 @@ void PlugMode::activate() {
   // false changes from deactivate/activate cycles and spuriously switch
   // the selected track.
   m_pAccess->syncKnownStates();
+
+  // Entering the FX-Mode on a track without ANY FX goes straight into the
+  // plugin category list, so the first plugin can be inserted without
+  // knowing the CTRL+VPOT4 command (maintainer request 2026-11). Only on a
+  // FRESH entry: CCSManager re-activates the current mode when a selector
+  // overlay ends, which must not re-open the list.
+  bool freshEntry = m_autoInsertOnEnter;
+  m_autoInsertOnEnter = false;
+  if (freshEntry && m_followTrack && selectedTrack() &&
+      getNumPlugsInSelectedTrack() == 0 && insertTargetTrack()) {
+    MCU_LOG("PM activate: no FX on the track -> category list");
+    startInsertFlow(anchorUnit());
+  }
 }
 
 void PlugMode::deactivate() {
+  // Leaving the mode always ends the insert flow (the target track and the
+  // accessed FX belong to the host state this mode followed) and arms the
+  // auto-insert-on-entry check of the next activate().
+  cancelInsertFlow();
+  m_autoInsertOnEnter = true;
+
   if (m_pPlugMode2ndOptions->isOptionSetTo(PMO2_MODE_CHANGE,
                                            PMO2A_OPEN_CLOSE) ||
       m_pPlugMode2ndOptions->isOptionSetTo(PMO2_MODE_CHANGE,
@@ -398,6 +447,12 @@ bool PlugMode::vpotMoved(int channel, int numSteps) {
   int unit = (channel - 1) / 8;
   int localCh = (channel - 1) % 8;
   setActiveUnit(unit);
+
+  // While the insert flow is open the VPOTs select categories/plugins and
+  // must not move parameters.
+  if (m_insertState != INSERT_NONE)
+    return true;
+
   int bank = m_pAccess->selectedBankForUnit(unit);
   int page = m_pAccess->selectedPageForUnit(unit);
 
@@ -425,6 +480,25 @@ bool PlugMode::vpotPressed(int channel, bool pressed) {
   int unit = (channel - 1) / 8;
   int localCh = (channel - 1) % 8;
   setActiveUnit(unit);
+
+  // CTRL+ALT+VPOT4: on-screen editor for the plugin categories. Checked
+  // before everything else (also before the insert flow below) so the
+  // editor is always reachable.
+  if (pressed && localCh == 3 && isModifierPressed(VK_CONTROL) &&
+      isModifierPressed(VK_ALT) && !isModifierPressed(VK_SHIFT)) {
+    openCategoryEditor();
+    return true;
+  }
+
+  // Plugin insert flow: plain VPOT presses select a category / a plugin.
+  // Takes precedence over the CTRL commands, because a user who did not yet
+  // release CONTROL after CTRL+VPOT4 would otherwise trigger a command.
+  if (m_insertState != INSERT_NONE) {
+    if (!pressed)
+      return true; // consume the release as well
+    insertFlowPressed(unit, localCh);
+    return true;
+  }
 
   // CTRL+VPOT commands (modifier command scheme), unshifted VPOT range
   // only. A MATCHED command always consumes the event — without an
@@ -567,6 +641,14 @@ void PlugMode::updateDisplay() {
       updateParamsDisplay();
     }
   }
+  // Plugin insert flow owns the display while it is open (it switches to its
+  // own Display, see switchDisplay()): draw its labels instead of the CTRL
+  // legend, which targets the parameter display.
+  if (m_insertState != INSERT_NONE) {
+    updateInsertDisplay();
+    return;
+  }
+
   // CONTROL held: per-unit command legend (same positions / labels as
   // ChannelStripMode — the muscle memory transfers). Redrawn every frame
   // by frameUpdate(), so press/release needs no edge tracking here.
@@ -607,6 +689,12 @@ void PlugMode::updateCtrlLegend() {
     case 1:
       label = "Chain"; // hardware VPOT 2
       break;
+    case 3:
+      // hardware VPOT 4: plugin insert flow (needs a target track, not an
+      // accessed plugin — an empty chain can be filled with it)
+      if (insertTargetTrack())
+        label = "Insert";
+      break;
     case 4:
       label = "Remove"; // hardware VPOT 5
       break;
@@ -617,7 +705,7 @@ void PlugMode::updateCtrlLegend() {
       label = "FXdown"; // hardware VPOT 8
       break;
     default:
-      break; // 3 (VPOT-4), 5 (VPOT-6) and 2 (VPOT-3: no command here)
+      break; // 5 (VPOT-6) and 2 (VPOT-3: no command here)
     }
     // Row 1 on ALL layouts (maintainer decision 2026-09): on an MCU 2-row
     // unit that overwrites the fader names, exactly like ChannelStripMode.
@@ -697,6 +785,200 @@ bool PlugMode::ctrlRemoveAccessed() {
     m_pAccess->accessPlugin(tr, -1);
   updateEverything();
   return true;
+}
+
+// --- plugin category insert flow (CTRL+VPOT4) -------------------------------
+//
+// Stage model (see PlugMode.h / PlugCategoryConfig.h):
+//   INSERT_NONE --CTRL+VPOT4--> INSERT_CATEGORY --VPOT--> INSERT_PLUGIN
+//                                  ^                       |
+//                                  +--- other unit's VPOT --+
+//   INSERT_PLUGIN --VPOT--> insert (+ access the new FX) --> INSERT_NONE
+// CANCEL aborts at any stage. All plain VPOT presses and rotations are
+// consumed while the flow is open.
+
+int PlugMode::insertRowForLocalCh(int localCh) {
+  // Mode-wide convention (ChannelStrip, PlugMode CTRL commands): the
+  // unshifted VPOTs address rows 0..7, SHIFT+VPOT the rows 8..15.
+  int row = localCh + (isModifierPressed(VK_SHIFT) ? 8 : 0);
+  return jlimit(0, PlugCategoryConfig::kNumCategories - 1, row);
+}
+
+MediaTrack *PlugMode::insertTargetTrack() {
+  // Prefer the track whose FX PlugMode currently works on (in follow mode
+  // this IS the selected track); without an accessed FX fall back to the
+  // selected track, so a track without any FX can be filled.
+  MediaTrack *tr = m_pAccess->getPlugTrack();
+  if (tr)
+    return tr;
+  return selectedTrack();
+}
+
+int PlugMode::insertAfterSlot() {
+  // Directly after the accessed FX; -1 (append at the end of the chain) when
+  // no FX is accessed or the accessed FX is gone.
+  if (!m_pAccess->plugExist())
+    return -1;
+  return m_pAccess->getPlugSlot();
+}
+
+bool PlugMode::ctrlInsertPlugin(int channel) {
+  // The command is inactive without a target track and while the flow is
+  // already open (it then stays in its current stage).
+  if (m_insertState != INSERT_NONE)
+    return true;
+  if (!insertTargetTrack())
+    return false;
+  int unit = (channel - 1) / 8;
+  if (unit < 0 || unit >= m_pCCSManager->getMCU()->numUnits())
+    return false;
+  startInsertFlow(unit);
+  return true;
+}
+
+void PlugMode::startInsertFlow(int unit) {
+  m_insertState = INSERT_CATEGORY;
+  m_insertUnit = unit;
+  m_insertCategory = 0;
+  m_cancelConsumed = false;
+  MCU_LOG("PM insert flow START unit=%d track=%p after=%d", unit + 1,
+          (void *)insertTargetTrack(), insertAfterSlot());
+  if (m_pInsertDisplay)
+    m_pInsertDisplay->clear();
+  updateEverything();
+}
+
+void PlugMode::cancelInsertFlow() {
+  if (m_insertState == INSERT_NONE)
+    return;
+  MCU_LOG("PM insert flow CANCEL (state=%d)", (int)m_insertState);
+  m_insertState = INSERT_NONE;
+  if (m_pInsertDisplay)
+    m_pInsertDisplay->clear();
+  updateEverything();
+}
+
+void PlugMode::insertFlowPressed(int unit, int localCh) {
+  PlugCategoryConfig *cfg = PlugCategoryConfig::instance();
+  int row = insertRowForLocalCh(localCh);
+
+  // EVERY unit shows its own category list; only the unit whose category is
+  // open shows that category's plugins. So a press on another unit (or while
+  // the category stage is open) always means "pick this category".
+  if (m_insertState == INSERT_CATEGORY || unit != m_insertUnit) {
+    if (!cfg->categoryHasPlugins(unit, row)) {
+      MCU_LOG("PM insert flow: unit=%d row=%d has no plugins, ignored",
+              unit + 1, row);
+      return;
+    }
+    m_insertUnit = unit;
+    m_insertCategory = row;
+    m_insertState = INSERT_PLUGIN;
+    MCU_LOG("PM insert flow: unit=%d category=%d selected", unit + 1, row);
+    updateEverything();
+    return;
+  }
+
+  // INSERT_PLUGIN: insert the picked plugin after the accessed FX.
+  const PlugCategoryConfig::PluginEntry &entry =
+      cfg->plugin(unit, m_insertCategory, row);
+  if (!entry.isAssigned()) {
+    MCU_LOG("PM insert flow: empty plugin slot row=%d, ignored", row);
+    return;
+  }
+  MediaTrack *tr = insertTargetTrack();
+  if (!tr) {
+    cancelInsertFlow();
+    return;
+  }
+  int after = insertAfterSlot();
+  int slot = FxSlotCommands::insertFx(tr, entry.ident, after);
+  MCU_LOG("PM insert flow: unit=%d category=%d row=%d ident=[%s] after=%d -> "
+          "slot=%d",
+          unit + 1, m_insertCategory, row, entry.ident.toRawUTF8(), after,
+          slot);
+  if (slot < 0) {
+    // Insert refused (unknown plugin / API failure): stay in the flow so
+    // another plugin can be picked, CANCEL leaves.
+    return;
+  }
+  // The flow ends and the new instance becomes the accessed plugin.
+  m_insertState = INSERT_NONE;
+  if (m_pInsertDisplay)
+    m_pInsertDisplay->clear();
+  m_pAccess->accessPlugin(tr, slot);
+  updateEverything();
+}
+
+void PlugMode::updateInsertDisplay() {
+  if (m_insertState == INSERT_NONE || !m_pInsertDisplay)
+    return;
+  PlugCategoryConfig *cfg = PlugCategoryConfig::instance();
+  int nUnits = m_pCCSManager->getMCU()->numUnits();
+  int shift = isModifierPressed(VK_SHIFT) ? 8 : 0;
+  // Fresh install / everything deleted: point the user to the editor instead
+  // of showing 8x16 empty fields.
+  bool anyData = false;
+  for (int u = 0; u < nUnits && !anyData; u++)
+    anyData = cfg->unitHasData(u);
+  if (!anyData) {
+    m_pInsertDisplay->changeTextFullLine(
+        0, "No categories defined. Edit with CTRL+ALT+VPOT 4.", false);
+    return;
+  }
+  for (int u = 0; u < nUnits; u++) {
+    for (int localCh = 0; localCh < 8; localCh++) {
+      int row = jlimit(0, PlugCategoryConfig::kNumCategories - 1,
+                       localCh + shift);
+      String label;
+      if (m_insertState == INSERT_PLUGIN && u == m_insertUnit)
+        label = cfg->pluginLabel(u, m_insertCategory, row);
+      else
+        label = cfg->categoryName(u, row);
+      // Row 1 on ALL layouts — the row the CTRL command legend uses, i.e.
+      // the VPOT field row the user reads commands from.
+      m_pInsertDisplay->changeField(1, u * 8 + localCh + 1,
+                                    label.toRawUTF8());
+    }
+  }
+}
+
+bool PlugMode::buttonCancel(bool pressed) {
+  if (pressed) {
+    if (m_insertState == INSERT_NONE)
+      return false; // CANCEL is not ours: global action may run
+    cancelInsertFlow();
+    m_cancelConsumed = true;
+    return true;
+  }
+  // Consume the matching release as well, otherwise the global action would
+  // fire from the release event.
+  if (m_cancelConsumed) {
+    m_cancelConsumed = false;
+    return true;
+  }
+  return false;
+}
+
+// --- plugin category editor (CTRL+ALT+VPOT4) -------------------------------
+
+Component **PlugMode::createCategoryEditorComponent() {
+  if (!m_pCategoryEditor)
+    m_pCategoryEditor = new PlugCategoryEditor(this);
+  return &m_pCategoryEditor;
+}
+
+void PlugMode::openCategoryEditor() {
+  // The editor and the hardware flow are mutually exclusive.
+  cancelInsertFlow();
+  if (!m_pCCSManager || !m_pCCSManager->getEditor())
+    return;
+  // setComponentWindow() (NOT setMainComponent()): the window owns the
+  // component and NULLs m_pCategoryEditor when it closes. Using the mode
+  // path here left a dangling pointer behind after the first close, which
+  // crashed REAPER on the second open.
+  m_pCCSManager->getEditor()->setComponentWindow(
+      createCategoryEditorComponent(), true);
 }
 
 void PlugMode::updateFaders() {
@@ -827,7 +1109,11 @@ void PlugMode::switchDisplay() {
 
   Display *pShared;
   bool globalMessage = false;
-  if (m_followTrack && selectedTrack() == NULL) {
+  if (m_insertState != INSERT_NONE && m_pInsertDisplay) {
+    // Plugin insert flow: per-unit category / plugin labels, independent of
+    // the accessed plugin (so a track without any FX can be filled).
+    pShared = m_pInsertDisplay;
+  } else if (m_followTrack && selectedTrack() == NULL) {
     pShared = m_pSingleTrackMessage;
     globalMessage = true;
   } else if (getNumPlugsInSelectedTrack() == 0 && m_followTrack) {
@@ -1222,8 +1508,13 @@ bool PlugMode::buttonNameValue(bool pressed) {
 }
 
 void PlugMode::trackSelected(MediaTrack *trackid, bool selected) {
-  if (selected && m_followTrack)
+  if (selected && m_followTrack) {
+    // Another track is a different insert target: end the flow instead of
+    // inserting into a track the user did not look at when picking.
+    if (m_insertState != INSERT_NONE)
+      cancelInsertFlow();
     m_pAccess->trackChanged(trackid);
+  }
 
   updateEverything();
 }

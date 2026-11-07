@@ -74,6 +74,28 @@ void ChannelStripMap::setStepsManualForVPOT(int position, bool manual) {
   m_vpotStepsManual[position] = manual;
 }
 
+void ChannelStripMap::moveVPOT(int from, int to) {
+  if (from < 0 || from >= kNumVPOTs || to < 0 || to >= kNumVPOTs || from == to)
+    return;
+  const int step = (from < to) ? 1 : -1;
+  // Shift the entries in between one position towards `from`'s side, then
+  // write the moved one into the hole.
+  const int savedParam = m_vpotParam[from];
+  const String savedName = m_vpotName[from];
+  const int savedCount = m_vpotDiscreteCount[from];
+  const bool savedManual = m_vpotStepsManual[from];
+  for (int i = from; i != to; i += step) {
+    m_vpotParam[i] = m_vpotParam[i + step];
+    m_vpotName[i] = m_vpotName[i + step];
+    m_vpotDiscreteCount[i] = m_vpotDiscreteCount[i + step];
+    m_vpotStepsManual[i] = m_vpotStepsManual[i + step];
+  }
+  m_vpotParam[to] = savedParam;
+  m_vpotName[to] = savedName;
+  m_vpotDiscreteCount[to] = savedCount;
+  m_vpotStepsManual[to] = savedManual;
+}
+
 int ChannelStripMap::numBoundVPOTs() const {
   int n = 0;
   for (int i = 0; i < kNumVPOTs; i++)

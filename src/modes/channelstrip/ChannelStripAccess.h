@@ -23,6 +23,7 @@
 #include "JuceHeader.h"
 #include "ChannelStripMap.h"
 #include "FxSlotCommands.h" // slot helpers (delegated, Layer 1)
+#include "InstalledFx.h"    // installed FX list (shared with PlugMode)
 #include <vector>
 #include <map>
 
@@ -31,12 +32,10 @@ class MediaTrack;
 
 class ChannelStripAccess {
 public:
-  struct InstalledFX {
-    String name;  // display name, e.g. "ReaEQ (Cockos)"
-    // AddByName key: "JS:reafx/..." for JS, but a FILE PATH for
-    // VST/VST3/CLAP (e.g. "/path/reaeq.vst.so").
-    String ident;
-  };
+  // InstalledFx lives in src/core/InstalledFx.h (shared with the PlugMode
+  // plugin category editor). Kept as an alias so existing call sites and
+  // the editor cell components stay unchanged.
+  typedef InstalledFx InstalledFX;
 
   ChannelStripAccess(ChannelStripMode *pMode);
   ~ChannelStripAccess();

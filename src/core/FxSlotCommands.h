@@ -42,6 +42,13 @@ public:
   // refused.
   static bool removeFx(MediaTrack *tr, int fxSlot);
 
+  // Insert a NEW instance of the installed FX `ident` (an EnumInstalledFX
+  // ident: "JS:..." or a file path) directly AFTER `afterSlot`, or at the
+  // end of the chain when `afterSlot` < 0 or out of range. Notifies the
+  // surfaces like removeFx(). Returns the new 0-based slot index, or -1 on
+  // failure (unknown ident / no REAPER API).
+  static int insertFx(MediaTrack *tr, const String &ident, int afterSlot);
+
   // --- slot helpers (shared by the commands and ChannelStripAccess) ---
 
   // Dense FX index of the FX with the given GUID, or -1 if not on the

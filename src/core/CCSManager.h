@@ -45,6 +45,9 @@ public:
 
   // pass to CCSMode
   bool buttonFaderBanks(int button, bool pressed);
+  // CANCEL goes to the ACTIVE mode only; true = consumed (the global
+  // "stop and delete media" action is then skipped).
+  bool buttonCancel(bool pressed);
   bool buttonFlip(bool pressed);
   bool buttonGView(bool pressed);
   bool buttonNameValue(bool pressed);

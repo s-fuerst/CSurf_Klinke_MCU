@@ -88,6 +88,10 @@ public:
 
   // 16 global strips (index 0..15), shared across all projects/tracks
   ChannelStripMap *getStrip(int index); // never NULL
+  // Move strip `from` to slot `to`, shifting the strips in between (insert
+  // semantics, nothing is swapped or lost). Used by the editor's drag & drop
+  // reordering, persists the strips immediately.
+  void moveStrip(int from, int to);
 
   // per-(track, unit) assignment: which strip index (–1 = none)
   int getAssignedStripIndex(MediaTrack *tr, int unit);

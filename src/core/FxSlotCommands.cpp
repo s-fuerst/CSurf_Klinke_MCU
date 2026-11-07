@@ -109,6 +109,33 @@ bool FxSlotCommands::moveFx(MediaTrack *tr, int fxSlot, int dir) {
   return true;
 }
 
+int FxSlotCommands::insertFx(MediaTrack *tr, const String &ident,
+                             int afterSlot) {
+  if (!tr || ident.isEmpty() || !TrackFX_AddByName)
+    return -1;
+  int chainLen = TrackFX_GetCount(tr);
+  if (chainLen < 0)
+    chainLen = 0;
+  // TrackFX_AddByName encodes a FIXED dense position as -(1000 + pos) (same
+  // convention as ChannelStripAccess::addPlugin). The new FX lands directly
+  // after the referenced slot, or at the end of the chain when there is no
+  // reference or it already is the last FX.
+  int pos = (afterSlot < 0) ? chainLen : afterSlot + 1;
+  if (pos > chainLen)
+    pos = chainLen;
+  if (pos < 0)
+    pos = 0;
+  int slot = TrackFX_AddByName(tr, ident.toRawUTF8(), false, -(1000 + pos));
+  MCU_LOG("FXC insertFx ident=[%s] after=%d chain=%d pos=%d -> slot=%d",
+          ident.toRawUTF8(), afterSlot, chainLen, pos, slot);
+  if (slot < 0)
+    return -1;
+  TrackList_AdjustWindows(false);
+  CSurf_OnFXChange(tr, 1);
+  TrackList_UpdateAllExternalSurfaces();
+  return slot;
+}
+
 bool FxSlotCommands::removeFx(MediaTrack *tr, int fxSlot) {
   if (!tr || fxSlot < 0 || fxSlot >= TrackFX_GetCount(tr))
     return false;

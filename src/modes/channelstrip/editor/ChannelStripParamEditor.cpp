@@ -53,7 +53,12 @@ ChannelStripParamEditor::ChannelStripParamEditor(ChannelStripMode *pMode,
   }
 
   // Table
-  addAndMakeVisible(m_table = new TableListBox("VPOT mapping", this));
+  addAndMakeVisible(m_table = new ReorderTableListBox("VPOT mapping", this));
+  // Drag & drop reordering: move the mapping between the VPOT slots.
+  m_table->onReorder = [this](int from, int to) { moveVPOTRow(from, to); };
+  m_table->setTooltip(
+      String("Drag a row at its number column to move the mapping to another "
+             "VPOT slot."));
   m_table->setHeaderHeight(22);
   m_table->setColour(ListBox::outlineColourId, Colours::grey);
   m_table->setOutlineThickness(1);
@@ -145,16 +150,23 @@ void ChannelStripParamEditor::paintRowBackground(Graphics &g, int, int w,
 
 void ChannelStripParamEditor::paintCell(Graphics &g, int row, int col,
                                          int w, int h, bool) {
-  g.setFont(Font(FontOptions(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain)));
-  if (col != CSTP_COL_NR) return;
-  g.setColour(Colours::black);
-  String n = (row < 8) ? String(row + 1) : ("Shift " + String(row - 7));
-  g.drawText(n, 2, 1, w - 4, h, Justification::centred, true);
+  // Every column is a cell component: the number column is the
+  // RowDragGrip (number + drag grip), the rest is filled by the cells in
+  // refreshComponentForCell(). Nothing left to paint here.
+  juce::ignoreUnused(g, row, col, w, h);
 }
 
 Component *ChannelStripParamEditor::refreshComponentForCell(
     int row, int col, bool, Component *existing) {
   switch (col) {
+  case CSTP_COL_NR: {
+    // Row number + drag grip (the whole cell starts the reorder drag).
+    auto *c = (RowDragGrip *)existing;
+    if (!c) c = new RowDragGrip(*m_table);
+    c->setRow(row, (row < 8) ? String(row + 1)
+                             : ("Shift " + String(row - 7)));
+    return c;
+  }
   case CSTP_COL_PARAM: {
     auto *c = (VpotParamCombo *)existing;
     if (!c) c = new VpotParamCombo(*this);
@@ -182,6 +194,21 @@ Component *ChannelStripParamEditor::refreshComponentForCell(
   default:
     jassert(!existing);
     return nullptr;
+  }
+}
+
+void ChannelStripParamEditor::moveVPOTRow(int from, int to) {
+  if (!m_strip)
+    return;
+  m_strip->moveVPOT(from, to);
+  MCU_LOG("CSTPE moveVPOTRow %d -> %d", from, to);
+  if (m_pMode)
+    m_pMode->saveStripsToFile();
+  notifyBindingChanged();
+  // Rebuild every cell from the new mapping (row indices changed).
+  if (m_table) {
+    m_table->setModel(nullptr);
+    m_table->setModel(this);
   }
 }
 

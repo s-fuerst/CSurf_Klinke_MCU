@@ -173,7 +173,7 @@ RESOLUTION differs per mode:
 |---|---|---|---|
 | 1 | `Float` | strip FX of the unit on the selected track | the accessed plugin (`PlugAccess::getPlugTrack/getPlugSlot`) |
 | 2 | `Chain` | selected track's FX chain | same track's FX chain |
-| 3 | mode switch | switch to PlugMode + select strip FX ("PlMode") | **not registered** (Q3a: omitted for now) |
+| 3 | mode switch | switch to PlugMode + select strip FX ("PlMode") | `Insert` — plugin category insert flow (see below) |
 | 5 | `Remove` | strip FX | the accessed plugin |
 | 7 / 8 | `FXup` / `FXdown` | strip FX | the accessed plugin |
 
@@ -203,6 +203,103 @@ Implementation notes (deviations / additions to the original proposal):
 - Legend row: row 1 on ALL PlugMode layouts (maintainer decision
   2026-08-29) — on an MCU 2-row unit that overwrites the fader names,
   exactly like ChannelStripMode.
+
+### PlugMode VPOT-4 — plugin category insert flow (2026-11)
+
+PlugMode registers VPOT-4 as `Insert` (the slot was free — Q3a omits the
+mode switch here). Unlike the other commands it does NOT need an accessed
+plugin (an empty chain must be fillable) and it is not a one-shot command
+but a small modal FLOW owned by PlugMode (`PlugMode::tInsertState`):
+
+```
+INSERT_NONE --CTRL+VPOT4--> INSERT_CATEGORY --VPOT--> INSERT_PLUGIN
+                                                  |        |
+                                    other unit's VPOT ----+ |
+                                                           VPOT
+                                                            v
+                                           insert + access -> INSERT_NONE
+```
+
+- Data: `PlugCategoryConfig` — 8 units x 16 categories x 16 plugin slots,
+  GLOBAL (not per project), `PluginCategories.xml` in the shared MCU
+  config dir, written through on every change.
+- Row convention (mode-wide): unshifted VPOTs 1-8 = rows 0-7,
+  SHIFT+VPOT = rows 8-15. Category names and optional short plugin
+  labels are limited to 6 characters (the display field width).
+- Display: the flow switches the units to a dedicated 2-row Display
+  (`m_pInsertDisplay`); row 1 carries the labels. EVERY unit shows its
+  own category list; after a category is picked only that unit shows the
+  plugins, the other units keep their categories (maintainer decision
+  2026-11).
+- Auto-open on entry (maintainer request 2026-11): `activate()` starts the
+  flow itself when PlugMode is entered on a track without ANY FX
+  (`m_followTrack && selectedTrack() && getNumPlugsInSelectedTrack() == 0`),
+  so the first plugin can be inserted without knowing the command. Guarded
+  by `m_autoInsertOnEnter` (set in `deactivate()`, cleared in `activate()`)
+  because CCSManager re-activates the CURRENT mode without deactivate()
+  when a selector overlay ends — that must not re-open the list.
+- Insert position: directly AFTER the accessed FX, appended when no FX is
+  accessed (`FxSlotCommands::insertFx` → `TrackFX_AddByName` with the
+  fixed-position encoding `-(1000 + pos)`). The new instance is accessed
+  afterwards, so its parameters show up.
+- Leaving: only the hardware CANCEL button aborts the flow (maintainer
+  decision — CONTROL must not be held after the first press). That makes
+  `CCSMode::buttonCancel()` + `CCSManager::buttonCancel()` necessary:
+  `CSurf_MCU::OnCancel` asks the active mode first and skips the global
+  "stop and delete media" action for the press AND its release.
+- Editor: `CTRL+ALT+VPOT4` opens `PlugCategoryEditor` (unit drop-down incl.
+  inactive units, 16 category name fields, 16 plugin rows of the selected
+  category). It replaces an open PlugMode editor window (one editor window
+  at a time) and is opened through the NEW
+  `CCSModesEditor::setComponentWindow()` — not `setMainComponent()`.
+  Reason (crash found 2026-11): the window takes the content with
+  `setContentOwned()`, so the WINDOW deletes it. The mode path relies on
+  the mode freeing its component in `deleteEditorComponent()`; a component
+  that is not owned by a mode therefore needs the window to TRACK its
+  pointer (`CCSModesEditorWindow::m_ppLastUsedComponent`), which is what
+  `setComponentWindow()` does — otherwise the caller's pointer dangles
+  after the first close and the second open crashes REAPER.
+  `PlugMode::~PlugMode` additionally calls `CCSModesEditor::deleteWindow()`
+  so no window keeps a pointer into a half-destroyed mode;
+- Reordering (maintainer request 2026-11, editor only, no hardware
+  gesture): both editor lists are `ReorderListBox` instances (a ListBox that
+  is its own `ListBoxModel` AND the `DragAndDropTarget`; the rows are custom
+  components so they can paint the insertion line). `PlugCategoryEditor`
+  derives from `DragAndDropContainer`; dragging starts at the row grip
+  (`mouseDrag` on the row itself — NOT on the forwarded child events, a drag
+  inside the category name TextEditor must stay a text selection). Drop
+  semantics = insert/move (`PlugCategoryConfig::moveCategory/movePlugin`,
+  entries in between shift), and the state is cleared in `dropAt()` AND in
+  `dragOperationEnded()` (JUCE calls that for cancelled drags too; the drag
+  image outlives a dropped row, so the rows must tolerate being deleted
+  while the drag finishes — they do, `SourceDetails::sourceComponent` is a
+  WeakReference).
+- Drag image anchoring (maintainer request 2026-11): `startDragging()`
+  centres the image on the cursor unless `imageOffsetFromMouse` is passed.
+  JUCE anchors the image so that the image point `-imageOffsetFromMouse` is
+  under the cursor (it is computed once as
+  `imageOffset = imageOriginInSource - mouseDownPosition`, cf.
+  `ListBox::startDragAndDrop`). All three reorder implementations therefore
+  pass `-(mouse-down position inside the row image)` — the grabbed grip
+  stays at the cursor instead of the row jumping out of the user's hand.
+  The images are also converted to ARGB and set to 60 % alpha, like JUCE's
+  own list/tree dragging.
+- Same reordering for the TWO Channel Strip editors (maintainer request
+  2026-11) via `src/ui/ReorderTableListBox.{h,cpp}`: a `TableListBox` that is
+  its own `DragAndDropContainer` + `DragAndDropTarget` (JUCE only searches
+  drop targets INSIDE the container, and the drag image is a child of the
+  container — so the table must be the container, not the dialog). The drag
+  starts at a `RowDragGrip` cell component in the first column (a plain
+  component is the only reliable way in a `TableListBox`: the row area is
+  covered by `RowComp`/cells), which also keeps the row-click behaviour
+  (`selectRow()` → the param editor arms its Learn row). Insert indicator =
+  a 2px overlay child positioned via `getRowPosition()`. Data moves:
+  `ChannelStripMode::moveStrip()` (16 slots, saves immediately) and
+  `ChannelStripMap::moveVPOT()` (the per-VPOT param/name/steps/manual tuple).
+- Shared code extracted for this (2026-11): `src/core/InstalledFx.{h,cpp}`
+  (EnumInstalledFX list + name/ident helpers) and
+  `src/ui/PluginComboField.{h,cpp}` (the type-ahead plugin picker, now
+  used by the Channel Strip editor and the category editor alike).
 
 ### PanMode command set (Phase 4)
 

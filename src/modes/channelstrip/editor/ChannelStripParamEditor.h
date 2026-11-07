@@ -36,6 +36,7 @@
 #pragma once
 #include "JuceHeader.h"
 #include "ChannelStripMap.h"
+#include "ReorderTableListBox.h" // drag & drop row reordering
 
 class ChannelStripMode;
 class MediaTrack;
@@ -81,6 +82,9 @@ public:
   // used by cell components
   void setVPOTParam(int vpot, int paramIdx);
   void clearVPOT(int vpot); // unbind the row: param -1 + empty name
+  // Drag & drop reorder of two VPOT rows (the mapping moves between the
+  // VPOT slots, the entries in between shift).
+  void moveVPOTRow(int from, int to);
   ChannelStripMap *getStrip() const { return m_strip; }
   const StringArray &paramNames() const { return m_paramNames; }
   void notifyBindingChanged();
@@ -99,7 +103,7 @@ public:
   int m_stripIndex;
   MediaTrack *m_pTrack;
   int m_fxSlot;
-  TableListBox *m_table;
+  ReorderTableListBox *m_table;
   ToggleButton *m_learnButton; // Learn toggle (arms the automatic learn)
 
   PluginWatcher *m_pWatcher;

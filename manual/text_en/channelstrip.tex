@@ -107,7 +107,10 @@ are:
 \begin{itemize}
 \item \textbf{VPOT}: The position in the strip FX list (1\,--\,8
   and Shift 1\,--\,Shift 8). This is the number that the \vpots of a unit
-  refer to when they show the strip-name list.
+  refer to when they show the strip-name list. Rows can be reordered: grab
+  the row at this column (the small grip) and drop it at the wanted
+  position, the rows in between move up or down accordingly. A whole strip
+  (plugin, abbreviation, insert position and \vpot mapping) moves with it.
 \item \textbf{Plugin}: The plugin bound to this strip FX. You can type to filter
   the list of installed plugins or pick one from the list.
 \item \textbf{Abbrev}: A short display abbreviation (up to 5 characters)
@@ -148,6 +151,10 @@ Figure~\ref{F:Screenshot_ChannelStrip_Mapping}). It shows 16 rows
 
 \pikFigure[0.62][7.7cm][-2.2mm]{Screenshot_ChannelStrip_Mapping}{Strip mapping
   editor}{}{}
+
+Rows can be reordered: grab a row at its number column (the small grip)
+and drop it at the wanted position --- the mapping moves to that \vpot
+position and the rows in between shift.
 
 For each row you select the parameter of the strip's plugin that the
 \vpot should control in the \textbf{Parameter} column. The parameter

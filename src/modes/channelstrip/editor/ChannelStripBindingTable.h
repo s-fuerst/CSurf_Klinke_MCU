@@ -19,6 +19,8 @@
 #include "JuceHeader.h"
 #include "ChannelStripAccess.h"
 #include "ChannelStripMap.h"
+#include "PluginComboField.h"     // shared plugin picker cell
+#include "ReorderTableListBox.h" // drag & drop row reordering
 
 class ChannelStripMode;
 
@@ -31,7 +33,9 @@ class ChannelStripMode;
 #define CST_COL_LOAD 7
 #define CST_COL_CLEAR 8
 
-class ChannelStripBindingTable : public Component, public TableListBoxModel {
+class ChannelStripBindingTable : public Component,
+                                 public TableListBoxModel,
+                                 public PluginComboFieldOwner {
 public:
   ChannelStripBindingTable(ChannelStripMode *pMode);
   ~ChannelStripBindingTable();
@@ -50,6 +54,21 @@ public:
   const std::vector<ChannelStripAccess::InstalledFX> &installedFX() const {
     return m_installedFX;
   }
+
+  // --- PluginComboFieldOwner (CST_COL_PLUGIN picker cells) ---
+  const InstalledFxList &installedFxList() const override {
+    return m_installedFX;
+  }
+  void pluginPicked(int row, int column, const String &ident,
+                    const String &displayName) override;
+  void pluginPickFinished(int row, int column) override;
+  // Text the plugin cell shows for a row (installed name, or the raw ident
+  // when the plugin is not installed).
+  String pluginDisplayText(int row);
+  // Drag & drop reorder of the 16 slots (row = slot index).
+  void moveStripRow(int from, int to);
+  // Label of the row-number column ("1".."8" / "Shift 1".."Shift 8").
+  static String rowLabel(int row);
   // the strip shown in this row (always valid, may be unassigned)
   ChannelStripMap *stripForRow(int row);
   void notifyBindingChanged();
@@ -67,46 +86,15 @@ public:
 
 private:
   ChannelStripMode *m_pMode;
-  TableListBox *m_table;
+  ReorderTableListBox *m_table;
   std::vector<ChannelStripAccess::InstalledFX> m_installedFX;
   bool m_stripFilesExist = false;
 };
 
 // --- custom cell components ---
 
-class CSTPluginCombo : public Component,
-                       public TextEditor::Listener,
-                       public ListBoxModel {
-public:
-  CSTPluginCombo(ChannelStripBindingTable &o);
-  ~CSTPluginCombo() override;
-  void resized() override { m_editor->setBoundsInset(BorderSize(1)); }
-  void setRowAndColumn(int r, int c);
-
-  void textEditorTextChanged(TextEditor &) override;
-  void textEditorFocusLost(TextEditor &) override;
-  void textEditorReturnKeyPressed(TextEditor &) override;
-  void textEditorEscapeKeyPressed(TextEditor &) override;
-
-  int getNumRows() override;
-  void paintListBoxItem(int row, Graphics &, int w, int h, bool sel) override;
-  void listBoxItemClicked(int row, const MouseEvent &) override;
-
-private:
-  void applyFilter(const String &text);
-  void showPopup();
-  void hidePopup();
-  void pickFiltered(int filteredRow);
-  void setSelectedByIdent(const String &ident);
-
-  ChannelStripBindingTable &owner;
-  TextEditor *m_editor;
-  int row, column;
-  String m_lastValidText;
-
-  std::vector<ChannelStripAccess::InstalledFX> m_filtered;
-  Component::SafePointer<ListBox> m_popupList;
-};
+// The plugin picker cell is the shared PluginComboField (src/ui/
+// PluginComboField.h) — the table owns the data (PluginComboFieldOwner).
 
 class CSTAbbrevLabel : public Component, public Label::Listener {
 public:

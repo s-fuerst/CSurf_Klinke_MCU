@@ -25,6 +25,10 @@ public:
 
   // from MCU via CCSManager
   virtual bool buttonFaderBanks(int button, bool pressed) { return false; }
+  // Hardware CANCEL (B_CANCEL). Return true while the mode consumes the
+  // event — CSurf_MCU then skips the global "stop and delete media" action.
+  // Called for the press AND the matching release.
+  virtual bool buttonCancel(bool pressed) { return false; }
   virtual bool buttonFlip(bool pressed) { return false; }
   virtual bool buttonGView(bool pressed) { return false; }
   virtual bool buttonNameValue(bool pressed) { return false; }

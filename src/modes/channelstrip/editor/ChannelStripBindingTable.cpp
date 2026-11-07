@@ -11,7 +11,14 @@
 ChannelStripBindingTable::ChannelStripBindingTable(ChannelStripMode *pMode)
     : m_pMode(pMode), m_table(NULL) {
   refreshInstalledFX();
-  addAndMakeVisible(m_table = new TableListBox("ChannelStrip strips", this));
+  addAndMakeVisible(m_table = new ReorderTableListBox("ChannelStrip strips",
+                                                      this));
+  // Drag & drop reordering: rows move (insert semantics), the mode persists
+  // the new slot order and refreshes the hardware.
+  m_table->onReorder = [this](int from, int to) { moveStripRow(from, to); };
+  m_table->setTooltip(
+      String("Drag a row at its number column to move the strip to another "
+             "VPOT slot."));
   m_table->setHeaderHeight(22);
   m_table->setColour(ListBox::outlineColourId, Colours::grey);
   m_table->setOutlineThickness(1);
@@ -103,20 +110,27 @@ void ChannelStripBindingTable::paintRowBackground(Graphics &g, int, int w,
 
 void ChannelStripBindingTable::paintCell(Graphics &g, int row, int col,
                                          int w, int h, bool) {
-  if (col != CST_COL_NR) return;
-  g.setColour(Colours::black);
-  g.setFont(Font(FontOptions(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain)));
-  String n = (row < 8) ? String(row + 1) : ("Shift " + String(row - 7));
-  g.drawText(n, 2, 1, w - 4, h, Justification::centred, true);
+  // Every column is a cell component: the number column is the
+  // RowDragGrip (number + drag grip), the rest is filled by the cells in
+  // refreshComponentForCell(). Nothing left to paint here.
+  juce::ignoreUnused(g, row, col, w, h);
 }
 
 Component *ChannelStripBindingTable::refreshComponentForCell(
     int row, int col, bool, Component *existing) {
   switch (col) {
+  case CST_COL_NR: {
+    // Row number + drag grip (the whole cell starts the reorder drag).
+    auto *c = (RowDragGrip *)existing;
+    if (!c) c = new RowDragGrip(*m_table);
+    c->setRow(row, rowLabel(row));
+    return c;
+  }
   case CST_COL_PLUGIN: {
-    auto *c = (CSTPluginCombo *)existing;
-    if (!c) c = new CSTPluginCombo(*this);
-    c->setRowAndColumn(row, col); return c;
+    auto *c = (PluginComboField *)existing;
+    if (!c) c = new PluginComboField(*this);
+    c->setRowAndColumn(row, col, pluginDisplayText(row));
+    return c;
   }
   case CST_COL_ABBREV: {
     auto *c = (CSTAbbrevLabel *)existing;
@@ -146,110 +160,42 @@ Component *ChannelStripBindingTable::refreshComponentForCell(
   }
 }
 
-// ===== Plugin combo (autocomplete) =====
+// ===== drag & drop reordering =====
 
-CSTPluginCombo::CSTPluginCombo(ChannelStripBindingTable &o)
-    : owner(o), m_editor(NULL), row(0), column(0) {
-  addAndMakeVisible(m_editor = new TextEditor());
-  m_editor->setFont(
-      Font(FontOptions(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain)));
-  // Explicit colours: inside the TableListBox the window's
-  // KlinkeLookAndFeel defaults are not resolved for this editor, and the
-  // default text colour is white -> the picked plugin name was invisible
-  // (bug C). Same pattern as every other editable cell in the codebase.
-  m_editor->setColour(TextEditor::textColourId, Colours::black);
-  m_editor->setColour(TextEditor::backgroundColourId, Colours::white);
-  m_editor->setTextToShowWhenEmpty("type plugin name here", Colours::lightgrey);
-  m_editor->addListener(this);
+String ChannelStripBindingTable::rowLabel(int row) {
+  if (row < 0)
+    return String();
+  return (row < 8) ? String(row + 1) : ("Shift " + String(row - 7));
 }
 
-CSTPluginCombo::~CSTPluginCombo() {
-  hidePopup();
-  deleteAllChildren();
+void ChannelStripBindingTable::moveStripRow(int from, int to) {
+  if (!m_pMode)
+    return;
+  m_pMode->moveStrip(from, to); // persists + fires bindingChanged()
+  // The table is index-based: rebuild every cell from the new slot order.
+  resetCells();
 }
 
-void CSTPluginCombo::setRowAndColumn(int r, int c) {
-  row = r; column = c;
-  ChannelStripMap *strip = owner.stripForRow(row);
-  String name;
-  if (strip && strip->isAssigned()) {
-    const auto &fx = owner.installedFX();
-    for (const auto &f : fx) {
-      if (f.ident == strip->getFxIdent()) { name = f.name; break; }
-    }
-    if (name.isEmpty()) name = strip->getFxIdent();
-  }
-  m_editor->setText(name, dontSendNotification);
-  m_lastValidText = name;
-  // Defer layout + repaint to after the table has positioned this cell.
-  // During refreshComponentForCell the cell bounds may still be 0, so sizing
-  // the TextEditor synchronously leaves it blank — most visible when the
-  // editor is re-opened (the cell components are recreated then).
-  SafePointer<CSTPluginCombo> sp(this);
-  MessageManager::callAsync([sp]() {
-    if (!sp) return;
-    sp->resized();
-    if (sp->m_editor) sp->m_editor->repaint();
-  });
+// ===== PluginComboFieldOwner =====
+
+String ChannelStripBindingTable::pluginDisplayText(int row) {
+  ChannelStripMap *strip = stripForRow(row);
+  if (!strip || !strip->isAssigned())
+    return String();
+  const String ident = strip->getFxIdent();
+  for (const auto &f : m_installedFX)
+    if (f.ident == ident)
+      return f.name;
+  return ident; // plugin not installed: show the raw ident
 }
 
-// row 0 of the popup is always a sentinel to clear the strip
-static const ChannelStripAccess::InstalledFX &clearSentinel() {
-  static const ChannelStripAccess::InstalledFX s = {
-      String("empty (no plugin)"), String()};
-  return s;
-}
-
-void CSTPluginCombo::applyFilter(const String &text) {
-  String f = text.trim();
-  m_filtered.clear();
-  m_filtered.push_back(clearSentinel());
-  const auto &fx = owner.installedFX();
-  for (const auto &item : fx) {
-    if (f.isEmpty() || item.name.containsIgnoreCase(f))
-      m_filtered.push_back(item);
-  }
-  if (m_popupList) {
-    m_popupList->updateContent();
-    int h = jlimit(4, 12, (int)m_filtered.size()) * 22 + 4;
-    m_popupList->setSize(m_popupList->getWidth(), h);
-  }
-}
-
-void CSTPluginCombo::showPopup() {
-  if (m_popupList || !m_editor) return;
-  applyFilter(m_editor->getText());
-  if (m_filtered.empty()) return;
-  ListBox *lb = new ListBox();
-  lb->setModel(this);
-  lb->setRowHeight(22);
-  lb->setColour(ListBox::outlineColourId, Colours::grey);
-  lb->setOutlineThickness(1);
-  int width = jmax(m_editor->getWidth(), 280);
-  int h = jlimit(4, 12, (int)m_filtered.size()) * 22 + 4;
-  lb->setSize(width, h);
-  Component *top = getTopLevelComponent();
-  Point<int> rel = m_editor->getScreenPosition() - top->getScreenPosition();
-  lb->setTopLeftPosition(rel.x, rel.y + m_editor->getHeight());
-  top->addAndMakeVisible(lb);
-  lb->toFront(false);
-  m_popupList = lb;
-}
-
-void CSTPluginCombo::hidePopup() {
-  if (m_popupList) delete m_popupList.getComponent();
-}
-
-void CSTPluginCombo::pickFiltered(int filteredRow) {
-  if (filteredRow < 0 || filteredRow >= (int)m_filtered.size()) return;
-  // the empty ident of the sentinel (row 0) clears the strip
-  setSelectedByIdent(m_filtered[filteredRow].ident);
-  hidePopup();
-}
-
-void CSTPluginCombo::setSelectedByIdent(const String &ident) {
-  ChannelStripMap *strip = owner.stripForRow(row);
-  if (!strip) return;
+void ChannelStripBindingTable::pluginPicked(int row, int column,
+                                            const String &ident,
+                                            const String &displayName) {
+  juce::ignoreUnused(column);
+  ChannelStripMap *strip = stripForRow(row);
+  if (!strip)
+    return;
   if (ident.isEmpty()) {
     // clear the whole strip: plugin, abbrev, VPOT mapping and per-VPOT names
     strip->setFxIdent(String());
@@ -258,92 +204,28 @@ void CSTPluginCombo::setSelectedByIdent(const String &ident) {
       strip->setParamForVPOT(i, -1);
       strip->setVPOTName(i, String());
     }
-    m_editor->setText(String(), dontSendNotification);
-  } else {
-    const auto &fx = owner.installedFX();
-    for (const auto &f : fx) {
-      if (f.ident == ident) {
-        strip->setFxIdent(f.ident);
-        // new plugin -> its parameter indices differ, clear the VPOT map
-        for (int i = 0; i < ChannelStripMap::kNumVPOTs; i++)
-          strip->setParamForVPOT(i, -1);
-        // refresh shortName on every plugin change: strip "TYPE:" prefix
-        // and " (Manufacturer)" (a user-customised name is overwritten when
-        // the plugin itself changes)
-        {
-          String base = f.name;
-          int colon = base.indexOfChar(':');
-          if (colon >= 0)
-            base = base.substring(colon + 1).trimStart();
-          int paren = base.indexOfChar('(');
-          if (paren > 0)
-            base = base.substring(0, paren).trimEnd();
-          strip->setShortName(base.substring(0, 5));
-        }
-        m_editor->setText(f.name, dontSendNotification);
-        break;
-      }
-    }
+    return;
   }
-  m_lastValidText = m_editor->getText();
-  // The refresh below (resetCells + notifyBindingChanged) destroys ALL cell
-  // components — including THIS combo — via TableListBox::setModel(null->this).
-  // Running it synchronously frees `this` while setSelectedByIdent is still
-  // executing and pickFiltered() then calls hidePopup() on it afterwards:
-  // classic use-after-free, seen as an access violation (and heap corruption)
-  // when picking a plugin in the editor. Defer it to the next message-loop
-  // turn; SafePointer guards against the editor being closed in between.
-  SafePointer<CSTPluginCombo> sp(this);
-  MessageManager::callAsync([sp]() {
-    if (!sp) return;
-    // Non-destructive refresh FIRST: bindingChanged updates the MCU
-    // display/LEDs (its editor refresh is itself deferred, so it does not
-    // touch the table here). resetCells() must be LAST: it recreates the
-    // table's cell components and therefore DESTROYS this combo, so `sp`
-    // must not be dereferenced afterwards. (SafePointer resolves via
-    // dynamic_cast; touching it after the combo is gone yields null and
-    // dereferencing that null is what crashed before this reordering.)
-    sp->owner.notifyBindingChanged();
-    sp->owner.resetCells();
-  });
+  strip->setFxIdent(ident);
+  // new plugin -> its parameter indices differ, clear the VPOT map
+  for (int i = 0; i < ChannelStripMap::kNumVPOTs; i++)
+    strip->setParamForVPOT(i, -1);
+  // refresh shortName on every plugin change: strip "TYPE:" prefix and
+  // " (Manufacturer)" (a user-customised name is overwritten when the
+  // plugin itself changes)
+  strip->setShortName(InstalledFxCache::shortLabel(displayName).substring(0, 5));
 }
 
-void CSTPluginCombo::textEditorTextChanged(TextEditor &) {
-  if (!m_popupList) showPopup(); else applyFilter(m_editor->getText());
+void ChannelStripBindingTable::pluginPickFinished(int row, int column) {
+  juce::ignoreUnused(row, column);
+  // Non-destructive refresh FIRST: bindingChanged updates the MCU
+  // display/LEDs (its editor refresh is itself deferred, so it does not
+  // touch the table here). resetCells() must be LAST: it recreates the
+  // table's cell components and therefore DESTROYS the combo that called
+  // this, so nothing may be touched afterwards.
+  notifyBindingChanged();
+  resetCells();
 }
-void CSTPluginCombo::textEditorFocusLost(TextEditor &) {
-  SafePointer<CSTPluginCombo> sp(this);
-  MessageManager::callAsync([sp]() {
-    if (!sp || !sp->m_popupList) return;
-    Component *focused = Component::getCurrentlyFocusedComponent();
-    if (focused && (focused == sp->m_popupList ||
-                    sp->m_popupList->isParentOf(focused)))
-      return;
-    sp->hidePopup();
-  });
-}
-void CSTPluginCombo::textEditorReturnKeyPressed(TextEditor &) {
-  // pick the first real match, never the clear sentinel
-  for (int i = 1; i < (int)m_filtered.size(); i++)
-    if (!m_filtered[i].ident.isEmpty()) {
-      pickFiltered(i);
-      return;
-    }
-  pickFiltered(0); // only the sentinel -> clear
-}
-void CSTPluginCombo::textEditorEscapeKeyPressed(TextEditor &) {
-  hidePopup();
-  m_editor->setText(m_lastValidText, dontSendNotification);
-}
-int CSTPluginCombo::getNumRows() { return (int)m_filtered.size(); }
-void CSTPluginCombo::paintListBoxItem(int r, Graphics &g, int w, int h, bool sel) {
-  if (r < 0 || r >= (int)m_filtered.size()) return;
-  g.fillAll(sel ? Colours::lightblue : Colours::white);
-  g.setColour(Colours::black);
-  g.setFont(Font(FontOptions(Font::getDefaultSansSerifFontName(), 13.0f, Font::plain)));
-  g.drawText(m_filtered[r].name, 6, 0, w - 8, h, Justification::centredLeft, true);
-}
-void CSTPluginCombo::listBoxItemClicked(int r, const MouseEvent &) { pickFiltered(r); }
 
 // ===== Abbrev label =====
 

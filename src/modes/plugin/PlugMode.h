@@ -99,6 +99,30 @@ public:
   void trackName(MediaTrack *trackid, const char *pName) override {}
 
   void frameUpdate() override;
+
+  // Hardware CANCEL button: aborts the plugin insert flow (the only way to
+  // leave it without inserting). Returns true while the mode consumed the
+  // event, so the global "stop and delete media" action is skipped.
+  bool buttonCancel(bool pressed) override;
+
+  // ---- plugin category insert flow (CTRL+VPOT4) ----
+  // Three stages: CTRL+VPOT4 opens the CATEGORY list of every unit, a VPOT
+  // press picks one category (SHIFT = rows 8..15), the next VPOT press
+  // inserts that plugin directly after the currently accessed FX (or at the
+  // end of the chain when there is none) and accesses the new instance.
+  // See PlugCategoryConfig for the data and the on-screen editor.
+  enum tInsertState {
+    INSERT_NONE = 0,
+    INSERT_CATEGORY, // choose one of the unit's 16 categories
+    INSERT_PLUGIN    // choose one of that category's 16 plugins
+  };
+  bool isInsertFlowActive() const { return m_insertState != INSERT_NONE; }
+  // On-screen editor for the per-unit categories (CTRL+ALT+VPOT4). The
+  // editor WINDOW owns the component (CCSModesEditor::setComponentWindow) and
+  // NULLs m_pCategoryEditor when it closes - never free it here.
+  Component **createCategoryEditorComponent();
+  void openCategoryEditor();
+
   PlugModeSelector *getSelector() override { return m_pPlugSelector; }
   Options *getOptions() override { return m_pPlugModeOptions; }
   Options *get2ndOptions() override { return m_pPlugMode2ndOptions; }
@@ -183,12 +207,30 @@ private:
   // VPOT-3 (the mode-switch slot) is deliberately NOT registered here.
   // `m_ctrlCommands` is populated in the constructor.
   bool ctrlResolveAccessed(MediaTrack *&tr, int &fxSlot);
+  // CTRL+VPOT4: open/keep the category list of the pressed unit's column.
+  bool ctrlInsertPlugin(int channel);
   bool ctrlToggleFloating();
   bool ctrlToggleChain();
   bool ctrlRemoveAccessed();
   bool ctrlMoveAccessed(int dir);
   // Per-unit command legend on row 1 while CONTROL is held.
   void updateCtrlLegend();
+
+  // --- plugin category insert flow (see tInsertState) ---
+  void startInsertFlow(int unit);
+  void cancelInsertFlow();
+  void insertFlowPressed(int unit, int localCh);
+  // Row (0..15) of the VPOT field selected by `localCh` for the CURRENT
+  // SHIFT state: the mode-wide convention, unshifted = 0..7, SHIFT = 8..15.
+  int insertRowForLocalCh(int localCh);
+  // Track the new plugin goes to: the accessed plugin's track, else the
+  // selected one (NULL = no target, the command is inactive).
+  MediaTrack *insertTargetTrack();
+  // Slot the new plugin is inserted after; -1 = append at the chain end.
+  int insertAfterSlot();
+  // Renders the category / plugin labels on the insert display.
+  void updateInsertDisplay();
+
   void updateParamsDisplay();
   void updateValueDisplay();
   void updateTouchedDisplay();
@@ -246,6 +288,23 @@ private:
 
   PlugModeComponent *m_pPlugEditor;
   PlugMap *m_editorMap; // the map object the editor UI tree was built from
+
+  // True while the NEXT activate() is a fresh entry into the mode: entering
+  // PlugMode on a track without any FX then opens the category list
+  // automatically. Cleared by activate(); re-set by deactivate(), because
+  // CCSManager re-activates the CURRENT mode (without deactivate()) when a
+  // selector overlay ends — that must not restart the flow.
+  bool m_autoInsertOnEnter;
+
+  // plugin category insert flow (see tInsertState) + its editor
+  tInsertState m_insertState;
+  int m_insertUnit;     // unit whose category list is open
+  int m_insertCategory; // 0..15 within that unit
+  bool m_cancelConsumed; // CANCEL press consumed the following release
+  Display *m_pInsertDisplay;
+  // Window-owned (see createCategoryEditorComponent): NULL while the editor
+  // window is closed.
+  Component *m_pCategoryEditor;
 
   DWORD m_lastTimePlugWasSelected;
   //      int m_lastCalledPreset; // -1 if no preset was called or lastCalled

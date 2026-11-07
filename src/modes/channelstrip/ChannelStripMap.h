@@ -89,6 +89,10 @@ public:
   bool isStepsManualForVPOT(int position) const;
   void setStepsManualForVPOT(int position, bool manual);
   int numBoundVPOTs() const;
+  // Move the mapping of position `from` to `to` (the entries in between are
+  // shifted, insert semantics — nothing is swapped). Used by the param
+  // editor's drag & drop reordering.
+  void moveVPOT(int from, int to);
 
   // insert-pos helpers (shared with ChannelStripAccess)
   int fixedChainPosition() const; // 1..8 or -1 for LAST

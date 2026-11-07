@@ -81,6 +81,22 @@ ChannelStripMap *ChannelStripMode::getStrip(int index) {
   return &m_strips[index];
 }
 
+void ChannelStripMode::moveStrip(int from, int to) {
+  if (from < 0 || from >= kNumStrips || to < 0 || to >= kNumStrips ||
+      from == to)
+    return;
+  MCU_LOG("CSM moveStrip %d -> %d", from, to);
+  const int step = (from < to) ? 1 : -1;
+  const ChannelStripMap moved = m_strips[from];
+  for (int i = from; i != to; i += step)
+    m_strips[i] = m_strips[i + step];
+  m_strips[to] = moved;
+  // The strip at a slot changed: refresh the hardware AND persist (the
+  // editor may stay open, and the slot order is what the VPOTs address).
+  bindingChanged();
+  saveStripsToFile();
+}
+
 // --- selected track ---
 
 MediaTrack *ChannelStripMode::getSelectedTrack() {

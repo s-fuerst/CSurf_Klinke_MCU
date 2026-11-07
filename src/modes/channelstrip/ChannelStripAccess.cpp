@@ -113,18 +113,10 @@ double stepGridPosition(double v, int segments, int direction) {
   return (double)idx / (double)segments;
 }
 
-// The EnumInstalledFX list is static within a REAPER session; cache it so
-// per-channel findSlotByIdent() calls (display updates) do not re-enumerate
-// the whole plugin list every time.
-const std::vector<ChannelStripAccess::InstalledFX> &installedFXCache() {
-  static std::vector<ChannelStripAccess::InstalledFX> list;
-  static bool loaded = false;
-  if (!loaded) {
-    ChannelStripAccess::getInstalledFX(list);
-    loaded = true;
-  }
-  return list;
-}
+// The EnumInstalledFX list is static within a REAPER session; the shared
+// InstalledFxCache (src/core/InstalledFx.h) caches it so per-channel
+// findSlotByIdent() calls (display updates) do not re-enumerate the whole
+// plugin list every time.
 } // namespace
 
 ChannelStripAccess::ChannelStripAccess(ChannelStripMode *pMode)
@@ -140,39 +132,15 @@ ChannelStripAccess::~ChannelStripAccess() {
 }
 
 void ChannelStripAccess::getInstalledFX(std::vector<InstalledFX> &out) {
-  out.clear();
-  if (!EnumInstalledFX)
-    return;
-  // index = -1 re-reads JSFX info (REAPER 7.42+); ignore its boolean return.
-  EnumInstalledFX(-1, NULL, NULL);
-  for (int i = 0;; i++) {
-    const char *name = NULL;
-    const char *ident = NULL;
-    if (!EnumInstalledFX(i, &name, &ident) || !ident)
-      break;
-    InstalledFX fx;
-    fx.name = name ? String(name) : String();
-    fx.ident = String(ident);
-    out.push_back(fx);
-  }
+  InstalledFxCache::enumerate(out);
 }
 
 String ChannelStripAccess::installedNameForIdent(const String &ident) {
-  if (ident.isEmpty())
-    return String();
-  for (const auto &fx : installedFXCache())
-    if (fx.ident == ident)
-      return fx.name;
-  return String();
+  return InstalledFxCache::nameForIdent(ident);
 }
 
 String ChannelStripAccess::normalizeName(const String &nameOrIdent) {
-  String s = nameOrIdent.trim();
-  // Strip a leading "TYPE:" prefix (e.g. "VST3:", "JS:", "AU:").
-  int colon = s.indexOfChar(':');
-  if (colon >= 0)
-    s = s.substring(colon + 1);
-  return s.trim();
+  return InstalledFxCache::normalizeName(nameOrIdent);
 }
 
 int ChannelStripAccess::findSlotByIdent(MediaTrack *tr,

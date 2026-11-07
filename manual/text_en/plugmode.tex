@@ -287,11 +287,57 @@ the display shows the command label on the \vpots:
   \attribute is set to ``only chain''.
 \item \control + \vpot 2 (Chain): Toggle the FX chain window of the
   track of the accessed plugin.
+\item \control + \vpot 4 (Insert): Insert one of the plugins of the unit's
+  category lists into the FX chain (see
+  \ref{pluginsertcategories}).
 \item \control + \vpot 5 (Remove): Remove the accessed plugin from the
   track.
 \item \control + \vpot 7 / \vpot 8 (FXup / FXdown): Move the
   accessed plugin one slot up / down in the FX chain.
 \end{itemize}
+
+\subsubsection{Insert FX from categories}\label{pluginsertcategories}
+\control + \vpot 4 opens the category list of the unit the 
+\vpot{} was pressed on, without an existing plugin needing to be accessed
+(the command only needs a selected track). Switching to the FX-Mode on a
+track that does not contain any FX at all opens the category list
+automatically, so the first plugin can be inserted right away:
+
+\begin{itemize}
+\item Every unit shows its own sixteen categories in the \vpot{} display
+  fields: the unshifted \vpot{} 1-8 are the categories 1-8, with \shift
+  held the categories 9-16 appear. The names are limited to six characters.
+\item Press a \vpot{} to open its category: that unit now shows the
+  sixteen plugins of the category (again \vpot{} 1-8 and, with \shift,
+  9-16). All other units keep showing their categories.
+\item Press a \vpot{} to insert that plugin. It is inserted directly
+  after the currently accessed plugin (at the end of the chain if no
+  plugin is accessed) and is accessed afterwards, so the display shows
+  its parameters.
+\item The \cancel{} button leaves the category selection without
+  inserting anything. Changing the track or leaving the FX-Mode does the
+  same. Cancelling does not re-open the list while the FX-Mode stays
+  active.
+\end{itemize}
+
+The categories and the plugins they contain are edited in an on-screen
+editor: \control + \alt + \vpot 4 opens it while the FX-Mode is active.
+The editor shows one unit at a time (drop-down at the top, units that are
+not part of the surface configuration are marked as \emph{inactive}). On
+the left side the sixteen six-character category names are edited;
+selecting one of them fills the right side with its sixteen plugin slots.
+Each plugin slot picks a plugin exactly like the Channel Strip editor and
+optionally stores a short label (six characters) for the display -- if it
+is empty, the plugin name is shortened for the display instead.
+
+Both lists can be reordered: grab a row at the grip on its left edge (the
+six dots) and drop it at the wanted position. The rows in between move up
+or down accordingly, nothing is swapped and nothing is lost. The order in
+the editor is the order the \vpots{} address, so it applies to the next
+category/plugin selection on the device.
+
+All changes are stored immediately in \texttt{PluginCategories.xml} in the
+MCU configuration directory, independent of the project.
 
 %%% Local Variables: 
 %%% mode: latex
