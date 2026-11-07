@@ -249,14 +249,16 @@ int PlugAccess::discreteStepSegments(MediaTrack *pTrack, int slot,
     const double segmentsNormalized = 1.0 / step;
     const double devNormalized =
         fabs(segmentsNormalized - floor(segmentsNormalized + 0.5));
-    double segments = segmentsNormalized;
+    // NOTE: this must not shadow the outer `int segments` (a local `double
+    // segments` here silently made the function always return 0).
+    double segmentsD = segmentsNormalized;
     if (maxVal > minVal) {
       const double segmentsRaw = (maxVal - minVal) / step;
       const double devRaw = fabs(segmentsRaw - floor(segmentsRaw + 0.5));
       if (devRaw + 0.000001 < devNormalized)
-        segments = segmentsRaw;
+        segmentsD = segmentsRaw;
     }
-    segments = (int)floor(segments + 0.5);
+    segments = (int)floor(segmentsD + 0.5);
   }
 
   // Toggles are not handled here: a toggle always has exactly two values

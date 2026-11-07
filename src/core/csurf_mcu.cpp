@@ -1072,20 +1072,23 @@ int CSurf_MCU::Extended(int call, void *parm1, void *parm2, void *parm3) {
   return 0; // unsupported
 }
 
-// Channel-strip events that an extender unit may send: fader
-// (CC 0xE0-0xE7), VPOT (CC 0x10-0x17), fader touch (CC 0x68-0x70), and the
+// Channel-strip events that an extender unit may send: fader and fader touch
+// (pitch bend 0xE0-0xE8 / notes 0x68-0x70), VPOT (CC 0x10-0x17), and the
 // strip buttons select/mute/solo/rec (notes 0x00-0x1F) plus VPOT push
 // (notes 0x20-0x27). Everything else (transport, F-keys, modifiers, jog
 // wheel, pedal, bank, ...) is only accepted from main units.
 static bool isStripEvent(const MIDI_event_t *evt) {
-  unsigned char status = evt->midi_message[0] & 0xf0;
-  unsigned char code = evt->midi_message[1];
-  if (status == 0xb0)
-    return (code >= 0x10 && code <= 0x17) || // VPOT
-           (code >= 0x68 && code <= 0x70) || // fader touch
-           (code >= 0xe0 && code <= 0xe7);   // fader
+  const unsigned char status = evt->midi_message[0] & 0xf0;
+  const unsigned char code = evt->midi_message[1];
+  // Faders send pitch bend: the fader number is encoded in the status byte
+  // and the two data bytes only carry the 14 bit value.
+  if (status == 0xe0)
+    return true; // fader (channel 0..7, 8 = master slot)
   if (status == 0x90 || status == 0x80)
-    return code <= 0x27; // select/mute/solo/rec + VPOT push
+    return code <= 0x27 ||                    // strip buttons + VPOT push
+           (code >= 0x68 && code <= 0x70);    // fader touch (0x70 = master)
+  if (status == 0xb0)
+    return code >= 0x10 && code <= 0x17;      // VPOT
   return false;
 }
 
