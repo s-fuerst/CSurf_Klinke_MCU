@@ -9,7 +9,7 @@
  *   +-----------------------------------------------------------------------+
  *   | Unit: [Unit 1 v]                                                      |
  *   +--------------------------+--------------------------------------------+
- *   | Category (max 6)         | Plugins of the selected category           |
+ *   | Category                  | Plugin name                                |
  *   | :: VPOT 1   [Drums    ]  | :: VPOT 1   [VST3: Pro-Q 3 ...]  [ProQ ]   |
  *   | :: VPOT 2   [Bass     ]  | :: VPOT 2   [                 ]  [      ]   |
  *   | ...                      | ...                                        |

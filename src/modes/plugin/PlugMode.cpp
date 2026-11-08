@@ -657,8 +657,14 @@ void PlugMode::updateDisplay() {
 }
 
 void PlugMode::updateCtrlLegend() {
-  if (!m_pAccess->plugExist())
-    return; // no accessed plugin: commands (and the legend) are inactive
+  // The legend targets the MODE-level accessed plugin, not the unit's
+  // page — so a unit without a page still shows the full command list
+  // while a plugin is accessed. Only when NO plugin is accessed does the
+  // list shrink to Insert (VPOT 4), which needs a target track but no
+  // accessed plugin. Without this, a page-less unit would stay blank
+  // while CONTROL is held (updateParamsDisplay() clears it and nothing
+  // would ever fill it back in).
+  bool plug = m_pAccess->plugExist();
   // Same display the normal update just wrote (touched layout wins while a
   // fader/VPOT is touched, like in updateDisplay()).
   bool touched = (isSingleFaderTouched() || isSingleVPotTouched()) &&
@@ -672,15 +678,20 @@ void PlugMode::updateCtrlLegend() {
   for (int iChannel = 0; iChannel < nStrips; iChannel++) {
     int unit = iChannel / 8;
     int localCh = iChannel % 8;
-    if (m_pAccess->isUnitEmpty(unit))
+    String label;
+    if (!plug) {
+      // No accessed plugin: only the insert flow works (same as above).
+      if (localCh == 3 && insertTargetTrack())
+        label = "Insert";
+      d->changeField(1, iChannel + 1, label.toRawUTF8());
       continue;
+    }
     // "Float" (VPOT 1) is not offered while "Limit float = only chain" is
     // set: checkFloatWindows() would immediately convert the floating
     // window to the chain, so the command is inactive (ctrlToggleFloating
     // returns false as well).
     bool floatLimited = m_pPlugModeOptions->isOptionSetTo(PMO_LIMIT_FLOATING,
                                                           PMOA_ONLY_CHAIN);
-    String label;
     switch (localCh) {
     case 0:
       if (!floatLimited)

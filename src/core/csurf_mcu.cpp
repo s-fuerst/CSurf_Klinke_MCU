@@ -680,7 +680,10 @@ bool CSurf_MCU::OnKeyModifier(MIDI_event_t *evt) {
   else
     s_mackie_modifiers &= ~mask;
 
-  m_pActionDisplay->switchTo(s_mackie_modifiers);
+  // The active mode owns the display while a modifier is held.  Switching
+  // to ActionsDisplay here hid mode-specific CTRL legends (for example the
+  // PlugMode Float/Chain/Insert labels) behind the global action display.
+  // ActionsDisplay is still used explicitly by NAME/VALUE.
 
   return true;
 }

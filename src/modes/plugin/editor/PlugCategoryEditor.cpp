@@ -13,7 +13,8 @@ static const int PC_MARGIN = 8;
 static const int PC_NAME_COLUMN = 86; // ":: VPOT 1" label column
 static const int PC_SHORT_COLUMN = 74; // short label column (right side)
 static const int PC_GRIP_WIDTH = 16;   // drag handle at the left row edge
-static const int PC_LIST_WIDTH = 320;  // left (category) list width
+static const int PC_LIST_WIDTH = 210;  // compact left (category) list width
+static const int PC_DIALOG_WIDTH = 820; // leave more room for plugin names
 
 static const Font &pcFont() {
   static const Font f(
@@ -347,21 +348,19 @@ PlugCategoryEditor::PlugCategoryEditor(PlugMode *pMode)
   addAndMakeVisible(m_headerCategory = new Label(String(), String()));
   m_headerCategory->setFont(pcFont().boldened());
   m_headerCategory->setColour(Label::textColourId, Colours::black);
-  m_headerCategory->setText("Category (max 6 characters), drag to reorder",
-                            dontSendNotification);
+  m_headerCategory->setText("Category", dontSendNotification);
 
   addAndMakeVisible(m_headerPlugin = new Label(String(), String()));
   m_headerPlugin->setFont(pcFont().boldened());
   m_headerPlugin->setColour(Label::textColourId, Colours::black);
-  m_headerPlugin->setText("Plugins of the selected category, drag to reorder",
-                          dontSendNotification);
+  m_headerPlugin->setText("Plugin name", dontSendNotification);
 
   addAndMakeVisible(
       m_categoryList = new ReorderListBox(*this, DRAG_CATEGORY, "Categories"));
   addAndMakeVisible(
       m_pluginList = new ReorderListBox(*this, DRAG_PLUGIN, "Plugin slots"));
 
-  setSize(PC_MARGIN * 3 + PC_LIST_WIDTH * 2, 480);
+  setSize(PC_DIALOG_WIDTH, 480);
   reloadCategoryList();
   reloadPluginList();
 }
