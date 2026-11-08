@@ -9,11 +9,14 @@
 #include "Display.h"
 #include "HardwareUnit.h"
 #include "Tracks.h"
+#include "McuDebugLog.h"
+#include <cstring>
+#include <unordered_set>
 
 PanMode::PanMode(CCSManager *pManager) : MultiTrackMode(pManager) {
   // CTRL+VPOT command set (modifier-command-scheme.md Layer 2). `control`
   // is the unshifted 0..7 VPOT index (hardware VPOT N = control N-1).
-  // Target is the track on the pressed channel.
+  // The target is the single selected normal track.
   m_ctrlCommands.add(VK_CONTROL, 0, // hardware VPOT 1: "Insert"
                      [this](int ch) { return ctrlInsertTrack(ch); });
   m_ctrlCommands.add(VK_CONTROL, 1, // hardware VPOT 2: "Duplic"
@@ -69,10 +72,12 @@ bool PanMode::vpotPressed(int channel, bool pressed) {
 
   // CTRL+VPOT commands (modifier command scheme), unshifted VPOT range
   // only. A MATCHED command always consumes the event — when its
-  // precondition fails (no track on this channel, except Insert) it is a
+  // precondition fails (not exactly one selected normal track) it is a
   // no-op instead of falling through.
   int localCh = (channel - 1) % 8;
   if (isModifierPressed(VK_CONTROL) && !isModifierPressed(VK_SHIFT)) {
+    MCU_LOG("PanMode CTRL VPOT ch=%d local=%d selectedTrack=%p", channel,
+            localCh, (void *)selectedCommandTrack());
     if (m_ctrlCommands.dispatch(VK_CONTROL, localCh, channel))
       return true;
     if (m_ctrlCommands.hasCommand(VK_CONTROL, localCh))
@@ -90,7 +95,13 @@ void PanMode::activate() {
 
 void PanMode::updateDisplay() {
 	m_pCCSManager->switchToDisplay(this, m_pDisplay);
-	
+
+  bool showSelectionHint = isModifierPressed(VK_CONTROL) &&
+                           !selectedCommandTrack();
+  if (m_ctrlSelectionHintVisible && !showSelectionHint)
+    m_pDisplay->clearLine(1);
+  m_ctrlSelectionHintVisible = showSelectionHint;
+
   MultiTrackMode::updateDisplay();
   // widened from 8 to getNumberOfChannelStrips()
   int nStrips = Tracks::instance()->getNumberOfChannelStrips();
@@ -135,39 +146,42 @@ void PanMode::updateDisplay() {
       }
     }
 
-  // CONTROL held: per-channel command legend on row 1 (same convention as
-  // ChannelStripMode / PlugMode). Redrawn every frame, so press/release
-  // needs no edge tracking here.
-  if (isModifierPressed(VK_CONTROL))
-    updateCtrlLegend();
+  // CONTROL held: show either the command legend or a centered selection
+  // hint on row 1 of every unit.
+  if (isModifierPressed(VK_CONTROL)) {
+    if (showSelectionHint)
+      m_pDisplay->changeTextFullLine(1, "You must select a single track.",
+                                     true);
+    else
+      updateCtrlLegend();
+  }
 }
 
 // --- CTRL command handlers (modifier command scheme) ---
 //
-// Target is the track on the pressed channel (getMediaTrackForChannel).
-// All commands need a track except Insert, which inserts at position 0
-// when the channel has no track.
-//
-// REAPER has no "duplicate track" and no "delete envelope" API, so those
-// two commands work on the RPPXML state chunk (GetSetObjectState):
-//   • Duplic: read the whole track chunk (items, envelopes, FX, settings),
-//     drop the track's own GUID line so the copy gets a fresh identity,
-//     and apply it to a new track.
-//   • Clear:  delete every item via API and strip every <ENV> section from
-//     the track chunk (the standard "remove all envelopes" technique).
+// All commands target exactly one selected normal track. Duplicate uses
+// REAPER's native action so that it handles identities and folder contents.
+// Clear deletes items via API and removes track envelope sections from the
+// state chunk.
+
+MediaTrack *PanMode::selectedCommandTrack() const {
+  MediaTrack *tr = Tracks::instance()->getSelectedSingleTrack(true);
+  return tr && tr != GetMasterTrack(NULL) ? tr : NULL;
+}
 
 bool PanMode::ctrlInsertTrack(int channel) {
-  MediaTrack *tr = getMediaTrackForChannel(channel);
-  // Insert directly after the channel's track; position 0 when the
-  // channel has no track.
-  int idx = 0;
-  if (tr) {
-    for (int i = 0; i < CountTracks(NULL); i++)
-      if (GetTrack(NULL, i) == tr) {
-        idx = i + 1;
-        break;
-      }
-  }
+  MediaTrack *tr = selectedCommandTrack();
+  if (!tr)
+    return false;
+  // Insert directly after the selected track.
+  int idx = -1;
+  for (int i = 0; i < CountTracks(NULL); i++)
+    if (GetTrack(NULL, i) == tr) {
+      idx = i + 1;
+      break;
+    }
+  if (idx < 0)
+    return false;
   Undo_BeginBlock();
   InsertTrackAtIndex(idx, false);
   Undo_EndBlock("Insert track", 0);
@@ -176,59 +190,105 @@ bool PanMode::ctrlInsertTrack(int channel) {
 }
 
 bool PanMode::ctrlDuplicateTrack(int channel) {
-  MediaTrack *tr = getMediaTrackForChannel(channel);
+  MediaTrack *tr = selectedCommandTrack();
   if (!tr)
-    return false; // no track on this channel: command inactive
-  // Full copy (track + items + envelopes + FX) via the state chunk,
-  // inserted right after the original.
-  char *state = GetSetObjectState(tr, "");
-  if (!state)
     return false;
-  String chunk = withoutTopLevelGUID(String::fromUTF8(state));
-  FreeHeapPtr(state);
-  int idx = 0;
-  for (int i = 0; i < CountTracks(NULL); i++)
-    if (GetTrack(NULL, i) == tr) {
-      idx = i + 1;
+
+  // REAPER duplicates folders according to its own rules. Identify the first
+  // newly inserted track so only the copied parent is selected afterwards.
+  std::unordered_set<MediaTrack *> existingTracks;
+  for (int i = 0; i < CountTracks(NULL); ++i)
+    existingTracks.insert(GetTrack(NULL, i));
+#ifdef MCU_DEBUG_LOG
+  DWORD started = timeGetTime();
+#endif
+  const int duplicateTracksAction = 40062; // Track: Duplicate tracks
+  SendMessage(g_hwnd, WM_COMMAND, duplicateTracksAction, 0);
+#ifdef MCU_DEBUG_LOG
+  DWORD duplicated = timeGetTime();
+#endif
+  MediaTrack *copy = NULL;
+  for (int i = 0; i < CountTracks(NULL); ++i) {
+    MediaTrack *candidate = GetTrack(NULL, i);
+    if (existingTracks.find(candidate) == existingTracks.end()) {
+      copy = candidate;
       break;
     }
-  Undo_BeginBlock();
-  MediaTrack *copy = InsertTrackAtIndex(idx, false);
-  if (copy)
-    GetSetObjectState(copy, chunk.toRawUTF8());
-  Undo_EndBlock("Duplicate track", 0);
+  }
+  if (!copy) {
+    MCU_LOG("CTRL Duplic ch=%d: REAPER did not create a track", channel);
+    return false;
+  }
+  for (int i = 0; i < CountTracks(NULL); ++i)
+    SetTrackSelected(GetTrack(NULL, i), false);
+  SetTrackSelected(copy, true);
+  CSurf_OnTrackSelection(copy);
+  TrackList_AdjustWindows(false);
   updateEverything();
+  MCU_LOG("CTRL Duplic ch=%d: copy=%p actionMs=%lu totalMs=%lu", channel,
+          (void *)copy, (unsigned long)(duplicated - started),
+          (unsigned long)(timeGetTime() - started));
   return true;
 }
 
 bool PanMode::ctrlClearTrack(int channel) {
-  MediaTrack *tr = getMediaTrackForChannel(channel);
-  if (!tr)
-    return false; // no track on this channel: command inactive
+  MediaTrack *tr = selectedCommandTrack();
+  if (!tr) {
+    MCU_LOG("CTRL Clear ch=%d: no single selected normal track", channel);
+    return false;
+  }
   Undo_BeginBlock();
   // Delete every item (index 0 always holds the next item after a delete).
-  while (MediaItem *item = GetTrackMediaItem(tr, 0))
-    DeleteTrackMediaItem(tr, item);
+  int deletedItems = 0;
+  while (MediaItem *item = GetTrackMediaItem(tr, 0)) {
+    if (!DeleteTrackMediaItem(tr, item)) {
+      MCU_LOG("CTRL Clear ch=%d: item deletion failed", channel);
+      break;
+    }
+    deletedItems++;
+    if (deletedItems > 10000) {
+      MCU_LOG("CTRL Clear ch=%d: item delete loop aborted (safety cap)",
+              channel);
+      break;
+    }
+  }
+  MCU_LOG("CTRL Clear ch=%d: deleted %d items", channel, deletedItems);
   // Delete every envelope by stripping the <ENV> sections from the track
   // chunk. The write-back is skipped unless the surgery succeeded, left
   // the chunk balanced, and really removed something.
   char *chunk = GetSetObjectState(tr, "");
   if (chunk) {
+    MCU_LOG("CTRL Clear ch=%d: chunk len=%u head=[%.*s]",
+            channel, (unsigned)strlen(chunk), 200, chunk);
     String stripped;
-    if (stripEnvelopeSections(String::fromUTF8(chunk), stripped) &&
-        !stripped.isEmpty() && !stripped.contains("<ENV"))
-      GetSetObjectState(tr, stripped.toRawUTF8());
+    bool stripOk = stripEnvelopeSections(String::fromUTF8(chunk), stripped);
+    bool writeBack = stripOk && !stripped.isEmpty() &&
+                     !stripped.contains("<ENV");
+    char *written = NULL;
+    if (writeBack)
+      written = GetSetObjectState(tr, stripped.toRawUTF8());
+    MCU_LOG(
+        "CTRL Clear ch=%d: stripOk=%d strippedLen=%d writeBack=%d "
+        "writeResult=%p",
+        channel, (int)stripOk, stripped.length(), (int)writeBack,
+        (void *)written);
+    if (written)
+      FreeHeapPtr(written);
     FreeHeapPtr(chunk);
+  } else {
+    MCU_LOG("CTRL Clear ch=%d: GetSetObjectState(tr) returned NULL",
+            channel);
   }
   Undo_EndBlock("Clear track", 0);
+  UpdateArrange();
   updateEverything();
   return true;
 }
 
 bool PanMode::ctrlRemoveTrack(int channel) {
-  MediaTrack *tr = getMediaTrackForChannel(channel);
+  MediaTrack *tr = selectedCommandTrack();
   if (!tr)
-    return false; // no track on this channel: command inactive
+    return false;
   Undo_BeginBlock();
   DeleteTrack(tr);
   Undo_EndBlock("Remove track", 0);
@@ -236,34 +296,40 @@ bool PanMode::ctrlRemoveTrack(int channel) {
   return true;
 }
 
-// Remove every <ENV ...> section from a track state chunk. RPPXML sections
-// are brace-nested: a section opener line starts with '<', the matching
-// closer is a lone '>' at the opener's depth. We skip from a track-level
-// <ENV opener to its closing '>'. Returns false (and leaves `out` empty)
-// when the chunk is unbalanced or contains no envelope section — callers
-// must then leave the track untouched.
+// Remove every track-envelope section from a state chunk. REAPER names these
+// sections VOLENV, PANENV, MUTEENV, AUXVOLENV, AUXPANENV and PARMENV; they
+// are direct children of the outer <TRACK> section (depth 1). Sections are
+// brace-nested, so the matching closer is a lone '>' at the opener's depth.
 bool PanMode::stripEnvelopeSections(const String &chunk, String &out) {
   StringArray lines;
   lines.addLines(chunk);
   StringArray kept;
   int depth = 0;
-  int envDepth = -1; // >= 0: inside an <ENV> section, opened at this depth
+  int envelopeDepth = -1;
   bool removedAny = false;
   for (int i = 0; i < lines.size(); i++) {
     String t = lines[i].trim();
-    if (envDepth < 0 && t.startsWith("<ENV")) {
-      envDepth = depth;
+    if (t.startsWith("<") && t.contains("ENV"))
+      MCU_LOG("CTRL Clear: envelope section depth=%d header=[%s]", depth,
+              t.toRawUTF8());
+    bool isEnvelope =
+        depth == 1 &&
+        (t.startsWith("<VOLENV") || t.startsWith("<PANENV") ||
+         t.startsWith("<MUTEENV") || t.startsWith("<AUXVOLENV") ||
+         t.startsWith("<AUXPANENV") || t.startsWith("<PARMENV"));
+    if (envelopeDepth < 0 && isEnvelope) {
+      envelopeDepth = depth;
       removedAny = true;
     }
-    if (envDepth >= 0) {
+    if (envelopeDepth >= 0) {
       if (t.startsWith("<"))
         depth++;
       else if (t == ">") {
         depth--;
-        if (depth == envDepth)
-          envDepth = -1; // <ENV> section closed: resume keeping lines
+        if (depth == envelopeDepth)
+          envelopeDepth = -1;
       }
-      continue; // this line belongs to the section being stripped
+      continue;
     }
     if (t.startsWith("<"))
       depth++;
@@ -271,44 +337,19 @@ bool PanMode::stripEnvelopeSections(const String &chunk, String &out) {
       depth--;
     kept.add(lines[i]);
   }
-  if (envDepth != -1 || depth != 0 || !removedAny)
+  if (envelopeDepth != -1 || depth != 0 || !removedAny)
     return false;
   out = kept.joinIntoString("\n");
   return true;
 }
 
-// Drop the track's own GUID line (a top-level "GUID ..." line) from a
-// track state chunk, so a new track built from this chunk gets a fresh
-// GUID instead of inheriting the source track's identity.
-String PanMode::withoutTopLevelGUID(const String &chunk) {
-  StringArray lines;
-  lines.addLines(chunk);
-  StringArray kept;
-  int depth = 0;
-  for (int i = 0; i < lines.size(); i++) {
-    String t = lines[i].trim();
-    if (depth == 0 && t.startsWith("GUID"))
-      continue; // drop the track GUID line
-    if (t.startsWith("<"))
-      depth++;
-    else if (t == ">")
-      depth--;
-    kept.add(lines[i]);
-  }
-  return kept.joinIntoString("\n");
-}
-
 void PanMode::updateCtrlLegend() {
   int nStrips = Tracks::instance()->getNumberOfChannelStrips();
+  bool available = selectedCommandTrack() != NULL;
   for (int iTrack = 1; iTrack <= nStrips; iTrack++) {
     int localCh = (iTrack - 1) % 8;
-    MediaTrack *tr = getMediaTrackForChannel(iTrack);
     String label;
-    if (!tr) {
-      // Empty channel: only Insert is possible there.
-      if (localCh == 0) // hardware VPOT 1
-        label = "Insert";
-    } else {
+    if (available) {
       switch (localCh) {
       case 0: // hardware VPOT 1
         label = "Insert";

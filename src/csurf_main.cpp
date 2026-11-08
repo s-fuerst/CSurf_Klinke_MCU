@@ -171,6 +171,7 @@ double (*TimeMap_timeToQN)(double time);
 double (*TimeMap_QNToTime)(double qn);
 void (*GetProjectTimeSignature)(double *bpm, double *bpi);
 void (*TrackList_AdjustWindows)(bool isMajor);
+void (*UpdateArrange)();
 
 void *(*get_config_var)(const char *name, int *szout);
 int (*projectconfig_var_getoffs)(const char *name, int *szout);
@@ -187,7 +188,7 @@ int (*GetNumTracks)();
 // track / item manipulation (PanMode CTRL+VPOT commands)
 int (*CountTracks)(ReaProject *projOptional);
 MediaTrack *(*GetTrack)(ReaProject *proj, int trackidx);
-MediaTrack *(*InsertTrackAtIndex)(int idx, bool wantDefaults);
+void (*InsertTrackAtIndex)(int idx, bool wantDefaults);
 void (*DeleteTrack)(MediaTrack *tr);
 MediaItem *(*GetTrackMediaItem)(MediaTrack *tr, int itemidx);
 bool (*DeleteTrackMediaItem)(MediaTrack *tr, MediaItem *it);
@@ -356,6 +357,7 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   IMPAPI(TimeMap_QNToTime)
   IMPAPI(GetProjectTimeSignature)
   IMPAPI(TrackList_AdjustWindows)
+  IMPAPI(UpdateArrange)
 
   IMPAPI(get_config_var);
   IMPAPI(projectconfig_var_getoffs);

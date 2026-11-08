@@ -134,6 +134,7 @@ extern double (*TimeMap_timeToQN)(double time);
 extern double (*TimeMap_QNToTime)(double qn);
 extern void (*GetProjectTimeSignature)(double *bpm, double *bpi);
 extern void (*TrackList_AdjustWindows)(bool isMajor);
+extern void (*UpdateArrange)();
 extern char* (*GetSetObjectState)(void* obj, const char* str);
 extern void (*FreeHeapPtr)(void* ptr);
 extern int (*projectconfig_var_getoffs)(const char *name, int *szout);
@@ -145,7 +146,7 @@ extern int (*GetNumTracks)();
 // well below the 6.37 load floor.
 extern int (*CountTracks)(ReaProject* projOptional);
 extern MediaTrack* (*GetTrack)(ReaProject* proj, int trackidx);
-extern MediaTrack* (*InsertTrackAtIndex)(int idx, bool wantDefaults);
+extern void (*InsertTrackAtIndex)(int idx, bool wantDefaults);
 extern void (*DeleteTrack)(MediaTrack* tr);
 extern MediaItem* (*GetTrackMediaItem)(MediaTrack* tr, int itemidx);
 extern bool (*DeleteTrackMediaItem)(MediaTrack* tr, MediaItem* it);

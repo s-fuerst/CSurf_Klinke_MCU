@@ -303,18 +303,16 @@ INSERT_NONE --CTRL+VPOT4--> INSERT_CATEGORY --VPOT--> INSERT_PLUGIN
 
 ### PanMode command set (Phase 4)
 
-PanMode uses the same Layer-2 table but a DIFFERENT command set — the
-commands act on the TRACK on the pressed channel, not on an FX slot, so
-`FxSlotCommands` (Layer 1) is not involved. Target =
-`getMediaTrackForChannel(channel)`. All commands need a track on the
-channel except `Insert`, which inserts at position 0 on an empty channel
-(and therefore keeps its legend entry there).
+PanMode uses the same Layer-2 table but a DIFFERENT command set. All four
+commands target the single selected normal track; they are inactive if no
+track, multiple tracks, or the master track are selected. The VPOT's
+channel does not determine the target. `FxSlotCommands` is not involved.
 
-| CTRL+VPOT | Legend | Action (target: the channel's track) |
+| CTRL+VPOT | Legend | Action (target: the selected track) |
 |---|---|---|
-| 1 | `Insert` | insert a new track directly AFTER the channel's track (`InsertTrackAtIndex`); position 0 when the channel is empty |
-| 2 | `Duplic` | duplicate the track WITH items and envelopes via its RPPXML state chunk: `GetSetObjectState(tr, "")`, drop the top-level `GUID` line, apply to a fresh track |
-| 3 | `Clear` | delete EVERY item (`GetTrackMediaItem`/`DeleteTrackMediaItem` loop) and EVERY envelope (strip every `<ENV>` section from the track chunk) |
+| 1 | `Insert` | insert a new track directly after the selected track (`InsertTrackAtIndex`) |
+| 2 | `Duplic` | use REAPER's native duplicate-tracks action, then select only the copied track; folder duplication follows REAPER's behavior |
+| 3 | `Clear` | delete items via `DeleteTrackMediaItem` and remove envelope sections from the track chunk |
 | 4 | `Remove` | remove the track (`DeleteTrack`) |
 
 Implementation notes:
@@ -323,22 +321,13 @@ Implementation notes:
   below the 6.37 load floor — the floor is unchanged): `CountTracks`,
   `GetTrack`, `InsertTrackAtIndex`, `DeleteTrack`, `GetTrackMediaItem`,
   `DeleteTrackMediaItem`. Externs declared in `vendor/csurf.h`.
-- REAPER has NO "duplicate track" and NO "delete whole envelope" API. (An
-  earlier attempt used `TrackList_*`/`Track_*`/`TrackEnvelope_*` names —
-  none of those exist in REAPER, the extension silently refused to load,
-  and the names were replaced with the real SDK-header ones.) The two
-  commands therefore work on the RPPXML state chunk (`GetSetObjectState`,
-  already resolved):
-  • Duplic = whole track chunk (items, envelopes, FX, settings) with the
-    track's own top-level `GUID` line removed (`withoutTopLevelGUID`),
-    applied to a fresh track — guarantees the copy gets a new GUID (the
-    extension tracks tracks by GUID).
-  • Clear = items via API, then every `<ENV>` section stripped from the
-    chunk (`stripEnvelopeSections`, brace-depth-aware; the write-back is
-    skipped unless the surgery left the chunk balanced and removed
-    something).
-  Every command is wrapped in one `Undo_BeginBlock`/`Undo_EndBlock` pair
-  → exactly one undo point per command.
+- Duplicate uses REAPER action 40062 (`Track: Duplicate tracks`), not a
+  copied state chunk. REAPER handles identities, folder children, and undo;
+  the extension selects only the first newly created track afterwards.
+- Clear deletes items via API, then strips recognized envelope sections from
+  the track chunk (`stripEnvelopeSections`, depth-aware). It refreshes the
+  arrange view. Envelope coverage requires further hardware testing.
+- Insert, Clear and Remove use `Undo_BeginBlock`/`Undo_EndBlock`.
 - PanMode has no normal VPOT-press behaviour, so a non-matching CTRL press
   is a plain no-op (fall-through returns false).
 - Legend: row 1, same convention as the other modes. PanMode redraws its
@@ -382,10 +371,9 @@ from Phases 1–2 to function (it could even be written ad-hoc first), but
 doing 1–2 first keeps the shared code where it belongs.
 - **Phase 4 — DONE (2026-09):** PanMode adopts the Layer-2 table with its
   OWN track-manipulation command set (CTRL+VPOT 1/2/3/4 = Insert/Duplic/
-  Clear/Remove, target = the channel's track). Duplicate and envelope
-  removal work via the RPPXML state chunk (no native REAPER APIs exist
-  for them); the other operations use newly resolved track/item APIs in
-  `csurf_main.cpp`. User smoke test owed.
+  Clear/Remove). The commands now target exactly one selected normal track;
+  Duplicate uses REAPER's native action and Clear uses the track state chunk
+  for envelope removal. User smoke test owed.
 
 ## 6. Open questions (maintainer decision)
 
