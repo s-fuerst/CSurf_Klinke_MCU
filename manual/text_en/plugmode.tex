@@ -220,6 +220,88 @@ Table~\ref{T:plugmode_options2} for details.
 \pikTable[14.485cm]{plugmode_options2}{2nd Options in Plug-Mode (\shift \option)}{}{}
 
 
+
+
+\subsubsection{Commands}\label{plugcommands}
+In the FX-Mode the \hyperref[commands]{Commands} let you manage the FX
+chain and the accessed plugin. Press the \vpot while holding the \control
+modifier; while \control is held, the display shows the command label on
+the \vpots:
+
+\begin{itemize}
+\item \control + \vpot 1 (Float): Toggle the floating window of the
+  accessed plugin. This command is not offered while the ``Limit float''
+  \attribute is set to ``only chain''.
+\item \control + \vpot 2 (Chain): Toggle the FX chain window of the
+  track of the accessed plugin.
+\item \control + \vpot 4 (Insert): Insert a configured favorite FX into
+  the track's FX chain (see \ref{pluginsertcategories}).
+\item \control + \vpot 5 (Remove): Remove the accessed plugin from the
+  track.
+\item \control + \vpot 7 / \vpot 8 (FXup / FXdown): Move the
+  accessed plugin one slot up / down in the FX chain.
+\end{itemize}
+
+\subsubsection{Insert FX}\label{pluginsertcategories}
+You can also insert FX into the selected track directly from the MCU.
+The new FX is inserted after the currently accessed FX. Instead of
+scrolling through all installed plugins, you can select from your own
+list of plugins, divided into categories (e.g. EQ, dynamics or reverb).
+Before you can use this function, you must use the editor to assign the
+plugins that you want to insert from the control surface.
+
+The \hyperref[F:Screenshot_InsertFX_Config]{Insert FX editor} can be
+opened with \control + \alt + \vpot 4 while the FX-Mode is active (see
+Figure~\ref{F:Screenshot_InsertFX_Config}). Each unit has its own set of
+16 categories, each containing up to 16 plugins.
+
+\pikFigure[0.6][13.3cm][-2.4mm]{Screenshot_InsertFX_Config}{Insert FX
+  editor (\control + \alt + \vpot 4)}{}{}
+
+First select the unit that you want to edit in the combo box at the top.
+Units that are not part of the surface configuration are marked as
+\emph{inactive}. On the left side you can enter the category names, which
+are limited to six characters for the MCU display. Select a category to
+edit its plugins on the right side.
+
+To assign a plugin, start typing its name in the plugin field. A list of
+matching installed plugins then appears, from which you can select the
+plugin. The field next to the plugin name contains the short name
+(up to six characters) shown on the MCU display.
+
+The order of the categories and plugins determines which \vpot selects
+them. To change the order, grab a row at the six dots on its left side
+and drag it to the desired position. The rows in between move up or down
+accordingly. All changes are stored immediately in
+\texttt{PluginCategories.xml} in the MCU configuration directory and are
+independent of the project.
+
+When you have assigned your plugins, press \control + \vpot 4 to open
+the category selection on the MCU. The category names are shown in the
+display and you can select a category by pressing the corresponding
+\vpot. The display of this unit then shows the plugins of the selected
+category. Press the corresponding \vpot again to insert the plugin.
+For both selections the \vpots address entries 1-8, or, in combination
+with the \shift modifier, entries 9-16. If you use more than one unit,
+each unit shows its own categories, and selecting a category on one unit
+does not change the display of the other units.
+
+The inserted plugin is selected automatically, so that you can edit its
+parameters immediately. If no FX is currently accessed, the new plugin
+is inserted at the end of the chain. When you switch to the FX-Mode on a
+track without FX, the category selection is
+opened automatically.
+
+The \cancel button closes the selection without inserting a plugin.
+Selecting a different track or leaving the FX-Mode also closes the
+selection.
+
+\subsubsection{Meterbridge}
+In FX-Mode the meterbridge displays the level of the first eight
+channels of the selected track, unless the device has like the Mackie Control Universal only a virtual 
+meterbridge (on the display).
+
+
 \subsubsection{Summary}
 
 \begin{itemize}
@@ -271,73 +353,6 @@ Table~\ref{T:plugmode_options2} for details.
 \end{itemize}
 
 
-\subsubsection{Meterbridge}
-In FX-Mode the meterbridge displays the level of the first eight
-channels of the selected track, unless the device has like the Mackie Control Universal only a virtual 
-meterbridge (on the display).
-
-\subsubsection{Commands}\label{plugcommands}
-In the FX-Mode the \hyperref[commands]{Commands} act on the accessed plugin.
-Press the \vpot while holding the \control modifier; while \control is held,
-the display shows the command label on the \vpots:
-
-\begin{itemize}
-\item \control + \vpot 1 (Float): Toggle the floating window of the
-  accessed plugin. This command is not offered while the ``Limit float''
-  \attribute is set to ``only chain''.
-\item \control + \vpot 2 (Chain): Toggle the FX chain window of the
-  track of the accessed plugin.
-\item \control + \vpot 4 (Insert): Insert one of the plugins of the unit's
-  category lists into the FX chain (see
-  \ref{pluginsertcategories}).
-\item \control + \vpot 5 (Remove): Remove the accessed plugin from the
-  track.
-\item \control + \vpot 7 / \vpot 8 (FXup / FXdown): Move the
-  accessed plugin one slot up / down in the FX chain.
-\end{itemize}
-
-\subsubsection{Insert FX from categories}\label{pluginsertcategories}
-\control + \vpot 4 opens the category list of the unit the 
-\vpot{} was pressed on, without an existing plugin needing to be accessed
-(the command only needs a selected track). Switching to the FX-Mode on a
-track that does not contain any FX at all opens the category list
-automatically, so the first plugin can be inserted right away:
-
-\begin{itemize}
-\item Every unit shows its own sixteen categories in the \vpot{} display
-  fields: the unshifted \vpot{} 1-8 are the categories 1-8, with \shift
-  held the categories 9-16 appear. The names are limited to six characters.
-\item Press a \vpot{} to open its category: that unit now shows the
-  sixteen plugins of the category (again \vpot{} 1-8 and, with \shift,
-  9-16). All other units keep showing their categories.
-\item Press a \vpot{} to insert that plugin. It is inserted directly
-  after the currently accessed plugin (at the end of the chain if no
-  plugin is accessed) and is accessed afterwards, so the display shows
-  its parameters.
-\item The \cancel{} button leaves the category selection without
-  inserting anything. Changing the track or leaving the FX-Mode does the
-  same. Cancelling does not re-open the list while the FX-Mode stays
-  active.
-\end{itemize}
-
-The categories and the plugins they contain are edited in an on-screen
-editor: \control + \alt + \vpot 4 opens it while the FX-Mode is active.
-The editor shows one unit at a time (drop-down at the top, units that are
-not part of the surface configuration are marked as \emph{inactive}). On
-the left side the sixteen six-character category names are edited;
-selecting one of them fills the right side with its sixteen plugin slots.
-Each plugin slot picks a plugin exactly like the Channel Strip editor and
-optionally stores a short label (six characters) for the display -- if it
-is empty, the plugin name is shortened for the display instead.
-
-Both lists can be reordered: grab a row at the grip on its left edge (the
-six dots) and drop it at the wanted position. The rows in between move up
-or down accordingly, nothing is swapped and nothing is lost. The order in
-the editor is the order the \vpots{} address, so it applies to the next
-category/plugin selection on the device.
-
-All changes are stored immediately in \texttt{PluginCategories.xml} in the
-MCU configuration directory, independent of the project.
 
 %%% Local Variables: 
 %%% mode: latex
