@@ -57,7 +57,7 @@ via \alt \plug (see Figure~\ref{F:Screenshot_Plug_Mode}).
   editor (\alt \plug)}{}{}
 
 Parameters can be assigned to the strips of a page with the Learn
-function of the mapping editor: enable the ``Learn'' checkbox at the
+function of the mapping editor: enable the ``\textbf{Learn}'' checkbox at the
 top of the editor, select the \fader or \vpot of the channel in the
 editor (the element that was clicked last is used, its parameter
 combo box is shown in red) and change the desired value in the FX
@@ -66,7 +66,7 @@ selected element. Alternatively you can pick the parameter directly
 from the combo box next to the element.
 
 If a parameter is assigned to a \vpot -- with the Learn option or by
-selecting it in the parameter list -- the value table of the \vpot
+selecting it in the parameter list -- the \textbf{value table} of the \vpot
 is filled automatically. If the FX reports the discrete values of
 the parameter (e.g.\ for the waveform selector of an oscillator),
 these values and their names are used, otherwise they are detected
@@ -76,6 +76,24 @@ parameter to the missing value while Learn is enabled. The short and
 long names in the table can be edited afterwards; the automatically
 created short names use a heuristic that keeps them distinguishable
 on the display.
+
+Instead of mapping the parameters of a page or a bank yourself, you
+can make it refer to the channel mappings of another page or bank.
+In the mapping editor, select the page or bank and set the
+``\textbf{Reference To}'' combo box in the ``\textbf{Reference}'' group. This is useful
+if the FX contains repeating parameter groups, e.g.\ an EQ with
+identical bands or a drum synth with multiple identical voices. In
+that case you only have to map the parameters of one group; the
+pages or banks of the remaining groups then refer to it.
+
+When a page or bank refers to another one, the parameter IDs of the
+referenced page are shifted by the value entered in the ``\textbf{Offset}''
+field, which is added to every parameter ID of the referenced
+mapping. The offset is the difference of the starting parameter IDs
+of two identical groups: if band 1 starts at parameter ID 12 and
+band 2 at parameter ID 32, you enter 20 for the page of band 2. Bank
+and page offsets are applied cumulatively, so a bank can refer to a
+bank whose pages themselves refer to other pages.
 
 When an FX is selected via the MCU or the name of the selected FX is
 changed in the Track FX dialog, a map is loaded if its name is part
@@ -87,10 +105,10 @@ there, the installed factory maps are searched through. So you can
 modify a factory map and store it with the same name, afterwards the
 modified version will always be loaded.
 
-A mapping can be stored using the ``save'' button at the top of the editor. To
+A mapping can be stored using the ``\textbf{save}'' button at the top of the editor. To
 avoid ambiguity you can not  save a map with a name that contains the
 name of an  existing user map or that is part of an existing user map.
-The ``save'' dialog will only allow you to save maps with
+The ``\textbf{save}'' dialog will only allow you to save maps with
 unambiguous names, but it is best not to rename files in {\tt My
   Documents/MCU/PlugMaps/}.
 
@@ -100,7 +118,7 @@ in the FX: Track window of \reaper. It is important to keep in mind
 that FX maps are not cached in the memory (except
 \hyperref[localmaps]{Local maps} which are explained in the next
 section). So if you edit a map and then select a different FX, these changes are lost. When you start to work on a map, it is a good idea
-to save an empty map and activate the Autosave option in the Mapping
+to save an empty map and activate the \textbf{Autosave} option in the Mapping
 editor (you must save the map first, so that the Autosave function
 knows a filename). When Autosave is enabled, the map will be saved
 automatically when you select a different FX.
