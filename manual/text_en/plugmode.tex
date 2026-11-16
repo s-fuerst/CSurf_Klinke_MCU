@@ -197,50 +197,14 @@ also press the \alt button. Double-clicking the \rec button will
 extend this to all tracks, so that all FX presets in the track will be
 deleted.
 
-\subsubsection{Sync with \reaper GUI}\label{plugsync}
-The default behaviour for syncing the MCU with the \reaper GUI is as follows: 
-\begin{itemize}
-\item When you select a different FX in the FX chain of the track that is
-  selected with the MCU or open a new floating window of a FX from the 
-  selected track, the MCU also jumps to this FX.\footnote{With the exception 
-    of when the favorite mode is active (= \gv LED is lit).}
-\item When you select a different FX with the MCU and the \reaper FX chain
-  window of the corresponding track is visible, the FX will also be selected in
-  the FX chain window. This can be avoided by pressing \option while selecting the FX.
-\end{itemize}
-
-\noindent
-This behaviour can be changed, see Table~\ref{T:plugmode_options1} and
-Table~\ref{T:plugmode_options2} for details.
-
-\vspace{-1mm}
-\pikTable[14.505cm]{plugmode_options1}{Main Options in Plug-Mode
-  (\option)}{}{}
-% \vspace{1mm}
-\pikTable[14.485cm]{plugmode_options2}{2nd Options in Plug-Mode (\shift \option)}{}{}
-
-
-
-
 \subsubsection{Commands}\label{plugcommands}
 In the FX-Mode the \hyperref[commands]{Commands} let you manage the FX
 chain and the accessed plugin. Press the \vpot while holding the \control
 modifier; while \control is held, the display shows the command label on
-the \vpots:
+the \vpots. Table~\ref{T:plugmode_commands} lists the commands.
 
-\begin{itemize}
-\item \control + \vpot 1 (Float): Toggle the floating window of the
-  accessed plugin. This command is not offered while the ``Limit float''
-  \attribute is set to ``only chain''.
-\item \control + \vpot 2 (Chain): Toggle the FX chain window of the
-  track of the accessed plugin.
-\item \control + \vpot 4 (Insert): Insert a configured favorite FX into
-  the track's FX chain (see \ref{pluginsertcategories}).
-\item \control + \vpot 5 (Remove): Remove the accessed plugin from the
-  track.
-\item \control + \vpot 7 / \vpot 8 (FXup / FXdown): Move the
-  accessed plugin one slot up / down in the FX chain.
-\end{itemize}
+\pikTableContent[14.5cm]{plugmode_commands}{Commands in FX-Mode}{}{}
+\vspace{-3mm}
 
 \subsubsection{Insert FX}\label{pluginsertcategories}
 You can also insert FX into the selected track directly from the MCU.
@@ -295,6 +259,28 @@ opened automatically.
 The \cancel button closes the selection without inserting a plugin.
 Selecting a different track or leaving the FX-Mode also closes the
 selection.
+
+\subsubsection{Options}\label{plugsync}
+The default behaviour for syncing the MCU with the \reaper GUI is as follows: 
+\begin{itemize}
+\item When you select a different FX in the FX chain of the track that is
+  selected with the MCU or open a new floating window of a FX from the 
+  selected track, the MCU also jumps to this FX.\footnote{With the exception 
+    of when the favorite mode is active (= \gv LED is lit).}
+\item When you select a different FX with the MCU and the \reaper FX chain
+  window of the corresponding track is visible, the FX will also be selected in
+  the FX chain window. This can be avoided by pressing \option while selecting the FX.
+\end{itemize}
+
+\noindent
+This behaviour can be changed, see Table~\ref{T:plugmode_options1} and
+Table~\ref{T:plugmode_options2} for details.
+
+\vspace{-1mm}
+\pikTable[14.505cm]{plugmode_options1}{Main Options in Plug-Mode
+  (\option)}{}{}
+% \vspace{1mm}
+\pikTable[14.485cm]{plugmode_options2}{2nd Options in Plug-Mode (\shift \option)}{}{}
 
 \subsubsection{Meterbridge}
 In FX-Mode the meterbridge displays the level of the first eight

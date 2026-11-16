@@ -148,6 +148,15 @@ which case the settings in the
 \hyperref[F:Screenshot_Track_Mode]{Track settings editor} will be
 ignored.
 
+\subsubsection{Commands}\label{pancommands}
+In the Pan-Mode the \hyperref[commands]{Commands} act on the selected track.
+They are available only when exactly one normal track is selected; the master
+track is not supported. Press the \vpot while holding the \control modifier;
+while \control is held, the display shows the available command labels.
+Table~\ref{T:panmode_commands} lists the commands.
+
+\pikTable[14.5cm]{panmode_commands}{Commands in Pan-Mode}{}{}
+
 \subsubsection{Quick Jump}\label{quickjump}
 
 To simplify navigation, you can define up to eight tracks that can be
@@ -193,22 +202,6 @@ the case of the TCP, only the tracks are shown that are selected.
 
 \pikTable[15cm]{multitrack_options2}{2nd Options in Pan-Mode and Action-Mode
 (\shift \option)}{}{} 
-
-\subsubsection{Commands}\label{pancommands}
-In the Pan-Mode the \hyperref[commands]{Commands} act on the selected track.
-They are available only when exactly one normal track is selected; the master
-track is not supported. Press the \vpot while holding the \control modifier;
-while \control is held, the display shows the available command labels:
-
-\begin{itemize}
-\item \control + \vpot 1 (Insert): Insert a new track directly after
-  the selected track.
-\item \control + \vpot 2 (Duplic): Duplicate the selected track using
-  REAPER's duplicate action, including items and envelopes. 
-\item \control + \vpot 3 (Clear): Delete every item and every envelope
-  of the selected track.
-\item \control + \vpot 4 (Remove): Remove the selected track.
-\end{itemize}
 
 %%% Local Variables: 
 %%% mode: latex
