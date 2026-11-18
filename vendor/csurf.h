@@ -60,6 +60,7 @@ extern void (*CSurf_GoStart)();
 extern void (*CSurf_GoEnd)();
 extern void (*CSurf_OnArrow)(int whichdir, bool wantzoom);
 extern void (*CSurf_OnTrackSelection)(MediaTrack *trackid);
+extern MediaTrack *(*SetMixerScroll)(MediaTrack *leftmosttrack);
 extern void (*CSurf_ResetAllCachedVolPanStates)();
 extern void (*CSurf_ScrubAmt)(double amt);
 

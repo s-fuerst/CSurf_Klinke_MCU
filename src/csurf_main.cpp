@@ -70,6 +70,7 @@ void (*CSurf_GoStart)();
 void (*CSurf_GoEnd)();
 void (*CSurf_OnArrow)(int whichdir, bool wantzoom);
 void (*CSurf_OnTrackSelection)(MediaTrack *trackid);
+MediaTrack *(*SetMixerScroll)(MediaTrack *leftmosttrack);
 void (*CSurf_ResetAllCachedVolPanStates)();
 void (*CSurf_ScrubAmt)(double amt);
 
@@ -296,6 +297,8 @@ REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance,
   IMPAPI(CSurf_GoEnd)
   IMPAPI(CSurf_OnArrow)
   IMPAPI(CSurf_OnTrackSelection)
+  // Present in the REAPER 6.19 SDK, below our minimum supported REAPER 6.37.
+  IMPAPI(SetMixerScroll)
   IMPAPI(CSurf_ResetAllCachedVolPanStates)
   IMPAPI(CSurf_ScrubAmt)
   IMPAPI(TrackList_UpdateAllExternalSurfaces)

@@ -15,6 +15,8 @@
 #define MTO2A_MCP_NO String("don't adjust")
 #define MTO2A_MCP_BANK String("hide non MCU")
 #define MTO2A_MCP_ALL String("show all")
+#define MTO2A_MCP_SCROLL_FIRST String("scroll first")
+#define MTO2A_MCP_SCROLL_SELECTED String("scroll selected")
 
 #define MTO2_FOLLOW_REAPER String("Follow Reaper")
 #define MTO2A_FOLLOW_REAPER_OFF String("no")
@@ -36,6 +38,7 @@ protected:
 
   void activateSelector();
   void checkAndModifyOptions();
+  bool leavesMixerVisibilityUnchanged();
 
   bool m_tcpNotAdjust;
   bool m_mcpNotAdjust;

@@ -313,6 +313,7 @@ private:
 
   typedef ::std::vector<MediaTrack *> tTracks;
   tTracks m_channelTracks;
+  MediaTrack *m_pLastMixerScrollFirstTrack = NULL;
 
   // Vector (not set) so element order reflects REAPER track order. This lets
   // operator== detect adds, removes, and reorders in one O(n) comparison,

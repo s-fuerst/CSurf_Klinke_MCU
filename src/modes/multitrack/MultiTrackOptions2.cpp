@@ -16,6 +16,8 @@ MultiTrackOptions2::MultiTrackOptions2(DisplayHandler *pDH) : Options(pDH) {
   addAttribute(MTO2_MCP_ADJUCT, MTO2A_MCP_NO, true);
   addAttribute(MTO2_MCP_ADJUCT, MTO2A_MCP_BANK);
   addAttribute(MTO2_MCP_ADJUCT, MTO2A_MCP_ALL);
+  addAttribute(MTO2_MCP_ADJUCT, MTO2A_MCP_SCROLL_FIRST);
+  addAttribute(MTO2_MCP_ADJUCT, MTO2A_MCP_SCROLL_SELECTED);
 
   addOption(MTO2_FOLLOW_REAPER);
   addAttribute(MTO2_FOLLOW_REAPER, MTO2A_FOLLOW_REAPER_OFF);
@@ -36,8 +38,13 @@ String MultiTrackOptions2::getConfigFileName() {
 
 void MultiTrackOptions2::activateSelector() {
   m_tcpNotAdjust = isOptionSetTo(MTO2_TCP_ADJUCT, MTO2A_TCP_NO);
-  m_mcpNotAdjust = isOptionSetTo(MTO2_MCP_ADJUCT, MTO2A_MCP_NO);
+  m_mcpNotAdjust = leavesMixerVisibilityUnchanged();
   Options::activateSelector();
+}
+
+bool MultiTrackOptions2::leavesMixerVisibilityUnchanged() {
+  return !isOptionSetTo(MTO2_MCP_ADJUCT, MTO2A_MCP_BANK) &&
+         !isOptionSetTo(MTO2_MCP_ADJUCT, MTO2A_MCP_ALL);
 }
 
 void MultiTrackOptions2::checkAndModifyOptions() {
@@ -48,7 +55,7 @@ void MultiTrackOptions2::checkAndModifyOptions() {
     }
   }
 
-  if (m_mcpNotAdjust != isOptionSetTo(MTO2_MCP_ADJUCT, MTO2A_MCP_NO)) {
+  if (m_mcpNotAdjust != leavesMixerVisibilityUnchanged()) {
     m_mcpNotAdjust = !m_mcpNotAdjust;
     if (m_mcpNotAdjust) {
       Tracks::instance()->setMCP2TrackStates();

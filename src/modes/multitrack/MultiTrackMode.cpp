@@ -372,6 +372,7 @@ bool MultiTrackMode::buttonSelect(int channel, bool pressed) {
 
   MediaTrack *tr = getMediaTrackForChannel(channel);
   if (tr) {
+    bool selectedTrack = false;
     if (isModifierPressed(VK_SHIFT) || isModifierPressed(VK_ALT)) {
       if (m_lastSelectedTrackNr >= 0) {
         m_pCCSManager->getMCU()->UnselectAllTracks();
@@ -394,6 +395,7 @@ bool MultiTrackMode::buttonSelect(int channel, bool pressed) {
           }
         }
         CSurf_OnTrackSelection(tr);
+        selectedTrack = true;
         TrackList_AdjustWindows(false);
       }
 
@@ -404,7 +406,10 @@ bool MultiTrackMode::buttonSelect(int channel, bool pressed) {
         return false;
       bool newSel = !(*sel);
       SetTrackSelected(tr, newSel);
-      if (newSel) CSurf_OnTrackSelection(tr);
+      if (newSel) {
+        CSurf_OnTrackSelection(tr);
+        selectedTrack = true;
+      }
       TrackList_AdjustWindows(false);
       m_lastSelectedTrackNr = MediaTrackInfo::getTrackNr(tr);
     } else {
@@ -412,12 +417,18 @@ bool MultiTrackMode::buttonSelect(int channel, bool pressed) {
       m_pCCSManager->getMCU()->UnselectAllTracks();
       SetTrackSelected(tr, true);
       CSurf_OnTrackSelection(tr);
+      selectedTrack = true;
       TrackList_AdjustWindows(false);
     }
 
     if (Tracks::instance()->get2ndOptions()->isOptionSetTo(
             MTO2_AUTO_TOUCH, MTO2A_AUTO_TOUCH_ON)) {
       SendMessage(g_hwnd, WM_COMMAND, ID_TOUCH_SELECTED_TRACK, 0);
+    }
+
+    if (selectedTrack && Tracks::instance()->get2ndOptions()->isOptionSetTo(
+            MTO2_MCP_ADJUCT, MTO2A_MCP_SCROLL_SELECTED)) {
+      SetMixerScroll(tr);
     }
 
     return true;

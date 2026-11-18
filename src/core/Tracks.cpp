@@ -875,6 +875,22 @@ void Tracks::adjust(int numMCUChannels) {
     UpdateTimeline();
   }
 
+  // Scroll only when the first occupied MCU channel changes (or this mode
+  // is enabled), so manual mixer scrolling is not undone on every update.
+  if (m_pOptions2->isOptionSetTo(MTO2_MCP_ADJUCT, MTO2A_MCP_SCROLL_FIRST)) {
+    MediaTrack *firstTrack = NULL;
+    for (int channel = 1; channel <= m_numMCUChannels; ++channel) {
+      firstTrack = getMediaTrackForChannel(channel);
+      if (firstTrack)
+        break;
+    }
+    if (firstTrack && firstTrack != m_pLastMixerScrollFirstTrack)
+      SetMixerScroll(firstTrack);
+    m_pLastMixerScrollFirstTrack = firstTrack;
+  } else {
+    m_pLastMixerScrollFirstTrack = NULL;
+  }
+
   // adjust TCP
   bool updateTCP = false;
   if (m_pOptions2->isOptionSetTo(MTO2_TCP_ADJUCT, MTO2A_TCP_BANK) ||
